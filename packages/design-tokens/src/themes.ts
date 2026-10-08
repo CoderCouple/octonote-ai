@@ -1,0 +1,160 @@
+/**
+ * Semantic color tokens — the only colors components may use.
+ * Names follow shadcn/ui so every UI primitive picks them up unchanged;
+ * the extra tokens (foreground-strong, foreground-subtle, surface-*, aura-*)
+ * cover what shadcn doesn't name.
+ *
+ * light = Notion: pure white surfaces everywhere (page, sidebar, cards, popovers);
+ *         structure comes from thin warm-gray borders, and gray tints appear only
+ *         as interaction feedback (hover, selection, placeholders).
+ * dark  = Endel: near-black canvas, soft white light, faint aura glow.
+ */
+import { night, red, warm } from "./primitives";
+
+export const colorTokenNames = [
+  "background",
+  "foreground",
+  "foreground-strong",
+  "foreground-subtle",
+  "card",
+  "card-foreground",
+  "popover",
+  "popover-foreground",
+  "primary",
+  "primary-foreground",
+  "secondary",
+  "secondary-foreground",
+  "muted",
+  "muted-foreground",
+  "accent",
+  "accent-foreground",
+  "destructive",
+  "destructive-foreground",
+  "border",
+  "input",
+  "ring",
+  "surface-subtle",
+  "surface-raised",
+  "sidebar",
+  "sidebar-foreground",
+  "sidebar-primary",
+  "sidebar-primary-foreground",
+  "sidebar-accent",
+  "sidebar-accent-foreground",
+  "sidebar-border",
+  "sidebar-ring",
+  "aura-1",
+  "aura-2",
+  "canvas-paper",
+  "canvas-border",
+  "orb-page",
+  "orb-rim",
+  "orb-glow",
+  "orb-glow-soft",
+  "orb-ring",
+  "orb-ripple",
+  "orb-grain",
+  "orb-icon",
+] as const;
+
+export type ColorToken = (typeof colorTokenNames)[number];
+export type ThemeColors = Record<ColorToken, string>;
+export type ThemeName = "light" | "dark";
+
+export const light: ThemeColors = {
+  background: warm[0],
+  foreground: warm[700],
+  "foreground-strong": warm[900],
+  "foreground-subtle": warm[400],
+  card: warm[0],
+  "card-foreground": warm[700],
+  popover: warm[0],
+  "popover-foreground": warm[700],
+  primary: warm[900],
+  "primary-foreground": warm[0],
+  secondary: warm[100],
+  "secondary-foreground": warm[700],
+  muted: warm[100],
+  "muted-foreground": warm[550],
+  accent: warm[100],
+  "accent-foreground": warm[700],
+  destructive: red.light,
+  "destructive-foreground": warm[0],
+  border: warm[150],
+  input: warm[200],
+  ring: warm[400],
+  "surface-subtle": warm[0],
+  "surface-raised": warm[0],
+  sidebar: warm[0],
+  "sidebar-foreground": warm[600],
+  "sidebar-primary": warm[900],
+  "sidebar-primary-foreground": warm[0],
+  "sidebar-accent": warm[100],
+  "sidebar-accent-foreground": warm[700],
+  "sidebar-border": warm[150],
+  "sidebar-ring": warm[400],
+  // Light mode has no aura — Notion's calm white page.
+  "aura-1": "transparent",
+  "aura-2": "transparent",
+  "canvas-paper": warm[0],
+  "canvas-border": warm[150],
+  // Sign-in orb: dark sphere on a light page.
+  "orb-page": warm[0],
+  "orb-rim": "rgba(0, 0, 0, 0.55)",
+  "orb-glow": "rgba(0, 0, 0, 0.18)",
+  "orb-glow-soft": "rgba(0, 0, 0, 0.08)",
+  "orb-ring": "rgba(0, 0, 0, 0.32)",
+  "orb-ripple": "rgba(0, 0, 0, 0.18)",
+  "orb-grain": "rgba(0, 0, 0, 0.5)",
+  "orb-icon": "rgba(255, 255, 255, 0.95)",
+};
+
+export const dark: ThemeColors = {
+  background: night[950],
+  foreground: night[100],
+  "foreground-strong": night[0],
+  "foreground-subtle": night[500],
+  card: night[900],
+  "card-foreground": night[100],
+  popover: night[850],
+  "popover-foreground": night[100],
+  primary: night[0],
+  "primary-foreground": night[950],
+  secondary: night[800],
+  "secondary-foreground": night[100],
+  muted: night[850],
+  "muted-foreground": night[400],
+  accent: night[800],
+  "accent-foreground": night[100],
+  destructive: red.dark,
+  "destructive-foreground": night[0],
+  border: night[800],
+  input: night[750],
+  ring: night[500],
+  "surface-subtle": night[900],
+  "surface-raised": night[850],
+  sidebar: night[900],
+  "sidebar-foreground": night[300],
+  "sidebar-primary": night[0],
+  "sidebar-primary-foreground": night[950],
+  "sidebar-accent": night[800],
+  "sidebar-accent-foreground": night[100],
+  "sidebar-border": night[800],
+  "sidebar-ring": night[500],
+  // Endel-style soft white light, used by the marketing aura.
+  "aura-1": "rgba(255, 255, 255, 0.10)",
+  "aura-2": "rgba(255, 255, 255, 0.05)",
+  "canvas-paper": night[950],
+  "canvas-border": night[800],
+  // Sign-in orb: dark sphere with a soft white rim glow.
+  "orb-page": night[950],
+  "orb-rim": "rgba(255, 255, 255, 0.45)",
+  "orb-glow": "rgba(255, 255, 255, 0.20)",
+  "orb-glow-soft": "rgba(255, 255, 255, 0.08)",
+  "orb-ring": "rgba(255, 255, 255, 0.45)",
+  "orb-ripple": "rgba(255, 255, 255, 0.22)",
+  "orb-grain": "rgba(255, 255, 255, 0.6)",
+  "orb-icon": "rgba(255, 255, 255, 1)",
+};
+
+export const themes: Record<ThemeName, ThemeColors> = { light, dark };

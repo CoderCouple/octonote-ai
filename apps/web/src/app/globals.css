@@ -1,0 +1,177 @@
+@import "tailwindcss";
+/* Every color, font, radius, shadow and easing comes from the design system.
+ * Edit packages/design-tokens/src, never raw values here or in components. */
+@import "@octonote/design-tokens/tokens.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --animate-octo-pulse: octo-pulse 9s ease-in-out infinite;
+  --animate-octo-ripple: octo-ripple 5s ease-out infinite backwards;
+  --animate-octo-twinkle: octo-twinkle 4s ease-in-out infinite backwards;
+  --animate-octo-shoot: octo-shoot 6s linear infinite backwards;
+  --animate-aura-drift: aura-drift 28s ease-in-out infinite alternate;
+  --animate-word-rise: word-rise 900ms var(--ease-emphasized) both;
+}
+
+/* Tailwind v4 defaults borders to currentColor; the design system wants hairline token borders. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+    outline-color: var(--ring);
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-family-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes octo-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.78;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+@keyframes octo-ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0.45);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.6);
+    opacity: 0;
+  }
+}
+
+@keyframes octo-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes octo-shoot {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(var(--shoot-angle, 25deg));
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--shoot-dx, 120vw), var(--shoot-dy, 90vh), 0)
+      rotate(var(--shoot-angle, 25deg));
+    opacity: 0;
+  }
+}
+
+/* Endel-style aura on the dark marketing page: soft light blobs drifting slowly. */
+@keyframes aura-drift {
+  0% {
+    transform: translate3d(-4%, -2%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(4%, 3%, 0) scale(1.12);
+  }
+}
+
+/* Hero headline: words lift into place one after another. */
+@keyframes word-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0.35em);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-word-rise,
+  .animate-octo-pulse,
+  .animate-octo-ripple,
+  .animate-octo-twinkle,
+  .animate-octo-shoot,
+  .animate-aura-drift {
+    animation: none !important;
+  }
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Reader typography: NotesPane / the published page set --font-reader-* inline
+ * (from the typography picker) and tag their wrapper with .reader-typography.
+ * Only the family cascades to every descendant so BlockNote's heading scale holds. */
+.reader-typography .bn-container {
+  font-family: var(--font-reader-family) !important;
+  font-size: var(--font-reader-size) !important;
+  line-height: var(--font-reader-line-height) !important;
+}
+.reader-typography .bn-container * {
+  font-family: inherit !important;
+}
+
+/* BlockNote ships its own palette on .bn-root (light and dark) and loads after
+ * this file; the extra class beats `.bn-root[data-color-scheme=dark]`. */
+.bn-root.bn-container[data-color-scheme] {
+  --bn-colors-editor-background: var(--background);
+  --bn-colors-editor-text: var(--foreground);
+  --bn-colors-menu-background: var(--popover);
+  --bn-colors-menu-text: var(--popover-foreground);
+  --bn-colors-tooltip-background: var(--primary);
+  --bn-colors-tooltip-text: var(--primary-foreground);
+  --bn-colors-hovered-background: var(--accent);
+  --bn-colors-hovered-text: var(--accent-foreground);
+  --bn-colors-selected-background: var(--accent);
+  --bn-colors-selected-text: var(--accent-foreground);
+  --bn-colors-disabled-text: var(--foreground-subtle);
+  --bn-colors-border: var(--border);
+  --bn-colors-shadow: var(--border);
+  --bn-colors-side-menu: var(--foreground-subtle);
+  --bn-font-family: var(--font-family-sans);
+}
+
+/* tldraw loads its CSS after ours, hence !important. */
+.tl-theme__light,
+.tl-container.tl-theme__light,
+.tl-theme__dark,
+.tl-container.tl-theme__dark {
+  --tl-color-background: var(--canvas-paper) !important;
+  --tl-color-low: var(--canvas-paper) !important;
+  --tl-color-low-border: var(--canvas-border) !important;
+}

@@ -1,0 +1,42 @@
+import { useRouter } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useMe } from "@/features/resources";
+import { usePalette } from "@/lib/theme";
+import { useAuth } from "@/providers/auth";
+
+export default function Settings() {
+  const c = usePalette();
+  const router = useRouter();
+  const { signOut } = useAuth();
+  const me = useMe();
+
+  return (
+    <View style={[styles.fill, { backgroundColor: c.grouped }]}>
+      <View style={[styles.group, { backgroundColor: c.card, borderColor: c.separator }]}>
+        <Text style={[styles.name, { color: c.text }]}>{me.data?.user.name ?? " "}</Text>
+        <Text style={[styles.meta, { color: c.textSecondary }]}>{me.data?.user.email ?? " "}</Text>
+        <Text style={[styles.meta, { color: c.textSecondary }]}>
+          Workspace: {me.data?.memberships[0]?.workspace.name ?? "—"}
+        </Text>
+      </View>
+      <Pressable
+        onPress={async () => {
+          await signOut();
+          router.dismissAll();
+          router.replace("/sign-in");
+        }}
+        style={({ pressed }) => [styles.group, { backgroundColor: pressed ? c.pressed : c.card, borderColor: c.separator }]}
+      >
+        <Text style={[styles.signOut, { color: c.danger }]}>Sign out</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  fill: { flex: 1, padding: 16, gap: 16 },
+  group: { borderRadius: 12, padding: 16, gap: 4, borderWidth: StyleSheet.hairlineWidth },
+  name: { fontSize: 17, fontWeight: "600" },
+  meta: { fontSize: 14 },
+  signOut: { fontSize: 17, textAlign: "center" },
+});
