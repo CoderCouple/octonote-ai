@@ -25,6 +25,7 @@ export default function RootLayout() {
                 name="sign-in"
                 options={{ headerShown: false, animation: "fade" }}
               />
+              <Stack.Screen name="analytics/[kind]/[id]" options={{ title: "Analytics" }} />
               <Stack.Screen
                 name="settings"
                 options={{ presentation: "modal", title: "Account" }}

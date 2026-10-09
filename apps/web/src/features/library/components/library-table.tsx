@@ -66,13 +66,13 @@ import {
   RESOURCE_PATH,
   type ResourceKind,
 } from "@/features/sharing";
+import { libraryStats, type Access } from "@octonote/shared";
 import { cn } from "@/lib/utils";
 import { deleteResource, moveResource } from "../operations";
 import { DELETE_COPY } from "./resource-list";
 import { MoveToNotebookDialog } from "./move-to-notebook-dialog";
 
-/** Who can open an item, most open first. */
-export type Access = "public" | "link" | "shared" | "private";
+export type { Access };
 
 export interface LibraryRow {
   kind: ResourceKind;
@@ -118,8 +118,6 @@ const ACCESS: Record<Access, { label: string; icon: typeof Lock }> = {
   private: { label: "Private", icon: Lock },
 };
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
 function matches(row: LibraryRow, filter: Filter) {
   if (filter === "all") return true;
   if (filter === "public") return row.access === "public";
@@ -133,9 +131,6 @@ const formatDate = (iso: string) =>
     month: "short",
     day: "numeric",
   });
-
-const pct = (part: number, total: number) =>
-  total > 0 ? Math.round((part / total) * 100) : 0;
 
 interface LibraryTableProps {
   workspaceId: string;
@@ -434,53 +429,7 @@ function PagerButton({
 /* ───────────── Stat cards ───────────── */
 
 function StatCards({ rows, noun }: { rows: LibraryRow[]; noun: string }) {
-  const now = Date.now();
-  const total = rows.length;
-  const created = rows.filter(
-    (r) => now - new Date(r.createdAt).getTime() < WEEK_MS,
-  ).length;
-  const shared = rows.filter((r) => matches(r, "shared")).length;
-  const published = rows.filter((r) => r.access === "public").length;
-  const updated = rows.filter(
-    (r) => now - new Date(r.updatedAt).getTime() < WEEK_MS,
-  ).length;
-  const label = noun.charAt(0).toUpperCase() + noun.slice(1);
-
-  const tiles = [
-    {
-      label,
-      value: total,
-      badge: created > 0 ? `+${created}` : "0",
-      up: created > 0,
-      bold:
-        created > 0 ? `${created} new this week` : `No new ${noun} this week`,
-      hint: "In this workspace",
-    },
-    {
-      label: "Shared",
-      value: shared,
-      badge: `${pct(shared, total)}%`,
-      up: shared > 0,
-      bold: shared > 0 ? "Working together" : "All private for now",
-      hint: "People or anyone with the link",
-    },
-    {
-      label: "Published",
-      value: published,
-      badge: `${pct(published, total)}%`,
-      up: published > 0,
-      bold: published > 0 ? "Live on the web" : "Nothing public yet",
-      hint: "Readable by anyone",
-    },
-    {
-      label: "Updated 7d",
-      value: updated,
-      badge: `${pct(updated, total)}%`,
-      up: pct(updated, total) >= 30,
-      bold: pct(updated, total) >= 30 ? "Active week" : "Quiet week",
-      hint: "Touched in the last 7 days",
-    },
-  ];
+  const tiles = libraryStats(rows, noun);
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -1,0 +1,16 @@
+# Never upload local secrets or env files to Vercel builds (config lives in
+# Vercel project env vars).
+.env
+.env.*
+!.env.example
+*.env.hosted
+**/.env
+**/.env.*
+!**/.env.example
+# Not needed to build apps/web.
+apps/mobile
+services
+supabase/.temp
+**/node_modules
+**/.next
+**/dist

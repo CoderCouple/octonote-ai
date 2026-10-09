@@ -204,6 +204,22 @@ Phone / emulator testing uses the Mac's LAN IP everywhere (root `.env`, `apps/we
 
 API tests under `test/integration/` run against real Postgres in-process (PGlite) with the actual migration applied — no Docker needed. Add new sharing/permission tests there, not as mocked unit tests.
 
+### Hosted environment (set up 2026-10-09)
+
+| Piece | Where |
+|---|---|
+| Supabase | project **OctonoteAI**, ref `xdjeshxjvrbgksgmurnh`, East US, CoderCouple's Org. Linked in `supabase/`. |
+| API | Railway project **octonote-ai**, service `api` → https://api-production-fb09.up.railway.app (deploy: `railway up --service api --detach` from the repo root; `.railwayignore` keeps the upload to what the Dockerfile needs) |
+| Web | Vercel project **octonote-ai** (root `apps/web`) → https://octonote-ai.vercel.app (deploy: `vercel deploy --prod --yes` from the repo root; `.vercelignore` keeps env files out) |
+
+- Hosted credentials live in the git-ignored root **`.env.hosted`** (DB password, keys, URLs). Never print or commit them.
+- DB migrations against hosted: `set -a; . ./.env.hosted; set +a; DATABASE_URL="$DATABASE_URL" pnpm --filter @octonote/api db:migrate`, plus `supabase db push` for `supabase/migrations`.
+- Auth settings (site URL, redirect URLs, the sign-in email template with the 6-digit code) are in `supabase/config.toml` under `[remotes.production]`; apply with `supabase config push`.
+- **Every `public` table must have RLS on with no policies** (migration `0003_lock_public_tables`, enforced by `test/integration/security.test.ts`): Supabase serves `public` over its Data API with the anon key, and only `services/api` may touch app data.
+- Email uses Supabase's built-in sender: a few emails per hour, and it only delivers to members of the Supabase org until custom SMTP (Resend) is set up.
+- Mobile: `pnpm mobile:env hosted` / `pnpm mobile:env local` switches the app (writes/removes `apps/mobile/.env.local`), then restart Expo with `--clear`.
+- Before a public launch: tldraw license key (`NEXT_PUBLIC_TLDRAW_LICENSE_KEY` on Vercel), Resend SMTP, Google OAuth, custom domain.
+
 ## API structure notes
 
 - **Every read/write of a note, canvas, project or notebook goes through `PermissionsService.require(userId | null, {kind, id}, action)`** — never gate on workspace membership alone, or shared users get 404s. Workspace-membership checks (`WorkspacesService.requireRole`) are only for workspace-level lists/creates.

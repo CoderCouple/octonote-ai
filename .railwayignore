@@ -1,0 +1,12 @@
+# Only what the API's Dockerfile needs; never local env files.
+.env
+.env.*
+!.env.example
+*.env.hosted
+**/node_modules
+**/.next
+**/dist
+apps
+supabase/.temp
+packages/api-client
+packages/design-tokens

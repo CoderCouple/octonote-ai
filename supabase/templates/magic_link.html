@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#37352f;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+      <tr>
+        <td align="center" style="padding:48px 24px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;">
+            <tr>
+              <td style="padding-bottom:28px;">
+                <span style="display:inline-block;width:36px;height:36px;border-radius:9px;background:#191919;color:#ffffff;font-size:18px;line-height:36px;text-align:center;font-weight:700;">O</span>
+                <span style="font-size:17px;font-weight:700;color:#191919;vertical-align:middle;margin-left:10px;">Octonote AI</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size:26px;line-height:32px;font-weight:700;color:#191919;letter-spacing:-0.5px;padding-bottom:12px;">
+                Sign in to Octonote AI
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size:15px;line-height:23px;color:#73726e;padding-bottom:28px;">
+                Click the button to sign in on this device, or enter the code in the app.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-bottom:28px;">
+                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#191919;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:13px 24px;border-radius:10px;">Sign in</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size:13px;color:#73726e;padding-bottom:8px;">Your 6-digit code</td>
+            </tr>
+            <tr>
+              <td style="padding-bottom:28px;">
+                <span style="display:inline-block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:30px;letter-spacing:8px;font-weight:700;color:#191919;border:1px solid #e9e9e7;border-radius:10px;padding:12px 18px;">{{ .Token }}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size:13px;line-height:20px;color:#9b9a97;border-top:1px solid #e9e9e7;padding-top:20px;">
+                The link and code expire in 1 hour and work once. If you didn't try to sign in, you can ignore this email.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

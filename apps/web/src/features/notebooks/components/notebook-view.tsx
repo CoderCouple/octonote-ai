@@ -7,7 +7,7 @@ import { CreateButton, ResourceList } from "@/features/library";
 import { can, PublishedViaBadge, ShareDialog, type AccessRole } from "@/features/sharing";
 import { updateNotebookClientApi } from "../api/notebooks-client-api";
 import type { NotebookContents } from "../types";
-import { previewFromMarkdown } from "@/lib/text-preview";
+import { previewFromMarkdown } from "@octonote/shared";
 
 export function NotebookView({
   contents,

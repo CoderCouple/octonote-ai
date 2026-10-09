@@ -411,3 +411,24 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Sign-in email (magic link + 6-digit code; mobile signs in with the code).
+[auth.email.template.magic_link]
+subject = "Your Octonote AI sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "Your Octonote AI sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
+# Hosted project (`supabase config push` applies these over the local values).
+[remotes.production]
+project_id = "xdjeshxjvrbgksgmurnh"
+
+[remotes.production.auth]
+site_url = "https://octonote-ai.vercel.app"
+additional_redirect_urls = ["https://octonote-ai.vercel.app/auth/callback", "https://octonote-ai.vercel.app/**", "octonote://**"]
+
+[remotes.production.auth.email]
+# One sign-in email per address per minute in production (local dev uses 1s).
+max_frequency = "60s"

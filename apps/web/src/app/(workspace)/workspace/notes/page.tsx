@@ -6,7 +6,7 @@ import {
 } from "@/features/library";
 import { listNotesApi } from "@/features/notes/api/notes-api";
 import { listNotebooksApi } from "@/features/notebooks/api/notebooks-api";
-import { previewFromMarkdown } from "@/lib/text-preview";
+import { previewFromMarkdown } from "@octonote/shared";
 import { activeWorkspaceId } from "../../_lib";
 
 export default async function NotesPage() {

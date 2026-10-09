@@ -16,3 +16,7 @@ packages/*/src/**/*.d.ts.map
 apps/mobile/ios
 apps/mobile/android
 .claude/scheduled_tasks.lock
+
+# Hosted (production) credentials — never commit
+.env.hosted
+*.env.hosted
