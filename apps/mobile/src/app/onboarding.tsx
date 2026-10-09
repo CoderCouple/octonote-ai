@@ -5,7 +5,13 @@
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useRef, useState, type ComponentType } from "react";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import Animated, {
   interpolate,
   useAnimatedScrollHandler,
@@ -16,6 +22,7 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   CanvasIllustration,
+  NotebookIllustration,
   NotesIllustration,
   ShareIllustration,
   type IllustrationProps,
@@ -23,7 +30,11 @@ import {
 import { usePalette } from "@/lib/theme";
 import { useOnboarding } from "@/providers/onboarding";
 
-const SLIDES: { title: string; body: string; Illustration: ComponentType<IllustrationProps> }[] = [
+const SLIDES: {
+  title: string;
+  body: string;
+  Illustration: ComponentType<IllustrationProps>;
+}[] = [
   {
     title: "Write without friction.",
     body: "A clean block editor for headings, lists, to-dos and code. Everything saves as you type.",
@@ -38,6 +49,11 @@ const SLIDES: { title: string; body: string; Illustration: ComponentType<Illustr
     title: "Share like a doc.\nPublish like a site.",
     body: "Invite people as editors or viewers, or publish a clean public page in one tap.",
     Illustration: ShareIllustration,
+  },
+  {
+    title: "Group it.\nShare it all at once.",
+    body: "Collect notes, canvases and projects in a notebook. Share or publish it once and everything inside follows.",
+    Illustration: NotebookIllustration,
   },
 ];
 
@@ -61,7 +77,9 @@ export default function Onboarding() {
   });
 
   const finish = () => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(
+      () => {},
+    );
     markSeen();
     router.replace("/sign-in");
   };
@@ -75,7 +93,12 @@ export default function Onboarding() {
   return (
     <SafeAreaView style={[styles.fill, { backgroundColor: c.background }]}>
       <View style={styles.top}>
-        <Pressable onPress={finish} hitSlop={16} style={{ opacity: last ? 0 : 1 }} disabled={last}>
+        <Pressable
+          onPress={finish}
+          hitSlop={16}
+          style={{ opacity: last ? 0 : 1 }}
+          disabled={last}
+        >
           <Text style={[styles.skip, { color: c.textSecondary }]}>Skip</Text>
         </Pressable>
       </View>
@@ -98,7 +121,16 @@ export default function Onboarding() {
         style={styles.fill}
       >
         {SLIDES.map((slide, i) => (
-          <Slide key={slide.title} i={i} x={x} width={width} cardW={cardW} cardH={cardH} active={i === index} {...slide} />
+          <Slide
+            key={slide.title}
+            i={i}
+            x={x}
+            width={width}
+            cardW={cardW}
+            cardH={cardH}
+            active={i === index}
+            {...slide}
+          />
         ))}
       </Animated.ScrollView>
 
@@ -110,10 +142,18 @@ export default function Onboarding() {
         </View>
         <Pressable
           onPress={next}
-          style={({ pressed }) => [styles.button, { backgroundColor: c.tint, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+          style={({ pressed }) => [
+            styles.button,
+            {
+              backgroundColor: c.tint,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            },
+          ]}
           accessibilityRole="button"
         >
-          <Text style={[styles.buttonText, { color: c.onTint }]}>{last ? "Get started" : "Continue"}</Text>
+          <Text style={[styles.buttonText, { color: c.onTint }]}>
+            {last ? "Get started" : "Continue"}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -147,19 +187,42 @@ function Slide({
   // The card drifts slower than the page (parallax); the copy fades with distance.
   const card = useAnimatedStyle(() => ({
     transform: [
-      { translateX: interpolate(x.value, range, [width * 0.35, 0, -width * 0.35]) },
+      {
+        translateX: interpolate(x.value, range, [
+          width * 0.35,
+          0,
+          -width * 0.35,
+        ]),
+      },
       { scale: interpolate(x.value, range, [0.94, 1, 0.94]) },
     ],
   }));
   const copy = useAnimatedStyle(() => ({
     opacity: interpolate(x.value, range, [0, 1, 0]),
-    transform: [{ translateX: interpolate(x.value, range, [width * 0.12, 0, -width * 0.12]) }],
+    transform: [
+      {
+        translateX: interpolate(x.value, range, [
+          width * 0.12,
+          0,
+          -width * 0.12,
+        ]),
+      },
+    ],
   }));
 
   return (
     <View style={{ width, paddingHorizontal: GUTTER }}>
       <Animated.View
-        style={[styles.card, { width: cardW, height: cardH, backgroundColor: c.card, borderColor: c.separator }, card]}
+        style={[
+          styles.card,
+          {
+            width: cardW,
+            height: cardH,
+            backgroundColor: c.card,
+            borderColor: c.separator,
+          },
+          card,
+        ]}
       >
         <Illustration active={active} width={cardW} height={cardH} />
       </Animated.View>
@@ -171,26 +234,59 @@ function Slide({
   );
 }
 
-function Dot({ i, x, width }: { i: number; x: SharedValue<number>; width: number }) {
+function Dot({
+  i,
+  x,
+  width,
+}: {
+  i: number;
+  x: SharedValue<number>;
+  width: number;
+}) {
   const c = usePalette();
   const style = useAnimatedStyle(() => {
     const d = Math.min(1, Math.abs(x.value / width - i));
     return { width: 24 - 18 * d, opacity: 1 - 0.75 * d };
   });
-  return <Animated.View style={[styles.dot, { backgroundColor: c.textStrong }, style]} />;
+  return (
+    <Animated.View
+      style={[styles.dot, { backgroundColor: c.textStrong }, style]}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  top: { height: 44, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingHorizontal: GUTTER },
+  top: {
+    height: 44,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: GUTTER,
+  },
   skip: { fontSize: 16, fontWeight: "500" },
-  card: { marginTop: 12, borderRadius: 28, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
+  card: {
+    marginTop: 12,
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
   copy: { marginTop: 36 },
-  title: { fontSize: 34, lineHeight: 39, fontWeight: "700", letterSpacing: -1.1 },
+  title: {
+    fontSize: 34,
+    lineHeight: 39,
+    fontWeight: "700",
+    letterSpacing: -1.1,
+  },
   body: { fontSize: 17, lineHeight: 25, marginTop: 14, maxWidth: 360 },
   footer: { paddingHorizontal: GUTTER, paddingBottom: 12, gap: 24 },
   dots: { flexDirection: "row", gap: 6 },
   dot: { height: 6, borderRadius: 3 },
-  button: { height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  button: {
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   buttonText: { fontSize: 17, fontWeight: "600", letterSpacing: -0.2 },
 });

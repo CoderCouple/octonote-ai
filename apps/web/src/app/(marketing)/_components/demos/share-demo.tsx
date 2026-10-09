@@ -88,7 +88,7 @@ export function ShareDemo() {
           </div>
           <Reveal show={published}>
             <div className="bg-muted flex items-center gap-2 rounded-lg px-3.5 py-2.5 font-mono text-sm">
-              octonote.app/pub/field-guide
+              octonote.ai/pub/field-guide
               <Check className="ml-auto size-4" />
             </div>
           </Reveal>
@@ -96,7 +96,7 @@ export function ShareDemo() {
       </DemoWindow>
 
       {/* The published page it produces */}
-      <DemoWindow title="octonote.app/pub/field-guide" className="flex flex-col" bodyClassName="min-h-[520px] flex-1">
+      <DemoWindow title="octonote.ai/pub/field-guide" className="flex flex-col" bodyClassName="min-h-[380px] flex-1 md:min-h-[520px]">
         <div
           className={cn(
             "absolute inset-0 grid place-items-center transition-opacity duration-500",

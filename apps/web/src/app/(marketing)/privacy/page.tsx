@@ -1,93 +1,235 @@
 import { LegalLayout, LegalSection } from "../_components/legal-layout";
 
 export const metadata = {
-  title: "Privacy Policy · Octonote",
-  description: "How Octonote handles your data.",
+  title: "Privacy Notice · Octonote AI",
+  description:
+    "What data Octonote AI collects, why, where it's stored and the choices you have.",
 };
+
+// Draft for private beta — have a lawyer review before public launch.
+// TODO(legal): name the legal entity that operates the Service and add the
+// governing jurisdiction once decided; revisit when AI agents or analytics ship.
+
+const link = "text-foreground underline-offset-4 hover:underline";
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Policy" lastUpdated="June 20, 2026">
+    <LegalLayout title="Privacy Notice" lastUpdated="October 9, 2026">
       <p>
-        This Privacy Policy describes what data Octonote (&quot;we&quot;, &quot;us&quot;)
-        collects from you, why we collect it, and how it is stored. Octonote is currently in
-        private beta. We will update this policy as the product evolves; the &quot;Last
-        updated&quot; date above will always reflect the most recent change.
+        This notice explains what information Octonote AI (&quot;we&quot;,
+        &quot;us&quot;) collects when you use our website, web app and mobile
+        apps (together, the &quot;Service&quot;), why we collect it, where
+        it&apos;s stored and the choices you have. Octonote AI is in private
+        beta; we&apos;ll update this notice as the product changes, and the date
+        above always shows the latest version.
       </p>
+
+      <LegalSection heading="The short version">
+        <ul className="list-disc space-y-1 pl-6">
+          <li>We collect only what we need to run the Service.</li>
+          <li>
+            We don&apos;t sell your data, show ads or use advertising trackers.
+          </li>
+          <li>We don&apos;t use analytics tools.</li>
+          <li>
+            Your notes and canvases are private unless you share or publish
+            them.
+          </li>
+          <li>
+            Anything you publish to the web can be read by anyone, including
+            search engines.
+          </li>
+        </ul>
+      </LegalSection>
 
       <LegalSection heading="Information we collect">
         <p>
-          <strong>Account information.</strong> When you sign up we collect the email address
-          you authenticate with and (if you sign in via Google) your name and profile picture.
-          Authentication is handled by Supabase Auth.
+          <strong>Account information.</strong> Your email address, and the name
+          and profile picture you choose or that Google provides if you sign in
+          with Google. Sign-in is handled by our authentication provider,
+          Supabase; we never see or store a password for Google sign-in, and
+          email sign-in uses one-time links and codes.
         </p>
         <p>
-          <strong>Workspace content.</strong> Notes, canvases, diagrams, and AI-run history you
-          create inside Octonote are stored in our managed Postgres database.
+          <strong>Your content.</strong> The notes, canvases, projects and
+          notebooks you create, including their titles, text, drawings and
+          images, and the preview images we generate of your canvases.
         </p>
         <p>
-          <strong>Audit log.</strong> Every mutation to a project, page, or canvas is recorded
-          in an internal change-events log alongside the user or agent that made it. This
-          powers the &quot;AI edits are auditable&quot; guarantee.
+          <strong>Sharing information.</strong> Who you&apos;ve shared something
+          with and their role (Editor or Viewer), your link-sharing and
+          publishing settings, and the public web address of anything you
+          publish. When you invite someone by email who doesn&apos;t have an
+          account yet, we store their email address so their access starts when
+          they sign up, and we send them an invitation email on your behalf.
         </p>
         <p>
-          <strong>Usage data.</strong> Standard server logs (timestamps, request paths, status
-          codes, IP) are captured by our hosting providers (Vercel, Railway) for security and
+          <strong>Preferences.</strong> Settings such as theme and reading font.
+        </p>
+        <p>
+          <strong>Activity records.</strong> A log of changes made to your
+          workspace (for example, who created, edited, shared or deleted an
+          item, and when), used for security and to help resolve problems.
+        </p>
+        <p>
+          <strong>Technical information.</strong> Our hosting providers keep
+          standard server logs, such as IP address, browser or device type, the
+          pages and endpoints requested, and times and errors, for security and
           debugging.
         </p>
       </LegalSection>
 
       <LegalSection heading="How we use it">
+        <p>We use this information to:</p>
+        <ul className="list-disc space-y-1 pl-6">
+          <li>
+            provide the Service: save, sync and display your work on every
+            device;
+          </li>
+          <li>share and publish your work the way you choose;</li>
+          <li>
+            send the emails the Service needs, such as sign-in codes and sharing
+            invitations;
+          </li>
+          <li>keep the Service and your account secure and prevent abuse;</li>
+          <li>fix problems and respond when you contact us.</li>
+        </ul>
         <p>
-          We use the data above to operate the product, secure your account, and support you
-          when you contact us. We do not sell your data, and we do not use your workspace
-          content to train AI models that benefit other customers.
+          We don&apos;t sell or rent your information, use it for advertising,
+          or use your content to train AI models.
         </p>
       </LegalSection>
 
-      <LegalSection heading="Where it lives">
+      <LegalSection heading="Who can see your content">
         <p>
-          <strong>Database:</strong> Supabase Postgres (US region).
+          <strong>Private by default.</strong> New notes, canvases, projects and
+          notebooks are visible only to you and members of your workspace.
         </p>
         <p>
-          <strong>Authentication:</strong> Supabase Auth (with Google OAuth, where you choose it).
+          <strong>People you share with.</strong> Anyone you add can view or
+          edit the item, depending on the role you give them. Sharing a notebook
+          or project also shares what&apos;s inside it, including items you add
+          later.
         </p>
         <p>
-          <strong>Frontend hosting:</strong> Vercel.
+          <strong>Anyone with the link.</strong> If you turn this on, anyone who
+          has the link can open the item without an account.
         </p>
         <p>
-          <strong>Backend hosting:</strong> Railway.
-        </p>
-        <p>
-          When you connect Octonote to an AI provider (e.g. OpenAI, Anthropic), the
-          specific prompt and any context required for a single AI run is sent to that provider
-          to fulfil the request. We do not send your workspace content to AI providers outside
-          of an explicit AI action you initiate.
-        </p>
-      </LegalSection>
-
-      <LegalSection heading="Your choices">
-        <p>
-          You can export your notes as Markdown at any time from inside the editor. You can
-          request deletion of your account and all associated workspace data by emailing the
-          address below. We will action it within 30 days.
+          <strong>Published to the web.</strong> Published items are public
+          pages. Anyone can read them, they may appear in search engines, link
+          previews and archives, and copies made by others may remain after you
+          unpublish. Items added to a published notebook or project are
+          published too; the editor labels them so this is never a surprise.
+          Don&apos;t publish anything you wouldn&apos;t want to be public.
         </p>
       </LegalSection>
 
-      <LegalSection heading="Cookies">
+      <LegalSection heading="Service providers">
         <p>
-          We use first-party cookies only for authentication (your Supabase session). We do
-          not run advertising trackers.
+          We use a small number of providers to run the Service. They process
+          data only on our instructions and only to provide their service to us:
+        </p>
+        <ul className="list-disc space-y-1 pl-6">
+          <li>
+            <strong>Supabase</strong>: database, sign-in and file storage
+            (including canvas preview images).
+          </li>
+          <li>
+            <strong>Vercel</strong>: hosting for the website and web app.
+          </li>
+          <li>
+            <strong>Railway</strong>: hosting for our application server.
+          </li>
+          <li>
+            <strong>Resend</strong>: sending sharing invitation emails.
+          </li>
+          <li>
+            <strong>Google</strong>: only if you choose to sign in with Google.
+          </li>
+          <li>
+            <strong>Apple and Google app stores</strong>: to distribute the
+            mobile apps, under their own privacy policies.
+          </li>
+        </ul>
+        <p>
+          These providers may process data in the United States and other
+          countries. We may also disclose information if required by law, or to
+          protect the rights and safety of our users or the Service.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Cookies and on-device storage">
+        <p>
+          On the web we use only essential first-party cookies to keep you
+          signed in, and your browser&apos;s local storage for preferences such
+          as theme. The mobile apps store your sign-in session in your
+          device&apos;s secure storage and remember on your device whether
+          you&apos;ve seen the introduction. We don&apos;t use advertising or
+          analytics cookies.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="How long we keep it">
+        <p>
+          We keep your account and content for as long as your account is open.
+          When you delete a note or canvas it disappears from your workspace
+          straight away; we may keep a copy for a limited time so mistakes can
+          be recovered. When your account is deleted, we delete your account
+          information and content, apart from anything we must keep to meet
+          legal obligations, resolve disputes or prevent abuse. Server logs are
+          kept for a short period by our hosting providers.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Your rights and choices">
+        <p>
+          You can edit or delete your content and change your profile at any
+          time in the app. You can also ask us to give you a copy of your
+          information, correct it, delete your account and its data, or stop
+          processing it. Depending on where you live (for example, in the EU, UK
+          or California), you may have additional rights under local law,
+          including the right to complain to a data-protection authority.
+        </p>
+        <p>
+          To make a request, email{" "}
+          <a href="mailto:support@octonote.ai" className={link}>
+            support@octonote.ai
+          </a>{" "}
+          from the address on your account. We&apos;ll respond within 30 days.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Security">
+        <p>
+          Data is encrypted in transit, access to your content is checked on
+          every request, and access to production systems is limited. No service
+          is perfectly secure, so please use a strong, private email account and
+          tell us straight away if you think your account has been compromised.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Children">
+        <p>
+          The Service isn&apos;t intended for children under 13 (or the minimum
+          age in your country), and we don&apos;t knowingly collect their
+          information. If you believe a child has given us information, contact
+          us and we&apos;ll delete it.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Changes to this notice">
+        <p>
+          We&apos;ll update the date above whenever this notice changes. For
+          significant changes, such as new kinds of data or new uses of it,
+          we&apos;ll tell you in the app or by email before they take effect.
         </p>
       </LegalSection>
 
       <LegalSection heading="Contact">
         <p>
-          Questions or requests about this policy:{" "}
-          <a
-            href="mailto:support@octonote.ai"
-            className="text-foreground underline-offset-4 hover:underline"
-          >
+          Questions about privacy:{" "}
+          <a href="mailto:support@octonote.ai" className={link}>
             support@octonote.ai
           </a>
           .

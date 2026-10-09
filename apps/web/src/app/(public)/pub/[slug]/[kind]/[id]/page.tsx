@@ -15,7 +15,7 @@ async function load({ params }: Params) {
 
 export async function generateMetadata(props: Params): Promise<Metadata> {
   const view = await load(props);
-  if (!view) return { title: "Not found · Octonote" };
+  if (!view) return { title: "Not found · Octonote AI" };
   return describe(publicTitle(view.resource), view.resource);
 }
 

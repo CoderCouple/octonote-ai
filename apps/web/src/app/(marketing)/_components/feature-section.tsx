@@ -35,7 +35,7 @@ export function FeatureSection({
       {aura ? <Aura /> : null}
       <div className="relative mx-auto max-w-7xl text-center">
         <p className="text-muted-foreground text-lg font-medium md:text-xl">{eyebrow}</p>
-        <h2 className="text-foreground-strong mt-5 text-5xl font-bold md:text-[min(4.5vw,4.5rem)] md:whitespace-nowrap">{title}</h2>
+        <h2 className="text-foreground-strong mt-5 text-[8vw] leading-[1.1] font-bold md:text-[min(4.5vw,4.5rem)] md:whitespace-nowrap">{title}</h2>
         <p className="text-muted-foreground mx-auto mt-8 max-w-3xl text-xl md:text-2xl">{body}</p>
       </div>
       <div className="relative mx-auto mt-20 max-w-7xl md:mt-24">{demo}</div>

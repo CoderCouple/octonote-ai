@@ -25,7 +25,7 @@ export default function Settings() {
       <Pressable
         onPress={async () => {
           await signOut();
-          router.dismissAll();
+          if (router.canDismiss()) router.dismissAll();
           router.replace("/sign-in");
         }}
         style={({ pressed }) => [styles.group, { backgroundColor: pressed ? c.pressed : c.card, borderColor: c.separator }]}
@@ -36,7 +36,7 @@ export default function Settings() {
         <Pressable
           onPress={() => {
             onboarding.reset();
-            router.dismissAll();
+            if (router.canDismiss()) router.dismissAll();
             router.push("/onboarding");
           }}
           style={({ pressed }) => [styles.group, { backgroundColor: pressed ? c.pressed : c.card, borderColor: c.separator }]}
@@ -48,7 +48,7 @@ export default function Settings() {
         <Pressable
           onPress={() => {
             // iOS modals sit above the root view, so close Account first.
-            router.dismissAll();
+            if (router.canDismiss()) router.dismissAll();
             replaySplash();
           }}
           style={({ pressed }) => [styles.group, { backgroundColor: pressed ? c.pressed : c.card, borderColor: c.separator }]}

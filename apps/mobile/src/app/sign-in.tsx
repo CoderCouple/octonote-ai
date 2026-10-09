@@ -89,7 +89,7 @@ export default function SignIn() {
     <SafeAreaView style={[styles.fill, { backgroundColor: c.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.body}>
         <LogoMark size={52} />
-        <Text style={[styles.brand, { color: c.textStrong }]}>{step === "email" ? "Welcome to\nOctonote." : "Check your\nemail."}</Text>
+        <Text style={[styles.brand, { color: c.textStrong }]}>{step === "email" ? "Welcome to\nOctonote AI." : "Check your\nemail."}</Text>
         <Text style={[styles.tagline, { color: c.textSecondary }]}>
           {step === "email" ? "Sign in or create an account with a one-time code." : `Enter the 6-digit code we sent to ${email}.`}
         </Text>

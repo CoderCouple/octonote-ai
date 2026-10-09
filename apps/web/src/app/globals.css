@@ -102,6 +102,16 @@ body {
   }
 }
 
+/* Story-style progress for the auth feature carousel. */
+@keyframes progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 /* Hero headline: words lift into place one after another. */
 @keyframes word-rise {
   0% {

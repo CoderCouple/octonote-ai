@@ -297,7 +297,7 @@ function AccountSection({
       id="account"
       icon={UserIcon}
       title="Account"
-      description="Your personal profile. Used everywhere you appear in Octonote."
+      description="Your personal profile. Used everywhere you appear in Octonote AI."
     >
       <Row label="Profile" description="Pulled from your sign-in identity.">
         <div className="flex items-center gap-3">
@@ -348,7 +348,7 @@ function AppearanceSection() {
       id="appearance"
       icon={Palette}
       title="Appearance"
-      description="Octonote is monochrome on purpose. Pick the brightness you prefer."
+      description="Octonote AI is monochrome on purpose. Pick the brightness you prefer."
     >
       <Row
         label="Theme"

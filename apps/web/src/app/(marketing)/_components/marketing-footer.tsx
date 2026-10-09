@@ -20,7 +20,7 @@ export function MarketingFooter() {
               {link.label}
             </Link>
           ))}
-          <span>© 2026 Octonote</span>
+          <span>© 2026 Octonote AI</span>
         </div>
       </div>
     </footer>

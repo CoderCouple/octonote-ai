@@ -18,7 +18,7 @@ export function BackLink({ href, signedIn }: { href: string; signedIn: boolean }
     <div className="-ml-1 flex shrink-0 items-center gap-1">
       <Link
         href={signedIn ? "/workspace" : "/"}
-        aria-label="Octonote home"
+        aria-label="Octonote AI home"
         className="bg-foreground text-background grid size-7 place-items-center rounded-md"
       >
         <Focus className="size-3.5" />

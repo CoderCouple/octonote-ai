@@ -35,13 +35,13 @@ export class EmailService {
   }
 
   async sendShareNotification(input: ShareEmailInput): Promise<void> {
-    const from = process.env.RESEND_FROM ?? "Octonote <onboarding@resend.dev>";
+    const from = process.env.RESEND_FROM ?? "Octonote AI <onboarding@resend.dev>";
     const kind = KIND_LABEL[input.resourceKind];
     const subject = `${input.inviterName} shared "${input.resourceTitle}" with you`;
     const verb = input.role === "editor" ? "edit" : "view";
     const cta = input.needsAccount ? "Sign up to open" : `Open ${kind}`;
     const text =
-      `${input.inviterName} invited you to ${verb} the ${kind} "${input.resourceTitle}" on Octonote.\n` +
+      `${input.inviterName} invited you to ${verb} the ${kind} "${input.resourceTitle}" on Octonote AI.\n` +
       `${cta}: ${input.url}`;
 
     if (!this.client) {
@@ -68,7 +68,7 @@ function renderShareEmail(a: ShareEmailInput & { kind: string; verb: string; cta
   return `<!doctype html>
 <html><body style="margin:0;background:#fafafa;color:#111;font-family:ui-sans-serif,system-ui;padding:32px">
   <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e5e5e5;border-radius:16px;padding:32px">
-    <div style="font-size:14px;color:#777;margin-bottom:24px">Octonote</div>
+    <div style="font-size:14px;color:#777;margin-bottom:24px">Octonote AI</div>
     <p style="font-size:15px;line-height:1.55;margin:0 0 8px">
       <strong>${escapeHtml(a.inviterName)}</strong> invited you to ${a.verb} this ${a.kind}:
     </p>

@@ -9,7 +9,7 @@ import {
 
 const FAQS = [
   {
-    q: "Who is Octonote for?",
+    q: "Who is Octonote AI for?",
     a: "Anyone who thinks in both words and pictures — engineers writing design docs, product folks sketching flows, students and researchers keeping structured notes. Notes and canvases are equals here, not one bolted onto the other.",
   },
   {

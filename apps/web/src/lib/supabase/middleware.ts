@@ -17,9 +17,11 @@ export async function updateSession(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        for (const { name, value } of cookiesToSet) request.cookies.set(name, value);
+        for (const { name, value } of cookiesToSet)
+          request.cookies.set(name, value);
         response = NextResponse.next({ request });
-        for (const { name, value, options } of cookiesToSet) response.cookies.set(name, value, options);
+        for (const { name, value, options } of cookiesToSet)
+          response.cookies.set(name, value, options);
       },
     },
   });
@@ -36,9 +38,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && (pathname.startsWith("/login") || pathname.startsWith("/signup"))) {
+  // DEVELOPMENT ONLY: `/login?preview` and `/signup?preview` stay put while signed in.
+  const devPreview =
+    process.env.NODE_ENV === "development" &&
+    request.nextUrl.searchParams.has("preview");
+
+  if (
+    user &&
+    !devPreview &&
+    (pathname.startsWith("/login") || pathname.startsWith("/signup"))
+  ) {
     const url = request.nextUrl.clone();
-    url.pathname = safeNext(request.nextUrl.searchParams.get("next")) ?? "/workspace";
+    url.pathname =
+      safeNext(request.nextUrl.searchParams.get("next")) ?? "/workspace";
     url.search = "";
     return NextResponse.redirect(url);
   }

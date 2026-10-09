@@ -1,5 +1,5 @@
 /**
- * The Octonote mark — lucide's "focus" glyph on a rounded tile, same as the
+ * The Octonote AI mark — lucide's "focus" glyph on a rounded tile, same as the
  * web logo — drawn with plain Views so it can animate without an SVG lib.
  * Geometry is in the glyph's 24-unit viewBox, scaled to the tile.
  */
@@ -67,7 +67,7 @@ export function LogoMark({
     <View
       style={[styles.tile, { width: size, height: size, borderRadius: size * 0.223, backgroundColor: tile }]}
       accessibilityRole="image"
-      accessibilityLabel="Octonote"
+      accessibilityLabel="Octonote AI"
     >
       <View style={{ width: glyph, height: glyph }}>
         <Animated.View

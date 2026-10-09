@@ -2,23 +2,23 @@ import type { Metadata } from "next";
 import { MarketingFooter } from "./_components/marketing-footer";
 import { MarketingNav } from "./_components/marketing-nav";
 
-const title = "Octonote — the AI workspace for humans and agents";
+const title = "Octonote AI — the AI workspace for humans and agents";
 const description =
   "Notes, canvas, and agents in one workspace. Every AI change is a typed patch — nothing moves without your OK.";
 
 export const metadata: Metadata = {
   title: {
     default: title,
-    template: "%s · Octonote",
+    template: "%s · Octonote AI",
   },
   description,
-  applicationName: "Octonote",
+  applicationName: "Octonote AI",
   keywords: ["notes", "canvas", "whiteboard", "sharing", "publishing", "notebooks"],
   openGraph: {
     type: "website",
     title,
     description,
-    siteName: "Octonote",
+    siteName: "Octonote AI",
   },
   twitter: {
     card: "summary_large_image",

@@ -17,7 +17,7 @@ export function NotesDemo() {
 
   return (
     <div ref={ref}>
-      <DemoWindow title="Octonote — Launch plan" bodyClassName="flex h-[560px]">
+      <DemoWindow title="Octonote AI — Launch plan" bodyClassName="flex h-[400px] md:h-[560px]">
         <aside className="hidden w-60 shrink-0 border-r p-4 md:block">
           <p className="text-muted-foreground mb-3 px-2 text-xs font-medium">Notes</p>
           {PAGES.map((p, i) => (

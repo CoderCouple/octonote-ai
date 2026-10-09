@@ -29,7 +29,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden px-4 pt-36 pb-24 md:px-8 md:pt-48 md:pb-32">
         <Aura />
         <div className="relative mx-auto flex max-w-7xl flex-col items-center text-center">
-          <h1 className="text-foreground-strong text-[clamp(1.75rem,6.5vw,6rem)] leading-[1.1] font-bold">
+          <h1 className="text-foreground-strong text-[clamp(1.75rem,7.5vw,6rem)] leading-[1.1] font-bold">
             <span className="animate-word-rise block">The AI workspace for</span>
             <span className="block whitespace-nowrap">
               <span className="animate-word-rise inline-flex items-center gap-[0.2em] [animation-delay:250ms]">

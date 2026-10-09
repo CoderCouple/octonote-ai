@@ -9,7 +9,7 @@ import "./globals.css";
 import "tldraw/tldraw.css";
 
 export const metadata: Metadata = {
-  title: "Octonote",
+  title: "Octonote AI",
   description: "Notes and canvases, together. Share or publish in one click.",
 };
 

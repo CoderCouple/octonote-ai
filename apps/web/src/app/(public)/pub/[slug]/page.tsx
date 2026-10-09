@@ -9,7 +9,7 @@ type Params = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const view = await fetchPublishedRoot(slug);
-  if (!view) return { title: "Not found · Octonote" };
+  if (!view) return { title: "Not found · Octonote AI" };
   return describe(publicTitle(view.resource), view.resource);
 }
 

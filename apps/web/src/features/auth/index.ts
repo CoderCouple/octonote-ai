@@ -1,2 +1,2 @@
-export { AuthBackdrop } from "./components/auth-backdrop";
+export { AuthShell } from "./components/auth-shell";
 export { LoginForm } from "./components/login-form";

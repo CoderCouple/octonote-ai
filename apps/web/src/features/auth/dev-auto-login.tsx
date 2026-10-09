@@ -12,20 +12,33 @@ import { safeNext } from "@/lib/safe-next";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 const devLogin =
-  process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true"
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true"
     ? {
         email: process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL ?? "",
         password: process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD ?? "",
       }
     : null;
 
+/** `?preview` turns auto-login off so the sign-in page itself can be viewed. */
+function isPreview() {
+  return (
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("preview")
+  );
+}
+
 export function DevAutoLogin() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
 
   useEffect(() => {
     if (!devLogin) return;
-    const next = safeNext(new URLSearchParams(window.location.search).get("next")) ?? "/workspace";
+    if (isPreview()) return setPreview(true);
+    const next =
+      safeNext(new URLSearchParams(window.location.search).get("next")) ??
+      "/workspace";
     void createSupabaseBrowserClient()
       .auth.signInWithPassword(devLogin)
       .then(({ error: err }) => {
@@ -34,10 +47,12 @@ export function DevAutoLogin() {
       });
   }, [router]);
 
-  if (!devLogin) return null;
+  if (!devLogin || preview) return null;
   return (
     <div className="bg-popover fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-full border px-4 py-2 text-xs shadow-md">
-      {error ? `Dev auto-login failed: ${error}` : "Dev mode: signing you in automatically…"}
+      {error
+        ? `Dev auto-login failed: ${error}`
+        : "Dev mode: signing you in automatically…"}
     </div>
   );
 }

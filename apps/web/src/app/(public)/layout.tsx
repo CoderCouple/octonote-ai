@@ -11,7 +11,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <div className="bg-primary text-primary-foreground grid size-6 place-items-center rounded-md">
               <Focus className="size-3.5" strokeWidth={2.25} />
             </div>
-            <span className="text-sm font-semibold tracking-tight">Octonote</span>
+            <span className="text-sm font-semibold tracking-tight">Octonote AI</span>
           </Link>
           <Link href="/signup" className="text-muted-foreground hover:text-foreground text-sm">
             Make your own →

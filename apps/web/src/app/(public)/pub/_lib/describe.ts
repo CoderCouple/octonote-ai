@@ -7,17 +7,17 @@ export function describe(title: string, resource: PublicResource): Metadata {
     resource.kind === "page"
       ? resource.contentMd.replace(/[#*_>`[\]()-]/g, "").trim().slice(0, 160)
       : resource.kind === "project"
-        ? (resource.description ?? `A project on Octonote`)
+        ? (resource.description ?? `A project on Octonote AI`)
         : resource.kind === "notebook"
           ? `A notebook with ${resource.items.length} item${resource.items.length === 1 ? "" : "s"}`
-          : "A canvas on Octonote";
+          : "A canvas on Octonote AI";
   const image =
     resource.kind === "canvas"
       ? resource.thumbnailUrl
       : resource.kind === "project"
         ? (resource.canvas?.thumbnailUrl ?? null)
         : null;
-  const fullTitle = `${title || "Untitled"} · Octonote`;
+  const fullTitle = `${title || "Untitled"} · Octonote AI`;
   return {
     title: fullTitle,
     description,

@@ -32,7 +32,7 @@ export function MarketingNav() {
             <Link href="/login">Log in</Link>
           </Button>
           <Button asChild className="text-base">
-            <Link href="/signup">Get Octonote free</Link>
+            <Link href="/signup">Get started</Link>
           </Button>
         </div>
       </div>
