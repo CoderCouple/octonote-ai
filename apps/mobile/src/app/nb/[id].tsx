@@ -1,9 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Alert } from "react-native";
+import { Plus } from "lucide-react-native";
 import { HeaderIconButton } from "@/components/header-buttons";
 import { ResourceList } from "@/components/resource-list";
-import { createResource, ROUTE, useNotebook, useWorkspaceId, type ResourceKind } from "@/features/resources";
+import {
+  createResource,
+  ROUTE,
+  useNotebook,
+  useWorkspaceId,
+  type ResourceKind,
+} from "@/features/resources";
 
 export default function NotebookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -11,7 +18,9 @@ export default function NotebookScreen() {
   const qc = useQueryClient();
   const workspaceId = useWorkspaceId();
   const nb = useNotebook(id);
-  const canEdit = nb.data?.notebook.myRole === "editor" || nb.data?.notebook.myRole === "owner";
+  const canEdit =
+    nb.data?.notebook.myRole === "editor" ||
+    nb.data?.notebook.myRole === "owner";
 
   async function create(kind: Exclude<ResourceKind, "notebook">) {
     if (!workspaceId) return;
@@ -20,7 +29,10 @@ export default function NotebookScreen() {
       void qc.invalidateQueries({ queryKey: ["notebook", id] });
       router.push(ROUTE[kind](newId));
     } catch (e) {
-      Alert.alert("Couldn't create", e instanceof Error ? e.message : String(e));
+      Alert.alert(
+        "Couldn't create",
+        e instanceof Error ? e.message : String(e),
+      );
     }
   }
 
@@ -33,13 +45,19 @@ export default function NotebookScreen() {
             ? () => (
                 <HeaderIconButton
                   sf="plus"
-                  fallback="+"
+                  icon={Plus}
                   label="Add to notebook"
                   onPress={() =>
                     Alert.alert("Add to notebook", undefined, [
                       { text: "New note", onPress: () => void create("page") },
-                      { text: "New canvas", onPress: () => void create("canvas") },
-                      { text: "New project", onPress: () => void create("project") },
+                      {
+                        text: "New canvas",
+                        onPress: () => void create("canvas"),
+                      },
+                      {
+                        text: "New project",
+                        onPress: () => void create("project"),
+                      },
                       { text: "Cancel", style: "cancel" },
                     ])
                   }
@@ -54,7 +72,9 @@ export default function NotebookScreen() {
         loading={nb.isLoading}
         refreshing={nb.isRefetching}
         onRefresh={() => void nb.refetch()}
-        emptyText={"This notebook is empty.\nTap + to add a note, canvas or project."}
+        emptyText={
+          "This notebook is empty.\nTap + to add a note, canvas or project."
+        }
         error={nb.error}
       />
     </>

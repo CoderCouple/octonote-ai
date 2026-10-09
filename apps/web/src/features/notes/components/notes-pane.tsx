@@ -119,31 +119,9 @@ export function NotesPane({
       </header>
       {/* Full-width scroll area; the reading column is centred inside it (see globals.css). */}
       <div
-        className="reader-typography flex-1 overflow-auto"
+        className="reader-typography min-h-0 flex-1"
         style={{ ...typographyStyle, maxWidth: "none" }}
       >
-        {raw ? null : (
-          <div className="mx-auto max-w-[var(--reader-content-width)] px-[54px] pt-10 pb-2">
-            <NoteTitle
-              value={title}
-              editable={editable}
-              onChange={setTitle}
-              onPasteBody={(markdown) =>
-                editorApi.current?.insertMarkdownAtStart(markdown)
-              }
-              onSave={async (next) => {
-                setTitle(next);
-                try {
-                  await updateNoteClientApi(note.id, { title: next });
-                } catch (err) {
-                  toast.error(
-                    err instanceof Error ? err.message : "Couldn't rename.",
-                  );
-                }
-              }}
-            />
-          </div>
-        )}
         <NotesEditor
           pageId={note.id}
           initialContent={note.document}
@@ -152,6 +130,28 @@ export function NotesPane({
           view={raw ? "raw" : "edit"}
           onSaveStateChange={setSaveState}
           onEditorReady={onEditorReady}
+          header={
+            <div className="mx-auto max-w-[var(--reader-content-width)] px-[54px] pt-10 pb-2">
+              <NoteTitle
+                value={title}
+                editable={editable}
+                onChange={setTitle}
+                onPasteBody={(markdown) =>
+                  editorApi.current?.insertMarkdownAtStart(markdown)
+                }
+                onSave={async (next) => {
+                  setTitle(next);
+                  try {
+                    await updateNoteClientApi(note.id, { title: next });
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error ? err.message : "Couldn't rename.",
+                    );
+                  }
+                }}
+              />
+            </div>
+          }
         />
       </div>
     </div>

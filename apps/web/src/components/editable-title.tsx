@@ -76,9 +76,8 @@ export function EditableTitle({
         }}
         placeholder={placeholder}
         className={cn(
-          "bg-transparent outline-none focus:outline-none",
+          "max-w-full min-w-[6ch] bg-transparent outline-none focus:outline-none",
           sizeCls,
-          "min-w-[6ch]",
           className,
         )}
         style={{ width: `${Math.max(draft.length + 1, 6)}ch` }}
@@ -91,13 +90,14 @@ export function EditableTitle({
       type="button"
       onClick={() => setEditing(true)}
       className={cn(
-        "hover:bg-accent -mx-1 rounded px-1 text-left transition-colors",
+        // Shrinks in a flex header and ends in "…" rather than squeezing the buttons beside it.
+        "hover:bg-accent -mx-1 block min-w-0 truncate rounded px-1 text-left transition-colors",
         sizeCls,
         !value && "text-muted-foreground italic",
         className,
       )}
     >
-      {value || placeholder}
+      <span title={value || undefined}>{value || placeholder}</span>
     </button>
   );
 }

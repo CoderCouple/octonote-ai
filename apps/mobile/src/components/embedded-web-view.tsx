@@ -8,7 +8,13 @@
  * Off-origin links open in the system browser instead of trapping the user.
  */
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Linking, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { WebView } from "react-native-webview";
 import { env } from "@/lib/env";
 import { usePalette } from "@/lib/theme";
@@ -34,8 +40,12 @@ export function EmbeddedWebView({ path }: { path: string }) {
   if (error) {
     return (
       <View style={[styles.center, { backgroundColor: c.background }]}>
-        <Text style={[styles.errorTitle, { color: c.text }]}>Couldn't open the editor</Text>
-        <Text style={[styles.errorBody, { color: c.textSecondary }]}>{error}</Text>
+        <Text style={[styles.errorTitle, { color: c.text }]}>
+          Couldn't open the editor
+        </Text>
+        <Text style={[styles.errorBody, { color: c.textSecondary }]}>
+          {error}
+        </Text>
       </View>
     );
   }
@@ -52,18 +62,29 @@ export function EmbeddedWebView({ path }: { path: string }) {
         overScrollMode="never"
         allowsBackForwardNavigationGestures={false}
         onShouldStartLoadWithRequest={(req) => {
-          if (req.url.startsWith(env.WEB_URL) || req.url.startsWith("about:")) return true;
+          if (req.url.startsWith(env.WEB_URL) || req.url.startsWith("about:"))
+            return true;
           void Linking.openURL(req.url).catch(() => undefined);
           return false;
         }}
         onLoadEnd={() => setLoading(false)}
-        onError={(e) => setError(e.nativeEvent.description || "Failed to load.")}
+        onError={(e) =>
+          setError(e.nativeEvent.description || "Failed to load.")
+        }
         onHttpError={(e) => {
-          if (e.nativeEvent.statusCode >= 500) setError(`Server returned ${e.nativeEvent.statusCode}.`);
+          if (e.nativeEvent.statusCode >= 500)
+            setError(`Server returned ${e.nativeEvent.statusCode}.`);
         }}
       />
       {loading ? (
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: c.background }]}>
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            styles.center,
+            { backgroundColor: c.background },
+          ]}
+        >
           <ActivityIndicator color={c.textSecondary} />
         </View>
       ) : null}
@@ -73,7 +94,12 @@ export function EmbeddedWebView({ path }: { path: string }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
   errorTitle: { fontSize: 16, fontWeight: "600" },
   errorBody: { fontSize: 13, marginTop: 6, textAlign: "center" },
 });

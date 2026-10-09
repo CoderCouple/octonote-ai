@@ -10,7 +10,8 @@ import {
   useWorkspaceId,
   type ResourceKind,
 } from "@/features/resources";
-import { HeaderIconButton } from "./header-buttons";
+import { Menu, Plus } from "lucide-react-native";
+import { HeaderButtons, HeaderIconButton } from "./header-buttons";
 import { useRefreshOnFocus } from "@/lib/use-refresh-on-focus";
 import { ResourceList } from "./resource-list";
 import { StatGrid } from "./stat-grid";
@@ -87,22 +88,23 @@ export function KindTabScreen({ kind }: { kind: ResourceKind }) {
       <Stack.Screen
         options={{
           title: LABEL[kind].many,
+          // New + account menu both on the right (menu on the left felt off).
           headerRight: () => (
-            <HeaderIconButton
-              sf="plus"
-              fallback="+"
-              label={`New ${LABEL[kind].one}`}
-              onPress={create}
-              disabled={creating}
-            />
-          ),
-          headerLeft: () => (
-            <HeaderIconButton
-              sf="person.crop.circle"
-              fallback="☰"
-              label="Account"
-              onPress={() => router.push("/settings")}
-            />
+            <HeaderButtons>
+              <HeaderIconButton
+                sf="plus"
+                icon={Plus}
+                label={`New ${LABEL[kind].one}`}
+                onPress={create}
+                disabled={creating}
+              />
+              <HeaderIconButton
+                sf="line.3.horizontal"
+                icon={Menu}
+                label="Account and settings"
+                onPress={() => router.push("/settings")}
+              />
+            </HeaderButtons>
           ),
         }}
       />

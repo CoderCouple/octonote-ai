@@ -14,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ACCESS_LABEL } from "@octonote/shared";
 import { useState, type ReactElement } from "react";
 import { ActionSheet } from "./action-sheet";
+import { TAB_BAR_SPACE } from "./floating-tab-bar";
 import {
   deleteResource,
   LABEL,
@@ -91,6 +92,7 @@ export function ResourceList({
         data={items ?? []}
         keyExtractor={(i) => `${i.kind}:${i.id}`}
         contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ paddingBottom: TAB_BAR_SPACE }}
         style={{ backgroundColor: c.background }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

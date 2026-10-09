@@ -4,6 +4,7 @@ import { Share } from "react-native";
 import { getTitle, ROUTE } from "@/features/resources";
 import { env } from "@/lib/env";
 import { EmbeddedWebView } from "./embedded-web-view";
+import { Share2 } from "lucide-react-native";
 import { HeaderIconButton } from "./header-buttons";
 
 /**
@@ -11,10 +12,17 @@ import { HeaderIconButton } from "./header-buttons";
  * sheet) around the web editor. Who-can-access settings live in the
  * editor's own Share dialog.
  */
-export function EditorScreen({ kind }: { kind: "page" | "canvas" | "project" }) {
+export function EditorScreen({
+  kind,
+}: {
+  kind: "page" | "canvas" | "project";
+}) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const path = ROUTE[kind](id);
-  const title = useQuery({ queryKey: ["title", kind, id], queryFn: () => getTitle(kind, id) });
+  const title = useQuery({
+    queryKey: ["title", kind, id],
+    queryFn: () => getTitle(kind, id),
+  });
 
   return (
     <>
@@ -24,9 +32,14 @@ export function EditorScreen({ kind }: { kind: "page" | "canvas" | "project" }) 
           headerRight: () => (
             <HeaderIconButton
               sf="square.and.arrow.up"
-              fallback="↗"
+              icon={Share2}
               label="Share link"
-              onPress={() => void Share.share({ message: `${env.WEB_URL}${path}`, url: `${env.WEB_URL}${path}` })}
+              onPress={() =>
+                void Share.share({
+                  message: `${env.WEB_URL}${path}`,
+                  url: `${env.WEB_URL}${path}`,
+                })
+              }
             />
           ),
         }}

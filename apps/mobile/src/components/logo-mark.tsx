@@ -4,7 +4,10 @@
  * Geometry is in the glyph's 24-unit viewBox, scaled to the tile.
  */
 import { StyleSheet, View } from "react-native";
-import Animated, { useAnimatedStyle, type SharedValue } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  type SharedValue,
+} from "react-native-reanimated";
 import { usePalette } from "@/lib/theme";
 
 /** Glyph size relative to the tile (web: size-5 icon in a size-9 tile). */
@@ -34,7 +37,12 @@ export function LogoMark({
 
   // Each bracket: a box whose two outer edges are the stroke, corner radius 2u.
   const arm = 4 * u + sw;
-  const bracket = { width: arm, height: arm, borderColor: ink, position: "absolute" as const };
+  const bracket = {
+    width: arm,
+    height: arm,
+    borderColor: ink,
+    position: "absolute" as const,
+  };
   const at = 3 * u - sw / 2;
   const far = 21 * u + sw / 2 - arm;
   const radius = 2 * u + sw / 2;
@@ -65,26 +73,70 @@ export function LogoMark({
 
   return (
     <View
-      style={[styles.tile, { width: size, height: size, borderRadius: size * 0.223, backgroundColor: tile }]}
+      style={[
+        styles.tile,
+        {
+          width: size,
+          height: size,
+          borderRadius: size * 0.223,
+          backgroundColor: tile,
+        },
+      ]}
       accessibilityRole="image"
       accessibilityLabel="Octonote AI"
     >
       <View style={{ width: glyph, height: glyph }}>
         <Animated.View
-          style={[bracket, { left: at, top: at, borderTopWidth: sw, borderLeftWidth: sw, borderTopLeftRadius: radius }, tl]}
-        />
-        <Animated.View
-          style={[bracket, { left: far, top: at, borderTopWidth: sw, borderRightWidth: sw, borderTopRightRadius: radius }, tr]}
+          style={[
+            bracket,
+            {
+              left: at,
+              top: at,
+              borderTopWidth: sw,
+              borderLeftWidth: sw,
+              borderTopLeftRadius: radius,
+            },
+            tl,
+          ]}
         />
         <Animated.View
           style={[
             bracket,
-            { left: far, top: far, borderBottomWidth: sw, borderRightWidth: sw, borderBottomRightRadius: radius },
+            {
+              left: far,
+              top: at,
+              borderTopWidth: sw,
+              borderRightWidth: sw,
+              borderTopRightRadius: radius,
+            },
+            tr,
+          ]}
+        />
+        <Animated.View
+          style={[
+            bracket,
+            {
+              left: far,
+              top: far,
+              borderBottomWidth: sw,
+              borderRightWidth: sw,
+              borderBottomRightRadius: radius,
+            },
             br,
           ]}
         />
         <Animated.View
-          style={[bracket, { left: at, top: far, borderBottomWidth: sw, borderLeftWidth: sw, borderBottomLeftRadius: radius }, bl]}
+          style={[
+            bracket,
+            {
+              left: at,
+              top: far,
+              borderBottomWidth: sw,
+              borderLeftWidth: sw,
+              borderBottomLeftRadius: radius,
+            },
+            bl,
+          ]}
         />
         <Animated.View
           style={[

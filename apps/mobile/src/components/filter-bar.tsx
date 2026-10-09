@@ -1,5 +1,6 @@
 /** All / Private / Shared / Published with counts, plus the sort button — mirrors the web tabs. */
 import type { Access } from "@octonote/shared";
+import { ArrowUpDown } from "lucide-react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ListItem } from "@/features/resources";
 import { usePalette } from "@/lib/theme";
@@ -95,9 +96,7 @@ export function FilterBar({
           },
         ]}
       >
-        <Text style={[styles.sortText, { color: c.textStrong }]}>
-          ⇅
-        </Text>
+        <ArrowUpDown size={16} color={c.textStrong} strokeWidth={2} />
       </Pressable>
     </View>
   );

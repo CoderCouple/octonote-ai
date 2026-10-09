@@ -15,9 +15,18 @@ export default function Settings() {
 
   return (
     <View style={[styles.fill, { backgroundColor: c.grouped }]}>
-      <View style={[styles.group, { backgroundColor: c.card, borderColor: c.separator }]}>
-        <Text style={[styles.name, { color: c.text }]}>{me.data?.user.name ?? " "}</Text>
-        <Text style={[styles.meta, { color: c.textSecondary }]}>{me.data?.user.email ?? " "}</Text>
+      <View
+        style={[
+          styles.group,
+          { backgroundColor: c.card, borderColor: c.separator },
+        ]}
+      >
+        <Text style={[styles.name, { color: c.text }]}>
+          {me.data?.user.name ?? " "}
+        </Text>
+        <Text style={[styles.meta, { color: c.textSecondary }]}>
+          {me.data?.user.email ?? " "}
+        </Text>
         <Text style={[styles.meta, { color: c.textSecondary }]}>
           Workspace: {me.data?.memberships[0]?.workspace.name ?? "—"}
         </Text>
@@ -28,7 +37,13 @@ export default function Settings() {
           if (router.canDismiss()) router.dismissAll();
           router.replace("/sign-in");
         }}
-        style={({ pressed }) => [styles.group, { backgroundColor: pressed ? c.pressed : c.card, borderColor: c.separator }]}
+        style={({ pressed }) => [
+          styles.group,
+          {
+            backgroundColor: pressed ? c.pressed : c.card,
+            borderColor: c.separator,
+          },
+        ]}
       >
         <Text style={[styles.signOut, { color: c.danger }]}>Sign out</Text>
       </Pressable>
@@ -39,9 +54,17 @@ export default function Settings() {
             if (router.canDismiss()) router.dismissAll();
             router.push("/onboarding");
           }}
-          style={({ pressed }) => [styles.group, { backgroundColor: pressed ? c.pressed : c.card, borderColor: c.separator }]}
+          style={({ pressed }) => [
+            styles.group,
+            {
+              backgroundColor: pressed ? c.pressed : c.card,
+              borderColor: c.separator,
+            },
+          ]}
         >
-          <Text style={[styles.signOut, { color: c.text }]}>Replay intro (dev)</Text>
+          <Text style={[styles.signOut, { color: c.text }]}>
+            Replay intro (dev)
+          </Text>
         </Pressable>
       ) : null}
       {__DEV__ ? (
@@ -51,9 +74,17 @@ export default function Settings() {
             if (router.canDismiss()) router.dismissAll();
             replaySplash();
           }}
-          style={({ pressed }) => [styles.group, { backgroundColor: pressed ? c.pressed : c.card, borderColor: c.separator }]}
+          style={({ pressed }) => [
+            styles.group,
+            {
+              backgroundColor: pressed ? c.pressed : c.card,
+              borderColor: c.separator,
+            },
+          ]}
         >
-          <Text style={[styles.signOut, { color: c.text }]}>Replay splash (dev)</Text>
+          <Text style={[styles.signOut, { color: c.text }]}>
+            Replay splash (dev)
+          </Text>
         </Pressable>
       ) : null}
     </View>
@@ -62,7 +93,12 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1, padding: 16, gap: 16 },
-  group: { borderRadius: 12, padding: 16, gap: 4, borderWidth: StyleSheet.hairlineWidth },
+  group: {
+    borderRadius: 12,
+    padding: 16,
+    gap: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   name: { fontSize: 17, fontWeight: "600" },
   meta: { fontSize: 14 },
   signOut: { fontSize: 17, textAlign: "center" },

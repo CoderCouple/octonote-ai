@@ -11,7 +11,7 @@ import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/shadcn/style.css";
 import { LayoutGrid, Sigma, SquareFunction, Workflow } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { SaveState } from "@/components/save-indicator";
 import { updateNoteClientApi } from "../api/notes-client-api";
 import { appCanvasResolver } from "../blocks/app-canvas-resolver";
@@ -39,6 +39,8 @@ export interface NotesEditorProps {
   onSaveStateChange?: (state: SaveState) => void;
   /** Hands the parent a way to drop markdown into the note (e.g. text pasted into the title). */
   onEditorReady?: (api: NotesEditorApi) => void;
+  /** Rendered at the top of the scroll area (the note title), so it scrolls with the content. */
+  header?: ReactNode;
 }
 
 export interface NotesEditorApi {
@@ -125,6 +127,7 @@ export function NotesEditor({
   view = "edit",
   onSaveStateChange,
   onEditorReady,
+  header,
 }: NotesEditorProps) {
   const editor = useCreateBlockNote({
     schema: octoBlockNoteSchema,
@@ -245,6 +248,7 @@ export function NotesEditor({
           ref={scrollRef}
           className={`h-full overflow-auto ${tocHovered ? "hide-scrollbar" : ""}`}
         >
+          {view === "raw" ? null : header}
           <div className={view === "raw" ? "hidden" : "contents"}>
             <BlockNoteView
               editor={editor}

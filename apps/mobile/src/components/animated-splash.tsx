@@ -23,7 +23,10 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /** Always black, in both themes — must match expo-splash-screen in app.json. */
 const BG = themes.dark.background;
-const TILE_COLORS = { tile: themes.dark.primary, glyph: themes.dark["primary-foreground"] };
+const TILE_COLORS = {
+  tile: themes.dark.primary,
+  glyph: themes.dark["primary-foreground"],
+};
 const WORD = themes.dark["foreground-strong"];
 
 /** Must match `imageWidth` of expo-splash-screen in app.json. */
@@ -61,18 +64,27 @@ export function AnimatedSplash({ ready }: { ready: boolean }) {
     void SplashScreen.hideAsync().catch(() => {});
 
     if (reduceMotion) {
-      exit.value = withTiming(1, { duration: 200, reduceMotion: ReduceMotion.Never });
+      exit.value = withTiming(1, {
+        duration: 200,
+        reduceMotion: ReduceMotion.Never,
+      });
       const t = setTimeout(() => setDone(true), 220);
       return () => clearTimeout(t);
     }
 
     spread.value = withDelay(
       150,
-      withSequence(withTiming(1, { duration: 320, easing: out }), withTiming(0, { duration: 520, easing: out })),
+      withSequence(
+        withTiming(1, { duration: 320, easing: out }),
+        withTiming(0, { duration: 520, easing: out }),
+      ),
     );
     ring.value = withDelay(
       150,
-      withSequence(withTiming(0.5, { duration: 260, easing: out }), withTiming(1, { duration: 600, easing: out })),
+      withSequence(
+        withTiming(0.5, { duration: 260, easing: out }),
+        withTiming(1, { duration: 600, easing: out }),
+      ),
     );
     word.value = withDelay(500, withTiming(1, { duration: 600, easing: out }));
     exit.value = withDelay(1850, withTiming(1, { duration: 420, easing: out }));
@@ -81,7 +93,9 @@ export function AnimatedSplash({ ready }: { ready: boolean }) {
   }, [ready, reduceMotion, spread, ring, word, exit]);
 
   const container = useAnimatedStyle(() => ({ opacity: 1 - exit.value }));
-  const tile = useAnimatedStyle(() => ({ transform: [{ scale: 1 + exit.value * 0.08 }] }));
+  const tile = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + exit.value * 0.08 }],
+  }));
   const wordStyle = useAnimatedStyle(() => ({
     opacity: word.value,
     transform: [{ translateY: (1 - word.value) * 10 }],
@@ -92,13 +106,25 @@ export function AnimatedSplash({ ready }: { ready: boolean }) {
   return (
     <Animated.View
       pointerEvents={ready ? "none" : "auto"}
-      style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: BG }, container]}
+      style={[
+        StyleSheet.absoluteFill,
+        styles.center,
+        { backgroundColor: BG },
+        container,
+      ]}
     >
       <View style={styles.anchor}>
         <Animated.View style={tile}>
-          <LogoMark size={TILE} spread={spread} ring={ring} colors={TILE_COLORS} />
+          <LogoMark
+            size={TILE}
+            spread={spread}
+            ring={ring}
+            colors={TILE_COLORS}
+          />
         </Animated.View>
-        <Animated.Text style={[styles.word, { color: WORD }, wordStyle]}>Octonote AI</Animated.Text>
+        <Animated.Text style={[styles.word, { color: WORD }, wordStyle]}>
+          Octonote AI
+        </Animated.Text>
       </View>
     </Animated.View>
   );

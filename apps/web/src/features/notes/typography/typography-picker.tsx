@@ -108,7 +108,7 @@ export function TypographyPicker({
           aria-label="Typography"
         >
           <Type className="size-4" />
-          <span className="text-xs">Type</span>
+          <span className="hidden text-xs sm:inline">Type</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-72 space-y-4 p-4" align="end">
