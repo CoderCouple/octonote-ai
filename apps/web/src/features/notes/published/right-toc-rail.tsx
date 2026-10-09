@@ -41,7 +41,9 @@ const LEVEL_TEXT: Record<1 | 2 | 3, string> = {
 };
 
 export function RightTocRail({ sections, footnote }: RightTocRailProps) {
-  const [activeId, setActiveId] = useState<string | null>(sections[0]?.id ?? null);
+  const [activeId, setActiveId] = useState<string | null>(
+    sections[0]?.id ?? null,
+  );
   const [hovered, setHovered] = useState(false);
   const rafRef = useRef<number>(0);
 

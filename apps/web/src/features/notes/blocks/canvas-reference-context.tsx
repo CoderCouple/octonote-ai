@@ -20,9 +20,13 @@ export interface CanvasReferenceResolver {
   resolve: (canvasId: string) => Promise<CanvasReferenceTarget | null>;
 }
 
-const noAccess: CanvasReferenceResolver = { id: "none", resolve: async () => null };
+const noAccess: CanvasReferenceResolver = {
+  id: "none",
+  resolve: async () => null,
+};
 
-export const CanvasReferenceContext = createContext<CanvasReferenceResolver>(noAccess);
+export const CanvasReferenceContext =
+  createContext<CanvasReferenceResolver>(noAccess);
 
 export function useCanvasReferenceResolver() {
   return useContext(CanvasReferenceContext);

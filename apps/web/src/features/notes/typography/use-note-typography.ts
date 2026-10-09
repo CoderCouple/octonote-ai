@@ -42,7 +42,9 @@ export function useNoteTypography(): NoteTypographyResolved {
       // inside the article inherits automatically.
       ["--font-reader-family" as string]: fontFamilyStack(family),
       ["--font-reader-size" as string]: `${fontSizePx(size)}px`,
-      ["--font-reader-line-height" as string]: String(lineHeightRatio(lineHeight)),
+      ["--font-reader-line-height" as string]: String(
+        lineHeightRatio(lineHeight),
+      ),
       ["--reader-content-width" as string]: `${widthRem}rem`,
       fontFamily: `var(--font-reader-family)`,
       fontSize: `var(--font-reader-size)`,

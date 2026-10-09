@@ -8,8 +8,18 @@
  * GitHub.
  */
 import localFont from "next/font/local";
-import { Fraunces, Geist, Instrument_Serif, Inter, Newsreader } from "next/font/google";
-import type { NotesFontFamily, NotesFontSize, NotesLineHeight } from "@octonote/shared";
+import {
+  Fraunces,
+  Geist,
+  Instrument_Serif,
+  Inter,
+  Newsreader,
+} from "next/font/google";
+import type {
+  NotesFontFamily,
+  NotesFontSize,
+  NotesLineHeight,
+} from "@octonote/shared";
 
 export const fraunces = Fraunces({
   subsets: ["latin"],

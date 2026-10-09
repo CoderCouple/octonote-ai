@@ -24,8 +24,21 @@ export function slugifyTitle(title: string): string {
   );
 }
 
+const SUFFIX_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+/**
+ * Six chars from a–z0–9 — URL-safe and matching the public route's slug
+ * pattern. (base64url also yields "_", which made some public links 404.)
+ * Rejection sampling keeps every character equally likely.
+ */
 export function randomSuffix(): string {
-  return randomBytes(SUFFIX_LEN).toString("base64url").slice(0, SUFFIX_LEN).toLowerCase();
+  let out = "";
+  while (out.length < SUFFIX_LEN) {
+    for (const byte of randomBytes(SUFFIX_LEN * 2)) {
+      if (byte < 252 && out.length < SUFFIX_LEN) out += SUFFIX_ALPHABET[byte % 36];
+    }
+  }
+  return out;
 }
 
 export function withSuffix(base: string): string {

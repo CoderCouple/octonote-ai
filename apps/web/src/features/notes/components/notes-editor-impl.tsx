@@ -10,7 +10,7 @@ import {
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/shadcn/style.css";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, Sigma, SquareFunction, Workflow } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { SaveState } from "@/components/save-indicator";
 import { updateNoteClientApi } from "../api/notes-client-api";
@@ -18,6 +18,7 @@ import { appCanvasResolver } from "../blocks/app-canvas-resolver";
 import { CanvasPickerDialog } from "../blocks/canvas-picker-dialog";
 import { CanvasReferenceContext } from "../blocks/canvas-reference-context";
 import { octoBlockNoteSchema } from "../lib/blocknote-schema";
+import { hasMarkdownExtras, markdownToBlocks } from "../lib/markdown-import";
 import { TableOfContentsRail } from "./table-of-contents-rail";
 
 const SAVE_DEBOUNCE_MS = 1200;
@@ -36,6 +37,13 @@ export interface NotesEditorProps {
   readOnly?: boolean;
   view?: "edit" | "raw";
   onSaveStateChange?: (state: SaveState) => void;
+  /** Hands the parent a way to drop markdown into the note (e.g. text pasted into the title). */
+  onEditorReady?: (api: NotesEditorApi) => void;
+}
+
+export interface NotesEditorApi {
+  /** Parses markdown (math + Mermaid included) and inserts it at the top of the note. */
+  insertMarkdownAtStart: (markdown: string) => void;
 }
 
 function canvasSlashItem(onOpen: () => void): DefaultReactSuggestionItem {
@@ -47,6 +55,58 @@ function canvasSlashItem(onOpen: () => void): DefaultReactSuggestionItem {
     icon: <LayoutGrid className="size-4" />,
     onItemClick: onOpen,
   };
+}
+
+/** `/equation`, `/inline equation` and `/mermaid`. */
+function mathAndDiagramSlashItems(
+  editor: OctoEditor,
+): DefaultReactSuggestionItem[] {
+  const placeBlock = (block: { type: "mathBlock" | "mermaid" }) => {
+    const current = editor.getTextCursorPosition().block;
+    const empty =
+      current.type === "paragraph" &&
+      Array.isArray(current.content) &&
+      current.content.length === 0;
+    if (empty) editor.replaceBlocks([current], [block]);
+    else editor.insertBlocks([block], current, "after");
+  };
+  return [
+    {
+      title: "Equation",
+      subtext: "A math equation on its own line (LaTeX)",
+      aliases: ["math", "equation", "latex", "katex", "formula", "$$"],
+      group: "Advanced",
+      icon: <SquareFunction className="size-4" />,
+      onItemClick: () => placeBlock({ type: "mathBlock" }),
+    },
+    {
+      title: "Inline equation",
+      subtext: "Math inside a sentence (LaTeX)",
+      aliases: ["inline math", "inline equation", "$"],
+      group: "Advanced",
+      icon: <Sigma className="size-4" />,
+      onItemClick: () =>
+        editor.insertInlineContent([
+          { type: "math", props: { latex: "x^2" } },
+          " ",
+        ]),
+    },
+    {
+      title: "Mermaid diagram",
+      subtext: "Flowcharts, sequence diagrams and more, from text",
+      aliases: [
+        "mermaid",
+        "diagram",
+        "flowchart",
+        "sequence",
+        "chart",
+        "graph",
+      ],
+      group: "Advanced",
+      icon: <Workflow className="size-4" />,
+      onItemClick: () => placeBlock({ type: "mermaid" }),
+    },
+  ];
 }
 
 export function blocksFrom(content: unknown) {
@@ -64,11 +124,62 @@ export function NotesEditor({
   readOnly = false,
   view = "edit",
   onSaveStateChange,
+  onEditorReady,
 }: NotesEditorProps) {
   const editor = useCreateBlockNote({
     schema: octoBlockNoteSchema,
     initialContent: blocksFrom(initialContent),
+    // Markdown with math or Mermaid gets our importer; everything else
+    // (including copy/paste within notes) uses BlockNote's default.
+    pasteHandler: ({ event, editor: ed, defaultPasteHandler }) => {
+      const data = event.clipboardData;
+      const text = data?.getData("text/plain") ?? "";
+      if (
+        !text ||
+        data?.types.includes("blocknote/html") ||
+        !hasMarkdownExtras(text)
+      )
+        return defaultPasteHandler();
+      const blocks = markdownToBlocks(ed, text);
+      if (blocks.length === 0) return defaultPasteHandler();
+      const current = ed.getTextCursorPosition().block;
+      const emptyLine =
+        current.type === "paragraph" &&
+        Array.isArray(current.content) &&
+        current.content.length === 0;
+      // A single paragraph (e.g. "the formula $x^2$") pastes inline at the cursor.
+      if (
+        blocks.length === 1 &&
+        blocks[0]!.type === "paragraph" &&
+        !emptyLine
+      ) {
+        ed.insertInlineContent(blocks[0]!.content as never);
+      } else if (emptyLine) {
+        ed.replaceBlocks([current], blocks as never);
+      } else {
+        ed.insertBlocks(blocks as never, current, "after");
+      }
+      return true;
+    },
   }) as OctoEditor;
+
+  useEffect(() => {
+    onEditorReady?.({
+      insertMarkdownAtStart: (markdown) => {
+        const blocks = markdownToBlocks(editor, markdown);
+        if (blocks.length === 0) return;
+        const doc = editor.document;
+        const first = doc[0];
+        const onlyEmpty =
+          doc.length === 1 &&
+          first?.type === "paragraph" &&
+          Array.isArray(first.content) &&
+          first.content.length === 0;
+        if (!first || onlyEmpty) editor.replaceBlocks(doc, blocks as never);
+        else editor.insertBlocks(blocks as never, first, "before");
+      },
+    });
+  }, [editor, onEditorReady]);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -76,23 +187,30 @@ export function NotesEditor({
   const [rawMd, setRawMd] = useState("");
   const [tocHovered, setTocHovered] = useState(false);
 
-  useEffect(() => () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (view !== "raw") return;
     try {
       setRawMd(editor.blocksToMarkdownLossy(editor.document));
     } catch (err) {
-      setRawMd(`Couldn't convert to markdown: ${err instanceof Error ? err.message : String(err)}`);
+      setRawMd(
+        `Couldn't convert to markdown: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }, [view, editor]);
 
   function insertCanvasReference(canvasId: string) {
     const current = editor.getTextCursorPosition().block;
     const isEmptyParagraph =
-      current.type === "paragraph" && Array.isArray(current.content) && current.content.length === 0;
+      current.type === "paragraph" &&
+      Array.isArray(current.content) &&
+      current.content.length === 0;
     const block = { type: "canvasReference" as const, props: { canvasId } };
     if (isEmptyParagraph) editor.replaceBlocks([current], [block]);
     else editor.insertBlocks([block], current, "after");
@@ -123,7 +241,10 @@ export function NotesEditor({
   return (
     <CanvasReferenceContext.Provider value={appCanvasResolver}>
       <div className="bg-card relative h-full">
-        <div ref={scrollRef} className={`h-full overflow-auto ${tocHovered ? "hide-scrollbar" : ""}`}>
+        <div
+          ref={scrollRef}
+          className={`h-full overflow-auto ${tocHovered ? "hide-scrollbar" : ""}`}
+        >
           <div className={view === "raw" ? "hidden" : "contents"}>
             <BlockNoteView
               editor={editor}
@@ -137,7 +258,11 @@ export function NotesEditor({
                   triggerCharacter="/"
                   getItems={async (query) =>
                     filterSuggestionItems(
-                      [...getDefaultReactSlashMenuItems(editor), canvasSlashItem(() => setPickerOpen(true))],
+                      [
+                        ...getDefaultReactSlashMenuItems(editor),
+                        canvasSlashItem(() => setPickerOpen(true)),
+                        ...mathAndDiagramSlashItems(editor),
+                      ],
                       query,
                     )
                   }
@@ -152,7 +277,11 @@ export function NotesEditor({
           ) : null}
         </div>
         {view === "edit" ? (
-          <TableOfContentsRail editor={editor as never} scrollRef={scrollRef} onHoverChange={setTocHovered} />
+          <TableOfContentsRail
+            editor={editor as never}
+            scrollRef={scrollRef}
+            onHoverChange={setTocHovered}
+          />
         ) : null}
         {readOnly ? null : (
           <CanvasPickerDialog

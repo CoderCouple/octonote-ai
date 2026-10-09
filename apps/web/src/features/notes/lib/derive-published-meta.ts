@@ -27,9 +27,15 @@ function extractText(content: unknown): string {
   if (!Array.isArray(content)) return "";
   return content
     .map((c) => {
-      if (c && typeof c === "object" && "type" in c && c.type === "text" && "text" in c) {
+      if (
+        c &&
+        typeof c === "object" &&
+        "type" in c &&
+        c.type === "text" &&
+        "text" in c
+      ) {
         return typeof (c as { text?: unknown }).text === "string"
-          ? ((c as { text: string }).text)
+          ? (c as { text: string }).text
           : "";
       }
       return "";
@@ -134,7 +140,9 @@ export function metadataLine(input: {
     parts.push(`${input.sources} source${input.sources === 1 ? "" : "s"}`);
   }
   if (input.backlinks && input.backlinks > 0) {
-    parts.push(`${input.backlinks} backlink${input.backlinks === 1 ? "" : "s"}`);
+    parts.push(
+      `${input.backlinks} backlink${input.backlinks === 1 ? "" : "s"}`,
+    );
   }
   return parts.join(" · ");
 }

@@ -13,7 +13,8 @@ import {
 } from "../../../service/public.service";
 import { ResourceKindSchema } from "../request/sharing.request";
 
-const SlugParam = new ZodValidationPipe(z.string().regex(/^[a-z0-9-]{1,80}$/));
+// "_" is accepted for slugs minted before randomSuffix() was fixed.
+const SlugParam = new ZodValidationPipe(z.string().regex(/^[a-z0-9_-]{1,80}$/));
 const IdParam = new ZodValidationPipe(z.string().min(1).max(64));
 const KindParam = new ZodValidationPipe(ResourceKindSchema);
 

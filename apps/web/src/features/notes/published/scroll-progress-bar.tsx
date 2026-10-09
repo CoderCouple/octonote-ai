@@ -19,7 +19,8 @@ export function ScrollProgressBar() {
     const compute = () => {
       const doc = document.documentElement;
       const max = doc.scrollHeight - doc.clientHeight;
-      const pct = max > 0 ? Math.min(100, Math.max(0, (doc.scrollTop / max) * 100)) : 0;
+      const pct =
+        max > 0 ? Math.min(100, Math.max(0, (doc.scrollTop / max) * 100)) : 0;
       setProgress(pct);
       raf = 0;
     };

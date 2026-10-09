@@ -65,7 +65,13 @@ function extractText(content: unknown): string {
   if (!Array.isArray(content)) return "";
   return content
     .map((c) => {
-      if (c && typeof c === "object" && "type" in c && c.type === "text" && "text" in c) {
+      if (
+        c &&
+        typeof c === "object" &&
+        "type" in c &&
+        c.type === "text" &&
+        "text" in c
+      ) {
         return typeof c.text === "string" ? c.text : "";
       }
       return "";
@@ -86,7 +92,8 @@ function collectHeadings(blocks: unknown[]): HeadingEntry[] {
     };
     if (b.type === "heading" && typeof b.id === "string") {
       const rawLevel = b.props?.level ?? 1;
-      const level = (rawLevel >= 1 && rawLevel <= 3 ? rawLevel : 1) as 1 | 2 | 3;
+      const level = (rawLevel >= 1 && rawLevel <= 3 ? rawLevel : 1) as
+        1 | 2 | 3;
       out.push({ id: b.id, text: extractText(b.content), level });
     }
     if (Array.isArray(b.children) && b.children.length > 0) {

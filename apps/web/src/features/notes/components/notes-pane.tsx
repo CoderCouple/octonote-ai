@@ -1,9 +1,10 @@
 "use client";
 
 import { Code2, FileText } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
+import { NoteTitle } from "./note-title";
 import { SaveIndicator, type SaveState } from "@/components/save-indicator";
 import { Toggle } from "@/components/ui/toggle";
 import {
@@ -21,7 +22,7 @@ import { updateNoteClientApi } from "../api/notes-client-api";
 import { TypographyPicker } from "../typography/typography-picker";
 import { useNoteTypography } from "../typography/use-note-typography";
 import type { Page } from "../types";
-import { NotesEditor } from "./notes-editor";
+import { NotesEditor, type NotesEditorApi } from "./notes-editor";
 
 interface NotesPaneProps {
   note: Page;
@@ -42,6 +43,10 @@ export function NotesPane({
   const [raw, setRaw] = useState(false);
   const [title, setTitle] = useState(note.title);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const editorApi = useRef<NotesEditorApi | null>(null);
+  const onEditorReady = useCallback((api: NotesEditorApi) => {
+    editorApi.current = api;
+  }, []);
   const { style: typographyStyle } = useNoteTypography();
 
   async function rename(next: string) {
@@ -119,12 +124,24 @@ export function NotesPane({
       >
         {raw ? null : (
           <div className="mx-auto max-w-[var(--reader-content-width)] px-[54px] pt-10 pb-2">
-            <h1
-              className="text-foreground text-3xl font-bold leading-tight tracking-tight md:text-4xl"
-              style={{ fontFamily: "var(--font-reader-family)" }}
-            >
-              {title || "Untitled note"}
-            </h1>
+            <NoteTitle
+              value={title}
+              editable={editable}
+              onChange={setTitle}
+              onPasteBody={(markdown) =>
+                editorApi.current?.insertMarkdownAtStart(markdown)
+              }
+              onSave={async (next) => {
+                setTitle(next);
+                try {
+                  await updateNoteClientApi(note.id, { title: next });
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error ? err.message : "Couldn't rename.",
+                  );
+                }
+              }}
+            />
           </div>
         )}
         <NotesEditor
@@ -134,6 +151,7 @@ export function NotesPane({
           readOnly={!editable}
           view={raw ? "raw" : "edit"}
           onSaveStateChange={setSaveState}
+          onEditorReady={onEditorReady}
         />
       </div>
     </div>

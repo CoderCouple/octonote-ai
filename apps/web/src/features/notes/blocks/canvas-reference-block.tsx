@@ -20,7 +20,9 @@ export const CanvasReferenceBlock = createReactBlockSpec(
     content: "none" as const,
   },
   {
-    render: ({ block }) => <CanvasReferenceCard canvasId={block.props.canvasId} />,
+    render: ({ block }) => (
+      <CanvasReferenceCard canvasId={block.props.canvasId} />
+    ),
     toExternalHTML: ({ block }) => <p>[Canvas {block.props.canvasId}]</p>,
   },
 );
@@ -35,7 +37,12 @@ function CanvasReferenceCard({ canvasId }: { canvasId: string }) {
   });
 
   if (isLoading) {
-    return <div className="bg-muted my-2 h-40 w-full max-w-xl animate-pulse rounded-lg" contentEditable={false} />;
+    return (
+      <div
+        className="bg-muted my-2 h-40 w-full max-w-xl animate-pulse rounded-lg"
+        contentEditable={false}
+      />
+    );
   }
 
   if (!data) {
@@ -59,7 +66,12 @@ function CanvasReferenceCard({ canvasId }: { canvasId: string }) {
       <div className="bg-muted grid aspect-[16/9] place-items-center overflow-hidden">
         {data.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- storage URLs, no next/image loader configured
-          <img src={data.thumbnailUrl} alt="" className="h-full w-full object-contain" loading="lazy" />
+          <img
+            src={data.thumbnailUrl}
+            alt=""
+            className="h-full w-full object-contain"
+            loading="lazy"
+          />
         ) : (
           <LayoutGrid className="text-muted-foreground size-8" />
         )}

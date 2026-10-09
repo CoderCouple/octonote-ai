@@ -9,10 +9,18 @@
 
 import { Type } from "lucide-react";
 import { useEffect, useRef } from "react";
-import type { NotesFontFamily, NotesFontSize, NotesLineHeight } from "@octonote/shared";
+import type {
+  NotesFontFamily,
+  NotesFontSize,
+  NotesLineHeight,
+} from "@octonote/shared";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   CONTENT_WIDTH_LABELS,
@@ -72,9 +80,12 @@ export function TypographyPicker({
   }>({});
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
   const queuePersist = (patch: typeof pendingRef.current) => {
     if (!onPersist) return;

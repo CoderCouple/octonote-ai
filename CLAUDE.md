@@ -38,7 +38,7 @@ Sidebar order: **Notes, Canvases, Projects, Notebooks.** Notes/Canvases list sta
 **v1 = notes editor + canvas + the organisation and sharing around them.** The list below is frozen; anything new goes to v2.
 
 **IN SCOPE:**
-- Notes editor (BlockNote) — standard blocks (paragraph, heading, list, todo, code, quote, divider, image) + **one custom block: `canvas-reference`**
+- Notes editor (BlockNote) — standard blocks (paragraph, heading, list, todo, code, quote, divider, image) + custom blocks: `canvas-reference`, **`mathBlock` + inline `math` (KaTeX) and `mermaid` diagrams** (added 2026-10-09, user decision; Mermaid ported from OctoFocus with `securityLevel: "strict"`). Pasted markdown with `$…$`, `$$…$$`, ```math or ```mermaid is converted by `features/notes/lib/markdown-import.ts`.
 - `canvas-reference` block — references a canvas page in the workspace. Renders a thumbnail (PNG snapshot stored on the canvas record) + canvas title. Clicking opens the canvas page. **Reference only, not inline rendering.** No tldraw instance inside the note.
 - Canvas (tldraw) — default toolset
 - Standalone notes, standalone canvases, projects (1 note + 1 canvas), notebooks
@@ -51,7 +51,7 @@ Sidebar order: **Notes, Canvases, Projects, Notebooks.** Notes/Canvases list sta
 
 **EXPLICITLY DEFERRED to v2+ (do not add in v1 even if "it's small"):**
 - **Inline canvas block** (full tldraw rendered inside a note) — ships in v2 after we learn how users actually use the `canvas-reference` block. Do not add tldraw inside the BlockNote editor in v1.
-- Mermaid blocks / diagrams-as-code
+- Custom diagrams-as-code DSL beyond Mermaid
 - AI diagram generation (Claude)
 - Multiplayer (Yjs / Hocuspocus) — single-user with auto-save is enough
 - Comments, highlights, votes, follows, Commenter role
@@ -143,7 +143,7 @@ Decided 2026-10-08, following the prior app's final commit (which replaced its E
 | Multiplayer server | ~~Hocuspocus~~ | **Deferred to v2.** No persistent WS server in v1. |
 | Doc editor | **BlockNote** (built on Tiptap) | Notion-style block-first API out of the box; prior version shipped this successfully. Don't use raw Tiptap. |
 | Freeform canvas | **tldraw** | Chosen for aesthetic quality — cleaner "SaaS product" look vs Excalidraw's hand-drawn sketchy aesthetic. Free with watermark during private beta; buy Business license at public launch (~$6k/yr tier at time of writing — verify current pricing). |
-| Diagrams-as-code | ~~Mermaid~~ | **Deferred to v2.** Not in v1. |
+| Diagrams-as-code | Mermaid (rendered block) | **In v1 since 2026-10-09** as a note block; lazy-loaded, strict security. The eraser-style DSL is still v2. |
 | Multiplayer | ~~Yjs~~ | **Deferred to v2.** v1 is single-user with debounced auto-save. |
 | AI | ~~Anthropic Claude~~ | **Deferred to v2.** No AI in v1. |
 

@@ -13,7 +13,11 @@
 "use client";
 
 import { create } from "zustand";
-import type { NotesFontFamily, NotesFontSize, NotesLineHeight } from "@octonote/shared";
+import type {
+  NotesFontFamily,
+  NotesFontSize,
+  NotesLineHeight,
+} from "@octonote/shared";
 import type { NotesContentWidth } from "./fonts";
 
 const STORAGE_KEY = "octo.notes.typography";

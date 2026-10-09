@@ -426,8 +426,8 @@ content_path = "./supabase/templates/magic_link.html"
 project_id = "xdjeshxjvrbgksgmurnh"
 
 [remotes.production.auth]
-site_url = "https://octonote-ai.vercel.app"
-additional_redirect_urls = ["https://octonote-ai.vercel.app/auth/callback", "https://octonote-ai.vercel.app/**", "octonote://**"]
+site_url = "https://octonote.ai"
+additional_redirect_urls = ["https://octonote.ai/auth/callback", "https://octonote.ai/**", "https://octonote-ai.vercel.app/auth/callback", "octonote://**"]
 
 [remotes.production.auth.email]
 # One sign-in email per address per minute in production (local dev uses 1s).
