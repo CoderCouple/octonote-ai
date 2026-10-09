@@ -1,7 +1,8 @@
 # NestJS API image for Railway. Installs from the pnpm workspace root and
 # builds only @octonote/shared + @octonote/api (the web app deploys to Vercel).
 
-FROM node:22-slim AS base
+# Official Node image via AWS ECR Public: same image as Docker Hub, without its pull rate limits.
+FROM public.ecr.aws/docker/library/node:22-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
