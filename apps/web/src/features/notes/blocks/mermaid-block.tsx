@@ -61,6 +61,18 @@ async function getMermaid(): Promise<MermaidApi> {
 
 let renderSeq = 0;
 
+/**
+ * Rendered SVGs by theme + source. BlockNote rebuilds a block's view whenever
+ * the document changes; without this, every rebuild started blank and
+ * re-rendered — the diagram flickered while you typed anywhere in the note.
+ */
+const svgCache = new Map<string, string>();
+const cacheKey = (dark: boolean, code: string) =>
+  `${dark ? "dark" : "light"}\n${code}`;
+const isDarkNow = () =>
+  typeof document !== "undefined" &&
+  document.documentElement.classList.contains("dark");
+
 export const MermaidBlock = createReactBlockSpec(
   {
     type: "mermaid" as const,
@@ -105,23 +117,35 @@ function MermaidView({
   ) => void;
 }) {
   const [view, setView] = useState<"diagram" | "source">("diagram");
-  const [svg, setSvg] = useState("");
+  const dark = useIsDark();
+  // Start from the cached render (no blank frame), and keep showing the last
+  // diagram while a changed one renders.
+  const [svg, setSvg] = useState(
+    () => svgCache.get(cacheKey(isDarkNow(), code)) ?? "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [live, setLive] = useState<{ width: number; height: number } | null>(
     null,
   );
   const [draft, setDraft] = useState(code);
-  const dark = useIsDark();
 
   useEffect(() => setDraft(code), [code]);
 
   useEffect(() => {
     if (view !== "diagram") return;
+    const key = cacheKey(dark, code);
+    const cached = svgCache.get(key);
+    if (cached) {
+      setSvg(cached);
+      setError(null);
+      return;
+    }
     let cancelled = false;
     void getMermaid()
       .then((mermaid) => mermaid.render(`mermaid-${++renderSeq}`, code))
       .then(({ svg }) => {
+        svgCache.set(key, svg);
         if (cancelled) return;
         setSvg(svg);
         setError(null);
@@ -345,12 +369,11 @@ function MermaidView({
 
 /** Re-renders diagrams when the app switches between light and dark. */
 function useIsDark() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(isDarkNow);
   const ref = useRef<MutationObserver | null>(null);
   useEffect(() => {
     const root = document.documentElement;
     const sync = () => setDark(root.classList.contains("dark"));
-    sync();
     ref.current = new MutationObserver(sync);
     ref.current.observe(root, { attributes: true, attributeFilter: ["class"] });
     return () => ref.current?.disconnect();

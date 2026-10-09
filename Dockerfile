@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-#
 # NestJS API image for Railway. Installs from the pnpm workspace root and
 # builds only @octonote/shared + @octonote/api (the web app deploys to Vercel).
 
