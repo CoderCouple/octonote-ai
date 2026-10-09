@@ -199,7 +199,7 @@ pnpm --filter @octonote/web dev                  # :3000
 
 Root `.env` (API) and `apps/web/.env.local` (Next only reads its own folder) hold the local Supabase values from `supabase status -o env`. Magic-link emails land in Mailpit at http://127.0.0.1:54324; Supabase Studio is http://127.0.0.1:54323.
 
-Phone / emulator testing uses the Mac's LAN IP everywhere (root `.env`, `apps/web/.env.local` incl. `LAN_HOST`, `apps/mobile/.env`, and `auth.external_url` + redirect URLs in `supabase/config.toml` — `external_url` must end in `/auth/v1`). Run the web app with `pnpm --filter @octonote/web dev -H 0.0.0.0` and the mobile app with `pnpm --filter @octonote/mobile start --lan`, then open `exp://<LAN-IP>:8081` in Expo Go. If the IP changes, update all of those.
+Phone / emulator testing uses the Mac's LAN IP everywhere (root `.env`, `apps/web/.env.local` incl. `LAN_HOST`, `apps/mobile/.env`, and `auth.external_url` + redirect URLs in `supabase/config.toml` — `external_url` must end in `/auth/v1`). Run the web app with `pnpm --filter @octonote/web dev -H 0.0.0.0` and the mobile app with `pnpm --filter @octonote/mobile start --lan`, then open `exp://<LAN-IP>:8081` in Expo Go. The IP changes with the network (office ↔ home): run `pnpm dev:ip` (`scripts/dev-ip.mjs`) to rewrite all of those, then restart supabase/api/web/expo.
 
 API tests under `test/integration/` run against real Postgres in-process (PGlite) with the actual migration applied — no Docker needed. Add new sharing/permission tests there, not as mocked unit tests.
 

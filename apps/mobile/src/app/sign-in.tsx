@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LogoMark } from "@/components/logo-mark";
 import { supabase } from "@/lib/supabase";
 import { usePalette } from "@/lib/theme";
 
@@ -87,9 +88,10 @@ export default function SignIn() {
   return (
     <SafeAreaView style={[styles.fill, { backgroundColor: c.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.body}>
-        <Text style={[styles.brand, { color: c.text }]}>Octonote</Text>
+        <LogoMark size={52} />
+        <Text style={[styles.brand, { color: c.textStrong }]}>{step === "email" ? "Welcome to\nOctonote." : "Check your\nemail."}</Text>
         <Text style={[styles.tagline, { color: c.textSecondary }]}>
-          {step === "email" ? "The AI workspace for humans and agents." : `Enter the 6-digit code we sent to ${email}.`}
+          {step === "email" ? "Sign in or create an account with a one-time code." : `Enter the 6-digit code we sent to ${email}.`}
         </Text>
 
         {step === "email" ? (
@@ -180,9 +182,9 @@ function PrimaryButton({
       ]}
     >
       {busy ? (
-        <ActivityIndicator color={c.background} />
+        <ActivityIndicator color={c.onTint} />
       ) : (
-        <Text style={[styles.buttonText, { color: c.background }]}>{label}</Text>
+        <Text style={[styles.buttonText, { color: c.onTint }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -191,18 +193,18 @@ function PrimaryButton({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   body: { flex: 1, justifyContent: "center", paddingHorizontal: 24, gap: 8 },
-  brand: { fontSize: 34, fontWeight: "700", letterSpacing: -0.5 },
-  tagline: { fontSize: 17, lineHeight: 23, marginBottom: 24 },
+  brand: { fontSize: 34, lineHeight: 39, fontWeight: "700", letterSpacing: -1.1, marginTop: 28 },
+  tagline: { fontSize: 17, lineHeight: 25, marginTop: 6, marginBottom: 28 },
   form: { gap: 12 },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    height: 56,
     fontSize: 17,
   },
   code: { fontSize: 28, letterSpacing: 10, textAlign: "center", fontVariant: ["tabular-nums"] },
-  button: { borderRadius: 12, paddingVertical: 15, alignItems: "center" },
+  button: { borderRadius: 16, height: 56, alignItems: "center", justifyContent: "center" },
   buttonText: { fontSize: 17, fontWeight: "600" },
   links: { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
   link: { fontSize: 15, fontWeight: "500" },

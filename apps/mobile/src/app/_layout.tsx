@@ -1,7 +1,9 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
-import { AuthProvider } from "@/providers/auth";
+import { AnimatedSplash, useSplashReplays } from "@/components/animated-splash";
+import { AuthProvider, useAuth } from "@/providers/auth";
+import { OnboardingProvider, useOnboarding } from "@/providers/onboarding";
 import { QueryProvider } from "@/providers/query";
 
 export default function RootLayout() {
@@ -10,15 +12,36 @@ export default function RootLayout() {
     <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
       <QueryProvider>
         <AuthProvider>
-          <StatusBar style="auto" />
-          <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-            <Stack.Screen name="settings" options={{ presentation: "modal", title: "Account" }} />
-          </Stack>
+          <OnboardingProvider>
+            <StatusBar style="auto" />
+            <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="onboarding"
+                options={{ headerShown: false, animation: "fade" }}
+              />
+              <Stack.Screen
+                name="sign-in"
+                options={{ headerShown: false, animation: "fade" }}
+              />
+              <Stack.Screen
+                name="settings"
+                options={{ presentation: "modal", title: "Account" }}
+              />
+            </Stack>
+            <Splash />
+          </OnboardingProvider>
         </AuthProvider>
       </QueryProvider>
     </ThemeProvider>
   );
+}
+
+/** Holds the splash until we know where to send the user. */
+function Splash() {
+  const { loading } = useAuth();
+  const { seen } = useOnboarding();
+  const replays = useSplashReplays();
+  return <AnimatedSplash key={replays} ready={!loading && seen !== null} />;
 }

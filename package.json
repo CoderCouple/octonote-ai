@@ -10,7 +10,8 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "format": "prettier . --write",
-    "dev:user": "node scripts/dev-user.mjs"
+    "dev:user": "node scripts/dev-user.mjs",
+    "dev:ip": "node scripts/dev-ip.mjs"
   },
   "devDependencies": {
     "prettier": "^3.4.2",
