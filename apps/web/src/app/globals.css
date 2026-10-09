@@ -155,6 +155,14 @@ body {
 .reader-typography .bn-container * {
   font-family: inherit !important;
 }
+/* Centre the editor in the reading column (its 54px side padding holds the drag
+ * handles; the title above uses the same padding so they line up), and let it
+ * sit on whatever surface it's placed on. */
+.reader-typography .bn-editor {
+  max-width: var(--reader-content-width);
+  margin-inline: auto;
+  background: transparent;
+}
 
 /* BlockNote ships its own palette on .bn-root (light and dark) and loads after
  * this file; the extra class beats `.bn-root[data-color-scheme=dark]`. */

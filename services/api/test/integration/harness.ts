@@ -4,7 +4,7 @@
  * faked, so tests can assert what was sent.
  */
 import "reflect-metadata";
-import { readFileSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
@@ -22,6 +22,8 @@ import { WorkspaceMembersRepository } from "../../src/db/repository/workspace-me
 import { WorkspacesRepository } from "../../src/db/repository/workspaces.repository";
 import * as schema from "../../src/db/schema";
 import { CanvasesService } from "../../src/service/canvases.service";
+import { AnalyticsService } from "../../src/service/analytics.service";
+import { ViewsRepository } from "../../src/db/repository/views.repository";
 import { NotebookPlacement } from "../../src/service/lib/notebook-placement";
 import { MeService } from "../../src/service/me.service";
 import { NotebooksService } from "../../src/service/notebooks.service";
@@ -48,7 +50,8 @@ export class FakeEmail {
 
 export async function createHarness() {
   const pg = new PGlite();
-  for (const file of ["0000_init.sql"]) {
+  const migrations = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
+  for (const file of migrations) {
     const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
     for (const stmt of sql.split("--> statement-breakpoint")) {
       if (stmt.trim()) await pg.exec(stmt);
@@ -101,6 +104,7 @@ export async function createHarness() {
     settings: new SharingSettingsService(sharingRepo, permissions, changeEvents),
     public: new PublicService(sharingRepo, pagesRepo, canvasesRepo, projectsRepo, notebooksRepo),
     me: new MeService(db),
+    analytics: new AnalyticsService(new ViewsRepository(db), permissions),
   };
 
   let seq = 0;

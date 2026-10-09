@@ -4,7 +4,9 @@ import { Database, DRIZZLE } from "../database.module";
 import { canvases } from "../schemas/canvases";
 import { projects } from "../schemas/projects";
 import { users } from "../schemas/users";
+import type { LinkAccess } from "../../model/sharing.model";
 import { BaseRepository } from "./base.repository";
+import { liveShareCount } from "./share-count";
 
 export interface CanvasSummaryRow {
   id: string;
@@ -16,6 +18,11 @@ export interface CanvasSummaryRow {
   createdAt: Date;
   updatedAt: Date;
   creator: { id: string; name: string; email: string } | null;
+  linkAccess: LinkAccess;
+  /** ISO time it was published, or null. */
+  publishedAt: string | null;
+  /** Live per-person grants ("people with access"). */
+  sharedCount: number;
 }
 
 @Injectable()
@@ -76,6 +83,9 @@ export class CanvasesRepository extends BaseRepository<typeof canvases> {
         creatorId: users.id,
         creatorName: users.name,
         creatorEmail: users.email,
+        linkAccess: canvases.linkAccess,
+        publishedAt: canvases.publishedAt,
+        sharedCount: liveShareCount("canvas", canvases),
       })
       .from(canvases)
       .leftJoin(projects, eq(canvases.projectId, projects.id))
@@ -96,6 +106,9 @@ export class CanvasesRepository extends BaseRepository<typeof canvases> {
         r.creatorId && r.creatorName && r.creatorEmail
           ? { id: r.creatorId, name: r.creatorName, email: r.creatorEmail }
           : null,
+      linkAccess: r.linkAccess,
+      publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+      sharedCount: Number(r.sharedCount),
     }));
   }
 }

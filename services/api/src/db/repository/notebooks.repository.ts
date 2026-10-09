@@ -1,8 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, getTableColumns } from "drizzle-orm";
 import { Database, DRIZZLE } from "../database.module";
 import { notebooks } from "../schemas/notebooks";
 import { BaseRepository } from "./base.repository";
+import { liveShareCount } from "./share-count";
 
 @Injectable()
 export class NotebooksRepository extends BaseRepository<typeof notebooks> {
@@ -12,7 +13,7 @@ export class NotebooksRepository extends BaseRepository<typeof notebooks> {
 
   listByWorkspace(workspaceId: string) {
     return this.db
-      .select()
+      .select({ ...getTableColumns(notebooks), sharedCount: liveShareCount("notebook", notebooks) })
       .from(notebooks)
       .where(eq(notebooks.workspaceId, workspaceId))
       .orderBy(desc(notebooks.updatedAt));

@@ -24,6 +24,9 @@ export interface PageSummaryDto {
   updatedAt: string;
   createdAt: string;
   creator: { id: string; name: string; email: string } | null;
+  linkAccess: "restricted" | "anyone_with_link";
+  publishedAt: string | null;
+  sharedCount: number;
 }
 
 export function pageToDto(page: Page, myRole?: Role): PageDto {

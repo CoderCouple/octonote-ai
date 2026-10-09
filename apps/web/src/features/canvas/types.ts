@@ -13,6 +13,10 @@ export interface CanvasSummary {
   createdAt: string;
   updatedAt: string;
   creator: { id: string; name: string; email: string } | null;
+  linkAccess: "restricted" | "anyone_with_link";
+  publishedAt: string | null;
+  /** Live per-person grants ("people with access"). */
+  sharedCount: number;
 }
 
 /** `GET /canvases/:id/summary` — what the notes canvas-reference block renders. */

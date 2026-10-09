@@ -1,11 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, inArray, isNull, type SQL } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, inArray, isNull, type SQL } from "drizzle-orm";
 import { Database, DRIZZLE } from "../database.module";
 import { canvases } from "../schemas/canvases";
 import { pages } from "../schemas/pages";
 import { projects } from "../schemas/projects";
 import { users } from "../schemas/users";
 import { BaseRepository } from "./base.repository";
+import { liveShareCount } from "./share-count";
 
 export interface CreatorSummary {
   id: string;
@@ -17,6 +18,7 @@ export type ProjectRowWithCounts = typeof projects.$inferSelect & {
   hasNote: boolean;
   hasCanvas: boolean;
   creator: CreatorSummary | null;
+  sharedCount: number;
 };
 
 @Injectable()
@@ -36,7 +38,7 @@ export class ProjectsRepository extends BaseRepository<typeof projects> {
   /** Active projects annotated with note/canvas presence and creator. */
   private async listWithCounts(where: SQL): Promise<ProjectRowWithCounts[]> {
     const projectRows = await this.db
-      .select()
+      .select({ ...getTableColumns(projects), sharedCount: liveShareCount("project", projects) })
       .from(projects)
       .where(and(where, isNull(projects.archivedAt)))
       .orderBy(desc(projects.updatedAt));
@@ -70,6 +72,7 @@ export class ProjectsRepository extends BaseRepository<typeof projects> {
       hasNote: hasNoteSet.has(row.id),
       hasCanvas: hasCanvasSet.has(row.id),
       creator: creatorById.get(row.createdByUserId) ?? null,
+      sharedCount: Number(row.sharedCount),
     }));
   }
 

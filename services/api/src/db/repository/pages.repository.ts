@@ -3,7 +3,9 @@ import { and, desc, eq, isNull, type SQL } from "drizzle-orm";
 import { Database, DRIZZLE } from "../database.module";
 import { pages } from "../schemas/pages";
 import { users } from "../schemas/users";
+import type { LinkAccess } from "../../model/sharing.model";
 import { BaseRepository } from "./base.repository";
+import { liveShareCount } from "./share-count";
 
 export interface PageSummaryRow {
   id: string;
@@ -13,6 +15,11 @@ export interface PageSummaryRow {
   updatedAt: Date;
   createdAt: Date;
   creator: { id: string; name: string; email: string } | null;
+  linkAccess: LinkAccess;
+  /** ISO time it was published, or null. */
+  publishedAt: string | null;
+  /** Live per-person grants ("people with access"). */
+  sharedCount: number;
 }
 
 @Injectable()
@@ -65,6 +72,9 @@ export class PagesRepository extends BaseRepository<typeof pages> {
         creatorId: users.id,
         creatorName: users.name,
         creatorEmail: users.email,
+        linkAccess: pages.linkAccess,
+        publishedAt: pages.publishedAt,
+        sharedCount: liveShareCount("page", pages),
       })
       .from(pages)
       .leftJoin(users, eq(pages.createdByUserId, users.id))
@@ -82,6 +92,9 @@ export class PagesRepository extends BaseRepository<typeof pages> {
         r.creatorId && r.creatorName && r.creatorEmail
           ? { id: r.creatorId, name: r.creatorName, email: r.creatorEmail }
           : null,
+      linkAccess: r.linkAccess,
+      publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+      sharedCount: Number(r.sharedCount),
     }));
   }
 }

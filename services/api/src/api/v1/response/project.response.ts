@@ -23,6 +23,7 @@ export interface ProjectDto extends SharingDto {
   hasNote?: boolean;
   hasCanvas?: boolean;
   creator?: CreatorDto | null;
+  sharedCount?: number;
 }
 
 export function projectToDto(project: Project, myRole?: Role): ProjectDto {
@@ -42,6 +43,7 @@ export function projectToDto(project: Project, myRole?: Role): ProjectDto {
     ...(project.hasNote !== undefined ? { hasNote: project.hasNote } : {}),
     ...(project.hasCanvas !== undefined ? { hasCanvas: project.hasCanvas } : {}),
     ...(project.creator !== undefined ? { creator: project.creator as CreatorDto | null } : {}),
+    ...(project.sharedCount !== undefined ? { sharedCount: project.sharedCount } : {}),
   };
 }
 

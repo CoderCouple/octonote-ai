@@ -7,10 +7,10 @@ import { describe } from "../../../_lib/describe";
 const KINDS = new Set<PublicKind>(["page", "canvas", "project", "notebook"]);
 type Params = { params: Promise<{ slug: string; kind: string; id: string }> };
 
-async function load({ params }: Params) {
+async function load({ params }: Params, countView = false) {
   const { slug, kind, id } = await params;
   if (!KINDS.has(kind as PublicKind)) return null;
-  return fetchPublishedChild(slug, kind as PublicKind, id);
+  return fetchPublishedChild(slug, kind as PublicKind, id, { countView });
 }
 
 export async function generateMetadata(props: Params): Promise<Metadata> {
@@ -20,7 +20,7 @@ export async function generateMetadata(props: Params): Promise<Metadata> {
 }
 
 export default async function PublishedChildPage(props: Params) {
-  const view = await load(props);
+  const view = await load(props, true);
   if (!view) notFound();
   return <PublicPage view={view} />;
 }

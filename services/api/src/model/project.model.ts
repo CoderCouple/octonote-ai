@@ -23,6 +23,8 @@ export interface Project extends SharingState {
   hasNote?: boolean;
   hasCanvas?: boolean;
   creator?: CreatorSummary | null;
+  /** Live per-person grants; list endpoints only. */
+  sharedCount?: number;
 }
 
 export function toProject(
@@ -30,6 +32,7 @@ export function toProject(
     hasNote?: boolean;
     hasCanvas?: boolean;
     creator?: CreatorSummary | null;
+    sharedCount?: number;
   },
 ): Project {
   return {
@@ -48,5 +51,6 @@ export function toProject(
     ...(row.hasNote !== undefined ? { hasNote: row.hasNote } : {}),
     ...(row.hasCanvas !== undefined ? { hasCanvas: row.hasCanvas } : {}),
     ...(row.creator !== undefined ? { creator: row.creator } : {}),
+    ...(row.sharedCount !== undefined ? { sharedCount: Number(row.sharedCount) } : {}),
   };
 }

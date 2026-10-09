@@ -1,6 +1,12 @@
 "use client";
 
-import { BookOpen, FileText, FolderKanban, LayoutGrid, MoreHorizontal } from "lucide-react";
+import {
+  BookOpen,
+  FileText,
+  FolderKanban,
+  LayoutGrid,
+  MoreHorizontal,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,7 +20,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { KIND_LABEL, RESOURCE_PATH, type ResourceKind } from "@/features/sharing";
+import {
+  KIND_LABEL,
+  RESOURCE_PATH,
+  type ResourceKind,
+} from "@/features/sharing";
 import { deleteResource, moveResource } from "../operations";
 import { MoveToNotebookDialog } from "./move-to-notebook-dialog";
 
@@ -36,11 +46,14 @@ const ICON: Record<ResourceKind, typeof FileText> = {
   notebook: BookOpen,
 };
 
-const DELETE_COPY: Record<ResourceKind, string> = {
+export const DELETE_COPY: Record<ResourceKind, string> = {
   page: "The note will be deleted for everyone it's shared with.",
-  canvas: "The canvas will be deleted for everyone it's shared with. Notes that link to it will show it as unavailable.",
-  project: "The project, its note and its canvas will be deleted for everyone they're shared with.",
-  notebook: "Only the notebook is deleted. Everything inside moves back to the top level.",
+  canvas:
+    "The canvas will be deleted for everyone it's shared with. Notes that link to it will show it as unavailable.",
+  project:
+    "The project, its note and its canvas will be deleted for everyone they're shared with.",
+  notebook:
+    "Only the notebook is deleted. Everything inside moves back to the top level.",
 };
 
 interface ResourceListProps {
@@ -80,7 +93,9 @@ export function ResourceList({
         </header>
       ) : null}
       {items.length === 0 ? (
-        <p className="text-muted-foreground px-6 py-16 text-center text-sm md:px-8">{emptyMessage}</p>
+        <p className="text-muted-foreground px-6 py-16 text-center text-sm md:px-8">
+          {emptyMessage}
+        </p>
       ) : (
         <ul className="divide-y border-y">
           {items.map((item) => (
@@ -129,41 +144,63 @@ function ResourceRow({
         <div className="bg-muted grid size-10 shrink-0 place-items-center overflow-hidden rounded-md border">
           {item.thumbnailUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+            <img
+              src={item.thumbnailUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
           ) : (
             <Icon className="text-muted-foreground size-4" />
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{item.title || "Untitled"}</p>
+          <p className="truncate text-sm font-medium">
+            {item.title || "Untitled"}
+          </p>
           {item.subtitle ? (
-            <p className="text-muted-foreground truncate text-xs">{item.subtitle}</p>
+            <p className="text-muted-foreground truncate text-xs">
+              {item.subtitle}
+            </p>
           ) : null}
         </div>
         <span className="text-muted-foreground hidden shrink-0 text-xs tabular-nums sm:inline">
-          {new Date(item.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          {new Date(item.updatedAt).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+          })}
         </span>
       </Link>
       {readOnly ? null : (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="size-8 p-0" aria-label={`More actions for ${item.title}`}>
-            <MoreHorizontal className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link href={href}>Open</Link>
-          </DropdownMenuItem>
-          {kind !== "notebook" ? (
-            <DropdownMenuItem onSelect={() => setMoving(true)}>Move to notebook…</DropdownMenuItem>
-          ) : null}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={() => setConfirmDelete(true)}>
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="size-8 p-0"
+              aria-label={`More actions for ${item.title}`}
+            >
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href={href}>Open</Link>
+            </DropdownMenuItem>
+            {kind !== "notebook" ? (
+              <DropdownMenuItem onSelect={() => setMoving(true)}>
+                Move to notebook…
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => setConfirmDelete(true)}
+            >
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
       <ConfirmActionDialog
         open={confirmDelete}
@@ -180,7 +217,9 @@ function ResourceRow({
           currentNotebookId={item.notebookId ?? null}
           onMove={async (notebookId) => {
             await moveResource(kind, item.id, notebookId);
-            toast.success(notebookId ? "Moved to notebook." : "Moved out of the notebook.");
+            toast.success(
+              notebookId ? "Moved to notebook." : "Moved out of the notebook.",
+            );
             router.refresh();
           }}
         />

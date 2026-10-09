@@ -9,9 +9,11 @@ export interface Notebook extends SharingState {
   icon: string | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Live per-person grants; list endpoints only. */
+  sharedCount?: number;
 }
 
-export function toNotebook(row: typeof notebooks.$inferSelect): Notebook {
+export function toNotebook(row: typeof notebooks.$inferSelect & { sharedCount?: number }): Notebook {
   return {
     id: row.id,
     workspaceId: row.workspaceId,
@@ -21,5 +23,6 @@ export function toNotebook(row: typeof notebooks.$inferSelect): Notebook {
     ...pickSharing(row),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    ...(row.sharedCount !== undefined ? { sharedCount: Number(row.sharedCount) } : {}),
   };
 }

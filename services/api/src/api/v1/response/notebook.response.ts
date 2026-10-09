@@ -13,6 +13,7 @@ export interface NotebookDto extends SharingDto {
   icon: string | null;
   createdAt: string;
   updatedAt: string;
+  sharedCount?: number;
 }
 
 export interface NotebookContentsDto {
@@ -32,5 +33,6 @@ export function notebookToDto(notebook: Notebook, myRole?: Role): NotebookDto {
     ...sharingToDto(notebook, myRole),
     createdAt: notebook.createdAt.toISOString(),
     updatedAt: notebook.updatedAt.toISOString(),
+    ...(notebook.sharedCount !== undefined ? { sharedCount: notebook.sharedCount } : {}),
   };
 }

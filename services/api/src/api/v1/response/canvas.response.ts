@@ -27,6 +27,9 @@ export interface CanvasSummaryDto {
   createdAt: string;
   updatedAt: string;
   creator: { id: string; name: string; email: string } | null;
+  linkAccess: "restricted" | "anyone_with_link";
+  publishedAt: string | null;
+  sharedCount: number;
 }
 
 export function canvasToDto(canvas: Canvas, myRole?: Role): CanvasDto {

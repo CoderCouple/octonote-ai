@@ -6,6 +6,12 @@ import { MeModule } from "./me.module";
 import { PreferencesModule } from "./preferences.module";
 
 @Module({
-  imports: [CoreModule, HealthModule, MeModule, PreferencesModule, FeaturesModule],
+  imports: [
+    CoreModule,
+    HealthModule,
+    MeModule,
+    PreferencesModule,
+    FeaturesModule,
+  ],
 })
 export class AppModule {}

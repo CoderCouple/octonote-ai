@@ -1,3 +1,5 @@
+import { AnalyticsController } from "../api/v1/controller/analytics.controller";
+import { AnalyticsService } from "../service/analytics.service";
 import { Module } from "@nestjs/common";
 import { CanvasesController } from "../api/v1/controller/canvases.controller";
 import { ChangeEventsController } from "../api/v1/controller/change-events.controller";
@@ -27,6 +29,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     SharingController,
     PublicController,
     ChangeEventsController,
+    AnalyticsController,
   ],
   providers: [
     NotebooksService,
@@ -37,6 +40,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     SharingSettingsService,
     PublicService,
     ChangeEventsReaderService,
+    AnalyticsService,
   ],
 })
 export class FeaturesModule {}

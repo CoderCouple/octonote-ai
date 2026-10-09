@@ -5,7 +5,10 @@ import type { PublicResource } from "@/features/public/types";
 export function describe(title: string, resource: PublicResource): Metadata {
   const description =
     resource.kind === "page"
-      ? resource.contentMd.replace(/[#*_>`[\]()-]/g, "").trim().slice(0, 160)
+      ? resource.contentMd
+          .replace(/[#*_>`[\]()-]/g, "")
+          .trim()
+          .slice(0, 160)
       : resource.kind === "project"
         ? (resource.description ?? `A project on Octonote AI`)
         : resource.kind === "notebook"
@@ -21,7 +24,15 @@ export function describe(title: string, resource: PublicResource): Metadata {
   return {
     title: fullTitle,
     description,
-    openGraph: { title: fullTitle, description, ...(image ? { images: [image] } : {}) },
-    twitter: { card: image ? "summary_large_image" : "summary", title: fullTitle, description },
+    openGraph: {
+      title: fullTitle,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title: fullTitle,
+      description,
+    },
   };
 }

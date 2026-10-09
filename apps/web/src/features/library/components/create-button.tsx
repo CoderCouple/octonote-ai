@@ -41,8 +41,18 @@ export function CreateButton({
   }
 
   return (
-    <Button size="sm" variant={variant} onClick={create} disabled={pending} className="gap-1.5">
-      {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+    <Button
+      size="sm"
+      variant={variant}
+      onClick={create}
+      disabled={pending}
+      className="gap-1.5"
+    >
+      {pending ? (
+        <Loader2 className="size-3.5 animate-spin" />
+      ) : (
+        <Plus className="size-3.5" />
+      )}
       {LABEL[kind]}
     </Button>
   );

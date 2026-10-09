@@ -12,6 +12,7 @@ import { ProjectsRepository } from "../db/repository/projects.repository";
 import { SharingRepository } from "../db/repository/sharing.repository";
 import { UserPreferencesRepository } from "../db/repository/user-preferences.repository";
 import { UsersRepository } from "../db/repository/users.repository";
+import { ViewsRepository } from "../db/repository/views.repository";
 import { WorkspaceMembersRepository } from "../db/repository/workspace-members.repository";
 import { WorkspacesRepository } from "../db/repository/workspaces.repository";
 import { NotebookPlacement } from "../service/lib/notebook-placement";
@@ -26,6 +27,7 @@ const providers = [
   SharingRepository,
   UserPreferencesRepository,
   UsersRepository,
+  ViewsRepository,
   WorkspaceMembersRepository,
   WorkspacesRepository,
   ChangeEventsService,

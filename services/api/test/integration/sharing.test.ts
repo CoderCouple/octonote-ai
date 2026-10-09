@@ -318,3 +318,33 @@ describe("structure rules", () => {
     expect(ok.thumbnailUrl).toContain("/storage/v1/object/");
   });
 });
+
+describe("list endpoints report sharing state", () => {
+  it("counts live grants per item (revoked ones drop out) and exposes link + publish state", async () => {
+    const note = await h.pages.create(alice.workspaceId, { title: "Spec" }, alice.id);
+    const canvas = await h.canvases.create(alice.workspaceId, { title: "Flow" }, alice.id);
+    const notebook = await h.notebooks.create(alice.workspaceId, { name: "Guide" }, alice.id);
+    const project = await h.projects.create(alice.workspaceId, { name: "Launch" }, alice.id);
+    const share = (kind: "page" | "canvas" | "project" | "notebook", id: string, email: string) =>
+      h.shares.add({ resourceKind: kind, resourceId: id, email, role: "viewer" }, alice);
+
+    const { share: bobOnNote } = await share("page", note.id, bob.email);
+    await share("page", note.id, "carol@example.com");
+    await share("canvas", canvas.id, bob.email);
+    await share("notebook", notebook.id, bob.email);
+    await share("project", project.project.id, bob.email);
+    await h.shares.revoke(bobOnNote.id, alice.id);
+    await h.settings.setPublished("page", note.id, true, alice.id);
+    await h.settings.setGeneralAccess("canvas", canvas.id, { linkAccess: "anyone_with_link", linkRole: "viewer" }, alice.id);
+
+    const [notes] = await h.pages.listStandalone(alice.workspaceId, alice.id);
+    expect(notes).toMatchObject({ sharedCount: 1, linkAccess: "restricted" });
+    expect(notes!.publishedAt).not.toBeNull();
+    const [canvasRow] = await h.canvases.listStandalone(alice.workspaceId, alice.id);
+    expect(canvasRow).toMatchObject({ sharedCount: 1, linkAccess: "anyone_with_link", publishedAt: null });
+    const [nb] = await h.notebooks.listForWorkspace(alice.workspaceId, alice.id);
+    expect(nb!.sharedCount).toBe(1);
+    const [proj] = await h.projects.listForWorkspace(alice.workspaceId, alice.id);
+    expect(proj!.sharedCount).toBe(1);
+  });
+});

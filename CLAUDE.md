@@ -43,6 +43,7 @@ Sidebar order: **Notes, Canvases, Projects, Notebooks.** Notes/Canvases list sta
 - Canvas (tldraw) — default toolset
 - Standalone notes, standalone canvases, projects (1 note + 1 canvas), notebooks
 - Sharing + publishing (Google Docs model above)
+- **View analytics for published pages** (added 2026-10-09, user decision): anonymous hourly views + daily unique visitors (`resource_views`; uniques via Plausible-style daily-rotating salt hash of account id or IP+UA, salt and hashes deleted daily), bots/link previews and the item's own owners/editors skipped, nothing about the visitor stored; owners + editors see a chart in the list's Analytics panel. No third-party analytics, no visitor tracking.
 - Auth (Supabase: email + Google OAuth)
 - Create / rename / delete / list for every entity
 - Auto-save on debounce

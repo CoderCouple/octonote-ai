@@ -146,25 +146,30 @@ export function SettingsPanel({
 
       <main className="flex-1 space-y-12 pb-24">
         <header>
-          <h1 className="text-foreground text-2xl font-semibold tracking-tight">Settings</h1>
+          <h1 className="text-foreground text-2xl font-semibold tracking-tight">
+            Settings
+          </h1>
           <p className="text-muted-foreground text-sm">
             Manage your account, appearance, and the{" "}
-            <span className="text-foreground font-medium">{workspace.name}</span> workspace.
+            <span className="text-foreground font-medium">
+              {workspace.name}
+            </span>{" "}
+            workspace.
           </p>
         </header>
 
         <AccountSection user={user} />
         <AppearanceSection />
-        <WorkspaceSection
-          workspace={workspace}
-          viewerRole={viewerRole}
-        />
+        <WorkspaceSection workspace={workspace} viewerRole={viewerRole} />
         <MembershipsSection
           memberships={memberships}
           activeWorkspaceId={activeWorkspaceId}
         />
         {isOwner ? (
-          <DangerSection workspaceId={workspace.id} workspaceName={workspace.name} />
+          <DangerSection
+            workspaceId={workspace.id}
+            workspaceName={workspace.name}
+          />
         ) : null}
       </main>
     </div>
@@ -191,7 +196,9 @@ function SectionShell({
           <Icon className="size-4" />
         </div>
         <div>
-          <h2 className="text-foreground text-lg font-semibold leading-tight">{title}</h2>
+          <h2 className="text-foreground text-lg font-semibold leading-tight">
+            {title}
+          </h2>
           <p className="text-muted-foreground text-sm">{description}</p>
         </div>
       </div>
@@ -216,7 +223,9 @@ function Row({
       <div>
         <div className="text-foreground text-sm font-medium">{label}</div>
         {description ? (
-          <div className="text-muted-foreground mt-0.5 text-xs">{description}</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">
+            {description}
+          </div>
         ) : null}
       </div>
       <div className="min-w-0">{children}</div>
@@ -302,16 +311,27 @@ function AccountSection({
       <Row label="Profile" description="Pulled from your sign-in identity.">
         <div className="flex items-center gap-3">
           <Avatar className="size-12">
-            {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.name} /> : null}
-            <AvatarFallback className="text-sm">{initials(user.name)}</AvatarFallback>
+            {user.avatarUrl ? (
+              <AvatarImage src={user.avatarUrl} alt={user.name} />
+            ) : null}
+            <AvatarFallback className="text-sm">
+              {initials(user.name)}
+            </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <div className="text-foreground truncate text-sm font-medium">{user.name}</div>
-            <div className="text-muted-foreground truncate text-xs">{user.email}</div>
+            <div className="text-foreground truncate text-sm font-medium">
+              {user.name}
+            </div>
+            <div className="text-muted-foreground truncate text-xs">
+              {user.email}
+            </div>
           </div>
         </div>
       </Row>
-      <Row label="Email" description="Change requires re-verifying via your identity provider.">
+      <Row
+        label="Email"
+        description="Change requires re-verifying via your identity provider."
+      >
         <div className="flex items-center gap-2">
           <Input value={user.email} readOnly className="font-mono text-xs" />
           <CopyButton value={user.email} />
@@ -352,7 +372,9 @@ function AppearanceSection() {
     >
       <Row
         label="Theme"
-        description={mounted ? `Currently resolving to ${resolvedTheme}.` : undefined}
+        description={
+          mounted ? `Currently resolving to ${resolvedTheme}.` : undefined
+        }
       >
         <div className="grid grid-cols-3 gap-2">
           {options.map((o) => {
@@ -378,12 +400,17 @@ function AppearanceSection() {
           })}
         </div>
       </Row>
-      <Row label="Accent" description="Strict monochrome — black, white, and grey only.">
+      <Row
+        label="Accent"
+        description="Strict monochrome — black, white, and grey only."
+      >
         <div className="flex items-center gap-2">
           <div className="border-border size-6 rounded-full border bg-black" />
           <div className="border-border size-6 rounded-full border bg-white" />
           <div className="border-border bg-muted size-6 rounded-full border" />
-          <span className="text-muted-foreground ml-2 text-xs">No color accents.</span>
+          <span className="text-muted-foreground ml-2 text-xs">
+            No color accents.
+          </span>
         </div>
       </Row>
     </SectionShell>
@@ -427,7 +454,10 @@ function WorkspaceSection({
       title="Workspace"
       description="The shared container for your projects, notes, and canvases."
     >
-      <Row label="Name" description="Shown in the sidebar, breadcrumbs, and shared links.">
+      <Row
+        label="Name"
+        description="Shown in the sidebar, breadcrumbs, and shared links."
+      >
         <div className="flex gap-2">
           <Input
             value={name}
@@ -438,20 +468,32 @@ function WorkspaceSection({
           />
           <Button
             onClick={handleRename}
-            disabled={!canManage || renaming || !name.trim() || name === workspace.name}
+            disabled={
+              !canManage || renaming || !name.trim() || name === workspace.name
+            }
           >
             {renaming ? <Loader2 className="size-4 animate-spin" /> : null}
             Save
           </Button>
         </div>
       </Row>
-      <Row label="Slug" description="Used in URLs for published pages and canvases.">
+      <Row
+        label="Slug"
+        description="Used in URLs for published pages and canvases."
+      >
         <div className="flex items-center gap-2">
-          <Input value={workspace.slug} readOnly className="font-mono text-xs" />
+          <Input
+            value={workspace.slug}
+            readOnly
+            className="font-mono text-xs"
+          />
           <CopyButton value={publicUrl} label="Copy URL" />
         </div>
       </Row>
-      <Row label="Workspace ID" description="Use this when filing support requests.">
+      <Row
+        label="Workspace ID"
+        description="Use this when filing support requests."
+      >
         <div className="flex items-center gap-2">
           <Input value={workspace.id} readOnly className="font-mono text-xs" />
           <CopyButton value={workspace.id} />
@@ -503,7 +545,10 @@ function MembershipsSection({
                     {m.name}
                   </span>
                   {active ? (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                    <Badge
+                      variant="secondary"
+                      className="h-5 px-1.5 text-[10px]"
+                    >
                       Active
                     </Badge>
                   ) : null}
@@ -576,9 +621,12 @@ function DangerSection({
         <div className="border-destructive/30 bg-card rounded-lg border">
           <div className="flex items-center justify-between gap-4 p-5">
             <div className="min-w-0">
-              <div className="text-foreground text-sm font-medium">Delete workspace</div>
+              <div className="text-foreground text-sm font-medium">
+                Delete workspace
+              </div>
               <div className="text-muted-foreground mt-0.5 text-xs">
-                Removes all projects, notes, canvases, and shares. Cannot be undone.
+                Removes all projects, notes, canvases, and shares. Cannot be
+                undone.
               </div>
             </div>
             <Button variant="destructive" onClick={() => setOpen(true)}>
@@ -587,7 +635,8 @@ function DangerSection({
           </div>
           <Separator />
           <div className="text-muted-foreground p-5 text-xs">
-            We don&apos;t keep backups of deleted workspaces. Export anything you need first.
+            We don&apos;t keep backups of deleted workspaces. Export anything
+            you need first.
           </div>
         </div>
       </section>
@@ -603,8 +652,8 @@ function DangerSection({
           <DialogHeader>
             <DialogTitle>Delete &ldquo;{workspaceName}&rdquo;?</DialogTitle>
             <DialogDescription>
-              This will permanently delete the workspace and all its contents. Type the
-              workspace name to confirm.
+              This will permanently delete the workspace and all its contents.
+              Type the workspace name to confirm.
             </DialogDescription>
           </DialogHeader>
           <Input
@@ -614,7 +663,11 @@ function DangerSection({
             disabled={deleting}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={deleting}>
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={deleting}
+            >
               Cancel
             </Button>
             <Button

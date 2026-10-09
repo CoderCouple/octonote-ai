@@ -7,6 +7,7 @@ import { CreateButton, ResourceList } from "@/features/library";
 import { can, PublishedViaBadge, ShareDialog, type AccessRole } from "@/features/sharing";
 import { updateNotebookClientApi } from "../api/notebooks-client-api";
 import type { NotebookContents } from "../types";
+import { previewFromMarkdown } from "@/lib/text-preview";
 
 export function NotebookView({
   contents,
@@ -41,7 +42,7 @@ export function NotebookView({
         kind: "page" as const,
         id: n.id,
         title: n.title,
-        subtitle: n.contentMd.trim().slice(0, 140) || "Empty note",
+        subtitle: previewFromMarkdown(n.contentMd, n.title) || "Empty note",
         notebookId: n.notebookId,
         updatedAt: n.updatedAt,
       })),

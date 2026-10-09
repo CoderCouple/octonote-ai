@@ -8,3 +8,4 @@ export * from "./canvases";
 export * from "./sharing";
 export * from "./audit";
 export * from "./preferences";
+export * from "./analytics";

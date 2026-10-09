@@ -54,7 +54,11 @@ export function MoveToNotebookDialog({
 
   const options = [
     { id: null, name: "No notebook", icon: Inbox },
-    ...(notebooks.data ?? []).map((n) => ({ id: n.id, name: n.name, icon: BookOpen })),
+    ...(notebooks.data ?? []).map((n) => ({
+      id: n.id,
+      name: n.name,
+      icon: BookOpen,
+    })),
   ];
 
   return (
@@ -63,7 +67,9 @@ export function MoveToNotebookDialog({
         <DialogHeader>
           <DialogTitle>Move to notebook</DialogTitle>
           <DialogDescription>
-            Anyone the notebook is shared with gets the same access to this item, and if the notebook is published, this item becomes public too.
+            Anyone the notebook is shared with gets the same access to this
+            item, and if the notebook is published, this item becomes public
+            too.
           </DialogDescription>
         </DialogHeader>
         <ul className="flex max-h-72 flex-col gap-1 overflow-auto">
@@ -88,7 +94,10 @@ export function MoveToNotebookDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={confirm} disabled={busy || target === currentNotebookId}>
+          <Button
+            onClick={confirm}
+            disabled={busy || target === currentNotebookId}
+          >
             Move
           </Button>
         </DialogFooter>

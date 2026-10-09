@@ -6,8 +6,17 @@ import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
 import { SaveIndicator, type SaveState } from "@/components/save-indicator";
 import { Toggle } from "@/components/ui/toggle";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { can, PublishedViaBadge, ShareDialog, type AccessRole } from "@/features/sharing";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  can,
+  PublishedViaBadge,
+  ShareDialog,
+  type AccessRole,
+} from "@/features/sharing";
 import { updateNoteClientApi } from "../api/notes-client-api";
 import { TypographyPicker } from "../typography/typography-picker";
 import { useNoteTypography } from "../typography/use-note-typography";
@@ -23,7 +32,12 @@ interface NotesPaneProps {
   leading?: React.ReactNode;
 }
 
-export function NotesPane({ note, myRole, showShare = true, leading }: NotesPaneProps) {
+export function NotesPane({
+  note,
+  myRole,
+  showShare = true,
+  leading,
+}: NotesPaneProps) {
   const editable = can.edit(myRole);
   const [raw, setRaw] = useState(false);
   const [title, setTitle] = useState(note.title);
@@ -46,12 +60,20 @@ export function NotesPane({ note, myRole, showShare = true, leading }: NotesPane
       <header className="bg-card flex h-11 shrink-0 items-center gap-2 border-b px-2">
         {leading}
         {editable ? (
-          <EditableTitle value={title} onSave={rename} placeholder="Untitled note" />
+          <EditableTitle
+            value={title}
+            onSave={rename}
+            placeholder="Untitled note"
+          />
         ) : (
-          <span className="truncate px-1 text-sm font-medium">{title || "Untitled note"}</span>
+          <span className="truncate px-1 text-sm font-medium">
+            {title || "Untitled note"}
+          </span>
         )}
         {editable ? null : (
-          <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]">View only</span>
+          <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]">
+            View only
+          </span>
         )}
         <div className="ml-auto flex items-center gap-1">
           <SaveIndicator state={saveState} />
@@ -66,10 +88,16 @@ export function NotesPane({ note, myRole, showShare = true, leading }: NotesPane
                 aria-label={raw ? "Show editor" : "Show markdown"}
                 className="size-8 p-0"
               >
-                {raw ? <FileText className="size-3.5" /> : <Code2 className="size-3.5" />}
+                {raw ? (
+                  <FileText className="size-3.5" />
+                ) : (
+                  <Code2 className="size-3.5" />
+                )}
               </Toggle>
             </TooltipTrigger>
-            <TooltipContent>{raw ? "Back to the editor" : "View as markdown"}</TooltipContent>
+            <TooltipContent>
+              {raw ? "Back to the editor" : "View as markdown"}
+            </TooltipContent>
           </Tooltip>
           {showShare ? (
             <ShareDialog
@@ -84,9 +112,13 @@ export function NotesPane({ note, myRole, showShare = true, leading }: NotesPane
           ) : null}
         </div>
       </header>
-      <div className="reader-typography flex-1 overflow-auto" style={typographyStyle}>
+      {/* Full-width scroll area; the reading column is centred inside it (see globals.css). */}
+      <div
+        className="reader-typography flex-1 overflow-auto"
+        style={{ ...typographyStyle, maxWidth: "none" }}
+      >
         {raw ? null : (
-          <div className="mx-auto max-w-[42rem] px-6 pt-8 pb-2 md:px-10">
+          <div className="mx-auto max-w-[var(--reader-content-width)] px-[54px] pt-10 pb-2">
             <h1
               className="text-foreground text-3xl font-bold leading-tight tracking-tight md:text-4xl"
               style={{ fontFamily: "var(--font-reader-family)" }}

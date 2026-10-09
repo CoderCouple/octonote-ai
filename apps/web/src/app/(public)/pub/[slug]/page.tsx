@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function PublishedRootPage({ params }: Params) {
   const { slug } = await params;
-  const view = await fetchPublishedRoot(slug);
+  const view = await fetchPublishedRoot(slug, { countView: true });
   if (!view) notFound();
   return <PublicPage view={view} />;
 }

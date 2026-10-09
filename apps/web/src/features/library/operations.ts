@@ -2,12 +2,20 @@
  * Create / move / delete across the four resource kinds, so list views and
  * menus don't switch on kind themselves.
  */
-import { createCanvasClientApi, deleteCanvasClientApi, moveCanvasClientApi } from "@/features/canvas";
+import {
+  createCanvasClientApi,
+  deleteCanvasClientApi,
+  moveCanvasClientApi,
+} from "@/features/canvas";
 import {
   createNotebookClientApi,
   deleteNotebookClientApi,
 } from "@/features/notebooks/api/notebooks-client-api";
-import { createNoteClientApi, deleteNoteClientApi, moveNoteClientApi } from "@/features/notes";
+import {
+  createNoteClientApi,
+  deleteNoteClientApi,
+  moveNoteClientApi,
+} from "@/features/notes";
 import {
   archiveProjectClientApi,
   createProjectClientApi,
@@ -24,25 +32,39 @@ export async function createResource(
   const placement = notebookId ? { notebookId } : {};
   switch (kind) {
     case "page": {
-      const n = await createNoteClientApi(workspaceId, { title: "Untitled", ...placement });
+      const n = await createNoteClientApi(workspaceId, {
+        title: "Untitled",
+        ...placement,
+      });
       return RESOURCE_PATH.page(n.id);
     }
     case "canvas": {
-      const c = await createCanvasClientApi(workspaceId, { title: "Untitled canvas", ...placement });
+      const c = await createCanvasClientApi(workspaceId, {
+        title: "Untitled canvas",
+        ...placement,
+      });
       return RESOURCE_PATH.canvas(c.id);
     }
     case "project": {
-      const p = await createProjectClientApi(workspaceId, { name: "Untitled project", ...placement });
+      const p = await createProjectClientApi(workspaceId, {
+        name: "Untitled project",
+        ...placement,
+      });
       return RESOURCE_PATH.project(p.id);
     }
     case "notebook": {
-      const nb = await createNotebookClientApi(workspaceId, { name: "Untitled notebook" });
+      const nb = await createNotebookClientApi(workspaceId, {
+        name: "Untitled notebook",
+      });
       return RESOURCE_PATH.notebook(nb.id);
     }
   }
 }
 
-export async function deleteResource(kind: ResourceKind, id: string): Promise<void> {
+export async function deleteResource(
+  kind: ResourceKind,
+  id: string,
+): Promise<void> {
   switch (kind) {
     case "page":
       await deleteNoteClientApi(id);

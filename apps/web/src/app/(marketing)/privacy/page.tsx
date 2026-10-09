@@ -8,7 +8,7 @@ export const metadata = {
 
 // Draft for private beta — have a lawyer review before public launch.
 // TODO(legal): name the legal entity that operates the Service and add the
-// governing jurisdiction once decided; revisit when AI agents or analytics ship.
+// governing jurisdiction once decided; revisit when AI agents ship.
 
 const link = "text-foreground underline-offset-4 hover:underline";
 
@@ -30,7 +30,10 @@ export default function PrivacyPage() {
           <li>
             We don&apos;t sell your data, show ads or use advertising trackers.
           </li>
-          <li>We don&apos;t use analytics tools.</li>
+          <li>
+            We don&apos;t use third-party analytics tools. We only count
+            anonymous views of published pages.
+          </li>
           <li>
             Your notes and canvases are private unless you share or publish
             them.
@@ -76,6 +79,20 @@ export default function PrivacyPage() {
           standard server logs, such as IP address, browser or device type, the
           pages and endpoints requested, and times and errors, for security and
           debugging.
+        </p>
+        <p>
+          <strong>Views of published pages.</strong> When someone opens a page
+          you&apos;ve published, we add one to an hourly view count for that
+          page, which you and your editors can see, and we count unique visitors
+          per day. To tell visitors apart without cookies we combine a secret
+          value that changes every day with the page and either the
+          visitor&apos;s account (if they&apos;re signed in) or their IP address
+          and browser type, and keep only a one-way hash of that, for that day
+          only. The daily secret and all hashes are deleted when the day ends,
+          so they can&apos;t be traced back to a person or linked across days.
+          We never store the IP address or browser type, we skip known bots and
+          link previews, and visits by a page&apos;s own owners and editors
+          aren&apos;t counted.
         </p>
       </LegalSection>
 
@@ -166,7 +183,8 @@ export default function PrivacyPage() {
           as theme. The mobile apps store your sign-in session in your
           device&apos;s secure storage and remember on your device whether
           you&apos;ve seen the introduction. We don&apos;t use advertising or
-          analytics cookies.
+          analytics cookies; published-page view counts work without any
+          cookies.
         </p>
       </LegalSection>
 
