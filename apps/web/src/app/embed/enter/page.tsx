@@ -8,7 +8,7 @@
  * from history, and replace ourselves with the target route.
  */
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { safeNext } from "@/lib/safe-next";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
@@ -16,15 +16,31 @@ function EmbedEnter() {
   const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  // Run the handoff once. Stripping the fragment changes the URL, which can
+  // re-run this effect — the second run then found no tokens and flashed
+  // "Missing session" while the first was still signing in.
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     const target = safeNext(params.get("to")) ?? "/workspace";
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const access_token = hash.get("at");
     const refresh_token = hash.get("rt");
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    window.history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
     if (!access_token || !refresh_token) {
-      setError("Missing session.");
+      // No tokens (e.g. the page re-mounted after the fragment was stripped):
+      // if the handoff already signed us in, carry on to the target.
+      void createSupabaseBrowserClient()
+        .auth.getSession()
+        .then(({ data }) =>
+          data.session ? router.replace(target) : setError("Missing session."),
+        );
       return;
     }
     void createSupabaseBrowserClient()

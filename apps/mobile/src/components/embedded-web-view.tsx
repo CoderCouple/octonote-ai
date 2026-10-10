@@ -67,7 +67,18 @@ export function EmbeddedWebView({ path }: { path: string }) {
           void Linking.openURL(req.url).catch(() => undefined);
           return false;
         }}
-        onLoadEnd={() => setLoading(false)}
+        // Keep the spinner over the brief /embed/enter handoff page and drop it
+        // once the editor route is showing. The handoff moves on with a
+        // client-side navigation (no new page load), so watch the URL too —
+        // and never leave the spinner up for more than a few seconds.
+        onNavigationStateChange={(nav) => {
+          if (!nav.loading && !nav.url.includes("/embed/enter"))
+            setLoading(false);
+        }}
+        onLoadEnd={(e) => {
+          if (!e.nativeEvent.url.includes("/embed/enter")) setLoading(false);
+          else setTimeout(() => setLoading(false), 4000);
+        }}
         onError={(e) =>
           setError(e.nativeEvent.description || "Failed to load.")
         }

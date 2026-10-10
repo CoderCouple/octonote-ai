@@ -196,7 +196,8 @@ export function TableOfContentsRail({
       aria-label="Table of contents"
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
-      className="absolute top-1/2 right-3 z-20 -translate-y-1/2"
+      // Centred on the viewport, not the area under the 44px top bar (hence -22px).
+      className="absolute top-[calc(50%-22px)] right-3 z-20 -translate-y-1/2"
     >
       {/*
        * Two states share the same anchor position:

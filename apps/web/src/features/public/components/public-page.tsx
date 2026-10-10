@@ -137,7 +137,7 @@ function PublishedNote({ note, slug, back }: { note: PublicNote; slug: string; b
         <NotesReadOnly initialContent={note.document} slug={slug} />
       </article>
       {sections.length > 1 ? (
-        <div className="fixed top-1/3 right-6 hidden xl:block">
+        <div className="fixed top-1/2 right-6 hidden -translate-y-1/2 xl:block">
           <RightTocRail sections={sections} />
         </div>
       ) : null}
