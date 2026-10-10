@@ -1,5 +1,6 @@
 "use client";
 
+import { en } from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/core/fonts/inter.css";
@@ -15,17 +16,39 @@ export interface NotesReadOnlyImplProps {
   slug: string;
 }
 
-export function NotesReadOnlyImpl({ initialContent, slug }: NotesReadOnlyImplProps) {
+/** Readers never see editor hints like "Heading" or "Type '/' for commands" on empty blocks. */
+const readerDictionary = {
+  ...en,
+  placeholders: Object.fromEntries(
+    Object.keys(en.placeholders).map((k) => [k, undefined]),
+  ),
+};
+
+export function NotesReadOnlyImpl({
+  initialContent,
+  slug,
+}: NotesReadOnlyImplProps) {
   const blocks =
-    initialContent && typeof initialContent === "object" && Array.isArray((initialContent as { blocks?: unknown }).blocks)
+    initialContent &&
+    typeof initialContent === "object" &&
+    Array.isArray((initialContent as { blocks?: unknown }).blocks)
       ? ((initialContent as { blocks: unknown[] }).blocks as never)
       : undefined;
-  const editor = useCreateBlockNote({ schema: octoBlockNoteSchema, initialContent: blocks });
+  const editor = useCreateBlockNote({
+    schema: octoBlockNoteSchema,
+    initialContent: blocks,
+    dictionary: readerDictionary,
+  });
   const resolver = useMemo(() => publicCanvasResolver(slug), [slug]);
 
   return (
     <CanvasReferenceContext.Provider value={resolver}>
-      <BlockNoteView editor={editor} editable={false} slashMenu={false} sideMenu={false} />
+      <BlockNoteView
+        editor={editor}
+        editable={false}
+        slashMenu={false}
+        sideMenu={false}
+      />
     </CanvasReferenceContext.Provider>
   );
 }

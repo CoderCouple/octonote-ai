@@ -158,6 +158,10 @@ body {
 /* Centre the editor in the reading column (its 54px side padding holds the drag
  * handles; the title above uses the same padding so they line up), and let it
  * sit on whatever surface it's placed on. */
+/* Published pages: the body lines up with the title (no drag-handle gutter). */
+.published-note .bn-editor {
+  padding-inline: 0;
+}
 .reader-typography .bn-editor {
   max-width: var(--reader-content-width);
   margin-inline: auto;
