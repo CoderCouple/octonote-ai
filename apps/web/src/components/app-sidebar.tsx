@@ -1,6 +1,13 @@
 "use client";
 
-import { BookOpen, FileText, FolderKanban, LayoutGrid, Settings, Users } from "lucide-react";
+import {
+  BookOpen,
+  FileText,
+  FolderKanban,
+  LayoutGrid,
+  Settings,
+  Users,
+} from "lucide-react";
 import * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
@@ -20,27 +27,41 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: { name: string; email: string; avatarUrl: string | null };
 }
 
-export function AppSidebar({ workspace, memberships, user, ...props }: AppSidebarProps) {
+export function AppSidebar({
+  workspace,
+  memberships,
+  user,
+  ...props
+}: AppSidebarProps) {
   const navMain = [
     { title: "Notes", url: "/workspace/notes", icon: FileText },
     { title: "Canvases", url: "/workspace/canvases", icon: LayoutGrid },
     { title: "Projects", url: "/workspace/projects", icon: FolderKanban },
     { title: "Notebooks", url: "/workspace/notebooks", icon: BookOpen },
     { title: "Shared", url: "/workspace/shared", icon: Users },
-    { title: "Settings", url: "/workspace/settings", icon: Settings },
   ];
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="border-sidebar-border border-b px-3 py-3">
         <TeamSwitcher activeWorkspaceId={workspace.id} teams={memberships} />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="pt-2">
         <NavMain items={navMain} />
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="gap-1 pb-3">
+        <NavMain
+          items={[
+            { title: "Settings", url: "/workspace/settings", icon: Settings },
+          ]}
+          className="p-0 px-1"
+        />
         <NavUser
-          user={{ name: user.name, email: user.email, avatar: user.avatarUrl ?? "" }}
+          user={{
+            name: user.name,
+            email: user.email,
+            avatar: user.avatarUrl ?? "",
+          }}
         />
       </SidebarFooter>
       <SidebarRail />

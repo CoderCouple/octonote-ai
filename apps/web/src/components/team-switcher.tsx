@@ -81,7 +81,7 @@ export function TeamSwitcher({ activeWorkspaceId, teams }: TeamSwitcherProps) {
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{active.name}</span>
                 <span className="text-muted-foreground truncate text-xs">
-                  {active.role.toLowerCase()}
+                  {active.role.charAt(0) + active.role.slice(1).toLowerCase()}
                 </span>
               </div>
               <ChevronsUpDown className="ml-auto" />

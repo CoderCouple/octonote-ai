@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { WorkspaceBreadcrumbs } from "@/components/workspace-breadcrumbs";
 import { Separator } from "@/components/ui/separator";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import {
   getActiveWorkspaceIdCookie,
   resolveActiveMembership,
@@ -11,7 +14,11 @@ import {
 import { getMeApi } from "@/features/workspaces/api/workspaces-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
+export default async function WorkspaceLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -43,13 +50,11 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
         user={me.user}
       />
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
+        {/* Slim top bar: sidebar toggle + where you are. Theme lives in the profile menu. */}
+        <header className="bg-background flex h-12 shrink-0 items-center gap-2 border-b px-3 md:px-4">
+          <SidebarTrigger className="text-muted-foreground hover:text-foreground-strong size-8" />
+          <Separator orientation="vertical" className="mr-1 !h-4" />
           <WorkspaceBreadcrumbs workspaceName={active.workspace.name} />
-          <div className="ml-auto">
-            <ThemeToggle />
-          </div>
         </header>
         <div className="flex-1 overflow-auto">{children}</div>
       </SidebarInset>
