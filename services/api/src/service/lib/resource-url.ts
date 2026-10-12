@@ -7,7 +7,7 @@ const PATH_PREFIX: Record<ResourceKind, string> = {
   notebook: "nb",
 };
 
-function appUrl(): string {
+export function appUrl(): string {
   return (process.env.PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 

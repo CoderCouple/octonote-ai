@@ -9,6 +9,8 @@ import {
   setActiveWorkspaceAction,
 } from "@/features/workspaces";
 import { Button } from "@/components/ui/button";
+import { useUpgrade } from "@/features/billing";
+import { PLAN_LIMIT_CODE } from "@octonote/shared";
 import {
   Dialog,
   DialogContent,
@@ -126,7 +128,9 @@ export function TeamSwitcher({ activeWorkspaceId, teams }: TeamSwitcherProps) {
               <div className="bg-background flex size-6 items-center justify-center rounded-md border">
                 <Plus className="size-4" />
               </div>
-              <div className="text-muted-foreground font-medium">Create workspace</div>
+              <div className="text-muted-foreground font-medium">
+                Create workspace
+              </div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -161,6 +165,12 @@ function CreateWorkspaceDialog({
     const r = await createWorkspaceAction({ name: name.trim() });
     setBusy(false);
     if (!r.success) {
+      if (r.errorCode === PLAN_LIMIT_CODE) {
+        // Free plan: one workspace. Show the upgrade dialog instead.
+        onOpenChange(false);
+        useUpgrade.getState().show("workspace");
+        return;
+      }
       setError(r.message);
       return;
     }
@@ -181,7 +191,8 @@ function CreateWorkspaceDialog({
         <DialogHeader>
           <DialogTitle>New workspace</DialogTitle>
           <DialogDescription>
-            Workspaces group your projects, members, and AI agents. You become the owner.
+            Workspaces group your notes, canvases, projects and notebooks. You
+            become the owner.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleCreate} className="grid gap-3">

@@ -12,6 +12,7 @@ import { PagesRepository, type PageSummaryRow } from "../db/repository/pages.rep
 import { toPage, type Page } from "../model/page.model";
 import { NotebookPlacement } from "./lib/notebook-placement";
 import { WorkspacesService } from "./workspaces.service";
+import { PlanLimitsService } from "../common/plan-limits.service";
 
 const MEMBER_ROLES = ["OWNER", "ADMIN", "MEMBER"] as const;
 
@@ -23,6 +24,7 @@ export class PagesService {
     private readonly placement: NotebookPlacement,
     private readonly workspacesService: WorkspacesService,
     private readonly changeEvents: ChangeEventsService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   async listStandalone(workspaceId: string, actorUserId: string): Promise<PageSummaryRow[]> {
@@ -42,6 +44,7 @@ export class PagesService {
 
   async create(workspaceId: string, input: PageCreate, actorUserId: string): Promise<Page> {
     await this.workspacesService.requireRole(actorUserId, workspaceId, [...MEMBER_ROLES]);
+    await this.planLimits.assertCanCreate(workspaceId, "page");
     if (input.notebookId) {
       await this.placement.assertCanPlaceIn(input.notebookId, workspaceId, actorUserId);
     }

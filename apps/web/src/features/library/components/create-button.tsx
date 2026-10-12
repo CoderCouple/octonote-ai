@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ResourceKind } from "@/features/sharing";
+import { handlePlanLimit } from "@/features/billing";
 import { createResource } from "../operations";
 
 const LABEL: Record<ResourceKind, string> = {
@@ -63,7 +64,10 @@ export function CreateButton({
     try {
       router.push(await createResource(kind, workspaceId, notebookId));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't create.");
+      // Free limit reached → the upgrade dialog instead of an error.
+      if (!handlePlanLimit(err)) {
+        toast.error(err instanceof Error ? err.message : "Couldn't create.");
+      }
       setPending(false);
     }
   }
@@ -103,7 +107,10 @@ export function CreateMenu({
     try {
       router.push(await createResource(kind, workspaceId, notebookId));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't create.");
+      // Free limit reached → the upgrade dialog instead of an error.
+      if (!handlePlanLimit(err)) {
+        toast.error(err instanceof Error ? err.message : "Couldn't create.");
+      }
       setPending(false);
     }
   }

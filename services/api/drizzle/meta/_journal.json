@@ -36,6 +36,20 @@
       "when": 1791830398894,
       "tag": "0004_share_email_pref",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791832955893,
+      "tag": "0005_workspace_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791833809309,
+      "tag": "0006_student_pro",
+      "breakpoints": true
     }
   ]
 }

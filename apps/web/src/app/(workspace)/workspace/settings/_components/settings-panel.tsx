@@ -63,7 +63,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { SUPPORT_EMAIL, supportMailto } from "@octonote/shared";
+import {
+  FREE_LIMIT,
+  PRO_PRICE,
+  SUPPORT_EMAIL,
+  supportMailto,
+  type BillingSummary,
+} from "@octonote/shared";
+import {
+  getBillingClientApi,
+  openBillingPortalClientApi,
+  useUpgrade,
+} from "@/features/billing";
 
 type Role = "OWNER" | "ADMIN" | "MEMBER";
 
@@ -176,7 +187,7 @@ export function SettingsPanel({
           memberships={memberships}
           activeWorkspaceId={activeWorkspaceId}
         />
-        <BillingSection />
+        <BillingSection workspaceId={workspace.id} />
         <AboutSection user={user} workspace={workspace} />
         {isOwner ? (
           <DangerSection
@@ -472,22 +483,161 @@ function NotificationsSection() {
   );
 }
 
-function BillingSection() {
+function BillingSection({ workspaceId }: { workspaceId: string }) {
+  const [summary, setSummary] = useState<BillingSummary | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getBillingClientApi(workspaceId)
+      .then(setSummary)
+      .catch(() => setSummary(null));
+    // Back from Stripe Checkout.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("billing") === "success") {
+      toast.success("Welcome to Pro — every limit is gone.");
+      params.delete("billing");
+      const query = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+      );
+    }
+  }, [workspaceId]);
+
+  async function manage() {
+    setBusy(true);
+    try {
+      window.location.href = (
+        await openBillingPortalClientApi(workspaceId)
+      ).url;
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't open billing.",
+      );
+      setBusy(false);
+    }
+  }
+
+  const pro = summary?.plan === "pro";
+  const student = summary?.source === "student";
+  const renews = summary?.currentPeriodEnd
+    ? new Date(summary.currentPeriodEnd).toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
   return (
     <SectionShell
       id="billing"
       icon={CreditCard}
       title="Plan & billing"
-      description="Plans, invoices and payment methods will live here."
+      description="Plans belong to the workspace. Pro removes every limit."
     >
-      <Row label="Current plan" description="Every feature is included.">
+      <Row
+        label="Current plan"
+        description={
+          student
+            ? `Free for students until ${renews}. After that, Pro is $${PRO_PRICE.month}/month.`
+            : pro
+              ? renews
+                ? summary?.cancelAtPeriodEnd
+                  ? `Ends on ${renews}.`
+                  : `Renews on ${renews} (${summary?.interval === "year" ? "yearly" : "monthly"}).`
+                : undefined
+              : `Free includes ${FREE_LIMIT} of each and one workspace.`
+        }
+      >
         <div className="flex flex-wrap items-center gap-3">
-          <Badge className="font-medium">Free during beta</Badge>
-          <span className="text-muted-foreground text-sm">
-            Paid plans arrive after the beta — you&apos;ll hear from us first.
-          </span>
+          <Badge className="font-medium">
+            {pro ? (student ? "Pro · Student" : "Pro") : "Free"}
+          </Badge>
+          {summary?.status === "past_due" ? (
+            <span className="text-destructive text-sm">
+              Your last payment failed — update your card.
+            </span>
+          ) : null}
         </div>
       </Row>
+      {summary?.limits ? (
+        <Row
+          label="Usage"
+          description="Per workspace. A project's own note and canvas don't count."
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(
+              [
+                ["page", "Notes"],
+                ["canvas", "Canvases"],
+                ["project", "Projects"],
+                ["notebook", "Notebooks"],
+              ] as const
+            ).map(([k, label]) => {
+              const used = summary.usage[k];
+              const limit = summary.limits![k];
+              return (
+                <div key={k}>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        used >= limit && "font-semibold",
+                      )}
+                    >
+                      {used} / {limit}
+                    </span>
+                  </div>
+                  <div className="bg-muted mt-1.5 h-1.5 overflow-hidden rounded-full">
+                    <div
+                      className="bg-foreground-strong h-full rounded-full"
+                      style={{
+                        width: `${Math.min(100, (used / limit) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Row>
+      ) : null}
+      {student ? null : (
+        <Row
+          label={pro ? "Manage billing" : "Upgrade"}
+          description={
+            !summary
+              ? undefined
+              : !summary.billingEnabled
+                ? "Payments aren't set up yet — everything is free for now."
+                : !summary.canManage
+                  ? "Only the workspace owner or an admin can change the plan."
+                  : pro
+                    ? "Invoices, payment method, switch monthly/yearly or cancel — on Stripe."
+                    : `Pro is $${PRO_PRICE.month}/month or $${PRO_PRICE.year}/year per workspace.`
+          }
+        >
+          {summary?.billingEnabled && summary.canManage && !student ? (
+            pro ? (
+              <Button variant="outline" onClick={manage} disabled={busy}>
+                {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                Manage billing
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  useUpgrade.getState().setWorkspace(workspaceId);
+                  useUpgrade.getState().show();
+                }}
+              >
+                Upgrade to Pro
+              </Button>
+            )
+          ) : null}
+        </Row>
+      )}
     </SectionShell>
   );
 }

@@ -20,14 +20,22 @@ import { useRefreshOnFocus } from "@/lib/use-refresh-on-focus";
 import { ResourceList } from "./resource-list";
 import { StatGrid } from "./stat-grid";
 import { ActionSheet } from "./action-sheet";
-import { FilterBar, matchesFilter, type Filter } from "./filter-bar";
+import {
+  accessTabs,
+  FilterBar,
+  matchesFilter,
+  type Filter,
+} from "./filter-bar";
+import { handlePlanLimit } from "@/lib/upgrade";
 
+// Same wording as the web app's empty tables.
 const EMPTY: Record<ResourceKind, string> = {
-  page: "No notes yet.\nTap + to start writing.",
-  canvas: "No canvases yet.\nTap + to start drawing.",
-  project: "No projects yet.\nA project pairs one note with one canvas.",
+  page: "No notes yet. Create one to start writing.",
+  canvas: "No canvases yet. Create one to start drawing.",
+  project:
+    "No projects yet. A project pairs one note with one canvas, side by side.",
   notebook:
-    "No notebooks yet.\nGroup notes, canvases and projects — then share or publish them together.",
+    "No notebooks yet. Use them to group notes, canvases and projects — and share or publish them together.",
 };
 
 type SortKey = "updated-desc" | "updated-asc" | "name-asc" | "name-desc";
@@ -78,6 +86,8 @@ export function KindTabScreen({ kind }: { kind: ResourceKind }) {
       void qc.invalidateQueries({ queryKey: ["list", kind] });
       router.push(ROUTE[kind](id));
     } catch (e) {
+      // Free limit reached → upgrade prompt instead of an error.
+      if (handlePlanLimit(e)) return;
       Alert.alert(
         "Couldn't create",
         e instanceof Error ? e.message : String(e),
@@ -121,6 +131,8 @@ export function KindTabScreen({ kind }: { kind: ResourceKind }) {
             : EMPTY[kind]
         }
         error={list.error}
+        emptyKind={list.data?.length ? undefined : kind}
+        emptyAction={{ label: `New ${LABEL[kind].one}`, onPress: create }}
         header={
           list.data?.length ? (
             <>
@@ -129,9 +141,9 @@ export function KindTabScreen({ kind }: { kind: ResourceKind }) {
                 noun={LABEL[kind].many.toLowerCase()}
               />
               <FilterBar
-                items={list.data}
-                filter={filter}
-                onFilter={setFilter}
+                tabs={accessTabs(list.data)}
+                active={filter}
+                onSelect={setFilter}
                 sortLabel={SORTS.find((s) => s.key === sortKey)!.short}
                 onSort={() => setSortOpen(true)}
               />

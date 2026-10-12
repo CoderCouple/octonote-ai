@@ -26,7 +26,7 @@ const FAQS = [
   },
   {
     q: "What's the pricing?",
-    a: "Free during private beta. When we open up general availability we'll publish a simple plan with a generous free tier. Beta users get grandfathered pricing.",
+    a: "Free gives you 10 notes, 10 canvases, 10 projects and 10 notebooks in one workspace — with every feature. Pro is $10 a month or $100 a year per workspace and removes all limits. Students with a school email (like .edu) get Pro free for a year.",
   },
   {
     q: "Do you store my notes as Markdown?",

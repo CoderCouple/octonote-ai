@@ -15,6 +15,7 @@ import { toProject, type Project } from "../model/project.model";
 import { NotebookPlacement } from "./lib/notebook-placement";
 import { expectedChildTitle, isAutoTitle } from "./lib/project-child-naming";
 import { WorkspacesService } from "./workspaces.service";
+import { PlanLimitsService } from "../common/plan-limits.service";
 
 const MEMBER_ROLES = ["OWNER", "ADMIN", "MEMBER"] as const;
 
@@ -35,6 +36,7 @@ export class ProjectsService {
     private readonly placement: NotebookPlacement,
     private readonly workspacesService: WorkspacesService,
     private readonly changeEvents: ChangeEventsService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   async listForWorkspace(workspaceId: string, actorUserId: string): Promise<Project[]> {
@@ -69,6 +71,7 @@ export class ProjectsService {
     actorUserId: string,
   ): Promise<{ project: Project; noteId: string; canvasId: string }> {
     await this.workspacesService.requireRole(actorUserId, workspaceId, [...MEMBER_ROLES]);
+    await this.planLimits.assertCanCreate(workspaceId, "project");
     if (input.notebookId) {
       await this.placement.assertCanPlaceIn(input.notebookId, workspaceId, actorUserId);
     }

@@ -15,6 +15,7 @@ export const ID_PREFIXES = {
   resourceShare: "shr",
   changeEvent: "evt",
   userPreference: "prf",
+  studentEmailSuffix: "sfx",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

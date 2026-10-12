@@ -13,9 +13,11 @@
  */
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+import { emailDomainSuffixes, STUDENT_PRO_MONTHS } from "@octonote/shared";
 import { BadRequest } from "../common/error/error-factory";
 import { Database, DRIZZLE } from "../db/database.module";
+import { studentEmailSuffixes } from "../db/schemas/billing";
 import { users } from "../db/schemas/users";
 import { resourceShares } from "../db/schemas/sharing";
 import { workspaceMembers, workspaces } from "../db/schemas/workspaces";
@@ -35,6 +37,23 @@ function slugify(input: string): string {
 interface MeResult {
   user: User;
   memberships: Array<{ membership: WorkspaceMember; workspace: Workspace }>;
+}
+
+/** Whether the email's domain ends with a whitelisted suffix (student_email_suffixes). */
+async function isStudentEmail(db: Pick<Database, "select">, email: string): Promise<boolean> {
+  const candidates = emailDomainSuffixes(email);
+  if (candidates.length === 0) return false;
+  const hit = await db
+    .select({ suffix: studentEmailSuffixes.suffix })
+    .from(studentEmailSuffixes)
+    .where(
+      and(
+        inArray(studentEmailSuffixes.suffix, candidates),
+        eq(studentEmailSuffixes.enabled, true),
+      ),
+    )
+    .limit(1);
+  return hit.length > 0;
 }
 
 @Injectable()
@@ -62,6 +81,15 @@ export class MeService {
         })
         .returning();
       if (!userRow) throw BadRequest("Failed to upsert user.");
+
+      // Students (.edu and friends) get Pro free for a year from their first
+      // sign-in with that email. Set once; never extended.
+      if (!userRow.studentProUntil && (await isStudentEmail(tx, email))) {
+        const until = new Date();
+        until.setMonth(until.getMonth() + STUDENT_PRO_MONTHS);
+        await tx.update(users).set({ studentProUntil: until }).where(eq(users.id, userRow.id));
+        userRow.studentProUntil = until;
+      }
 
       // Pending share invites sent to this email become active grants.
       // Supabase verifies email ownership before issuing a session, so the

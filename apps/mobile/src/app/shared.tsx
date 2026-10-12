@@ -20,9 +20,10 @@ export default function SharedScreen() {
         refreshing={shared.isRefetching}
         onRefresh={() => void shared.refetch()}
         emptyText={
-          "Nothing shared with you yet.\nWhen someone shares something with your email, it shows up here."
+          "Nothing has been shared with you yet. When someone shares a note, canvas, project or notebook with your email, it shows up here."
         }
         error={shared.error}
+        emptyKind="shared"
       />
     </>
   );

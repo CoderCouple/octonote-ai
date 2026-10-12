@@ -11,7 +11,7 @@ import {
   FileText,
   FolderKanban,
   House,
-  PenTool,
+  LayoutGrid,
   type LucideIcon,
 } from "lucide-react-native";
 import type { ComponentProps } from "react";
@@ -26,7 +26,7 @@ type TabBarProps = Parameters<
 const TABS: Record<string, { label: string; icon: LucideIcon }> = {
   home: { label: "Home", icon: House },
   notes: { label: "Notes", icon: FileText },
-  canvases: { label: "Canvases", icon: PenTool },
+  canvases: { label: "Canvases", icon: LayoutGrid },
   projects: { label: "Projects", icon: FolderKanban },
   notebooks: { label: "Notebooks", icon: BookOpen },
 };

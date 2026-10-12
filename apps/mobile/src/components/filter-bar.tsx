@@ -1,4 +1,7 @@
-/** All / Private / Shared / Published with counts, plus the sort button — mirrors the web tabs. */
+/**
+ * Tab chips with counts plus the sort button — mirrors the web tabs. Lists use
+ * access tabs (All / Private / Shared / Published); a notebook uses type tabs.
+ */
 import type { Access } from "@octonote/shared";
 import { ArrowUpDown } from "lucide-react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -20,16 +23,30 @@ export function matchesFilter(access: Access | undefined, filter: Filter) {
   return (access ?? "private") === filter;
 }
 
-export function FilterBar({
-  items,
-  filter,
-  onFilter,
+/** The access tabs for a list, with counts. */
+export function accessTabs(items: ListItem[]): Tab<Filter>[] {
+  return FILTERS.map((f) => ({
+    ...f,
+    count: items.filter((i) => matchesFilter(i.access, f.key)).length,
+  }));
+}
+
+export interface Tab<K extends string> {
+  key: K;
+  label: string;
+  count: number;
+}
+
+export function FilterBar<K extends string>({
+  tabs,
+  active: activeKey,
+  onSelect,
   sortLabel,
   onSort,
 }: {
-  items: ListItem[];
-  filter: Filter;
-  onFilter: (f: Filter) => void;
+  tabs: Tab<K>[];
+  active: K;
+  onSelect: (key: K) => void;
   sortLabel: string;
   onSort: () => void;
 }) {
@@ -41,15 +58,13 @@ export function FilterBar({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.chips}
       >
-        {FILTERS.map((f) => {
-          const active = f.key === filter;
-          const count = items.filter((i) =>
-            matchesFilter(i.access, f.key),
-          ).length;
+        {tabs.map((f) => {
+          const active = f.key === activeKey;
+          const count = f.count;
           return (
             <Pressable
               key={f.key}
-              onPress={() => onFilter(f.key)}
+              onPress={() => onSelect(f.key)}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               style={[

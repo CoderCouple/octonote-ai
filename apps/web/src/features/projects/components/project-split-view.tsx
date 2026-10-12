@@ -4,7 +4,13 @@
  * A project: its note and canvas side by side, or either one alone.
  * The chosen view persists as the project's `settings.defaultView`.
  */
-import { Columns2, FileText, LayoutGrid, FolderKanban } from "lucide-react";
+import {
+  Columns2,
+  FileText,
+  FolderKanban,
+  LayoutGrid,
+  Rows2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
@@ -95,8 +101,13 @@ export function ProjectSplitView({
             <ToggleGroupItem value="notes" aria-label="Note only">
               <FileText className="size-3.5" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="split" aria-label="Side by side">
-              <Columns2 className="size-3.5" />
+            <ToggleGroupItem
+              value="split"
+              aria-label="Note and canvas together"
+            >
+              {/* Phones held upright stack the panes, so the icon follows. */}
+              <Columns2 className="size-3.5 max-md:portrait:hidden" />
+              <Rows2 className="hidden size-3.5 max-md:portrait:block" />
             </ToggleGroupItem>
             <ToggleGroupItem value="canvas" aria-label="Canvas only">
               <LayoutGrid className="size-3.5" />
@@ -114,11 +125,17 @@ export function ProjectSplitView({
           initialLinkRole={project.linkRole}
         />
       </FocusHeader>
-      {/* Panes stay mounted across layout changes so tldraw/BlockNote don't reload. */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Panes stay mounted across layout changes so tldraw/BlockNote don't reload.
+          Split is side by side, except on a phone held upright (narrow + portrait),
+          where the panes stack: note on top, canvas below. */}
+      <div className="flex flex-1 overflow-hidden max-md:portrait:flex-col">
         <div
           className={
-            showNote ? (showCanvas ? "w-1/2 border-r" : "flex-1") : "hidden"
+            showNote
+              ? showCanvas
+                ? "w-1/2 border-r max-md:portrait:h-1/2 max-md:portrait:w-full max-md:portrait:border-r-0 max-md:portrait:border-b"
+                : "flex-1"
+              : "hidden"
           }
         >
           {note ? (
@@ -128,7 +145,13 @@ export function ProjectSplitView({
           )}
         </div>
         <div
-          className={showCanvas ? (showNote ? "w-1/2" : "flex-1") : "hidden"}
+          className={
+            showCanvas
+              ? showNote
+                ? "w-1/2 max-md:portrait:h-1/2 max-md:portrait:w-full"
+                : "flex-1"
+              : "hidden"
+          }
         >
           {canvas ? (
             <CanvasPane canvas={canvas} myRole={myRole} showShare={false} />

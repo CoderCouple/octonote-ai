@@ -10,6 +10,8 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   avatarUrl: text("avatar_url"),
+  /** Free Pro for students (.edu etc.): set on first sign-in, never extended. */
+  studentProUntil: timestamp("student_pro_until", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

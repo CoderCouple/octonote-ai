@@ -14,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ACCESS_LABEL } from "@octonote/shared";
 import { useState, type ReactElement } from "react";
 import { ActionSheet } from "./action-sheet";
+import { EmptyIllustration, type EmptyKind } from "./empty-illustration";
 import { TAB_BAR_SPACE } from "./floating-tab-bar";
 import {
   deleteResource,
@@ -21,6 +22,7 @@ import {
   ROUTE,
   type ListItem,
 } from "@/features/resources";
+import { KIND_ICON } from "@/lib/kind-icons";
 import { usePalette } from "@/lib/theme";
 
 interface ResourceListProps {
@@ -34,9 +36,11 @@ interface ResourceListProps {
   error?: Error | null;
   /** Rendered above the rows (e.g. stat cards). */
   header?: ReactElement | null;
+  /** Picture for the empty state; its first sentence becomes the bold title. */
+  emptyKind?: EmptyKind;
+  /** Button under the empty state (e.g. "New note"). */
+  emptyAction?: { label: string; onPress: () => void };
 }
-
-const GLYPH = { page: "¶", canvas: "◇", project: "◫", notebook: "▤" } as const;
 
 export function ResourceList({
   items,
@@ -47,6 +51,8 @@ export function ResourceList({
   readOnly,
   error,
   header,
+  emptyKind,
+  emptyAction,
 }: ResourceListProps) {
   const c = usePalette();
   const router = useRouter();
@@ -102,9 +108,17 @@ export function ResourceList({
           <View style={[styles.separator, { backgroundColor: c.separator }]} />
         )}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: c.textSecondary }]}>
-            {error ? error.message : emptyText}
-          </Text>
+          error || !emptyKind ? (
+            <Text style={[styles.empty, { color: c.textSecondary }]}>
+              {error ? error.message : emptyText}
+            </Text>
+          ) : (
+            <EmptyState
+              kind={emptyKind}
+              text={emptyText}
+              action={emptyAction}
+            />
+          )
         }
         renderItem={({ item }) => (
           <Pressable
@@ -132,9 +146,7 @@ export function ResourceList({
                   contentFit="cover"
                 />
               ) : (
-                <Text style={[styles.glyph, { color: c.textSecondary }]}>
-                  {GLYPH[item.kind]}
-                </Text>
+                <KindIcon kind={item.kind} color={c.textSecondary} />
               )}
             </View>
             <View style={styles.texts}>
@@ -250,7 +262,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
-  glyph: { fontSize: 18 },
   texts: { flex: 1, gap: 3 },
   titleRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   title: { flex: 1, fontSize: 16, fontWeight: "600" },
@@ -269,4 +280,80 @@ const styles = StyleSheet.create({
   },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
   empty: { textAlign: "center", padding: 32, fontSize: 14, lineHeight: 20 },
+  emptyWrap: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingTop: 48,
+    paddingBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 20,
+    textAlign: "center",
+  },
+  emptyBody: {
+    fontSize: 15,
+    lineHeight: 21,
+    marginTop: 6,
+    textAlign: "center",
+    maxWidth: 300,
+  },
+  emptyButton: {
+    marginTop: 20,
+    height: 42,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyButtonText: { fontSize: 15, fontWeight: "600" },
 });
+
+/** The kind's icon, same as the web app's table rows. */
+function KindIcon({ kind, color }: { kind: ListItem["kind"]; color: string }) {
+  const Icon = KIND_ICON[kind];
+  return <Icon size={18} color={color} strokeWidth={1.8} />;
+}
+
+/** Picture + bold title (the text's first line/sentence) + help + optional button. */
+function EmptyState({
+  kind,
+  text,
+  action,
+}: {
+  kind: EmptyKind;
+  text: string;
+  action?: { label: string; onPress: () => void };
+}) {
+  const c = usePalette();
+  const flat = text.replace(/\n/g, " ");
+  const split = flat.indexOf(". ");
+  const title = split === -1 ? flat : flat.slice(0, split + 1);
+  const body = split === -1 ? "" : flat.slice(split + 2);
+  return (
+    <View style={styles.emptyWrap}>
+      <EmptyIllustration kind={kind} width={168} />
+      <Text style={[styles.emptyTitle, { color: c.textStrong }]}>{title}</Text>
+      {body ? (
+        <Text style={[styles.emptyBody, { color: c.textSecondary }]}>
+          {body}
+        </Text>
+      ) : null}
+      {action ? (
+        <Pressable
+          onPress={action.onPress}
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.emptyButton,
+            { backgroundColor: c.tint, opacity: pressed ? 0.8 : 1 },
+          ]}
+        >
+          <Text style={[styles.emptyButtonText, { color: c.onTint }]}>
+            {action.label}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}

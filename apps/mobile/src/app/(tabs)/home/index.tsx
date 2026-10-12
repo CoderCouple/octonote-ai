@@ -6,17 +6,8 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { Stack, useRouter, type Href } from "expo-router";
-import {
-  BookOpen,
-  FileText,
-  FolderKanban,
-  PenTool,
-  Plus,
-  Search,
-  X,
-  type LucideIcon,
-} from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { Plus, Search, X } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Image,
@@ -38,6 +29,7 @@ import {
 import {
   createResource,
   LABEL,
+  useBilling,
   ROUTE,
   useMe,
   useRecentEdits,
@@ -49,16 +41,13 @@ import {
 } from "@/features/resources";
 import { ACCESS_LABEL } from "@octonote/shared";
 import { isNewShare, useSharedSeenAt } from "@/lib/shared-seen";
+import { KIND_ICON } from "@/lib/kind-icons";
 import { usePalette, type Palette } from "@/lib/theme";
 import { useRefreshOnFocus } from "@/lib/use-refresh-on-focus";
+import { handlePlanLimit, nudgeIfAtLimit } from "@/lib/upgrade";
 
 const PER_ROW = 6;
-const ICON: Record<ResourceKind, LucideIcon> = {
-  page: FileText,
-  canvas: PenTool,
-  project: FolderKanban,
-  notebook: BookOpen,
-};
+const ICON = KIND_ICON;
 const SECTIONS: { kind: ResourceKind; tab: Href }[] = [
   { kind: "page", tab: "/notes" },
   { kind: "canvas", tab: "/canvases" },
@@ -88,8 +77,10 @@ export default function HomeTab() {
     project: useResourceList("project"),
     notebook: useResourceList("notebook"),
   };
+  const billing = useBilling();
   const refetchAll = () =>
     Promise.all([
+      billing.refetch(),
       recent.refetch(),
       shared.refetch(),
       ...Object.values(lists).map((l) => l.refetch()),
@@ -97,6 +88,11 @@ export default function HomeTab() {
   useRefreshOnFocus(refetchAll);
   const [pulling, setPulling] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  // Any kind at its free limit → upgrade prompt, at most once a day.
+  useEffect(() => {
+    if (workspaceId && billing.data)
+      void nudgeIfAtLimit(workspaceId, billing.data);
+  }, [workspaceId, billing.data]);
   const [query, setQuery] = useState("");
 
   async function create(kind: ResourceKind) {
@@ -106,6 +102,8 @@ export default function HomeTab() {
       void qc.invalidateQueries({ queryKey: ["list", kind] });
       router.push(ROUTE[kind](id));
     } catch (e) {
+      // Free limit reached → upgrade prompt instead of an error.
+      if (handlePlanLimit(e)) return;
       Alert.alert(
         "Couldn't create",
         e instanceof Error ? e.message : String(e),

@@ -33,6 +33,24 @@ export interface ApiClient {
  * `getBearerToken`, and the underlying `fetch` is used with
  * `cache: 'no-store'` so callers never need to think about caching.
  */
+/**
+ * A non-2xx API response. `message` keeps the old "Octonote API <path> <status>: …"
+ * text; `reason` is just the server's sentence and `code` its error code
+ * (e.g. "PLAN_LIMIT" with HTTP 402), so callers can react without parsing.
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly reason: string,
+    readonly code: string | null,
+    readonly extra: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 export function createApiClient(config: ApiClientConfig): ApiClient {
   const { baseUrl, getBearerToken, fetchImpl } = config;
   const doFetch = fetchImpl ?? fetch;
@@ -55,11 +73,19 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
     const body = await response.json().catch(() => null);
     if (!response.ok) {
-      const message =
-        body && typeof body === "object" && "message" in body && typeof body.message === "string"
-          ? (body as { message: string }).message
-          : `${response.status}`;
-      throw new Error(`Octonote API ${path} ${response.status}: ${message}`);
+      const b = (body && typeof body === "object" ? body : {}) as {
+        message?: unknown;
+        errorCode?: unknown;
+        extra?: unknown;
+      };
+      const message = typeof b.message === "string" ? b.message : `${response.status}`;
+      throw new ApiError(
+        `Octonote API ${path} ${response.status}: ${message}`,
+        response.status,
+        message,
+        typeof b.errorCode === "string" ? b.errorCode : null,
+        (b.extra as Record<string, unknown> | undefined) ?? {},
+      );
     }
     return unwrapBaseResponse<T>(body, path);
   }

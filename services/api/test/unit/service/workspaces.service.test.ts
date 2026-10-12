@@ -83,6 +83,8 @@ function buildSut(overrides?: {
     workspacesRepo as never,
     membersRepo as never,
     changeEvents as never,
+    // Unit tests cover workspace logic, not plan limits (see integration/billing.test.ts).
+    { assertCanCreateWorkspace: async () => undefined } as never,
   );
   return { service, workspacesRepo, membersRepo, changeEvents };
 }

@@ -6,6 +6,7 @@ import {
   accessOf,
   previewFromMarkdown,
   type Access,
+  type BillingSummary,
   type ResourceKind,
 } from "@octonote/shared";
 import { useQuery } from "@tanstack/react-query";
@@ -200,6 +201,7 @@ export interface NotebookContents {
   notebook: {
     id: string;
     name: string;
+    workspaceId?: string;
     publishedAt?: string | null;
     myRole?: "viewer" | "editor" | "owner";
   };
@@ -340,5 +342,17 @@ export function useRecentEdits() {
       );
       return new Map(rows.map((r) => [`${r.kind}:${r.id}`, r.lastEditedAt]));
     },
+  });
+}
+
+/* ───────────── Plan & billing ───────────── */
+
+export function useBilling() {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: ["billing", workspaceId],
+    enabled: Boolean(workspaceId),
+    queryFn: () =>
+      api.get<BillingSummary>(`/workspaces/${workspaceId}/billing`),
   });
 }

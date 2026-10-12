@@ -12,6 +12,8 @@ import { buildIdFromUuid } from "@octonote/shared";
 import { ChangeEventsService } from "../../src/common/change-events.service";
 import type { EmailService, ShareEmailInput } from "../../src/common/email.service";
 import { PermissionsService } from "../../src/common/permissions.service";
+import { PlanLimitsService } from "../../src/common/plan-limits.service";
+import { BillingService } from "../../src/service/billing.service";
 import type { Database } from "../../src/db/database.module";
 import { CanvasesRepository } from "../../src/db/repository/canvases.repository";
 import { NotebooksRepository } from "../../src/db/repository/notebooks.repository";
@@ -77,6 +79,34 @@ export class FakeSupabase {
   };
 }
 
+/**
+ * Just enough of the Stripe SDK for billing tests. Webhook "signatures" are
+ * the literal string "valid"; the payload is the JSON event.
+ */
+export class FakeStripe {
+  customers = { create: async () => ({ id: "cus_test" }) };
+  checkout = {
+    sessions: {
+      create: async (params: Record<string, unknown>) => {
+        this.lastCheckout = params;
+        return { url: "https://checkout.stripe.test/session" };
+      },
+    },
+  };
+  billingPortal = {
+    sessions: { create: async () => ({ url: "https://billing.stripe.test/portal" }) },
+  };
+  subscriptions = { retrieve: async (id: string) => this.subscriptionsById[id] };
+  webhooks = {
+    constructEvent: (body: Buffer | string, signature: string) => {
+      if (signature !== "valid") throw new Error("bad signature");
+      return JSON.parse(body.toString());
+    },
+  };
+  lastCheckout: Record<string, unknown> | null = null;
+  subscriptionsById: Record<string, unknown> = {};
+}
+
 export async function createHarness() {
   const pg = new PGlite();
   const migrations = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
@@ -98,15 +128,26 @@ export async function createHarness() {
 
   const email = new FakeEmail();
   const supabase = new FakeSupabase();
+  const stripe = new FakeStripe();
   const changeEvents = new ChangeEventsService(db);
   const permissions = new PermissionsService(db);
   const placement = new NotebookPlacement(permissions);
-  const workspaces = new WorkspacesService(db, workspacesRepo, membersRepo, changeEvents);
+  // Limits on, as in production once Stripe is configured.
+  const planLimits = new PlanLimitsService(db, true);
+  const workspaces = new WorkspacesService(db, workspacesRepo, membersRepo, changeEvents, planLimits);
 
   const services = {
     permissions,
-    pages: new PagesService(pagesRepo, permissions, placement, workspaces, changeEvents),
-    canvases: new CanvasesService(canvasesRepo, permissions, placement, workspaces, changeEvents),
+    workspaces,
+    pages: new PagesService(pagesRepo, permissions, placement, workspaces, changeEvents, planLimits),
+    canvases: new CanvasesService(
+      canvasesRepo,
+      permissions,
+      placement,
+      workspaces,
+      changeEvents,
+      planLimits,
+    ),
     projects: new ProjectsService(
       projectsRepo,
       pagesRepo,
@@ -115,6 +156,7 @@ export async function createHarness() {
       placement,
       workspaces,
       changeEvents,
+      planLimits,
     ),
     notebooks: new NotebooksService(
       notebooksRepo,
@@ -124,6 +166,7 @@ export async function createHarness() {
       permissions,
       workspaces,
       changeEvents,
+      planLimits,
     ),
     shares: new SharesService(
       sharingRepo,
@@ -135,6 +178,11 @@ export async function createHarness() {
     settings: new SharingSettingsService(sharingRepo, permissions, changeEvents),
     public: new PublicService(sharingRepo, pagesRepo, canvasesRepo, projectsRepo, notebooksRepo),
     me: new MeService(db),
+    planLimits,
+    billing: new BillingService(db, planLimits, workspaces, stripe as never, {
+      webhookSecret: "whsec_test",
+      prices: { month: "price_month", year: "price_year" },
+    }),
     account: new AccountService(db, supabase as never),
     preferences: new PreferencesService(new UserPreferencesRepository(db)),
     recent: new ChangeEventsReaderService(new ChangeEventsRepository(db), workspaces),
@@ -162,7 +210,7 @@ export async function createHarness() {
     };
   }
 
-  return { pg, db, email, supabase, signIn, ...services };
+  return { pg, db, email, supabase, stripe, signIn, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

@@ -16,6 +16,8 @@ async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ bodyLimit: 10 * 1024 * 1024 }),
+    // Stripe webhooks are verified against the exact raw body.
+    { rawBody: true },
   );
 
   // Comma-separated, e.g. "http://localhost:3000,http://192.168.1.20:3000" for phone testing.

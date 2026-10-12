@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/sonner";
+import { UpgradeDialog } from "@/features/billing";
 import { READER_FONT_VARIABLES } from "@/features/notes/typography/fonts";
 import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -30,6 +31,7 @@ export default function RootLayout({
           <QueryProvider>
             {children}
             <Toaster position="top-center" richColors closeButton />
+            <UpgradeDialog />
           </QueryProvider>
         </ThemeProvider>
       </body>

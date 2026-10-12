@@ -9,6 +9,8 @@ export const ErrorCode = {
   INVALID_REQUEST: "INVALID_REQUEST",
   UNAUTHORIZED: "UNAUTHORIZED",
   CONFLICT: "CONFLICT",
+  /** A free-plan limit was hit (HTTP 402). Clients show the upgrade prompt. */
+  PLAN_LIMIT: "PLAN_LIMIT",
   VALIDATION_ERROR: "VALIDATION_ERROR",
   SERVER_ERROR: "SERVER_ERROR",
   HTTP_EXCEPTION: "HTTP_EXCEPTION",

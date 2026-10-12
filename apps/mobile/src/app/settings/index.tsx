@@ -26,9 +26,12 @@ import { replaySplash } from "@/components/animated-splash";
 import { Field, Item, Section, SettingsScreen } from "@/components/settings-ui";
 import {
   useActiveMembership,
+  useBilling,
   useMe,
   type WorkspaceRole,
 } from "@/features/resources";
+import { openPlans } from "@/lib/upgrade";
+import { FREE_LIMIT, PRO_PRICE, type LimitedKind } from "@octonote/shared";
 import { setActiveWorkspaceId } from "@/lib/active-workspace";
 import { api } from "@/lib/api";
 import { env } from "@/lib/env";
@@ -191,22 +194,7 @@ export default function Settings() {
         })}
       </Section>
 
-      <Section
-        title="Plan & billing"
-        description="Plans, invoices and payment methods will live here."
-      >
-        <Field
-          first
-          label="Current plan"
-          description="Every feature is included. Paid plans arrive after the beta and will be managed on the web."
-        >
-          <View style={[styles.badge, { backgroundColor: c.tint }]}>
-            <Text style={[styles.badgeText, { color: c.onTint }]}>
-              Free (beta)
-            </Text>
-          </View>
-        </Field>
-      </Section>
+      <PlanSection c={c} />
 
       <Section title="About" description="The fine print.">
         <Item
@@ -517,6 +505,10 @@ const styles = StyleSheet.create({
   current: { fontSize: 14, fontWeight: "500" },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontSize: 12, fontWeight: "700" },
+  meter: { width: 120, gap: 6, alignItems: "flex-end" },
+  meterText: { fontSize: 14, fontVariant: ["tabular-nums"] },
+  meterTrack: { width: "100%", height: 6, borderRadius: 3, overflow: "hidden" },
+  meterFill: { height: "100%", borderRadius: 3 },
   role: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 6,
@@ -525,3 +517,93 @@ const styles = StyleSheet.create({
   },
   roleText: { fontSize: 11, fontWeight: "600", letterSpacing: 0.6 },
 });
+
+const USAGE_ROWS: [LimitedKind, string][] = [
+  ["page", "Notes"],
+  ["canvas", "Canvases"],
+  ["project", "Projects"],
+  ["notebook", "Notebooks"],
+];
+
+/** Plan, usage against the free limits, and the way to upgrade (on the web). */
+function PlanSection({ c }: { c: Palette }) {
+  const billing = useBilling().data;
+  const pro = billing?.plan === "pro";
+  const student = billing?.source === "student";
+  return (
+    <Section
+      title="Plan & billing"
+      description="Plans belong to the workspace. Pro removes every limit."
+    >
+      <Field
+        first
+        label="Current plan"
+        description={
+          student && billing?.currentPeriodEnd
+            ? `Free for students until ${new Date(billing.currentPeriodEnd).toLocaleDateString()}. After that, Pro is $${PRO_PRICE.month}/month.`
+            : pro
+              ? billing?.currentPeriodEnd
+                ? `${billing.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${new Date(billing.currentPeriodEnd).toLocaleDateString()}.`
+                : undefined
+              : `Free includes ${FREE_LIMIT} of each and one workspace.`
+        }
+      >
+        <View style={[styles.badge, { backgroundColor: c.tint }]}>
+          <Text style={[styles.badgeText, { color: c.onTint }]}>
+            {pro ? (student ? "Pro · Student" : "Pro") : "Free"}
+          </Text>
+        </View>
+      </Field>
+      {billing?.limits
+        ? USAGE_ROWS.map(([k, label]) => {
+            const used = billing.usage[k];
+            const limit = billing.limits![k];
+            return (
+              <Field key={k} label={label}>
+                <View style={styles.meter}>
+                  <Text
+                    style={[
+                      styles.meterText,
+                      { color: used >= limit ? c.textStrong : c.textSecondary },
+                    ]}
+                  >
+                    {used} / {limit}
+                  </Text>
+                  <View
+                    style={[styles.meterTrack, { backgroundColor: c.fill }]}
+                  >
+                    <View
+                      style={[
+                        styles.meterFill,
+                        {
+                          backgroundColor: c.textStrong,
+                          width: `${Math.min(100, (used / limit) * 100)}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+              </Field>
+            );
+          })
+        : null}
+      {billing?.billingEnabled && !student ? (
+        <Field
+          label={pro ? "Manage billing" : "Upgrade to Pro"}
+          description={
+            pro
+              ? "Invoices, payment method and cancelling are on the web."
+              : `$${PRO_PRICE.month}/month or $${PRO_PRICE.year}/year per workspace, on the web.`
+          }
+          stacked
+        >
+          <SmallButton
+            c={c}
+            label={pro ? "Manage on the web" : "See plans"}
+            onPress={openPlans}
+          />
+        </Field>
+      ) : null}
+    </Section>
+  );
+}

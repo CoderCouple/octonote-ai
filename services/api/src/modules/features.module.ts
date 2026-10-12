@@ -1,6 +1,12 @@
 import { AnalyticsController } from "../api/v1/controller/analytics.controller";
 import { AnalyticsService } from "../service/analytics.service";
 import { Module } from "@nestjs/common";
+import Stripe from "stripe";
+import {
+  BillingController,
+  BillingWebhookController,
+} from "../api/v1/controller/billing.controller";
+import { BILLING_CONFIG, BillingService, STRIPE_CLIENT } from "../service/billing.service";
 import { CanvasesController } from "../api/v1/controller/canvases.controller";
 import { ChangeEventsController } from "../api/v1/controller/change-events.controller";
 import { NotebooksController } from "../api/v1/controller/notebooks.controller";
@@ -30,6 +36,8 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     PublicController,
     ChangeEventsController,
     AnalyticsController,
+    BillingController,
+    BillingWebhookController,
   ],
   providers: [
     NotebooksService,
@@ -41,6 +49,22 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     PublicService,
     ChangeEventsReaderService,
     AnalyticsService,
+    BillingService,
+    {
+      provide: STRIPE_CLIENT,
+      useFactory: () =>
+        process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null,
+    },
+    {
+      provide: BILLING_CONFIG,
+      useFactory: () => ({
+        webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+        prices: {
+          month: process.env.STRIPE_PRICE_PRO_MONTH,
+          year: process.env.STRIPE_PRICE_PRO_YEAR,
+        },
+      }),
+    },
   ],
 })
 export class FeaturesModule {}

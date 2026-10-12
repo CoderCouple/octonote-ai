@@ -23,6 +23,9 @@ export const Unauthorized = (message: string, extra?: Record<string, unknown>) =
 export const Conflict = (message: string, extra?: Record<string, unknown>) =>
   new AppError(ErrorCode.CONFLICT, message, HttpStatus.CONFLICT, extra);
 
+export const PlanLimit = (message: string, extra?: Record<string, unknown>) =>
+  new AppError(ErrorCode.PLAN_LIMIT, message, HttpStatus.PAYMENT_REQUIRED, extra);
+
 export const ValidationError = (message: string, extra?: Record<string, unknown>) =>
   new AppError(
     ErrorCode.VALIDATION_ERROR,

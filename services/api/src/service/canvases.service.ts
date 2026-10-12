@@ -12,6 +12,7 @@ import { CanvasesRepository, type CanvasSummaryRow } from "../db/repository/canv
 import { toCanvas, type Canvas } from "../model/canvas.model";
 import { NotebookPlacement } from "./lib/notebook-placement";
 import { WorkspacesService } from "./workspaces.service";
+import { PlanLimitsService } from "../common/plan-limits.service";
 
 const MEMBER_ROLES = ["OWNER", "ADMIN", "MEMBER"] as const;
 
@@ -32,6 +33,7 @@ export class CanvasesService {
     private readonly placement: NotebookPlacement,
     private readonly workspacesService: WorkspacesService,
     private readonly changeEvents: ChangeEventsService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   async listStandalone(workspaceId: string, actorUserId: string): Promise<CanvasSummaryRow[]> {
@@ -61,6 +63,7 @@ export class CanvasesService {
 
   async create(workspaceId: string, input: CanvasCreate, actorUserId: string): Promise<Canvas> {
     await this.workspacesService.requireRole(actorUserId, workspaceId, [...MEMBER_ROLES]);
+    await this.planLimits.assertCanCreate(workspaceId, "canvas");
     if (input.notebookId) {
       await this.placement.assertCanPlaceIn(input.notebookId, workspaceId, actorUserId);
     }

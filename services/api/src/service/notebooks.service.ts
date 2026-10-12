@@ -14,6 +14,7 @@ import { ProjectsRepository } from "../db/repository/projects.repository";
 import { toNotebook, type Notebook } from "../model/notebook.model";
 import { toProject, type Project } from "../model/project.model";
 import { WorkspacesService } from "./workspaces.service";
+import { PlanLimitsService } from "../common/plan-limits.service";
 
 const MEMBER_ROLES = ["OWNER", "ADMIN", "MEMBER"] as const;
 
@@ -35,6 +36,7 @@ export class NotebooksService {
     private readonly permissions: PermissionsService,
     private readonly workspacesService: WorkspacesService,
     private readonly changeEvents: ChangeEventsService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   async listForWorkspace(workspaceId: string, actorUserId: string): Promise<Notebook[]> {
@@ -67,6 +69,7 @@ export class NotebooksService {
 
   async create(workspaceId: string, input: NotebookCreate, actorUserId: string): Promise<Notebook> {
     await this.workspacesService.requireRole(actorUserId, workspaceId, [...MEMBER_ROLES]);
+    await this.planLimits.assertCanCreate(workspaceId, "notebook");
     const row = await this.notebooksRepo.insert({
       workspaceId,
       createdByUserId: actorUserId,

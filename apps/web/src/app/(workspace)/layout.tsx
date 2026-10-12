@@ -13,6 +13,7 @@ import {
 } from "@/features/workspaces";
 import { getMeApi } from "@/features/workspaces/api/workspaces-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { UpgradeNudge } from "@/features/billing";
 
 export default async function WorkspaceLayout({
   children,
@@ -57,6 +58,7 @@ export default async function WorkspaceLayout({
           <WorkspaceBreadcrumbs workspaceName={active.workspace.name} />
         </header>
         <div className="flex-1 overflow-auto">{children}</div>
+        <UpgradeNudge workspaceId={active.workspace.id} />
       </SidebarInset>
     </SidebarProvider>
   );

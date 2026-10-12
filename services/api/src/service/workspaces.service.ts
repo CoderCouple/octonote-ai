@@ -26,6 +26,7 @@ import {
   type WorkspaceMember,
   type WorkspaceRole,
 } from "../model/workspace.model";
+import { PlanLimitsService } from "../common/plan-limits.service";
 
 function baseSlug(input: string): string {
   return (
@@ -48,6 +49,7 @@ export class WorkspacesService {
     private readonly workspacesRepo: WorkspacesRepository,
     private readonly membersRepo: WorkspaceMembersRepository,
     private readonly changeEvents: ChangeEventsService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   /** Create a workspace and seed the caller as its OWNER. */
@@ -55,6 +57,7 @@ export class WorkspacesService {
     input: WorkspaceCreate,
     actorUserId: string,
   ): Promise<{ workspace: Workspace; ownerMembership: WorkspaceMember }> {
+    await this.planLimits.assertCanCreateWorkspace(actorUserId);
     const slug = await this.allocateSlug(input.slug ?? input.name);
 
     const result = await this.db.transaction(async (tx) => {
