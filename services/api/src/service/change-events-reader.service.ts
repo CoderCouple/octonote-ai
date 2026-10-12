@@ -11,6 +11,14 @@ import { ChangeEventsRepository } from "../db/repository/change-events.repositor
 import { toChangeEvent, type ChangeEvent } from "../model/change-event.model";
 import { WorkspacesService } from "./workspaces.service";
 
+type RecentKind = "page" | "canvas" | "project" | "notebook";
+export interface RecentItem {
+  kind: RecentKind;
+  id: string;
+  lastEditedAt: Date;
+}
+const RECENT_LIMIT = 200;
+
 @Injectable()
 export class ChangeEventsReaderService {
   constructor(
@@ -30,6 +38,34 @@ export class ChangeEventsReaderService {
     ]);
     const rows = await this.eventsRepo.listByWorkspace(workspaceId, options);
     return rows.map(toChangeEvent);
+  }
+
+  /**
+   * What the user has been working on, most recent first: their own edits
+   * only (from the audit log). Editing a project's note or canvas counts for
+   * the project; editing anything inside a notebook counts for the notebook.
+   */
+  async recentForUser(workspaceId: string, actorUserId: string): Promise<RecentItem[]> {
+    await this.workspacesService.requireRole(actorUserId, workspaceId, [
+      "OWNER",
+      "ADMIN",
+      "MEMBER",
+    ]);
+    const rows = await this.eventsRepo.lastEditsByUser(workspaceId, actorUserId);
+    const latest = new Map<string, RecentItem>();
+    const bump = (kind: RecentKind, id: string, at: Date) => {
+      const key = `${kind}:${id}`;
+      const prev = latest.get(key);
+      if (!prev || prev.lastEditedAt < at) latest.set(key, { kind, id, lastEditedAt: at });
+    };
+    for (const r of rows) {
+      bump(r.entityType as RecentKind, r.entityId, r.at);
+      if (r.projectId) bump("project", r.projectId, r.at);
+      if (r.notebookId) bump("notebook", r.notebookId, r.at);
+    }
+    return [...latest.values()]
+      .sort((a, b) => b.lastEditedAt.getTime() - a.lastEditedAt.getTime())
+      .slice(0, RECENT_LIMIT);
   }
 
   async getOne(id: string, actorUserId: string): Promise<ChangeEvent> {

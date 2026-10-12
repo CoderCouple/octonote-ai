@@ -242,3 +242,24 @@ export function usePublishState(kind: ResourceKind, id: string) {
     queryFn: () => api.get<PublishState>(`/${kind}/${id}/publish`),
   });
 }
+
+/* ───────────── Home: what you've been working on ───────────── */
+
+export interface RecentEdit {
+  kind: ResourceKind;
+  id: string;
+  lastEditedAt: string;
+}
+
+/** Your own last edit per item (from the audit log), keyed "kind:id". */
+export function useRecentEdits() {
+  const workspaceId = useWorkspaceId();
+  return useQuery({
+    queryKey: ["recent", workspaceId],
+    enabled: Boolean(workspaceId),
+    queryFn: async () => {
+      const rows = await api.get<RecentEdit[]>(`/workspaces/${workspaceId}/recent`);
+      return new Map(rows.map((r) => [`${r.kind}:${r.id}`, r.lastEditedAt]));
+    },
+  });
+}

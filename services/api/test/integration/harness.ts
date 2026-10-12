@@ -22,6 +22,8 @@ import { WorkspaceMembersRepository } from "../../src/db/repository/workspace-me
 import { WorkspacesRepository } from "../../src/db/repository/workspaces.repository";
 import * as schema from "../../src/db/schema";
 import { CanvasesService } from "../../src/service/canvases.service";
+import { ChangeEventsReaderService } from "../../src/service/change-events-reader.service";
+import { ChangeEventsRepository } from "../../src/db/repository/change-events.repository";
 import { AnalyticsService } from "../../src/service/analytics.service";
 import { ViewsRepository } from "../../src/db/repository/views.repository";
 import { NotebookPlacement } from "../../src/service/lib/notebook-placement";
@@ -104,6 +106,7 @@ export async function createHarness() {
     settings: new SharingSettingsService(sharingRepo, permissions, changeEvents),
     public: new PublicService(sharingRepo, pagesRepo, canvasesRepo, projectsRepo, notebooksRepo),
     me: new MeService(db),
+    recent: new ChangeEventsReaderService(new ChangeEventsRepository(db), workspaces),
     analytics: new AnalyticsService(new ViewsRepository(db), permissions),
   };
 

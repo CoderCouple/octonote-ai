@@ -1,4 +1,4 @@
-export { CreateButton } from "./components/create-button";
+export { CreateButton, CreateMenu } from "./components/create-button";
 export {
   ResourceList,
   type ResourceListItem,

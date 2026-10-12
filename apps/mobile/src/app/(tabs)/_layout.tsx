@@ -14,6 +14,7 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false }}
       tabBar={(props) => <FloatingTabBar {...props} />}
     >
+      <Tabs.Screen name="home" />
       <Tabs.Screen name="notes" />
       <Tabs.Screen name="canvases" />
       <Tabs.Screen name="projects" />

@@ -95,7 +95,22 @@ export interface LibraryRow {
   roleLabel?: string;
 }
 
-type Filter = "all" | "private" | "shared" | "public";
+type AccessFilter = "all" | "private" | "shared" | "public";
+type KindFilter = "all" | "page" | "canvas" | "project";
+type Filter = AccessFilter | KindFilter;
+
+const ACCESS_TABS: [AccessFilter, string][] = [
+  ["all", "All"],
+  ["private", "Private"],
+  ["shared", "Shared"],
+  ["public", "Published"],
+];
+const KIND_TABS: [KindFilter, string][] = [
+  ["all", "All"],
+  ["page", "Notes"],
+  ["canvas", "Canvases"],
+  ["project", "Projects"],
+];
 type SortKey = "updated-desc" | "updated-asc" | "name-asc" | "name-desc";
 
 const SORTS: { key: SortKey; label: string }[] = [
@@ -112,6 +127,13 @@ const KIND_ICON: Record<ResourceKind, typeof FileText> = {
   notebook: BookOpen,
 };
 
+const KIND_NAME: Record<ResourceKind, string> = {
+  page: "Note",
+  canvas: "Canvas",
+  project: "Project",
+  notebook: "Notebook",
+};
+
 const ACCESS: Record<Access, { label: string; icon: typeof Lock }> = {
   public: { label: "Published", icon: Globe },
   link: { label: "Anyone with link", icon: Link2 },
@@ -121,6 +143,8 @@ const ACCESS: Record<Access, { label: string; icon: typeof Lock }> = {
 
 function matches(row: LibraryRow, filter: Filter) {
   if (filter === "all") return true;
+  if (filter === "page" || filter === "canvas" || filter === "project")
+    return row.kind === filter;
   if (filter === "public") return row.access === "public";
   if (filter === "shared")
     return row.access === "shared" || row.access === "link";
@@ -147,6 +171,12 @@ interface LibraryTableProps {
   readOnly?: boolean;
   /** Notebooks can't sit in a notebook, so their page hides that column. */
   hideNotebookColumn?: boolean;
+  /** Inside a notebook: tabs by type instead of access, a Type column, no stat cards. */
+  mixedKinds?: boolean;
+  /** Analytics / move / delete per row. Off for the Shared page and notebook viewers. */
+  rowActions?: boolean;
+  /** Rendered above the tabs (e.g. the notebook's title block). */
+  header?: ReactNode;
 }
 
 export function LibraryTable({
@@ -158,20 +188,22 @@ export function LibraryTable({
   createAction,
   readOnly = false,
   hideNotebookColumn = false,
+  mixedKinds = false,
+  rowActions = !readOnly,
+  header,
 }: LibraryTableProps) {
+  const tabs = mixedKinds ? KIND_TABS : ACCESS_TABS;
   const [filter, setFilter] = useState<Filter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("updated-desc");
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
 
   const counts = useMemo(
-    () => ({
-      all: rows.length,
-      private: rows.filter((r) => matches(r, "private")).length,
-      shared: rows.filter((r) => matches(r, "shared")).length,
-      public: rows.filter((r) => matches(r, "public")).length,
-    }),
-    [rows],
+    () =>
+      Object.fromEntries(
+        tabs.map(([key]) => [key, rows.filter((r) => matches(r, key)).length]),
+      ) as Record<Filter, number>,
+    [rows, tabs],
   );
 
   const visible = useMemo(() => {
@@ -200,7 +232,8 @@ export function LibraryTable({
   return (
     // min-h-full + flex-1 on the table card: the card always reaches the bottom of the screen.
     <div className="flex min-h-full flex-col gap-6 px-4 py-6 lg:px-6">
-      {readOnly ? null : <StatCards rows={rows} noun={noun} />}
+      {header}
+      {readOnly || mixedKinds ? null : <StatCards rows={rows} noun={noun} />}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         {readOnly ? (
@@ -210,17 +243,10 @@ export function LibraryTable({
         ) : (
           <div
             role="tablist"
-            aria-label="Filter by access"
-            className="flex items-center gap-1"
+            aria-label={mixedKinds ? "Filter by type" : "Filter by access"}
+            className="flex flex-wrap items-center gap-1"
           >
-            {(
-              [
-                ["all", "All"],
-                ["private", "Private"],
-                ["shared", "Shared"],
-                ["public", "Published"],
-              ] as const
-            ).map(([key, label]) => (
+            {tabs.map(([key, label]) => (
               <button
                 key={key}
                 role="tab"
@@ -284,6 +310,11 @@ export function LibraryTable({
                 <TableHead className="text-muted-foreground h-11 pl-4 font-medium">
                   Name
                 </TableHead>
+                {mixedKinds ? (
+                  <TableHead className="text-muted-foreground hidden font-medium sm:table-cell">
+                    Type
+                  </TableHead>
+                ) : null}
                 <TableHead className="text-muted-foreground font-medium">
                   {readOnly ? "Your access" : "Access"}
                 </TableHead>
@@ -318,6 +349,8 @@ export function LibraryTable({
                   workspaceId={workspaceId}
                   readOnly={readOnly}
                   showNotebook={!hideNotebookColumn}
+                  showKind={mixedKinds}
+                  actions={rowActions}
                 />
               ))}
             </TableBody>
@@ -476,11 +509,15 @@ function Row({
   workspaceId,
   readOnly,
   showNotebook,
+  showKind,
+  actions,
 }: {
   row: LibraryRow;
   workspaceId: string;
   readOnly: boolean;
   showNotebook: boolean;
+  showKind: boolean;
+  actions: boolean;
 }) {
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -529,6 +566,11 @@ function Row({
           </span>
         </Link>
       </TableCell>
+      {showKind ? (
+        <TableCell className="text-muted-foreground hidden sm:table-cell">
+          {KIND_NAME[row.kind]}
+        </TableCell>
+      ) : null}
       <TableCell>
         {row.roleLabel ? (
           <Pill icon={Users}>{row.roleLabel}</Pill>
@@ -596,7 +638,7 @@ function Row({
           <IconAction label="Open" href={href}>
             <ArrowUpRight className="size-3.5" />
           </IconAction>
-          {readOnly ? null : (
+          {actions ? (
             <>
               <IconAction
                 label="Analytics"
@@ -620,7 +662,7 @@ function Row({
                 <Trash2 className="size-3.5" />
               </IconAction>
             </>
-          )}
+          ) : null}
         </div>
         <AnalyticsSheet
           target={
@@ -646,7 +688,7 @@ function Row({
           description={DELETE_COPY[row.kind]}
           onConfirm={remove}
         />
-        {row.kind !== "notebook" && !readOnly ? (
+        {row.kind !== "notebook" && actions ? (
           <MoveToNotebookDialog
             open={moving}
             onOpenChange={setMoving}

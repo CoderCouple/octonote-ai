@@ -17,6 +17,7 @@ interface WorkspaceBreadcrumbsProps {
 }
 
 const ROUTE_LABELS: Record<string, string> = {
+  home: "Home",
   notes: "Notes",
   canvases: "Canvases",
   projects: "Projects",

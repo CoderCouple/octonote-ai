@@ -28,3 +28,14 @@ export function updateWorkspaceApi(id: string, body: WorkspaceUpdate) {
 export function deleteWorkspaceApi(id: string) {
   return serverFetch<{ ok: true }>(`/workspaces/${id}`, { method: "DELETE" });
 }
+
+/** What the signed-in user edited in this workspace, most recent first. */
+export function listRecentApi(workspaceId: string) {
+  return serverFetch<
+    {
+      kind: "page" | "canvas" | "project" | "notebook";
+      id: string;
+      lastEditedAt: string;
+    }[]
+  >(`/workspaces/${workspaceId}/recent`);
+}

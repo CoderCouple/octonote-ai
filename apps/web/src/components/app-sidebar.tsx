@@ -4,6 +4,7 @@ import {
   BookOpen,
   FileText,
   FolderKanban,
+  Home,
   LayoutGrid,
   Settings,
   Users,
@@ -34,6 +35,7 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const navMain = [
+    { title: "Home", url: "/workspace/home", icon: Home },
     { title: "Notes", url: "/workspace/notes", icon: FileText },
     { title: "Canvases", url: "/workspace/canvases", icon: LayoutGrid },
     { title: "Projects", url: "/workspace/projects", icon: FolderKanban },

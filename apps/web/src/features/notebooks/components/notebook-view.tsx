@@ -5,7 +5,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
 import { FocusHeader } from "@/components/focus-header";
-import { CreateButton, ResourceList } from "@/features/library";
+import {
+  accessOf,
+  CreateMenu,
+  LibraryTable,
+  type LibraryRow,
+} from "@/features/library";
 import {
   can,
   PublishedViaBadge,
@@ -41,44 +46,53 @@ export function NotebookView({
   }
 
   const ws = notebook.workspaceId;
-  const sections = [
-    {
+  const via = (item: { publishedAt: string | null }) =>
+    !item.publishedAt && notebook.publishedAt ? name : null;
+  const rows: LibraryRow[] = [
+    ...contents.notes.map((n) => ({
       kind: "page" as const,
-      title: "Notes",
-      items: contents.notes.map((n) => ({
-        kind: "page" as const,
-        id: n.id,
-        title: n.title,
-        subtitle: previewFromMarkdown(n.contentMd, n.title) || "Empty note",
-        notebookId: n.notebookId,
-        updatedAt: n.updatedAt,
-      })),
-    },
-    {
+      id: n.id,
+      title: n.title,
+      subtitle: previewFromMarkdown(n.contentMd, n.title) || "Empty note",
+      notebookId: n.notebookId,
+      access: accessOf(n, notebook),
+      publishedVia: via(n),
+      sharedCount: n.sharedCount,
+      owner: n.creator?.name ?? null,
+      createdAt: n.createdAt,
+      updatedAt: n.updatedAt,
+    })),
+    ...contents.canvases.map((c) => ({
       kind: "canvas" as const,
-      title: "Canvases",
-      items: contents.canvases.map((c) => ({
-        kind: "canvas" as const,
-        id: c.id,
-        title: c.title,
-        thumbnailUrl: c.thumbnailUrl,
-        notebookId: c.notebookId,
-        updatedAt: c.updatedAt,
-      })),
-    },
-    {
+      id: c.id,
+      title: c.title,
+      thumbnailUrl: c.thumbnailUrl,
+      notebookId: c.notebookId,
+      access: accessOf(c, notebook),
+      publishedVia: via(c),
+      sharedCount: c.sharedCount,
+      owner: c.creator?.name ?? null,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    })),
+    ...contents.projects.map((p) => ({
       kind: "project" as const,
-      title: "Projects",
-      items: contents.projects.map((p) => ({
-        kind: "project" as const,
-        id: p.id,
-        title: p.name,
-        subtitle: p.description ?? undefined,
-        notebookId: p.notebookId,
-        updatedAt: p.updatedAt,
-      })),
-    },
+      id: p.id,
+      title: p.name,
+      subtitle: p.description ?? "Note + canvas",
+      notebookId: p.notebookId,
+      access: accessOf(p, notebook),
+      publishedVia: via(p),
+      sharedCount: p.sharedCount ?? 0,
+      owner: p.creator?.name ?? null,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    })),
   ];
+  const lastUpdated = rows.reduce(
+    (max, r) => (r.updatedAt > max ? r.updatedAt : max),
+    notebook.updatedAt,
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -107,31 +121,51 @@ export function NotebookView({
           initialLinkRole={notebook.linkRole}
         />
       </FocusHeader>
-      <div className="flex-1 overflow-auto pb-10">
-        {sections.map((s) => (
-          <div key={s.kind} className="mt-4">
-            <div className="flex items-center justify-between px-6 pb-2 md:px-8">
-              <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                {s.title}
-              </h2>
-              {editable ? (
-                <CreateButton
-                  kind={s.kind}
-                  workspaceId={ws}
-                  notebookId={notebook.id}
-                  variant="outline"
-                />
-              ) : null}
+      <div className="flex-1 overflow-auto">
+        <LibraryTable
+          workspaceId={ws}
+          rows={rows}
+          noun="items"
+          mixedKinds
+          hideNotebookColumn
+          rowActions={editable}
+          emptyKind="notebook"
+          emptyMessage="This notebook is empty. Add notes, canvases and projects — they're shared and published along with the notebook."
+          createAction={
+            editable ? (
+              <CreateMenu
+                kinds={["page", "canvas", "project"]}
+                workspaceId={ws}
+                notebookId={notebook.id}
+              />
+            ) : undefined
+          }
+          header={
+            <div className="flex items-start gap-4">
+              <span className="bg-muted grid size-12 shrink-0 place-items-center rounded-lg border">
+                <BookOpen className="text-foreground-strong size-5" />
+              </span>
+              <div className="min-w-0">
+                <h1 className="text-foreground-strong truncate text-2xl font-semibold tracking-tight">
+                  {name || "Untitled notebook"}
+                </h1>
+                <p className="text-muted-foreground mt-0.5 text-sm">
+                  {rows.length} {rows.length === 1 ? "item" : "items"} · Updated{" "}
+                  {formatDate(lastUpdated)}
+                  {notebook.publishedAt ? " · Published to the web" : ""}
+                </p>
+              </div>
             </div>
-            <ResourceList
-              workspaceId={ws}
-              items={s.items}
-              emptyMessage={`No ${s.title.toLowerCase()} in this notebook yet.`}
-              readOnly={!editable}
-            />
-          </div>
-        ))}
+          }
+        />
       </div>
     </div>
   );
 }
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });

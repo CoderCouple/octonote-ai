@@ -10,6 +10,7 @@ import {
   BookOpen,
   FileText,
   FolderKanban,
+  House,
   PenTool,
   Users,
   type LucideIcon,
@@ -24,6 +25,7 @@ type TabBarProps = Parameters<
 >[0];
 
 const TABS: Record<string, { label: string; icon: LucideIcon }> = {
+  home: { label: "Home", icon: House },
   notes: { label: "Notes", icon: FileText },
   canvases: { label: "Canvases", icon: PenTool },
   projects: { label: "Projects", icon: FolderKanban },
@@ -92,6 +94,9 @@ export function FloatingTabBar({ state, navigation }: TabBarProps) {
               />
               <Text
                 numberOfLines={1}
+                // Six tabs on a narrow phone: shrink "Notebooks" a touch rather than cut it.
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
                 style={[
                   styles.label,
                   { color: focused ? c.onTint : c.textSecondary },
@@ -118,7 +123,7 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: "row",
-    gap: 4,
+    gap: 2,
     borderRadius: 30,
     borderWidth: StyleSheet.hairlineWidth,
     padding: 6,

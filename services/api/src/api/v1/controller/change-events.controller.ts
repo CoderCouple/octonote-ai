@@ -34,6 +34,16 @@ export class ChangeEventsController {
     return rows.map(changeEventToDto);
   }
 
+  /** Items the signed-in user edited, most recent first — the Home page's "recent". */
+  @Get("workspaces/:workspaceId/recent")
+  async recent(
+    @Param("workspaceId", IdParam) workspaceId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ kind: string; id: string; lastEditedAt: string }[]> {
+    const items = await this.events.recentForUser(workspaceId, req.user.id);
+    return items.map((i) => ({ ...i, lastEditedAt: i.lastEditedAt.toISOString() }));
+  }
+
   @Get("change-events/:id")
   async getOne(
     @Param("id", IdParam) id: string,

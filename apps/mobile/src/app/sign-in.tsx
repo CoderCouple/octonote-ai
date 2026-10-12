@@ -50,7 +50,7 @@ export default function SignIn() {
     void supabase.auth.signInWithPassword(devLogin).then(({ error: err }) => {
       if (err)
         setError(`Dev auto-login failed: ${err.message} (run pnpm dev:user)`);
-      else router.replace("/notes");
+      else router.replace("/home");
     });
   }, [router]);
 
@@ -88,7 +88,7 @@ export default function SignIn() {
           : "That code isn't right. Try again.",
       );
     }
-    router.replace("/notes");
+    router.replace("/home");
   }
 
   async function resend() {
