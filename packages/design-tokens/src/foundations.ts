@@ -7,10 +7,16 @@ export const font = {
   mono: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace',
 } as const;
 
-/** Type scale (px). Display sizes are for marketing; the app mostly lives in body/sm. */
+/**
+ * Type scale (px). Display sizes are for marketing; the app mostly lives in sm.
+ * sm (15) is the app's regular UI text — buttons, tabs, tables, menus. Raised
+ * from 14 for legibility; xs (13) is secondary text, 2xs (11) badges and kickers.
+ * Use these names (text-sm, text-xs, …) — never text-[Npx] in components.
+ */
 export const fontSize = {
-  xs: 12,
-  sm: 14,
+  "2xs": 11,
+  xs: 13,
+  sm: 15,
   base: 16,
   lg: 18,
   xl: 20,

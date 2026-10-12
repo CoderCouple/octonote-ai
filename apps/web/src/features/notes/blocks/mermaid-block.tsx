@@ -338,7 +338,7 @@ function MermaidView({
             className="hover:bg-accent absolute right-0 bottom-0 grid size-3 cursor-nwse-resize place-items-center opacity-0 transition-opacity group-hover:opacity-100"
             title="Drag to resize"
           >
-            <span className="text-muted-foreground text-[10px] leading-none">
+            <span className="text-muted-foreground text-2xs leading-none">
               ⤡
             </span>
           </div>

@@ -56,7 +56,7 @@ const LEVEL_INDENT: Record<1 | 2 | 3, string> = {
 };
 
 const LEVEL_TEXT_SIZE: Record<1 | 2 | 3, string> = {
-  1: "text-[13px] font-medium",
+  1: "text-xs font-medium",
   2: "text-xs",
   3: "text-xs",
 };

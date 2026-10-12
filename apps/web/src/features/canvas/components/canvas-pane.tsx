@@ -72,7 +72,7 @@ export function CanvasPane({
               </span>
             )}
             {editable ? null : (
-              <span className="text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[11px]">
+              <span className="text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-2xs">
                 View only
               </span>
             )}

@@ -100,7 +100,7 @@ export function CanvasPickerDialog({
                     {c.title || "Untitled canvas"}
                   </p>
                   {c.projectName ? (
-                    <p className="text-muted-foreground truncate text-[11px]">
+                    <p className="text-muted-foreground truncate text-2xs">
                       in {c.projectName}
                     </p>
                   ) : null}

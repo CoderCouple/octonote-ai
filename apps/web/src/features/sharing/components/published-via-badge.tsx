@@ -25,7 +25,7 @@ export function PublishedViaBadge({ kind, id }: { kind: ResourceKind; id: string
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="text-muted-foreground flex max-w-48 items-center gap-1 truncate rounded-full border px-2 py-0.5 text-[11px]">
+        <span className="text-muted-foreground flex max-w-48 items-center gap-1 truncate rounded-full border px-2 py-0.5 text-2xs">
           <Globe className="size-3 shrink-0" />
           <span className="hidden truncate sm:inline">{label}</span>
         </span>

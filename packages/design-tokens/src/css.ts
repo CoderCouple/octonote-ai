@@ -33,6 +33,7 @@ export function renderCss(): string {
   const darkBlock = [".dark {", vars(dark), "  color-scheme: dark;", "}"].join("\n");
 
   const lineHeight: Record<keyof typeof fontSize, number> = {
+    "2xs": 1.45,
     xs: 1.5,
     sm: 1.5,
     base: 1.6,

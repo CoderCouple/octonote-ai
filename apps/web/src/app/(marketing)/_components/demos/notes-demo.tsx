@@ -23,14 +23,14 @@ export function NotesDemo() {
           {PAGES.map((p, i) => (
             <div
               key={p}
-              className={cn("flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[15px]", i === 0 && "bg-accent font-medium")}
+              className={cn("flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm", i === 0 && "bg-accent font-medium")}
             >
               <FileText className="text-muted-foreground size-4" />
               {p}
             </div>
           ))}
           <p className="text-muted-foreground mt-6 mb-3 px-2 text-xs font-medium">Notebooks</p>
-          <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[15px]">
+          <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm">
             <BookOpen className="text-muted-foreground size-4" />
             Q3 launch
           </div>
@@ -74,7 +74,7 @@ export function NotesDemo() {
               ].map(({ icon: Icon, label, active }) => (
                 <div
                   key={label}
-                  className={cn("flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[15px]", active && "bg-accent")}
+                  className={cn("flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm", active && "bg-accent")}
                 >
                   <Icon className="text-muted-foreground size-4" />
                   {label}

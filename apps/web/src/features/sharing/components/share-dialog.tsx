@@ -236,7 +236,7 @@ function PersonRow({
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{name}</span>
           {share.status === "pending" ? (
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-2xs">
               Invited
             </Badge>
           ) : null}

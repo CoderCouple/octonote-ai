@@ -93,7 +93,7 @@ export function ConfirmActionDialog({
           <div className="space-y-2">
             <label className="text-foreground text-sm">
               Type{" "}
-              <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-[12px] font-semibold">
+              <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs font-semibold">
                 {typeToConfirm.value}
               </span>{" "}
               to confirm

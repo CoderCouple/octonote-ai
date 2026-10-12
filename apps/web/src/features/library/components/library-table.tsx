@@ -198,7 +198,8 @@ export function LibraryTable({
   };
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
+    // min-h-full + flex-1 on the table card: the card always reaches the bottom of the screen.
+    <div className="flex min-h-full flex-col gap-6 px-4 py-6 lg:px-6">
       {readOnly ? null : <StatCards rows={rows} noun={noun} />}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -226,7 +227,7 @@ export function LibraryTable({
                 aria-selected={filter === key}
                 onClick={() => setFilterAndReset(key)}
                 className={cn(
-                  "flex h-8 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors",
+                  "flex h-9 items-center gap-2 rounded-md px-3.5 text-sm font-medium transition-colors",
                   filter === key
                     ? "text-foreground-strong bg-accent"
                     : "text-muted-foreground hover:text-foreground-strong hover:bg-accent/60",
@@ -235,7 +236,7 @@ export function LibraryTable({
                 {label}
                 <span
                   className={cn(
-                    "grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-xs tabular-nums",
+                    "grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-xs tabular-nums",
                     filter === key
                       ? "bg-foreground-strong text-background"
                       : "bg-muted text-muted-foreground",
@@ -250,13 +251,13 @@ export function LibraryTable({
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <ArrowUpDown className="size-3.5" />
+              <Button variant="outline" className="gap-2">
+                <ArrowUpDown className="size-4" />
                 <span className="hidden sm:inline">
                   {SORTS.find((s) => s.key === sortKey)?.label}
                 </span>
                 <span className="sm:hidden">Sort</span>
-                <ChevronDown className="size-3.5" />
+                <ChevronDown className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -275,7 +276,7 @@ export function LibraryTable({
         </div>
       </div>
 
-      <div className="bg-card overflow-hidden rounded-xl border">
+      <div className="bg-card flex flex-1 flex-col overflow-hidden rounded-xl border">
         <TooltipProvider delayDuration={200}>
           <Table>
             <TableHeader>
@@ -310,37 +311,33 @@ export function LibraryTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pageRows.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell
-                    colSpan={7}
-                    className="text-muted-foreground h-32 text-center text-sm"
-                  >
-                    {rows.length === 0 ? (
-                      <EmptyTableState
-                        kind={emptyKind}
-                        message={emptyMessage}
-                        action={createAction}
-                      />
-                    ) : (
-                      `No ${noun} match this filter.`
-                    )}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                pageRows.map((row) => (
-                  <Row
-                    key={`${row.kind}:${row.id}`}
-                    row={row}
-                    workspaceId={workspaceId}
-                    readOnly={readOnly}
-                    showNotebook={!hideNotebookColumn}
-                  />
-                ))
-              )}
+              {pageRows.map((row) => (
+                <Row
+                  key={`${row.kind}:${row.id}`}
+                  row={row}
+                  workspaceId={workspaceId}
+                  readOnly={readOnly}
+                  showNotebook={!hideNotebookColumn}
+                />
+              ))}
             </TableBody>
           </Table>
         </TooltipProvider>
+        {pageRows.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center">
+            {rows.length === 0 ? (
+              <EmptyTableState
+                kind={emptyKind}
+                message={emptyMessage}
+                action={createAction}
+              />
+            ) : (
+              <p className="text-muted-foreground py-12 text-sm">
+                No {noun} match this filter.
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
@@ -575,7 +572,7 @@ function Row({
           <TableCell className="hidden lg:table-cell">
             {row.owner ? (
               <span className="flex items-center gap-2">
-                <span className="bg-muted text-muted-foreground grid size-6 place-items-center rounded-full border text-[10px] font-semibold uppercase">
+                <span className="bg-muted text-muted-foreground grid size-6 place-items-center rounded-full border text-2xs font-semibold uppercase">
                   {initials(row.owner)}
                 </span>
                 <span className="max-w-36 truncate">{row.owner}</span>

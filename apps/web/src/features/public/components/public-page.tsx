@@ -185,11 +185,11 @@ function PublishedNote({
         <article className="mx-auto w-full max-w-[var(--reader-content-width)] min-w-0 pb-16">
           {back}
           <header className="flex flex-col gap-4">
-            <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
+            <p className="text-muted-foreground text-2xs font-medium tracking-[0.14em] uppercase">
               {kicker}
             </p>
             <h1
-              className="text-foreground-strong text-4xl leading-[1.05] font-bold tracking-tight md:text-[54px]"
+              className="text-foreground-strong text-4xl leading-[1.05] font-bold tracking-tight md:text-display"
               style={{ fontFamily: "var(--font-reader-family)" }}
             >
               {note.title || "Untitled"}

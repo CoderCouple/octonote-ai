@@ -28,7 +28,7 @@ export function NavMain({ items, className }: { items: NavItem[]; className?: st
                 tooltip={item.title}
                 isActive={active}
                 className={cn(
-                  "h-9 gap-3 rounded-md px-2.5 text-[14px] transition-colors [&>svg]:size-[18px]",
+                  "h-9 gap-3 rounded-md px-2.5 text-sm transition-colors [&>svg]:size-[18px]",
                   active
                     ? // Black pill in light mode, white in dark (primary inverts) — same as the mobile tab bar.
                       "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground font-medium"

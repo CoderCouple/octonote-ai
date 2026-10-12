@@ -113,7 +113,7 @@ export function TypographyPicker({
       </PopoverTrigger>
       <PopoverContent className="w-72 space-y-4 p-4" align="end">
         <div className="space-y-2">
-          <Label className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+          <Label className="text-muted-foreground text-2xs font-medium uppercase tracking-wider">
             Font
           </Label>
           <RadioGroup
@@ -143,7 +143,7 @@ export function TypographyPicker({
         </div>
 
         <div className="space-y-2">
-          <Label className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+          <Label className="text-muted-foreground text-2xs font-medium uppercase tracking-wider">
             Size
           </Label>
           <div className="flex gap-1">
@@ -169,7 +169,7 @@ export function TypographyPicker({
         </div>
 
         <div className="space-y-2">
-          <Label className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+          <Label className="text-muted-foreground text-2xs font-medium uppercase tracking-wider">
             Line height
           </Label>
           <div className="flex gap-1">
@@ -195,7 +195,7 @@ export function TypographyPicker({
         </div>
 
         <div className="space-y-2">
-          <Label className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+          <Label className="text-muted-foreground text-2xs font-medium uppercase tracking-wider">
             Width
           </Label>
           <div className="flex gap-1">

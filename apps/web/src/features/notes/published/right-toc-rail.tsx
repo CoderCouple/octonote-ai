@@ -35,7 +35,7 @@ const LEVEL_INDENT: Record<1 | 2 | 3, string> = {
 };
 
 const LEVEL_TEXT: Record<1 | 2 | 3, string> = {
-  1: "text-[13px] font-medium",
+  1: "text-xs font-medium",
   2: "text-xs",
   3: "text-xs",
 };
@@ -125,7 +125,7 @@ export function RightTocRail({ sections, footnote }: RightTocRailProps) {
             </li>
           ))}
           {footnote ? (
-            <li className="text-muted-foreground/70 mt-2 max-w-[16rem] text-[11px] leading-relaxed">
+            <li className="text-muted-foreground/70 mt-2 max-w-[16rem] text-2xs leading-relaxed">
               {footnote}
             </li>
           ) : null}

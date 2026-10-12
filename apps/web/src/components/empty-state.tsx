@@ -29,7 +29,7 @@ export function EmptyTableState({
         {title}
       </h2>
       {body ? (
-        <p className="text-muted-foreground mt-1.5 max-w-sm text-sm leading-relaxed">
+        <p className="text-muted-foreground mt-1.5 max-w-md text-sm leading-relaxed">
           {body}
         </p>
       ) : null}
