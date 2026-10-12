@@ -131,4 +131,100 @@ const styles = StyleSheet.create({
   },
   label: { flex: 1, fontSize: 16 },
   detail: { fontSize: 15, maxWidth: "55%" },
+  sectionWrap: { gap: 10 },
+  sectionHead: { gap: 2, paddingHorizontal: 4 },
+  sectionTitle: { fontSize: 18, fontWeight: "700", letterSpacing: -0.2 },
+  sectionDesc: { fontSize: 14, lineHeight: 19 },
+  field: { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
+  fieldInline: { flexDirection: "row", alignItems: "center" },
+  fieldText: { flex: 1, gap: 2 },
+  fieldDesc: { fontSize: 13, lineHeight: 18 },
 });
+
+/**
+ * A titled section like the web Settings page: heading + one-line
+ * description above a card of rows. `danger` tints it for destructive actions.
+ */
+export function Section({
+  title,
+  description,
+  danger,
+  children,
+}: {
+  title: string;
+  description?: string;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
+  const c = usePalette();
+  return (
+    <View style={styles.sectionWrap}>
+      <View style={styles.sectionHead}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: danger ? c.danger : c.textStrong },
+          ]}
+        >
+          {title}
+        </Text>
+        {description ? (
+          <Text style={[styles.sectionDesc, { color: c.textSecondary }]}>
+            {description}
+          </Text>
+        ) : null}
+      </View>
+      <View
+        style={[
+          styles.group,
+          {
+            backgroundColor: c.card,
+            borderColor: danger ? c.danger : c.separator,
+          },
+        ]}
+      >
+        {children}
+      </View>
+    </View>
+  );
+}
+
+/** A row with a label, optional help text underneath, and content on the right or below. */
+export function Field({
+  label,
+  description,
+  children,
+  stacked,
+  first,
+}: {
+  label: string;
+  description?: string;
+  children?: React.ReactNode;
+  /** Put the control under the label (inputs) instead of to the right. */
+  stacked?: boolean;
+  first?: boolean;
+}) {
+  const c = usePalette();
+  return (
+    <View
+      style={[
+        styles.field,
+        stacked ? null : styles.fieldInline,
+        !first && {
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: c.separator,
+        },
+      ]}
+    >
+      <View style={stacked ? null : styles.fieldText}>
+        <Text style={[styles.label, { color: c.textStrong }]}>{label}</Text>
+        {description ? (
+          <Text style={[styles.fieldDesc, { color: c.textSecondary }]}>
+            {description}
+          </Text>
+        ) : null}
+      </View>
+      {children}
+    </View>
+  );
+}

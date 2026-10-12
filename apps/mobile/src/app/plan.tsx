@@ -6,7 +6,9 @@ export default function Plan() {
   return (
     <SettingsScreen>
       <Stack.Screen options={{ title: "Plan" }} />
-      <Group footer="Every feature is included while Octonote AI is in beta. Paid plans arrive after the beta and will be managed on the web — you'll hear from us first.">
+      <Group
+        title="Your plan"
+        footer="Every feature is included while Octonote AI is in beta. Paid plans arrive after the beta and will be managed on the web — you'll hear from us first.">
         <Item first label="Current plan" detail="Free (beta)" />
       </Group>
     </SettingsScreen>

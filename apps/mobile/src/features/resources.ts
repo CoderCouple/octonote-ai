@@ -2,9 +2,15 @@
  * The four resource kinds as the mobile lists see them, and the API calls
  * behind create / list / delete. Mirrors the web app's library feature.
  */
-import { accessOf, previewFromMarkdown, type Access, type ResourceKind } from "@octonote/shared";
+import {
+  accessOf,
+  previewFromMarkdown,
+  type Access,
+  type ResourceKind,
+} from "@octonote/shared";
 import { useQuery } from "@tanstack/react-query";
 import type { Href } from "expo-router";
+import { useStoredWorkspaceId } from "@/lib/active-workspace";
 import { api } from "@/lib/api";
 
 export type { Access, ResourceKind };
@@ -27,9 +33,16 @@ export interface ListItem {
   updatedAt: string;
 }
 
+export type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER";
+
+export interface Membership {
+  membership: { id: string; role: WorkspaceRole };
+  workspace: { id: string; name: string; slug: string };
+}
+
 interface MeResponse {
-  user: { id: string; name: string; email: string };
-  memberships: { workspace: { id: string; name: string } }[];
+  user: { id: string; name: string; email: string; avatarUrl?: string | null };
+  memberships: Membership[];
 }
 
 /** Route for a resource's screen. Same shape as the web app's URLs. */
@@ -48,12 +61,24 @@ export const LABEL: Record<ResourceKind, { one: string; many: string }> = {
 };
 
 export function useMe() {
-  return useQuery({ queryKey: ["me"], queryFn: () => api.get<MeResponse>("/me"), staleTime: 5 * 60_000 });
+  return useQuery({
+    queryKey: ["me"],
+    queryFn: () => api.get<MeResponse>("/me"),
+    staleTime: 5 * 60_000,
+  });
 }
 
-/** Mobile v1 uses the first workspace; switching lives on web for now. */
+/** The workspace the app is showing: the one picked in Settings, else your first. */
+export function useActiveMembership(): Membership | undefined {
+  const memberships = useMe().data?.memberships;
+  const stored = useStoredWorkspaceId();
+  return (
+    memberships?.find((m) => m.workspace.id === stored) ?? memberships?.[0]
+  );
+}
+
 export function useWorkspaceId(): string | undefined {
-  return useMe().data?.memberships[0]?.workspace.id;
+  return useActiveMembership()?.workspace.id;
 }
 
 type Row = Record<string, unknown> & {
@@ -67,7 +92,9 @@ type Row = Record<string, unknown> & {
 };
 
 function snippet(md: unknown, title: string): string | undefined {
-  return typeof md === "string" ? previewFromMarkdown(md, title, 120) || undefined : undefined;
+  return typeof md === "string"
+    ? previewFromMarkdown(md, title, 120) || undefined
+    : undefined;
 }
 
 interface NotebookInfo {
@@ -75,7 +102,12 @@ interface NotebookInfo {
   publishedAt: string | null;
 }
 
-function toItem(kind: ResourceKind, r: Row, notebooks: Map<string, NotebookInfo>, owner?: string | null): ListItem {
+function toItem(
+  kind: ResourceKind,
+  r: Row,
+  notebooks: Map<string, NotebookInfo>,
+  owner?: string | null,
+): ListItem {
   const nb = r.notebookId ? notebooks.get(r.notebookId) : undefined;
   const notebook = nb ? { publishedAt: nb.publishedAt } : null;
   const creator = r.creator as { name: string } | null | undefined;
@@ -83,7 +115,12 @@ function toItem(kind: ResourceKind, r: Row, notebooks: Map<string, NotebookInfo>
     kind,
     id: r.id,
     title: String(r.title ?? r.name ?? "") || "Untitled",
-    subtitle: kind === "page" ? snippet(r.contentMd, String(r.title ?? "")) : kind === "project" ? ((r.description as string) ?? "Note + canvas") : undefined,
+    subtitle:
+      kind === "page"
+        ? snippet(r.contentMd, String(r.title ?? ""))
+        : kind === "project"
+          ? ((r.description as string) ?? "Note + canvas")
+          : undefined,
     thumbnailUrl: (r.thumbnailUrl as string | null | undefined) ?? null,
     access: accessOf(r, notebook),
     notebookName: nb?.name ?? null,
@@ -112,12 +149,23 @@ export function useResourceList(kind: ResourceKind) {
       // Items in a published notebook are public too, so the notebook list is needed to label them.
       const [rows, notebooks] = await Promise.all([
         api.get<Row[]>(`/workspaces/${workspaceId}/${LIST_PATH[kind]}`),
-        kind === "notebook" ? Promise.resolve([] as Row[]) : api.get<Row[]>(`/workspaces/${workspaceId}/notebooks`),
+        kind === "notebook"
+          ? Promise.resolve([] as Row[])
+          : api.get<Row[]>(`/workspaces/${workspaceId}/notebooks`),
       ]);
-      const info = new Map(notebooks.map((n) => [n.id, { name: String(n.name ?? ""), publishedAt: n.publishedAt }]));
+      const info = new Map(
+        notebooks.map((n) => [
+          n.id,
+          { name: String(n.name ?? ""), publishedAt: n.publishedAt },
+        ]),
+      );
       // Notebook rows carry only createdByUserId; name it when it's you.
       const ownerOf = (r: Row) =>
-        kind === "notebook" ? (r.createdByUserId === me?.user.id ? (me?.user.name ?? null) : null) : undefined;
+        kind === "notebook"
+          ? r.createdByUserId === me?.user.id
+            ? (me?.user.name ?? null)
+            : null
+          : undefined;
       return rows.map((r) => toItem(kind, r, info, ownerOf(r)));
     },
   });
@@ -149,7 +197,12 @@ export function useSharedWithMe() {
 }
 
 export interface NotebookContents {
-  notebook: { id: string; name: string; publishedAt?: string | null; myRole?: "viewer" | "editor" | "owner" };
+  notebook: {
+    id: string;
+    name: string;
+    publishedAt?: string | null;
+    myRole?: "viewer" | "editor" | "owner";
+  };
   items: ListItem[];
 }
 
@@ -163,7 +216,15 @@ export function useNotebook(id: string) {
         canvases: Row[];
         projects: Row[];
       }>(`/notebooks/${id}`);
-      const published = new Map([[c.notebook.id, { name: c.notebook.name, publishedAt: c.notebook.publishedAt ?? null }]]);
+      const published = new Map([
+        [
+          c.notebook.id,
+          {
+            name: c.notebook.name,
+            publishedAt: c.notebook.publishedAt ?? null,
+          },
+        ],
+      ]);
       return {
         notebook: c.notebook,
         items: [
@@ -191,18 +252,29 @@ export async function createResource(
         : kind === "project"
           ? { name: "Untitled project", ...placement }
           : { name: "Untitled notebook" };
-  const created = await api.post<{ id: string }>(`/workspaces/${workspaceId}/${LIST_PATH[kind]}`, body);
+  const created = await api.post<{ id: string }>(
+    `/workspaces/${workspaceId}/${LIST_PATH[kind]}`,
+    body,
+  );
   return created.id;
 }
 
-export async function deleteResource(kind: ResourceKind, id: string): Promise<void> {
+export async function deleteResource(
+  kind: ResourceKind,
+  id: string,
+): Promise<void> {
   const path = kind === "page" ? "pages" : LIST_PATH[kind];
   await api.delete(`/${path}/${id}`);
 }
 
-export async function getTitle(kind: Exclude<ResourceKind, "notebook">, id: string): Promise<string> {
-  if (kind === "canvas") return (await api.get<{ title: string }>(`/canvases/${id}/summary`)).title;
-  if (kind === "page") return (await api.get<{ title: string }>(`/pages/${id}`)).title;
+export async function getTitle(
+  kind: Exclude<ResourceKind, "notebook">,
+  id: string,
+): Promise<string> {
+  if (kind === "canvas")
+    return (await api.get<{ title: string }>(`/canvases/${id}/summary`)).title;
+  if (kind === "page")
+    return (await api.get<{ title: string }>(`/pages/${id}`)).title;
   return (await api.get<{ name: string }>(`/projects/${id}`)).name;
 }
 
@@ -229,10 +301,15 @@ export interface PublishState {
   publishedVia: { kind: ResourceKind; id: string; name: string } | null;
 }
 
-export function useAnalytics(kind: ResourceKind, id: string, range: AnalyticsRange) {
+export function useAnalytics(
+  kind: ResourceKind,
+  id: string,
+  range: AnalyticsRange,
+) {
   return useQuery({
     queryKey: ["analytics", kind, id, range],
-    queryFn: () => api.get<Analytics>(`/${kind}/${id}/analytics?range=${range}`),
+    queryFn: () =>
+      api.get<Analytics>(`/${kind}/${id}/analytics?range=${range}`),
   });
 }
 
@@ -258,7 +335,9 @@ export function useRecentEdits() {
     queryKey: ["recent", workspaceId],
     enabled: Boolean(workspaceId),
     queryFn: async () => {
-      const rows = await api.get<RecentEdit[]>(`/workspaces/${workspaceId}/recent`);
+      const rows = await api.get<RecentEdit[]>(
+        `/workspaces/${workspaceId}/recent`,
+      );
       return new Map(rows.map((r) => [`${r.kind}:${r.id}`, r.lastEditedAt]));
     },
   });

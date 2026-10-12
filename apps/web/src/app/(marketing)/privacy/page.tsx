@@ -203,11 +203,13 @@ export default function PrivacyPage() {
       <LegalSection heading="Your rights and choices">
         <p>
           You can edit or delete your content and change your profile at any
-          time in the app. You can also ask us to give you a copy of your
-          information, correct it, delete your account and its data, or stop
-          processing it. Depending on where you live (for example, in the EU, UK
-          or California), you may have additional rights under local law,
-          including the right to complain to a data-protection authority.
+          time in the app, and delete your whole account yourself in Settings →
+          Delete account (on the web or in the mobile app). You can also ask us
+          to give you a copy of your information, correct it, delete your
+          account and its data, or stop processing it. Depending on where you
+          live (for example, in the EU, UK or California), you may have
+          additional rights under local law, including the right to complain to
+          a data-protection authority.
         </p>
         <p>
           To make a request, email{" "}

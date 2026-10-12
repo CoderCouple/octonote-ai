@@ -29,6 +29,7 @@ import { AnalyticsService } from "../../src/service/analytics.service";
 import { ViewsRepository } from "../../src/db/repository/views.repository";
 import { NotebookPlacement } from "../../src/service/lib/notebook-placement";
 import { MeService } from "../../src/service/me.service";
+import { AccountService } from "../../src/service/account.service";
 import { PreferencesService } from "../../src/service/preferences.service";
 import { NotebooksService } from "../../src/service/notebooks.service";
 import { PagesService } from "../../src/service/pages.service";
@@ -52,6 +53,30 @@ export class FakeEmail {
   }
 }
 
+/** Records Supabase admin calls made by account deletion. */
+export class FakeSupabase {
+  deletedUsers: string[] = [];
+  removedObjects: string[] = [];
+  failDeleteUser = false;
+  auth = {
+    admin: {
+      deleteUser: async (id: string) => {
+        if (this.failDeleteUser) return { error: new Error("auth down") };
+        this.deletedUsers.push(id);
+        return { error: null };
+      },
+    },
+  };
+  storage = {
+    from: () => ({
+      remove: async (paths: string[]) => {
+        this.removedObjects.push(...paths);
+        return { error: null };
+      },
+    }),
+  };
+}
+
 export async function createHarness() {
   const pg = new PGlite();
   const migrations = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
@@ -72,6 +97,7 @@ export async function createHarness() {
   const membersRepo = new WorkspaceMembersRepository(db);
 
   const email = new FakeEmail();
+  const supabase = new FakeSupabase();
   const changeEvents = new ChangeEventsService(db);
   const permissions = new PermissionsService(db);
   const placement = new NotebookPlacement(permissions);
@@ -109,6 +135,7 @@ export async function createHarness() {
     settings: new SharingSettingsService(sharingRepo, permissions, changeEvents),
     public: new PublicService(sharingRepo, pagesRepo, canvasesRepo, projectsRepo, notebooksRepo),
     me: new MeService(db),
+    account: new AccountService(db, supabase as never),
     preferences: new PreferencesService(new UserPreferencesRepository(db)),
     recent: new ChangeEventsReaderService(new ChangeEventsRepository(db), workspaces),
     analytics: new AnalyticsService(new ViewsRepository(db), permissions),
@@ -135,7 +162,7 @@ export async function createHarness() {
     };
   }
 
-  return { pg, db, email, signIn, ...services };
+  return { pg, db, email, supabase, signIn, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

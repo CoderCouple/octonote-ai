@@ -3,6 +3,7 @@
 import {
   ChevronsUpDown,
   CreditCard,
+  LifeBuoy,
   LogOut,
   Monitor,
   Moon,
@@ -14,6 +15,7 @@ import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { supportMailto } from "@octonote/shared";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -43,8 +45,11 @@ function initials(name: string) {
 
 export function NavUser({
   user,
+  workspace,
 }: {
+  workspace: { id: string; name: string };
   user: {
+    id: string;
     name: string;
     email: string;
     avatar: string;
@@ -119,6 +124,23 @@ export function NavUser({
                 <CreditCard />
                 Plan &amp; billing
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                // Pre-filled with details that help debugging; the user writes above them.
+                window.location.href = supportMailto({
+                  platform: "Web",
+                  system: navigator.userAgent,
+                  userId: user.id,
+                  email: user.email,
+                  workspaceName: workspace.name,
+                  workspaceId: workspace.id,
+                  location: window.location.pathname,
+                });
+              }}
+            >
+              <LifeBuoy />
+              Help &amp; feedback
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-muted-foreground px-2 py-1 text-xs font-normal">

@@ -25,7 +25,7 @@ import {
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   workspace: { id: string; name: string; slug: string };
   memberships: TeamSummary[];
-  user: { name: string; email: string; avatarUrl: string | null };
+  user: { id: string; name: string; email: string; avatarUrl: string | null };
 }
 
 export function AppSidebar({
@@ -60,7 +60,9 @@ export function AppSidebar({
           className="p-0 px-1"
         />
         <NavUser
+          workspace={workspace}
           user={{
+            id: user.id,
             name: user.name,
             email: user.email,
             avatar: user.avatarUrl ?? "",

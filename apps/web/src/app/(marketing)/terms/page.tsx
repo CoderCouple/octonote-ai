@@ -138,8 +138,8 @@ export default function TermsPage() {
 
       <LegalSection heading="Ending your use">
         <p>
-          You can stop using the Service at any time and ask us to delete your
-          account by emailing{" "}
+          You can stop using the Service at any time. Delete your account
+          yourself in Settings → Delete account, or ask us to by emailing{" "}
           <a href="mailto:support@octonote.ai" className={link}>
             support@octonote.ai
           </a>

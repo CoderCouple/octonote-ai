@@ -40,24 +40,12 @@ export default function RootLayout() {
                   options={{ title: "Settings" }}
                 />
                 <Stack.Screen
-                  name="settings/account"
-                  options={{ title: "Account" }}
+                  name="settings/delete-workspace"
+                  options={{ title: "Delete workspace" }}
                 />
                 <Stack.Screen
-                  name="settings/appearance"
-                  options={{ title: "Appearance" }}
-                />
-                <Stack.Screen
-                  name="settings/notifications"
-                  options={{ title: "Notifications" }}
-                />
-                <Stack.Screen
-                  name="settings/workspace"
-                  options={{ title: "Workspace" }}
-                />
-                <Stack.Screen
-                  name="settings/about"
-                  options={{ title: "About" }}
+                  name="settings/delete-account"
+                  options={{ title: "Delete account" }}
                 />
                 <Stack.Screen name="plan" options={{ title: "Plan" }} />
                 <Stack.Screen

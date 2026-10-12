@@ -63,6 +63,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { SUPPORT_EMAIL, supportMailto } from "@octonote/shared";
 
 type Role = "OWNER" | "ADMIN" | "MEMBER";
 
@@ -90,6 +91,7 @@ const SECTIONS = [
   { id: "billing", label: "Plan & billing", icon: CreditCard },
   { id: "about", label: "About", icon: Info },
   { id: "danger", label: "Danger zone", icon: AlertTriangle },
+  { id: "delete-account", label: "Delete account", icon: Trash2 },
 ] as const;
 
 export function SettingsPanel({
@@ -175,13 +177,14 @@ export function SettingsPanel({
           activeWorkspaceId={activeWorkspaceId}
         />
         <BillingSection />
-        <AboutSection />
+        <AboutSection user={user} workspace={workspace} />
         {isOwner ? (
           <DangerSection
             workspaceId={workspace.id}
             workspaceName={workspace.name}
           />
         ) : null}
+        <DeleteAccountSection email={user.email} />
       </main>
     </div>
   );
@@ -489,7 +492,27 @@ function BillingSection() {
   );
 }
 
-function AboutSection() {
+function AboutSection({
+  user,
+  workspace,
+}: {
+  user: SettingsPanelProps["user"];
+  workspace: SettingsPanelProps["workspace"];
+}) {
+  // Built on click so the time and page are current.
+  const openSupportEmail = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.location.href = supportMailto({
+      platform: "Web",
+      system: navigator.userAgent,
+      userId: user.id,
+      email: user.email,
+      workspaceName: workspace.name,
+      workspaceId: workspace.id,
+      location: window.location.pathname,
+    });
+  };
+
   return (
     <SectionShell
       id="about"
@@ -511,6 +534,18 @@ function AboutSection() {
           className="text-foreground-strong text-sm font-medium underline underline-offset-4"
         >
           Read the privacy notice
+        </a>
+      </Row>
+      <Row
+        label="Help & feedback"
+        description="Opens an email with a few details that help us look into problems."
+      >
+        <a
+          href={`mailto:${SUPPORT_EMAIL}`}
+          onClick={openSupportEmail}
+          className="text-foreground-strong text-sm font-medium underline underline-offset-4"
+        >
+          {SUPPORT_EMAIL}
         </a>
       </Row>
     </SectionShell>
@@ -774,6 +809,103 @@ function DangerSection({
             >
               {deleting ? <Loader2 className="size-4 animate-spin" /> : null}
               Delete forever
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/** Permanently deletes the signed-in account (and every workspace only you use). */
+function DeleteAccountSection({ email }: { email: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const matches = typed.trim().toLowerCase() === email.toLowerCase();
+
+  async function handleDelete() {
+    if (!matches) return;
+    setDeleting(true);
+    try {
+      await clientApi.delete("/me", {
+        body: JSON.stringify({ confirmEmail: typed }),
+      });
+      await createSupabaseBrowserClient().auth.signOut();
+      toast.success("Your account has been deleted.");
+      router.replace("/");
+      router.refresh();
+    } catch (err) {
+      // "Octonote API /me 409: You're the only owner…" → just the reason.
+      const message =
+        err instanceof Error
+          ? err.message.replace(/^Octonote API \S+ \d+: /, "")
+          : "";
+      toast.error(message || "Couldn't delete your account.");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <>
+      <section id="delete-account" className="scroll-mt-6">
+        <div className="border-destructive/30 bg-card flex flex-wrap items-center justify-between gap-4 rounded-lg border p-5">
+          <div className="min-w-0">
+            <div className="text-foreground text-sm font-medium">
+              Delete account
+            </div>
+            <div className="text-muted-foreground mt-0.5 text-xs">
+              Permanently deletes your account, your workspace and everything in
+              it, and removes you from anything shared with you. Cannot be
+              undone.
+            </div>
+          </div>
+          <Button variant="destructive" onClick={() => setOpen(true)}>
+            Delete account
+          </Button>
+        </div>
+      </section>
+
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          setOpen(o);
+          if (!o) setTyped("");
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete your account?</DialogTitle>
+            <DialogDescription>
+              Your notes, canvases, projects and notebooks, published pages and
+              shares will be deleted for good. Type your email address to
+              confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder={email}
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            autoComplete="off"
+            aria-label="Your email address"
+            disabled={deleting}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={!matches || deleting}
+            >
+              {deleting ? <Loader2 className="size-4 animate-spin" /> : null}
+              Delete my account
             </Button>
           </DialogFooter>
         </DialogContent>

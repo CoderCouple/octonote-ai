@@ -1,60 +1,271 @@
+/**
+ * Settings — one page with the same sections as the web app's Settings:
+ * Account, Appearance, Notifications, Workspace, Memberships, Plan & billing,
+ * About, Danger zone and Delete account.
+ */
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Clipboard from "expo-clipboard";
+import Constants from "expo-constants";
 import { Stack, useRouter } from "expo-router";
-import { Group, Item, SettingsScreen } from "@/components/settings-ui";
+import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
+import { Check } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { initials, useOpenSupportEmail } from "@/components/account-panel";
 import { replaySplash } from "@/components/animated-splash";
-import { useMe } from "@/features/resources";
-import { useThemeChoice } from "@/lib/theme-preference";
+import { Field, Item, Section, SettingsScreen } from "@/components/settings-ui";
+import {
+  useActiveMembership,
+  useMe,
+  type WorkspaceRole,
+} from "@/features/resources";
+import { setActiveWorkspaceId } from "@/lib/active-workspace";
+import { api } from "@/lib/api";
+import { env } from "@/lib/env";
+import { usePalette, type Palette } from "@/lib/theme";
+import {
+  setThemeChoice,
+  useThemeChoice,
+  type ThemeChoice,
+} from "@/lib/theme-preference";
+import { useAuth } from "@/providers/auth";
 import { useOnboarding } from "@/providers/onboarding";
 
-const THEME_LABEL = { system: "System", light: "Light", dark: "Dark" } as const;
+const THEMES: { value: ThemeChoice; label: string }[] = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
+];
 
 export default function Settings() {
+  const c = usePalette();
   const router = useRouter();
+  const qc = useQueryClient();
+  const { signOut } = useAuth();
   const me = useMe().data;
+  const active = useActiveMembership();
   const theme = useThemeChoice();
   const onboarding = useOnboarding();
+  const openSupportEmail = useOpenSupportEmail();
+
+  const role = active?.membership.role;
+  const canManage = role === "OWNER" || role === "ADMIN";
+  const publicUrl = active ? `${env.WEB_URL}/p/${active.workspace.slug}` : "";
 
   return (
     <SettingsScreen>
       <Stack.Screen options={{ title: "Settings" }} />
-      <Group>
+
+      <Section
+        title="Account"
+        description="Your personal profile. Used everywhere you appear in Octonote AI."
+      >
+        <Field
+          first
+          label="Profile"
+          description="Pulled from your sign-in identity."
+        >
+          <View style={[styles.avatar, { backgroundColor: c.tint }]}>
+            <Text style={[styles.avatarText, { color: c.onTint }]}>
+              {initials(me?.user.name)}
+            </Text>
+          </View>
+        </Field>
+        <Field label="Name" description={me?.user.name} />
+        <Field label="Email" description={me?.user.email}>
+          <CopyButton c={c} value={me?.user.email ?? ""} />
+        </Field>
+        <Field label="Sign out" description="End your session on this device.">
+          <SmallButton
+            c={c}
+            label="Sign out"
+            onPress={async () => {
+              await signOut();
+              qc.clear();
+              if (router.canDismiss()) router.dismissAll();
+              router.replace("/sign-in");
+            }}
+          />
+        </Field>
+      </Section>
+
+      <Section
+        title="Appearance"
+        description="Octonote AI is monochrome on purpose. Pick the brightness you prefer."
+      >
+        <Field first label="Theme" stacked>
+          <View style={styles.segment}>
+            {THEMES.map((t) => {
+              const on = theme === t.value;
+              return (
+                <Pressable
+                  key={t.value}
+                  onPress={() => setThemeChoice(t.value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  style={[
+                    styles.segmentItem,
+                    {
+                      borderColor: on ? c.textStrong : c.separator,
+                      backgroundColor: on ? c.pressed : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      { color: on ? c.textStrong : c.textSecondary },
+                    ]}
+                  >
+                    {t.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Field>
+      </Section>
+
+      <NotificationsSection c={c} />
+
+      <Section
+        title="Workspace"
+        description="The shared container for your projects, notes, and canvases."
+      >
+        <WorkspaceName
+          c={c}
+          workspaceId={active?.workspace.id}
+          name={active?.workspace.name ?? ""}
+          canManage={canManage}
+        />
+        <Field label="Public URL" description={publicUrl || " "}>
+          <CopyButton c={c} value={publicUrl} />
+        </Field>
+        <Field label="Workspace ID" description={active?.workspace.id ?? " "}>
+          <CopyButton c={c} value={active?.workspace.id ?? ""} />
+        </Field>
+        <Field label="Your role">
+          {role ? <RoleBadge c={c} role={role} /> : null}
+        </Field>
+      </Section>
+
+      <Section
+        title="Memberships"
+        description="Every workspace you belong to. Pick one to make it active."
+      >
+        {(me?.memberships ?? []).map((m, i) => {
+          const current = m.workspace.id === active?.workspace.id;
+          return (
+            <Field
+              key={m.workspace.id}
+              first={i === 0}
+              label={m.workspace.name}
+              description={m.membership.role.toLowerCase()}
+            >
+              {current ? (
+                <Text style={[styles.current, { color: c.textSecondary }]}>
+                  Current
+                </Text>
+              ) : (
+                <SmallButton
+                  c={c}
+                  label="Switch"
+                  onPress={() => {
+                    setActiveWorkspaceId(m.workspace.id);
+                    void Haptics.selectionAsync().catch(() => {});
+                  }}
+                />
+              )}
+            </Field>
+          );
+        })}
+      </Section>
+
+      <Section
+        title="Plan & billing"
+        description="Plans, invoices and payment methods will live here."
+      >
+        <Field
+          first
+          label="Current plan"
+          description="Every feature is included. Paid plans arrive after the beta and will be managed on the web."
+        >
+          <View style={[styles.badge, { backgroundColor: c.tint }]}>
+            <Text style={[styles.badgeText, { color: c.onTint }]}>
+              Free (beta)
+            </Text>
+          </View>
+        </Field>
+      </Section>
+
+      <Section title="About" description="The fine print.">
         <Item
           first
-          label="Account"
-          detail={me?.user.email}
-          onPress={() => router.push("/settings/account")}
+          label="Terms of Service"
+          onPress={() =>
+            void WebBrowser.openBrowserAsync(`${env.WEB_URL}/terms`)
+          }
         />
         <Item
-          label="Appearance"
-          detail={THEME_LABEL[theme]}
-          onPress={() => router.push("/settings/appearance")}
+          label="Privacy Notice"
+          onPress={() =>
+            void WebBrowser.openBrowserAsync(`${env.WEB_URL}/privacy`)
+          }
         />
-        <Item
-          label="Notifications"
-          onPress={() => router.push("/settings/notifications")}
-        />
-      </Group>
-      <Group>
-        <Item
+        <Item label="Help & feedback" onPress={openSupportEmail} />
+        <Item label="Version" detail={Constants.expoConfig?.version ?? "—"} />
+      </Section>
+
+      {role === "OWNER" && active ? (
+        <Section
+          title="Danger zone"
+          description="Irreversible actions. Owner-only."
+          danger
+        >
+          <Field
+            first
+            label="Delete workspace"
+            description="Removes all projects, notes, canvases, and shares. Cannot be undone."
+            stacked
+          >
+            <SmallButton
+              c={c}
+              danger
+              label="Delete workspace"
+              onPress={() => router.push("/settings/delete-workspace")}
+            />
+          </Field>
+        </Section>
+      ) : null}
+
+      <Section title="Delete account" danger>
+        <Field
           first
-          label="Workspace"
-          detail={me?.memberships[0]?.workspace.name}
-          onPress={() => router.push("/settings/workspace")}
-        />
-        <Item
-          label="Plan"
-          detail="Free (beta)"
-          onPress={() => router.push("/plan")}
-        />
-      </Group>
-      <Group>
-        <Item
-          first
-          label="About"
-          onPress={() => router.push("/settings/about")}
-        />
-      </Group>
+          label="Delete account"
+          description="Permanently deletes your account, your workspace and everything in it, and removes you from anything shared with you. Cannot be undone."
+          stacked
+        >
+          <SmallButton
+            c={c}
+            danger
+            label="Delete account"
+            onPress={() => router.push("/settings/delete-account")}
+          />
+        </Field>
+      </Section>
+
       {__DEV__ ? (
-        <Group title="Developer">
+        <Section title="Developer">
           <Item
             first
             label="Replay intro"
@@ -71,8 +282,246 @@ export default function Settings() {
               replaySplash();
             }}
           />
-        </Group>
+        </Section>
       ) : null}
     </SettingsScreen>
   );
 }
+
+function NotificationsSection({ c }: { c: Palette }) {
+  const qc = useQueryClient();
+  const prefs = useQuery({
+    queryKey: ["preferences"],
+    queryFn: () => api.get<{ emailOnShare: boolean }>("/me/preferences"),
+  });
+  const save = useMutation({
+    mutationFn: (emailOnShare: boolean) =>
+      api.patch("/me/preferences", { emailOnShare }),
+    onMutate: (emailOnShare) =>
+      qc.setQueryData<{ emailOnShare: boolean }>(["preferences"], (p) =>
+        p ? { ...p, emailOnShare } : p,
+      ),
+    onError: (e) => {
+      void qc.invalidateQueries({ queryKey: ["preferences"] });
+      Alert.alert("Couldn't save", e instanceof Error ? e.message : String(e));
+    },
+  });
+  return (
+    <Section
+      title="Notifications"
+      description="New shares also show up on Home under “Shared with you”."
+    >
+      <Field
+        first
+        label="Email me when someone shares with me"
+        description="A note, canvas, project or notebook shared with your email."
+      >
+        <Switch
+          value={prefs.data?.emailOnShare ?? true}
+          disabled={!prefs.data}
+          onValueChange={(v) => save.mutate(v)}
+          trackColor={{ true: c.tint }}
+        />
+      </Field>
+    </Section>
+  );
+}
+
+function WorkspaceName({
+  c,
+  workspaceId,
+  name,
+  canManage,
+}: {
+  c: Palette;
+  workspaceId?: string;
+  name: string;
+  canManage: boolean;
+}) {
+  const qc = useQueryClient();
+  const [value, setValue] = useState(name);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => setValue(name), [name]);
+  const dirty = value.trim() !== "" && value.trim() !== name;
+
+  async function save() {
+    if (!workspaceId || !dirty) return;
+    setSaving(true);
+    try {
+      await api.patch(`/workspaces/${workspaceId}`, { name: value.trim() });
+      await qc.invalidateQueries({ queryKey: ["me"] });
+    } catch (e) {
+      Alert.alert(
+        "Couldn't rename",
+        e instanceof Error ? e.message : String(e),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Field
+      first
+      label="Name"
+      description={
+        canManage
+          ? "Shown in the app, breadcrumbs, and shared links."
+          : "Only owners and admins can rename the workspace."
+      }
+      stacked
+    >
+      <View style={styles.nameRow}>
+        <TextInput
+          value={value}
+          onChangeText={setValue}
+          editable={canManage && !saving}
+          maxLength={120}
+          returnKeyType="done"
+          onSubmitEditing={save}
+          style={[
+            styles.input,
+            {
+              color: c.textStrong,
+              borderColor: c.separator,
+              opacity: canManage ? 1 : 0.6,
+            },
+          ]}
+        />
+        {canManage ? (
+          <SmallButton
+            c={c}
+            label={saving ? "" : "Save"}
+            busy={saving}
+            disabled={!dirty}
+            onPress={save}
+          />
+        ) : null}
+      </View>
+    </Field>
+  );
+}
+
+function CopyButton({ c, value }: { c: Palette; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <SmallButton
+      c={c}
+      label={copied ? "Copied" : "Copy"}
+      icon={copied ? <Check size={14} color={c.textStrong} /> : undefined}
+      disabled={!value}
+      onPress={async () => {
+        await Clipboard.setStringAsync(value);
+        void Haptics.selectionAsync().catch(() => {});
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+    />
+  );
+}
+
+function SmallButton({
+  c,
+  label,
+  onPress,
+  danger,
+  disabled,
+  busy,
+  icon,
+}: {
+  c: Palette;
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+  busy?: boolean;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || busy}
+      accessibilityRole="button"
+      accessibilityLabel={label || "Working"}
+      style={({ pressed }) => [
+        styles.button,
+        danger
+          ? { backgroundColor: c.danger, borderColor: c.danger }
+          : {
+              borderColor: c.separator,
+              backgroundColor: pressed ? c.pressed : c.card,
+            },
+        { opacity: disabled ? 0.4 : pressed && danger ? 0.8 : 1 },
+      ]}
+    >
+      {busy ? <ActivityIndicator size="small" color={c.textSecondary} /> : icon}
+      {label ? (
+        <Text
+          style={[styles.buttonText, { color: danger ? "#fff" : c.textStrong }]}
+        >
+          {label}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function RoleBadge({ c, role }: { c: Palette; role: WorkspaceRole }) {
+  return (
+    <View style={[styles.role, { borderColor: c.separator }]}>
+      <Text style={[styles.roleText, { color: c.textSecondary }]}>{role}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontSize: 16, fontWeight: "700" },
+  segment: { flexDirection: "row", gap: 8 },
+  segmentItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  segmentText: { fontSize: 14, fontWeight: "600" },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  input: {
+    flex: 1,
+    height: 42,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    letterSpacing: 0,
+  },
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignSelf: "flex-start",
+  },
+  buttonText: { fontSize: 14, fontWeight: "600" },
+  current: { fontSize: 14, fontWeight: "500" },
+  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText: { fontSize: 12, fontWeight: "700" },
+  role: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  roleText: { fontSize: 11, fontWeight: "600", letterSpacing: 0.6 },
+});

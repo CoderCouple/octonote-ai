@@ -426,3 +426,4 @@ export type UserPreference = z.infer<typeof UserPreferenceSchema>;
 export type UserPreferenceUpdate = z.infer<typeof UserPreferenceUpdateSchema>;
 export * from "./text-preview";
 export * from "./library";
+export * from "./support";
