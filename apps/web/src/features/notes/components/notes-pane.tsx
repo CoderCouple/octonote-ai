@@ -4,6 +4,7 @@ import { Code2, FileText } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
+import { FocusHeader } from "@/components/focus-header";
 import { NoteTitle } from "./note-title";
 import { SaveIndicator, type SaveState } from "@/components/save-indicator";
 import { Toggle } from "@/components/ui/toggle";
@@ -62,61 +63,64 @@ export function NotesPane({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="bg-card flex h-11 shrink-0 items-center gap-2 border-b px-2">
-        {leading}
-        {editable ? (
-          <EditableTitle
-            value={title}
-            onSave={rename}
-            placeholder="Untitled note"
+      <FocusHeader
+        leading={leading}
+        icon={FileText}
+        title={
+          <>
+            {editable ? (
+              <EditableTitle
+                value={title}
+                onSave={rename}
+                placeholder="Untitled note"
+              />
+            ) : (
+              <span className="truncate text-sm font-medium">
+                {title || "Untitled note"}
+              </span>
+            )}
+            {editable ? null : (
+              <span className="text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[11px]">
+                View only
+              </span>
+            )}
+          </>
+        }
+      >
+        <SaveIndicator state={saveState} />
+        <PublishedViaBadge kind="page" id={note.id} />
+        <TypographyPicker />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Toggle
+              pressed={raw}
+              onPressedChange={setRaw}
+              size="sm"
+              aria-label={raw ? "Show editor" : "Show markdown"}
+              className="size-8 p-0"
+            >
+              {raw ? (
+                <FileText className="size-3.5" />
+              ) : (
+                <Code2 className="size-3.5" />
+              )}
+            </Toggle>
+          </TooltipTrigger>
+          <TooltipContent>
+            {raw ? "Back to the editor" : "View as markdown"}
+          </TooltipContent>
+        </Tooltip>
+        {showShare ? (
+          <ShareDialog
+            kind="page"
+            id={note.id}
+            title={title}
+            myRole={myRole}
+            initialLinkAccess={note.linkAccess}
+            initialLinkRole={note.linkRole}
           />
-        ) : (
-          <span className="truncate px-1 text-sm font-medium">
-            {title || "Untitled note"}
-          </span>
-        )}
-        {editable ? null : (
-          <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]">
-            View only
-          </span>
-        )}
-        <div className="ml-auto flex items-center gap-1">
-          <SaveIndicator state={saveState} />
-          <PublishedViaBadge kind="page" id={note.id} />
-          <TypographyPicker />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Toggle
-                pressed={raw}
-                onPressedChange={setRaw}
-                size="sm"
-                aria-label={raw ? "Show editor" : "Show markdown"}
-                className="size-8 p-0"
-              >
-                {raw ? (
-                  <FileText className="size-3.5" />
-                ) : (
-                  <Code2 className="size-3.5" />
-                )}
-              </Toggle>
-            </TooltipTrigger>
-            <TooltipContent>
-              {raw ? "Back to the editor" : "View as markdown"}
-            </TooltipContent>
-          </Tooltip>
-          {showShare ? (
-            <ShareDialog
-              iconOnly
-              kind="page"
-              id={note.id}
-              title={title}
-              myRole={myRole}
-              initialLinkAccess={note.linkAccess}
-              initialLinkRole={note.linkRole}
-            />
-          ) : null}
-        </div>
-      </header>
+        ) : null}
+      </FocusHeader>
       {/* Full-width scroll area; the reading column is centred inside it (see globals.css). */}
       <div
         className="reader-typography min-h-0 flex-1"

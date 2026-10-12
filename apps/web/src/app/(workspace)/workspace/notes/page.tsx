@@ -22,6 +22,7 @@ export default async function NotesPage() {
       workspaceId={workspaceId}
       noun="notes"
       createAction={<CreateButton kind="page" workspaceId={workspaceId} />}
+      emptyKind="page"
       emptyMessage="No notes yet. Create one to start writing."
       rows={notes.map((n) => {
         const { notebook, notebookName, publishedVia } = lookup(

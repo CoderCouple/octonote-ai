@@ -12,6 +12,7 @@ export default async function SharedWithMePage() {
       workspaceId={workspaceId}
       noun="items"
       readOnly
+      emptyKind="shared"
       emptyMessage="Nothing has been shared with you yet. When someone shares a note, canvas, project or notebook with your email, it shows up here."
       rows={items.map((i) => ({
         kind: i.kind,

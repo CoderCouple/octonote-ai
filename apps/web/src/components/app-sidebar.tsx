@@ -43,7 +43,8 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="border-sidebar-border border-b px-3 py-3">
+      {/* Exactly 48px with a bottom border: lines up with the top bar's border. */}
+      <SidebarHeader className="border-sidebar-border h-12 shrink-0 justify-center border-b px-3 py-0">
         <TeamSwitcher activeWorkspaceId={workspace.id} teams={memberships} />
       </SidebarHeader>
       <SidebarContent className="pt-2">

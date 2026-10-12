@@ -21,6 +21,7 @@ export default async function ProjectsPage() {
       workspaceId={workspaceId}
       noun="projects"
       createAction={<CreateButton kind="project" workspaceId={workspaceId} />}
+      emptyKind="project"
       emptyMessage="No projects yet. A project pairs one note with one canvas, side by side."
       rows={projects.map((p) => {
         const { notebook, notebookName, publishedVia } = lookup(

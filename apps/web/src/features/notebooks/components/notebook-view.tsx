@@ -1,10 +1,17 @@
 "use client";
 
+import { BookOpen } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
+import { FocusHeader } from "@/components/focus-header";
 import { CreateButton, ResourceList } from "@/features/library";
-import { can, PublishedViaBadge, ShareDialog, type AccessRole } from "@/features/sharing";
+import {
+  can,
+  PublishedViaBadge,
+  ShareDialog,
+  type AccessRole,
+} from "@/features/sharing";
 import { updateNotebookClientApi } from "../api/notebooks-client-api";
 import type { NotebookContents } from "../types";
 import { previewFromMarkdown } from "@octonote/shared";
@@ -75,32 +82,45 @@ export function NotebookView({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="bg-card flex h-12 shrink-0 items-center gap-2 border-b px-3">
-        {leading}
-        {editable ? (
-          <EditableTitle value={name} onSave={rename} size="lg" placeholder="Untitled notebook" />
-        ) : (
-          <span className="truncate text-base font-semibold">{name}</span>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <PublishedViaBadge kind="notebook" id={notebook.id} />
-          <ShareDialog
-            kind="notebook"
-            id={notebook.id}
-            title={name}
-            myRole={myRole}
-            initialLinkAccess={notebook.linkAccess}
-            initialLinkRole={notebook.linkRole}
-          />
-        </div>
-      </header>
+      <FocusHeader
+        leading={leading}
+        icon={BookOpen}
+        title={
+          editable ? (
+            <EditableTitle
+              value={name}
+              onSave={rename}
+              placeholder="Untitled notebook"
+            />
+          ) : (
+            <span className="truncate text-sm font-medium">{name}</span>
+          )
+        }
+      >
+        <PublishedViaBadge kind="notebook" id={notebook.id} />
+        <ShareDialog
+          kind="notebook"
+          id={notebook.id}
+          title={name}
+          myRole={myRole}
+          initialLinkAccess={notebook.linkAccess}
+          initialLinkRole={notebook.linkRole}
+        />
+      </FocusHeader>
       <div className="flex-1 overflow-auto pb-10">
         {sections.map((s) => (
           <div key={s.kind} className="mt-4">
             <div className="flex items-center justify-between px-6 pb-2 md:px-8">
-              <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{s.title}</h2>
+              <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                {s.title}
+              </h2>
               {editable ? (
-                <CreateButton kind={s.kind} workspaceId={ws} notebookId={notebook.id} variant="outline" />
+                <CreateButton
+                  kind={s.kind}
+                  workspaceId={ws}
+                  notebookId={notebook.id}
+                  variant="outline"
+                />
               ) : null}
             </div>
             <ResourceList

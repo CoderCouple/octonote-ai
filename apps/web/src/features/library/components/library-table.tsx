@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
+import { EmptyTableState, type EmptyKind } from "@/components/empty-state";
 import { AnalyticsSheet } from "@/features/analytics";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,6 +139,8 @@ interface LibraryTableProps {
   /** Plural noun for counts and copy, e.g. "notes". */
   noun: string;
   emptyMessage: string;
+  /** Picture shown under the empty message. */
+  emptyKind: EmptyKind;
   /** Usually a CreateButton. */
   createAction?: ReactNode;
   /** Shared page: open-only rows, "Your access" column, no notebook/owner tabs. */
@@ -151,6 +154,7 @@ export function LibraryTable({
   rows,
   noun,
   emptyMessage,
+  emptyKind,
   createAction,
   readOnly = false,
   hideNotebookColumn = false,
@@ -312,9 +316,15 @@ export function LibraryTable({
                     colSpan={7}
                     className="text-muted-foreground h-32 text-center text-sm"
                   >
-                    {rows.length === 0
-                      ? emptyMessage
-                      : `No ${noun} match this filter.`}
+                    {rows.length === 0 ? (
+                      <EmptyTableState
+                        kind={emptyKind}
+                        message={emptyMessage}
+                        action={createAction}
+                      />
+                    ) : (
+                      `No ${noun} match this filter.`
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (

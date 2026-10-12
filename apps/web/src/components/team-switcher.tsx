@@ -72,19 +72,16 @@ export function TeamSwitcher({ activeWorkspaceId, teams }: TeamSwitcherProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-12 group-data-[collapsible=icon]:!p-2"
+              // Compact so the sidebar header is exactly 48px, like the top bar.
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-9 gap-2.5 px-1.5 group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-1.5"
             >
-              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg group-data-[collapsible=icon]:size-7">
+              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-6 shrink-0 items-center justify-center rounded-md">
                 <Focus className="size-3.5" />
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{active.name}</span>
-                <span className="text-muted-foreground truncate text-xs">
-                  {active.role.charAt(0) + active.role.slice(1).toLowerCase()}
-                </span>
-              </div>
-              <ChevronsUpDown className="ml-auto" />
+              <span className="text-foreground-strong flex-1 truncate text-left text-sm font-semibold">
+                {active.name}
+              </span>
+              <ChevronsUpDown className="text-muted-foreground ml-auto size-3.5" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

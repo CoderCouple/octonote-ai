@@ -5,7 +5,15 @@
  * ("restricted" / "anyone with the link") and publish to web.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, ExternalLink, Globe, Link2, Lock, Share2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Globe,
+  Link2,
+  Lock,
+  Share2,
+} from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -40,7 +48,13 @@ import {
   updatePersonRoleApi,
 } from "../api/sharing-api";
 import { can, KIND_LABEL, RESOURCE_PATH, shareKeys } from "../constants";
-import type { AccessRole, LinkAccess, ResourceKind, Share, ShareRole } from "../types";
+import type {
+  AccessRole,
+  LinkAccess,
+  ResourceKind,
+  Share,
+  ShareRole,
+} from "../types";
 
 export interface ShareDialogProps {
   kind: ResourceKind;
@@ -50,7 +64,6 @@ export interface ShareDialogProps {
   initialLinkAccess: LinkAccess;
   initialLinkRole: ShareRole;
   /** Icon-only trigger for tight headers. */
-  iconOnly?: boolean;
 }
 
 export function ShareDialog(props: ShareDialogProps) {
@@ -58,20 +71,21 @@ export function ShareDialog(props: ShareDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {props.iconOnly ? (
-          <Button variant="ghost" size="sm" className="size-8 p-0" aria-label="Share">
-            <Share2 className="size-3.5" />
-          </Button>
-        ) : (
-          <Button size="sm" className="gap-1.5">
-            <Share2 className="size-3.5" />
-            Share
-          </Button>
-        )}
+        {/* One look everywhere: a black Share button, icon-only on small screens. */}
+        <Button
+          size="sm"
+          className="h-8 gap-1.5 rounded-md px-2.5 sm:px-3"
+          aria-label="Share"
+        >
+          <Share2 className="size-3.5" />
+          <span className="hidden sm:inline">Share</span>
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="truncate pr-6">Share “{props.title || "Untitled"}”</DialogTitle>
+          <DialogTitle className="truncate pr-6">
+            Share “{props.title || "Untitled"}”
+          </DialogTitle>
           <DialogDescription>
             {can.share(props.myRole)
               ? `Choose who can open this ${KIND_LABEL[props.kind]}.`
@@ -85,7 +99,13 @@ export function ShareDialog(props: ShareDialogProps) {
   );
 }
 
-function ShareDialogBody({ kind, id, myRole, initialLinkAccess, initialLinkRole }: ShareDialogProps) {
+function ShareDialogBody({
+  kind,
+  id,
+  myRole,
+  initialLinkAccess,
+  initialLinkRole,
+}: ShareDialogProps) {
   return (
     <div className="flex flex-col gap-5">
       {can.share(myRole) ? <PeopleSection kind={kind} id={id} /> : null}
@@ -106,24 +126,35 @@ function ShareDialogBody({ kind, id, myRole, initialLinkAccess, initialLinkRole 
 function PeopleSection({ kind, id }: { kind: ResourceKind; id: string }) {
   const qc = useQueryClient();
   const key = shareKeys.people(kind, id);
-  const people = useQuery({ queryKey: key, queryFn: () => listPeopleApi(kind, id) });
+  const people = useQuery({
+    queryKey: key,
+    queryFn: () => listPeopleApi(kind, id),
+  });
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<ShareRole>("editor");
 
   const add = useMutation({
-    mutationFn: () => addPersonApi({ resourceKind: kind, resourceId: id, email, role }),
+    mutationFn: () =>
+      addPersonApi({ resourceKind: kind, resourceId: id, email, role }),
     onSuccess: (share) => {
       setEmail("");
       qc.invalidateQueries({ queryKey: key });
       if (!share.emailSent) {
-        toast.warning("Access granted, but the email couldn't be sent. Share the link directly.");
+        toast.warning(
+          "Access granted, but the email couldn't be sent. Share the link directly.",
+        );
       } else if (share.status === "pending") {
-        toast.success(`Invited ${share.pendingEmail}. They'll get access when they sign up.`);
+        toast.success(
+          `Invited ${share.pendingEmail}. They'll get access when they sign up.`,
+        );
       } else {
-        toast.success(`Shared with ${share.user?.name ?? share.user?.email ?? "them"}.`);
+        toast.success(
+          `Shared with ${share.user?.name ?? share.user?.email ?? "them"}.`,
+        );
       }
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : "Couldn't share."),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Couldn't share."),
   });
 
   function onSubmit(e: FormEvent) {
@@ -148,7 +179,9 @@ function PeopleSection({ kind, id }: { kind: ResourceKind; id: string }) {
         </Button>
       </form>
       <div className="flex flex-col gap-1">
-        <h3 className="text-muted-foreground text-xs font-medium">People with access</h3>
+        <h3 className="text-muted-foreground text-xs font-medium">
+          People with access
+        </h3>
         {people.isLoading ? (
           <p className="text-muted-foreground py-2 text-sm">Loading…</p>
         ) : people.data && people.data.length > 0 ? (
@@ -167,7 +200,13 @@ function PeopleSection({ kind, id }: { kind: ResourceKind; id: string }) {
   );
 }
 
-function PersonRow({ share, queryKey }: { share: Share; queryKey: readonly unknown[] }) {
+function PersonRow({
+  share,
+  queryKey,
+}: {
+  share: Share;
+  queryKey: readonly unknown[];
+}) {
   const qc = useQueryClient();
   const update = useMutation({
     mutationFn: async (value: ShareRole | "remove") => {
@@ -175,7 +214,10 @@ function PersonRow({ share, queryKey }: { share: Share; queryKey: readonly unkno
       else await updatePersonRoleApi(share.id, value);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey }),
-    onError: (err) => toast.error(err instanceof Error ? err.message : "Couldn't update access."),
+    onError: (err) =>
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't update access.",
+      ),
   });
   const name = share.user?.name ?? share.pendingEmail ?? "Unknown";
   const email = share.user?.email ?? share.pendingEmail ?? "";
@@ -183,8 +225,12 @@ function PersonRow({ share, queryKey }: { share: Share; queryKey: readonly unkno
   return (
     <li className="flex items-center gap-3 py-1.5">
       <Avatar className="size-8">
-        {share.user?.avatarUrl ? <AvatarImage src={share.user.avatarUrl} alt="" /> : null}
-        <AvatarFallback className="text-xs">{name.slice(0, 1).toUpperCase()}</AvatarFallback>
+        {share.user?.avatarUrl ? (
+          <AvatarImage src={share.user.avatarUrl} alt="" />
+        ) : null}
+        <AvatarFallback className="text-xs">
+          {name.slice(0, 1).toUpperCase()}
+        </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -195,14 +241,20 @@ function PersonRow({ share, queryKey }: { share: Share; queryKey: readonly unkno
             </Badge>
           ) : null}
         </div>
-        {share.user ? <p className="text-muted-foreground truncate text-xs">{email}</p> : null}
+        {share.user ? (
+          <p className="text-muted-foreground truncate text-xs">{email}</p>
+        ) : null}
       </div>
       <Select
         value={share.role}
         onValueChange={(v) => update.mutate(v as ShareRole | "remove")}
         disabled={update.isPending}
       >
-        <SelectTrigger size="sm" className="w-28" aria-label={`Access for ${email}`}>
+        <SelectTrigger
+          size="sm"
+          className="w-28"
+          aria-label={`Access for ${email}`}
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent align="end">
@@ -218,7 +270,13 @@ function PersonRow({ share, queryKey }: { share: Share; queryKey: readonly unkno
   );
 }
 
-function RoleSelect({ value, onChange }: { value: ShareRole; onChange: (r: ShareRole) => void }) {
+function RoleSelect({
+  value,
+  onChange,
+}: {
+  value: ShareRole;
+  onChange: (r: ShareRole) => void;
+}) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as ShareRole)}>
       <SelectTrigger className="w-28" aria-label="Role">
@@ -255,7 +313,9 @@ function GeneralAccessSection({
     onError: (err) => {
       setLinkAccess(initialLinkAccess);
       setLinkRole(initialLinkRole);
-      toast.error(err instanceof Error ? err.message : "Couldn't change access.");
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't change access.",
+      );
     },
   });
 
@@ -266,12 +326,17 @@ function GeneralAccessSection({
   }
 
   const isOpen = linkAccess === "anyone_with_link";
-  const link = typeof window === "undefined" ? "" : `${window.location.origin}${RESOURCE_PATH[kind](id)}`;
+  const link =
+    typeof window === "undefined"
+      ? ""
+      : `${window.location.origin}${RESOURCE_PATH[kind](id)}`;
 
   return (
     <section className="flex flex-col gap-2">
       <Separator />
-      <h3 className="text-muted-foreground text-xs font-medium">General access</h3>
+      <h3 className="text-muted-foreground text-xs font-medium">
+        General access
+      </h3>
       <div className="flex items-center gap-3">
         <div className="bg-muted grid size-8 shrink-0 place-items-center rounded-full">
           {isOpen ? <Link2 className="size-4" /> : <Lock className="size-4" />}
@@ -280,18 +345,28 @@ function GeneralAccessSection({
           {canManage ? (
             <Select
               value={linkAccess}
-              onValueChange={(v) => change({ linkAccess: v as LinkAccess, linkRole })}
+              onValueChange={(v) =>
+                change({ linkAccess: v as LinkAccess, linkRole })
+              }
             >
-              <SelectTrigger size="sm" className="h-7 border-none px-0 shadow-none" aria-label="General access">
+              <SelectTrigger
+                size="sm"
+                className="h-7 border-none px-0 shadow-none"
+                aria-label="General access"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="restricted">Restricted</SelectItem>
-                <SelectItem value="anyone_with_link">Anyone with the link</SelectItem>
+                <SelectItem value="anyone_with_link">
+                  Anyone with the link
+                </SelectItem>
               </SelectContent>
             </Select>
           ) : (
-            <p className="text-sm font-medium">{isOpen ? "Anyone with the link" : "Restricted"}</p>
+            <p className="text-sm font-medium">
+              {isOpen ? "Anyone with the link" : "Restricted"}
+            </p>
           )}
           <p className="text-muted-foreground text-xs">
             {isOpen
@@ -302,7 +377,10 @@ function GeneralAccessSection({
           </p>
         </div>
         {isOpen && canManage ? (
-          <RoleSelect value={linkRole} onChange={(r) => change({ linkAccess, linkRole: r })} />
+          <RoleSelect
+            value={linkRole}
+            onChange={(r) => change({ linkAccess, linkRole: r })}
+          />
         ) : null}
       </div>
       <div>
@@ -317,11 +395,17 @@ function GeneralAccessSection({
 function PublishSection({ kind, id }: { kind: ResourceKind; id: string }) {
   const qc = useQueryClient();
   const key = shareKeys.publish(kind, id);
-  const state = useQuery({ queryKey: key, queryFn: () => getPublishStateApi(kind, id) });
+  const state = useQuery({
+    queryKey: key,
+    queryFn: () => getPublishStateApi(kind, id),
+  });
   const toggle = useMutation({
     mutationFn: (published: boolean) => setPublishedApi(kind, id, published),
     onSuccess: (next) => qc.setQueryData(key, next),
-    onError: (err) => toast.error(err instanceof Error ? err.message : "Couldn't update publishing."),
+    onError: (err) =>
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't update publishing.",
+      ),
   });
 
   const data = state.data;
@@ -349,15 +433,27 @@ function PublishSection({ kind, id }: { kind: ResourceKind; id: string }) {
       </div>
       {data?.publishedVia ? (
         <p className="bg-muted rounded-md px-3 py-2 text-xs">
-          Already public because its {KIND_LABEL[data.publishedVia.kind]} “{data.publishedVia.name}” is
-          published. Unpublish it there to make this private again.
+          Already public because its {KIND_LABEL[data.publishedVia.kind]} “
+          {data.publishedVia.name}” is published. Unpublish it there to make
+          this private again.
         </p>
       ) : null}
       {data?.published && data.publicUrl ? (
         <div className="flex items-center gap-2">
-          <Input readOnly value={data.publicUrl} className="h-8 text-xs" aria-label="Public URL" />
+          <Input
+            readOnly
+            value={data.publicUrl}
+            className="h-8 text-xs"
+            aria-label="Public URL"
+          />
           <CopyButton value={data.publicUrl} iconOnly />
-          <Button asChild variant="ghost" size="sm" className="size-8 p-0" aria-label="Open public page">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="size-8 p-0"
+            aria-label="Open public page"
+          >
             <a href={data.publicUrl} target="_blank" rel="noreferrer">
               <ExternalLink className="size-3.5" />
             </a>
@@ -368,7 +464,15 @@ function PublishSection({ kind, id }: { kind: ResourceKind; id: string }) {
   );
 }
 
-function CopyButton({ value, label, iconOnly }: { value: string; label?: string; iconOnly?: boolean }) {
+function CopyButton({
+  value,
+  label,
+  iconOnly,
+}: {
+  value: string;
+  label?: string;
+  iconOnly?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -382,7 +486,13 @@ function CopyButton({ value, label, iconOnly }: { value: string; label?: string;
   const Icon = copied ? Check : Copy;
   if (iconOnly) {
     return (
-      <Button variant="ghost" size="sm" className="size-8 p-0" onClick={copy} aria-label="Copy">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="size-8 p-0"
+        onClick={copy}
+        aria-label="Copy"
+      >
         <Icon className="size-3.5" />
       </Button>
     );

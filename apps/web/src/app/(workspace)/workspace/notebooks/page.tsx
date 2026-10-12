@@ -16,6 +16,7 @@ export default async function NotebooksPage() {
       noun="notebooks"
       hideNotebookColumn
       createAction={<CreateButton kind="notebook" workspaceId={workspaceId} />}
+      emptyKind="notebook"
       emptyMessage="No notebooks yet. Use them to group notes, canvases and projects — and share or publish them together."
       rows={notebooks.map((n) => ({
         kind: "notebook",

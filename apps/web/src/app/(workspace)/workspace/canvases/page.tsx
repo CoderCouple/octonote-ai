@@ -21,6 +21,7 @@ export default async function CanvasesPage() {
       workspaceId={workspaceId}
       noun="canvases"
       createAction={<CreateButton kind="canvas" workspaceId={workspaceId} />}
+      emptyKind="canvas"
       emptyMessage="No canvases yet. Create one to start drawing."
       rows={canvases.map((c) => {
         const { notebook, notebookName, publishedVia } = lookup(
