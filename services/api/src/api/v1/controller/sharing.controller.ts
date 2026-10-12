@@ -63,13 +63,13 @@ export class SharingController {
   async add(
     @Body(new ZodValidationPipe(ShareCreateSchema)) body: ShareCreate,
     @Req() req: AuthenticatedRequest,
-  ): Promise<ShareDto & { emailSent: boolean }> {
+  ): Promise<ShareDto & { emailSent: boolean; emailMuted: boolean }> {
     const r = await this.shares.add(body, {
       id: req.user.id,
       email: req.user.email,
       name: actorName(req),
     });
-    return { ...shareToDto(r.share, r.user), emailSent: r.emailSent };
+    return { ...shareToDto(r.share, r.user), emailSent: r.emailSent, emailMuted: r.emailMuted };
   }
 
   @Patch("shares/:id")

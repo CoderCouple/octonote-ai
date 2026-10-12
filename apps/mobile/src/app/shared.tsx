@@ -1,12 +1,18 @@
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import { ResourceList } from "@/components/resource-list";
 import { useSharedWithMe } from "@/features/resources";
+import { markSharedSeen } from "@/lib/shared-seen";
 
-export default function SharedTab() {
+/** Everything shared with you — opened from Home or the account panel. Opening it clears "New". */
+export default function SharedScreen() {
   const shared = useSharedWithMe();
+  useEffect(() => {
+    markSharedSeen();
+  }, []);
   return (
     <>
-      <Stack.Screen options={{ title: "Shared" }} />
+      <Stack.Screen options={{ title: "Shared with you" }} />
       <ResourceList
         readOnly
         items={shared.data}

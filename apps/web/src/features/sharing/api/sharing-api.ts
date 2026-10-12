@@ -18,7 +18,7 @@ export function addPersonApi(input: {
   email: string;
   role: ShareRole;
 }) {
-  return clientApi.post<Share & { emailSent: boolean }>("/shares", input);
+  return clientApi.post<Share & { emailSent: boolean; emailMuted: boolean }>("/shares", input);
 }
 
 export function updatePersonRoleApi(shareId: string, role: ShareRole) {

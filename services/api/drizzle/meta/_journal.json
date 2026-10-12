@@ -29,6 +29,13 @@
       "when": 1791574560910,
       "tag": "0003_lock_public_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791830398894,
+      "tag": "0004_share_email_pref",
+      "breakpoints": true
     }
   ]
 }

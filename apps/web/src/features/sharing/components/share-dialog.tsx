@@ -139,7 +139,7 @@ function PeopleSection({ kind, id }: { kind: ResourceKind; id: string }) {
     onSuccess: (share) => {
       setEmail("");
       qc.invalidateQueries({ queryKey: key });
-      if (!share.emailSent) {
+      if (!share.emailSent && !share.emailMuted) {
         toast.warning(
           "Access granted, but the email couldn't be sent. Share the link directly.",
         );

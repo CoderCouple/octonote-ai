@@ -2,6 +2,7 @@
 
 import {
   ChevronsUpDown,
+  CreditCard,
   LogOut,
   Monitor,
   Moon,
@@ -111,6 +112,12 @@ export function NavUser({
               <Link href="/workspace/settings">
                 <Settings />
                 Settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/workspace/settings#billing">
+                <CreditCard />
+                Plan &amp; billing
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

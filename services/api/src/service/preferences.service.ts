@@ -28,6 +28,7 @@ export class PreferencesService {
       ...(patch.notesFontSize !== undefined ? { notesFontSize: patch.notesFontSize } : {}),
       ...(patch.notesLineHeight !== undefined ? { notesLineHeight: patch.notesLineHeight } : {}),
       ...(patch.theme !== undefined ? { theme: patch.theme } : {}),
+      ...(patch.emailOnShare !== undefined ? { emailOnShare: patch.emailOnShare } : {}),
     });
     if (!row) throw NotFound("Preferences not found.");
     return toUserPreference(row);

@@ -12,7 +12,6 @@ import {
   FolderKanban,
   House,
   PenTool,
-  Users,
   type LucideIcon,
 } from "lucide-react-native";
 import type { ComponentProps } from "react";
@@ -30,7 +29,6 @@ const TABS: Record<string, { label: string; icon: LucideIcon }> = {
   canvases: { label: "Canvases", icon: PenTool },
   projects: { label: "Projects", icon: FolderKanban },
   notebooks: { label: "Notebooks", icon: BookOpen },
-  shared: { label: "Shared", icon: Users },
 };
 
 /** Height of the bar plus its margins — lists pad their bottom by this so nothing hides under it. */
@@ -94,9 +92,6 @@ export function FloatingTabBar({ state, navigation }: TabBarProps) {
               />
               <Text
                 numberOfLines={1}
-                // Six tabs on a narrow phone: shrink "Notebooks" a touch rather than cut it.
-                adjustsFontSizeToFit
-                minimumFontScale={0.85}
                 style={[
                   styles.label,
                   { color: focused ? c.onTint : c.textSecondary },
@@ -123,7 +118,7 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: "row",
-    gap: 2,
+    gap: 4,
     borderRadius: 30,
     borderWidth: StyleSheet.hairlineWidth,
     padding: 6,

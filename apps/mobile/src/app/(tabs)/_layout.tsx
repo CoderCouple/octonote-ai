@@ -19,7 +19,6 @@ export default function TabsLayout() {
       <Tabs.Screen name="canvases" />
       <Tabs.Screen name="projects" />
       <Tabs.Screen name="notebooks" />
-      <Tabs.Screen name="shared" />
     </Tabs>
   );
 }

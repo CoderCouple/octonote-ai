@@ -2,9 +2,14 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { AnimatedSplash, useSplashReplays } from "@/components/animated-splash";
+import { AccountPanelProvider } from "@/components/account-panel";
+import { loadThemeChoice } from "@/lib/theme-preference";
 import { AuthProvider, useAuth } from "@/providers/auth";
 import { OnboardingProvider, useOnboarding } from "@/providers/onboarding";
 import { QueryProvider } from "@/providers/query";
+
+// Apply a saved Light/Dark override before the first screen renders.
+void loadThemeChoice();
 
 export default function RootLayout() {
   const scheme = useColorScheme();
@@ -14,26 +19,53 @@ export default function RootLayout() {
         <AuthProvider>
           <OnboardingProvider>
             <StatusBar style="auto" />
-            <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="onboarding"
-                options={{ headerShown: false, animation: "fade" }}
-              />
-              <Stack.Screen
-                name="sign-in"
-                options={{ headerShown: false, animation: "fade" }}
-              />
-              <Stack.Screen
-                name="analytics/[kind]/[id]"
-                options={{ title: "Analytics" }}
-              />
-              <Stack.Screen
-                name="settings"
-                options={{ presentation: "modal", title: "Account" }}
-              />
-            </Stack>
+            <AccountPanelProvider>
+              <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="onboarding"
+                  options={{ headerShown: false, animation: "fade" }}
+                />
+                <Stack.Screen
+                  name="sign-in"
+                  options={{ headerShown: false, animation: "fade" }}
+                />
+                <Stack.Screen
+                  name="analytics/[kind]/[id]"
+                  options={{ title: "Analytics" }}
+                />
+                <Stack.Screen
+                  name="settings/index"
+                  options={{ title: "Settings" }}
+                />
+                <Stack.Screen
+                  name="settings/account"
+                  options={{ title: "Account" }}
+                />
+                <Stack.Screen
+                  name="settings/appearance"
+                  options={{ title: "Appearance" }}
+                />
+                <Stack.Screen
+                  name="settings/notifications"
+                  options={{ title: "Notifications" }}
+                />
+                <Stack.Screen
+                  name="settings/workspace"
+                  options={{ title: "Workspace" }}
+                />
+                <Stack.Screen
+                  name="settings/about"
+                  options={{ title: "About" }}
+                />
+                <Stack.Screen name="plan" options={{ title: "Plan" }} />
+                <Stack.Screen
+                  name="shared"
+                  options={{ title: "Shared with you" }}
+                />
+              </Stack>
+            </AccountPanelProvider>
             <Splash />
           </OnboardingProvider>
         </AuthProvider>

@@ -7,6 +7,7 @@ export interface UserPreferenceDto {
   notesFontSize: NotesFontSize;
   notesLineHeight: NotesLineHeight;
   theme: Theme;
+  emailOnShare: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -18,6 +19,7 @@ export function userPreferenceToDto(pref: UserPreference): UserPreferenceDto {
     notesFontSize: pref.notesFontSize,
     notesLineHeight: pref.notesLineHeight,
     theme: pref.theme,
+    emailOnShare: pref.emailOnShare,
     createdAt: pref.createdAt.toISOString(),
     updatedAt: pref.updatedAt.toISOString(),
   };

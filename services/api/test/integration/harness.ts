@@ -18,6 +18,7 @@ import { NotebooksRepository } from "../../src/db/repository/notebooks.repositor
 import { PagesRepository } from "../../src/db/repository/pages.repository";
 import { ProjectsRepository } from "../../src/db/repository/projects.repository";
 import { SharingRepository } from "../../src/db/repository/sharing.repository";
+import { UserPreferencesRepository } from "../../src/db/repository/user-preferences.repository";
 import { WorkspaceMembersRepository } from "../../src/db/repository/workspace-members.repository";
 import { WorkspacesRepository } from "../../src/db/repository/workspaces.repository";
 import * as schema from "../../src/db/schema";
@@ -28,6 +29,7 @@ import { AnalyticsService } from "../../src/service/analytics.service";
 import { ViewsRepository } from "../../src/db/repository/views.repository";
 import { NotebookPlacement } from "../../src/service/lib/notebook-placement";
 import { MeService } from "../../src/service/me.service";
+import { PreferencesService } from "../../src/service/preferences.service";
 import { NotebooksService } from "../../src/service/notebooks.service";
 import { PagesService } from "../../src/service/pages.service";
 import { ProjectsService } from "../../src/service/projects.service";
@@ -102,10 +104,12 @@ export async function createHarness() {
       permissions,
       email as unknown as EmailService,
       changeEvents,
+      new UserPreferencesRepository(db),
     ),
     settings: new SharingSettingsService(sharingRepo, permissions, changeEvents),
     public: new PublicService(sharingRepo, pagesRepo, canvasesRepo, projectsRepo, notebooksRepo),
     me: new MeService(db),
+    preferences: new PreferencesService(new UserPreferencesRepository(db)),
     recent: new ChangeEventsReaderService(new ChangeEventsRepository(db), workspaces),
     analytics: new AnalyticsService(new ViewsRepository(db), permissions),
   };

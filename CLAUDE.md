@@ -19,7 +19,15 @@ Port in progress (started 2026-10-08) from `~/Desktop/octo-focus-ai`, the prior 
 | **Project** | An eraser.io-style file: **exactly one note + one canvas**, viewed as notes / canvas / split. The project owns its pair — they never appear in the top-level Notes/Canvases lists. |
 | **Notebook** | A folder-like collection holding any number of standalone notes, standalone canvases and projects. **An item is in at most one notebook** (or none). Deleting a notebook must not silently delete items — decide (move to root vs. block) when building it. |
 
-Sidebar order: **Notes, Canvases, Projects, Notebooks.** Notes/Canvases list standalone items only.
+Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Canvases list standalone items only. Home shows "Shared with you" plus *your own* recent edits (`GET /workspaces/:id/recent`, from the audit log).
+
+### App structure (decided 2026-10-12, same on iOS and Android)
+
+- **Mobile bottom bar = 5 tabs: Home · Notes · Canvases · Projects · Notebooks.** Never a sixth — Shared lives on Home ("Shared with you" row + View all) and in the account sheet.
+- **Every tab header: your avatar top left, `+` (create) top right.** On Home, `+` opens a menu of all four kinds. Home search is an in-page field, not the native header search bar (iOS 26 moves that to the bottom, under the floating tab bar). The avatar opens the account side panel (slides in from the left): name/email, Shared with you, Settings (Appearance, Workspace, About/legal, Delete account), Sign out. Workspace switching stays on web for now.
+- Opened items are full screen (bar hidden): editor header = back · title · Share · ⋯ (Move, Analytics, Delete).
+- **Notifications in v1 = share email + a "New" dot on Home's "Shared with you".** No bell/Activity screen or push until v2 (comments/follows give them content).
+- Platform differences are native details only (iOS swipe back; Android back button + ripple). Tab headers are compact with the title centred on both — no iOS large titles, not different layouts. No Android FAB.
 
 ### Sharing + publishing — Google Docs model (in v1)
 
@@ -44,6 +52,7 @@ Sidebar order: **Notes, Canvases, Projects, Notebooks.** Notes/Canvases list sta
 - Standalone notes, standalone canvases, projects (1 note + 1 canvas), notebooks
 - Sharing + publishing (Google Docs model above)
 - **View analytics for published pages** (added 2026-10-09, user decision): anonymous hourly views + daily unique visitors (`resource_views`; uniques via Plausible-style daily-rotating salt hash of account id or IP+UA, salt and hashes deleted daily), bots/link previews and the item's own owners/editors skipped, nothing about the visitor stored; owners + editors see a chart in the list's Analytics panel. No third-party analytics, no visitor tracking.
+- **Title search** (added 2026-10-12, user decision): a search field on Home (web + mobile) that finds notes, canvases, projects and notebooks by name. Full-text search stays v2.
 - Auth (Supabase: email + Google OAuth)
 - Create / rename / delete / list for every entity
 - Auto-save on debounce

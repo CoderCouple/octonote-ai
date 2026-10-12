@@ -366,6 +366,7 @@ export const UserPreferenceUpdateSchema = z.object({
   notesFontSize: NotesFontSizeSchema.optional(),
   notesLineHeight: NotesLineHeightSchema.optional(),
   theme: ThemeSchema.optional(),
+  emailOnShare: z.boolean().optional(),
 });
 
 // =============================================================================

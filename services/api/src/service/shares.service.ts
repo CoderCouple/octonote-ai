@@ -21,6 +21,7 @@ import {
 } from "../model/sharing.model";
 import { toUser, type User } from "../model/user.model";
 import { resourceUrl } from "./lib/resource-url";
+import { UserPreferencesRepository } from "../db/repository/user-preferences.repository";
 
 export interface ShareWithUser {
   share: ResourceShare;
@@ -45,6 +46,7 @@ export class SharesService {
     private readonly permissions: PermissionsService,
     private readonly email: EmailService,
     private readonly changeEvents: ChangeEventsService,
+    private readonly prefsRepo: UserPreferencesRepository,
   ) {}
 
   async list(kind: ResourceKind, id: string, actorUserId: string): Promise<ShareWithUser[]> {
@@ -59,7 +61,7 @@ export class SharesService {
   async add(
     input: ShareCreate,
     actor: { id: string; email?: string; name?: string },
-  ): Promise<ShareWithUser & { emailSent: boolean }> {
+  ): Promise<ShareWithUser & { emailSent: boolean; emailMuted: boolean }> {
     // Pending invites are matched on lowercase email at sign-up (MeService); normalise here too.
     input = { ...input, email: input.email.trim().toLowerCase() };
     const kind = input.resourceKind;
@@ -103,7 +105,11 @@ export class SharesService {
     });
 
     let emailSent = false;
-    if (!existing) {
+    // Existing users can turn share emails off; invites to non-users always go out (it's their way in).
+    const muted = grantee
+      ? (await this.prefsRepo.findByUserId(grantee.id))?.emailOnShare === false
+      : false;
+    if (!existing && !muted) {
       try {
         await this.email.sendShareNotification({
           to: input.email,
@@ -121,7 +127,12 @@ export class SharesService {
       }
     }
 
-    return { share: toResourceShare(row), user: grantee ? toUser(grantee) : null, emailSent };
+    return {
+      share: toResourceShare(row),
+      user: grantee ? toUser(grantee) : null,
+      emailSent,
+      emailMuted: muted,
+    };
   }
 
   async updateRole(shareId: string, role: ShareRole, actorUserId: string): Promise<ResourceShare> {

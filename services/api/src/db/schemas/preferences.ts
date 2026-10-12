@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
 export const userPreferences = pgTable("user_preferences", {
@@ -10,6 +10,8 @@ export const userPreferences = pgTable("user_preferences", {
   notesFontSize: text("notes_font_size").default("md").notNull(),
   notesLineHeight: text("notes_line_height").default("normal").notNull(),
   theme: text("theme").default("system").notNull(),
+  /** Email me when someone shares something with me. Invites to non-users always send. */
+  emailOnShare: boolean("email_on_share").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

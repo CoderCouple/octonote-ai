@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  Bell,
   Building2,
+  CreditCard,
+  Info,
   Check,
   Copy,
   Layers,
@@ -49,6 +52,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { clientApi } from "@/lib/api/client-fetch";
 import {
   Table,
   TableBody,
@@ -79,8 +84,11 @@ interface SettingsPanelProps {
 const SECTIONS = [
   { id: "account", label: "Account", icon: UserIcon },
   { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "notifications", label: "Notifications", icon: Bell },
   { id: "workspace", label: "Workspace", icon: Building2 },
   { id: "memberships", label: "Memberships", icon: Layers },
+  { id: "billing", label: "Plan & billing", icon: CreditCard },
+  { id: "about", label: "About", icon: Info },
   { id: "danger", label: "Danger zone", icon: AlertTriangle },
 ] as const;
 
@@ -160,11 +168,14 @@ export function SettingsPanel({
 
         <AccountSection user={user} />
         <AppearanceSection />
+        <NotificationsSection />
         <WorkspaceSection workspace={workspace} viewerRole={viewerRole} />
         <MembershipsSection
           memberships={memberships}
           activeWorkspaceId={activeWorkspaceId}
         />
+        <BillingSection />
+        <AboutSection />
         {isOwner ? (
           <DangerSection
             workspaceId={workspace.id}
@@ -417,6 +428,95 @@ function AppearanceSection() {
   );
 }
 
+function NotificationsSection() {
+  const [emailOnShare, setEmailOnShare] = useState<boolean | null>(null);
+  useEffect(() => {
+    clientApi
+      .get<{ emailOnShare: boolean }>("/me/preferences")
+      .then((p) => setEmailOnShare(p.emailOnShare))
+      .catch(() => setEmailOnShare(true));
+  }, []);
+
+  async function toggle(next: boolean) {
+    setEmailOnShare(next);
+    try {
+      await clientApi.patch("/me/preferences", { emailOnShare: next });
+    } catch (err) {
+      setEmailOnShare(!next);
+      toast.error(err instanceof Error ? err.message : "Couldn't save.");
+    }
+  }
+
+  return (
+    <SectionShell
+      id="notifications"
+      icon={Bell}
+      title="Notifications"
+      description="New shares also show up on Home under “Shared with you”."
+    >
+      <Row
+        label="Email me when someone shares with me"
+        description="A note, canvas, project or notebook shared with your email."
+      >
+        <Switch
+          checked={emailOnShare ?? true}
+          disabled={emailOnShare === null}
+          onCheckedChange={toggle}
+          aria-label="Email me when someone shares with me"
+        />
+      </Row>
+    </SectionShell>
+  );
+}
+
+function BillingSection() {
+  return (
+    <SectionShell
+      id="billing"
+      icon={CreditCard}
+      title="Plan & billing"
+      description="Plans, invoices and payment methods will live here."
+    >
+      <Row label="Current plan" description="Every feature is included.">
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge className="font-medium">Free during beta</Badge>
+          <span className="text-muted-foreground text-sm">
+            Paid plans arrive after the beta — you&apos;ll hear from us first.
+          </span>
+        </div>
+      </Row>
+    </SectionShell>
+  );
+}
+
+function AboutSection() {
+  return (
+    <SectionShell
+      id="about"
+      icon={Info}
+      title="About"
+      description="The fine print."
+    >
+      <Row label="Terms of Service">
+        <a
+          href="/terms"
+          className="text-foreground-strong text-sm font-medium underline underline-offset-4"
+        >
+          Read the terms
+        </a>
+      </Row>
+      <Row label="Privacy Notice">
+        <a
+          href="/privacy"
+          className="text-foreground-strong text-sm font-medium underline underline-offset-4"
+        >
+          Read the privacy notice
+        </a>
+      </Row>
+    </SectionShell>
+  );
+}
+
 function WorkspaceSection({
   workspace,
   viewerRole,
@@ -545,10 +645,7 @@ function MembershipsSection({
                     {m.name}
                   </span>
                   {active ? (
-                    <Badge
-                      variant="secondary"
-                      className="h-5 px-1.5 text-2xs"
-                    >
+                    <Badge variant="secondary" className="h-5 px-1.5 text-2xs">
                       Active
                     </Badge>
                   ) : null}

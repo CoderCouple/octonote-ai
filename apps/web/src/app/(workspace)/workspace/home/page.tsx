@@ -9,10 +9,16 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { accessOf, CreateButton, notebookLookup } from "@/features/library";
 import { listCanvasesApi } from "@/features/canvas/api/canvases-api";
+import { HomeSearch, NewBadge, type SearchEntry } from "@/features/home";
 import { listNotebooksApi } from "@/features/notebooks/api/notebooks-api";
 import { listNotesApi } from "@/features/notes/api/notes-api";
 import { listProjectsApi } from "@/features/projects/api/projects-api";
-import { RESOURCE_PATH, type ResourceKind } from "@/features/sharing";
+import {
+  RESOURCE_PATH,
+  type ResourceKind,
+  type SharedWithMeItem,
+} from "@/features/sharing";
+import { serverFetch } from "@/lib/api/server-fetch";
 import {
   getMeApi,
   listRecentApi,
@@ -49,14 +55,42 @@ function mineRecent<T extends { id: string }>(
 export default async function HomePage() {
   const workspaceId = await activeWorkspaceId();
   if (!workspaceId) return null;
-  const [notes, canvases, projects, notebooks, recent, me] = await Promise.all([
-    listNotesApi(workspaceId),
-    listCanvasesApi(workspaceId),
-    listProjectsApi(workspaceId),
-    listNotebooksApi(workspaceId),
-    listRecentApi(workspaceId),
-    getMeApi(),
-  ]);
+  const [notes, canvases, projects, notebooks, recent, me, shared] =
+    await Promise.all([
+      listNotesApi(workspaceId),
+      listCanvasesApi(workspaceId),
+      listProjectsApi(workspaceId),
+      listNotebooksApi(workspaceId),
+      listRecentApi(workspaceId),
+      getMeApi(),
+      serverFetch<SharedWithMeItem[]>("/me/shared"),
+    ]);
+  const latestShared = [...shared]
+    .sort((a, b) => b.sharedAt.localeCompare(a.sharedAt))
+    .slice(0, PER_SECTION);
+  const searchEntries: SearchEntry[] = [
+    ...notes.map((n) => ({ kind: "page" as const, id: n.id, title: n.title })),
+    ...canvases.map((c) => ({
+      kind: "canvas" as const,
+      id: c.id,
+      title: c.title,
+    })),
+    ...projects.map((p) => ({
+      kind: "project" as const,
+      id: p.id,
+      title: p.name,
+    })),
+    ...notebooks.map((n) => ({
+      kind: "notebook" as const,
+      id: n.id,
+      title: n.name,
+    })),
+    // Shared items you can open but that live in someone else's workspace.
+    ...shared.map((i) => ({ kind: i.kind, id: i.id, title: i.title })),
+  ].filter(
+    (e, i, all) =>
+      all.findIndex((o) => o.kind === e.kind && o.id === e.id) === i,
+  );
   const lookup = notebookLookup(notebooks);
   const lastEdit = new Map(
     recent.map((r) => [`${r.kind}:${r.id}`, r.lastEditedAt] as const),
@@ -72,7 +106,31 @@ export default async function HomePage() {
         <p className="text-muted-foreground mt-1.5 text-sm">
           Pick up where you left off.
         </p>
+        <div className="mt-6 max-w-2xl">
+          <HomeSearch entries={searchEntries} />
+        </div>
       </header>
+
+      {latestShared.length > 0 ? (
+        <Section
+          title="Shared with you"
+          href="/workspace/shared"
+          empty=""
+          create={null}
+        >
+          {latestShared.map((i) => (
+            <RecentCard
+              key={`${i.kind}:${i.id}`}
+              kind={i.kind}
+              id={i.id}
+              title={i.title}
+              meta={`${i.role === "editor" ? "Can edit" : "Can view"} · Shared ${formatDate(i.sharedAt)}`}
+              badge={<NewBadge sharedAt={i.sharedAt} />}
+              preview={<SharedPreview kind={i.kind} />}
+            />
+          ))}
+        </Section>
+      ) : null}
 
       <Section
         title="Recent notes"
@@ -92,8 +150,10 @@ export default async function HomePage() {
             kind="page"
             id={n.id}
             title={n.title}
-            editedAt={n.editedAt}
-            access={accessOf(n, lookup(n.notebookId, n).notebook)}
+            meta={edited(
+              accessOf(n, lookup(n.notebookId, n).notebook),
+              n.editedAt,
+            )}
             preview={
               <p className="text-muted-foreground line-clamp-4 self-start justify-self-stretch text-xs leading-relaxed">
                 {previewFromMarkdown(n.contentMd, n.title, 220) || "Empty note"}
@@ -121,8 +181,10 @@ export default async function HomePage() {
             kind="canvas"
             id={c.id}
             title={c.title}
-            editedAt={c.editedAt}
-            access={accessOf(c, lookup(c.notebookId, c).notebook)}
+            meta={edited(
+              accessOf(c, lookup(c.notebookId, c).notebook),
+              c.editedAt,
+            )}
             fill
             preview={
               c.thumbnailUrl ? (
@@ -163,8 +225,10 @@ export default async function HomePage() {
             kind="project"
             id={p.id}
             title={p.name}
-            editedAt={p.editedAt}
-            access={accessOf(p, lookup(p.notebookId, p).notebook)}
+            meta={edited(
+              accessOf(p, lookup(p.notebookId, p).notebook),
+              p.editedAt,
+            )}
             preview={<ProjectPreview description={p.description} />}
           />
         ))}
@@ -188,8 +252,7 @@ export default async function HomePage() {
             kind="notebook"
             id={nb.id}
             title={nb.name}
-            editedAt={nb.editedAt}
-            access={accessOf(nb)}
+            meta={edited(accessOf(nb), nb.editedAt)}
             preview={
               <BookOpen
                 aria-hidden
@@ -256,16 +319,17 @@ function RecentCard({
   kind,
   id,
   title,
-  editedAt,
-  access,
+  meta,
+  badge,
   preview,
   fill = false,
 }: {
   kind: ResourceKind;
   id: string;
   title: string;
-  editedAt: string;
-  access: Access;
+  /** Muted line under the title. */
+  meta: string;
+  badge?: ReactNode;
   preview: ReactNode;
   /** The preview is an image that should fill the frame edge to edge. */
   fill?: boolean;
@@ -287,15 +351,28 @@ function RecentCard({
       <div className="flex flex-col gap-1 px-4 py-3">
         <span className="flex min-w-0 items-center gap-2">
           <Icon className="text-muted-foreground size-4 shrink-0" />
-          <span className="text-foreground-strong truncate font-semibold underline-offset-4 group-hover:underline">
+          <span className="text-foreground-strong min-w-0 flex-1 truncate font-semibold underline-offset-4 group-hover:underline">
             {title || "Untitled"}
           </span>
+          {badge}
         </span>
-        <span className="text-muted-foreground text-xs">
-          {ACCESS_LABEL[access]} · You edited {formatDate(editedAt)}
-        </span>
+        <span className="text-muted-foreground text-xs">{meta}</span>
       </div>
     </Link>
+  );
+}
+
+const edited = (access: Access, at: string) =>
+  `${ACCESS_LABEL[access]} · You edited ${formatDate(at)}`;
+
+function SharedPreview({ kind }: { kind: ResourceKind }) {
+  const Icon = KIND_ICON[kind];
+  return (
+    <Icon
+      aria-hidden
+      strokeWidth={1.25}
+      className="text-foreground-subtle size-12"
+    />
   );
 }
 
