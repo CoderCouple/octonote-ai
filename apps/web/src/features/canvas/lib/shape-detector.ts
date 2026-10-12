@@ -76,7 +76,9 @@ export function detectShapeVerbose(points: Point[]): {
   const radii = points.map((p) => Math.hypot(p.x - cx, p.y - cy));
   const meanR = avg(radii);
   const stdR =
-    meanR > 0 ? Math.sqrt(avg(radii.map((r) => (r - meanR) ** 2))) / meanR : Infinity;
+    meanR > 0
+      ? Math.sqrt(avg(radii.map((r) => (r - meanR) ** 2))) / meanR
+      : Infinity;
   debug.radiusCoefVar = stdR;
 
   const simplified = rdp(points, Math.max(2, perimeter * 0.04));
@@ -89,7 +91,13 @@ export function detectShapeVerbose(points: Point[]): {
     if (rectMetrics.rightAngles >= 3) {
       debug.decision = "rectangle";
       return {
-        shape: { kind: "rectangle", x: bbox.x, y: bbox.y, w: bbox.w, h: bbox.h },
+        shape: {
+          kind: "rectangle",
+          x: bbox.x,
+          y: bbox.y,
+          w: bbox.w,
+          h: bbox.h,
+        },
         debug,
       };
     }
@@ -148,11 +156,17 @@ function distance(a: Point, b: Point): number {
 
 function pathLength(points: Point[]): number {
   let total = 0;
-  for (let i = 1; i < points.length; i++) total += distance(points[i - 1]!, points[i]!);
+  for (let i = 1; i < points.length; i++)
+    total += distance(points[i - 1]!, points[i]!);
   return total;
 }
 
-function boundingBox(points: Point[]): { x: number; y: number; w: number; h: number } {
+function boundingBox(points: Point[]): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,

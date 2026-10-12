@@ -18,6 +18,20 @@ export interface CanvasReferenceResolver {
   id: string;
   /** Resolves to null when the viewer can't see the canvas. */
   resolve: (canvasId: string) => Promise<CanvasReferenceTarget | null>;
+  /**
+   * Latest title/image for an embedded canvas figure. Absent on published
+   * pages: there the block's stored image URL (a fixed path that always
+   * serves the newest picture) is enough, and the canvas isn't exposed.
+   */
+  resolveFigure?: (figureId: string) => Promise<FigureTarget | null>;
+}
+
+export interface FigureTarget {
+  title: string;
+  imageUrl: string | null;
+  width: number;
+  height: number;
+  href: string;
 }
 
 const noAccess: CanvasReferenceResolver = {

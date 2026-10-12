@@ -10,12 +10,22 @@ import {
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/shadcn/style.css";
-import { LayoutGrid, Sigma, SquareFunction, Workflow } from "lucide-react";
+import {
+  Group,
+  LayoutGrid,
+  Sigma,
+  SquareFunction,
+  Workflow,
+} from "lucide-react";
+import { toast } from "sonner";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { SaveState } from "@/components/save-indicator";
 import { updateNoteClientApi } from "../api/notes-client-api";
 import { appCanvasResolver } from "../blocks/app-canvas-resolver";
 import { CanvasPickerDialog } from "../blocks/canvas-picker-dialog";
+import { FigurePickerDialog } from "../blocks/figure-picker-dialog";
+import { uploadNoteImage } from "../lib/upload-image";
+import { FIGURE_DROP_EVENT, getFigureClientApi } from "@/features/canvas";
 import { CanvasReferenceContext } from "../blocks/canvas-reference-context";
 import { octoBlockNoteSchema } from "../lib/blocknote-schema";
 import { hasMarkdownExtras, markdownToBlocks } from "../lib/markdown-import";
@@ -46,6 +56,17 @@ export interface NotesEditorProps {
 export interface NotesEditorApi {
   /** Parses markdown (math + Mermaid included) and inserts it at the top of the note. */
   insertMarkdownAtStart: (markdown: string) => void;
+}
+
+function figureSlashItem(onOpen: () => void): DefaultReactSuggestionItem {
+  return {
+    title: "Figure",
+    subtext: "Embed a figure from a canvas as an image",
+    aliases: ["figure", "group", "frame", "picture"],
+    group: "Embeds",
+    icon: <Group className="size-4" />,
+    onItemClick: onOpen,
+  };
 }
 
 function canvasSlashItem(onOpen: () => void): DefaultReactSuggestionItem {
@@ -131,6 +152,8 @@ export function NotesEditor({
 }: NotesEditorProps) {
   const editor = useCreateBlockNote({
     schema: octoBlockNoteSchema,
+    // Pasted, dropped and /image uploads go to Supabase Storage.
+    uploadFile: (file) => uploadNoteImage(file, pageId),
     initialContent: blocksFrom(initialContent),
     // Markdown with math or Mermaid gets our importer; everything else
     // (including copy/paste within notes) uses BlockNote's default.
@@ -187,6 +210,7 @@ export function NotesEditor({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [figurePickerOpen, setFigurePickerOpen] = useState(false);
   const [rawMd, setRawMd] = useState("");
   const [tocHovered, setTocHovered] = useState(false);
 
@@ -219,6 +243,69 @@ export function NotesEditor({
     else editor.insertBlocks([block], current, "after");
   }
 
+  function insertFigure(
+    figure: {
+      id: string;
+      title: string;
+      imageUrl: string | null;
+      width: number;
+      height: number;
+    },
+    /** Insert after this block (a drop target) instead of at the cursor. */
+    afterBlockId?: string,
+  ) {
+    const dropped = afterBlockId ? editor.getBlock(afterBlockId) : undefined;
+    const current = dropped ?? editor.getTextCursorPosition().block;
+    const isEmptyParagraph =
+      current.type === "paragraph" &&
+      Array.isArray(current.content) &&
+      current.content.length === 0;
+    const block = {
+      type: "figure" as const,
+      props: {
+        figureId: figure.id,
+        title: figure.title,
+        // The fixed object URL (no version) always serves the newest picture.
+        imageUrl: figure.imageUrl?.split("?")[0] ?? "",
+        width: figure.width,
+        height: figure.height,
+      },
+    };
+    if (isEmptyParagraph) editor.replaceBlocks([current], [block]);
+    else editor.insertBlocks([block], current, "after");
+  }
+
+  /**
+   * A figure dragged here from a canvas's title-bar handle (e.g. in a
+   * project's split view). It lands after the block under the pointer.
+   */
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+  const insertFigureRef = useRef(insertFigure);
+  insertFigureRef.current = insertFigure;
+  useEffect(() => {
+    const zone = dropZoneRef.current;
+    if (!zone || readOnly) return;
+    const onFigureDrop = async (event: Event) => {
+      const { figureId, x, y } = (
+        event as CustomEvent<{ figureId: string; x: number; y: number }>
+      ).detail;
+      const blockId =
+        document
+          .elementFromPoint(x, y)
+          ?.closest(".bn-block-outer[data-id]")
+          ?.getAttribute("data-id") ?? undefined;
+      try {
+        insertFigureRef.current(await getFigureClientApi(figureId), blockId);
+      } catch {
+        toast.message(
+          "That figure is still saving — try again in a few seconds.",
+        );
+      }
+    };
+    zone.addEventListener(FIGURE_DROP_EVENT, onFigureDrop);
+    return () => zone.removeEventListener(FIGURE_DROP_EVENT, onFigureDrop);
+  }, [readOnly]);
+
   function onChange() {
     if (readOnly) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -243,7 +330,11 @@ export function NotesEditor({
 
   return (
     <CanvasReferenceContext.Provider value={appCanvasResolver}>
-      <div className="bg-card relative h-full">
+      <div
+        ref={dropZoneRef}
+        data-figure-drop-zone={readOnly ? undefined : ""}
+        className="bg-card relative h-full data-[figure-drop-active]:ring-2 data-[figure-drop-active]:ring-inset data-[figure-drop-active]:ring-[var(--foreground-strong)]"
+      >
         <div
           ref={scrollRef}
           className={`h-full overflow-auto ${tocHovered ? "hide-scrollbar" : ""}`}
@@ -265,6 +356,7 @@ export function NotesEditor({
                       [
                         ...getDefaultReactSlashMenuItems(editor),
                         canvasSlashItem(() => setPickerOpen(true)),
+                        figureSlashItem(() => setFigurePickerOpen(true)),
                         ...mathAndDiagramSlashItems(editor),
                       ],
                       query,
@@ -288,12 +380,20 @@ export function NotesEditor({
           />
         ) : null}
         {readOnly ? null : (
-          <CanvasPickerDialog
-            open={pickerOpen}
-            onOpenChange={setPickerOpen}
-            workspaceId={workspaceId}
-            onPick={insertCanvasReference}
-          />
+          <>
+            <CanvasPickerDialog
+              open={pickerOpen}
+              onOpenChange={setPickerOpen}
+              workspaceId={workspaceId}
+              onPick={insertCanvasReference}
+            />
+            <FigurePickerDialog
+              open={figurePickerOpen}
+              onOpenChange={setFigurePickerOpen}
+              workspaceId={workspaceId}
+              onPick={insertFigure}
+            />
+          </>
         )}
       </div>
     </CanvasReferenceContext.Provider>

@@ -8,6 +8,7 @@ import {
   type TLStoreSnapshot,
 } from "tldraw";
 import { env } from "@/env/client";
+import { SHAPE_UTILS } from "@/features/canvas/shapes/figure-shape";
 
 // The public page runs on the production domain too, so it needs the key as well.
 const TLDRAW_LICENSE_KEY = env.NEXT_PUBLIC_TLDRAW_LICENSE_KEY || undefined;
@@ -47,7 +48,12 @@ export function CanvasReadOnlyImpl({
   return (
     <div className="bg-background relative h-full w-full">
       <div className="absolute inset-0">
-        <Tldraw onMount={onMount} hideUi licenseKey={TLDRAW_LICENSE_KEY} />
+        <Tldraw
+          onMount={onMount}
+          hideUi
+          licenseKey={TLDRAW_LICENSE_KEY}
+          shapeUtils={SHAPE_UTILS}
+        />
       </div>
     </div>
   );

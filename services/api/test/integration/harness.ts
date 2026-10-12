@@ -31,6 +31,7 @@ import { AnalyticsService } from "../../src/service/analytics.service";
 import { ViewsRepository } from "../../src/db/repository/views.repository";
 import { NotebookPlacement } from "../../src/service/lib/notebook-placement";
 import { MeService } from "../../src/service/me.service";
+import { FiguresService } from "../../src/service/figures.service";
 import { AccountService } from "../../src/service/account.service";
 import { PreferencesService } from "../../src/service/preferences.service";
 import { NotebooksService } from "../../src/service/notebooks.service";
@@ -69,12 +70,20 @@ export class FakeSupabase {
       },
     },
   };
+  uploads = new Map<string, { bytes: Buffer; options: Record<string, unknown> }>();
   storage = {
-    from: () => ({
+    from: (bucket: string) => ({
       remove: async (paths: string[]) => {
         this.removedObjects.push(...paths);
         return { error: null };
       },
+      upload: async (path: string, bytes: Buffer, options: Record<string, unknown>) => {
+        this.uploads.set(`${bucket}/${path}`, { bytes, options });
+        return { error: null };
+      },
+      getPublicUrl: (path: string) => ({
+        data: { publicUrl: `https://storage.test/${bucket}/${path}` },
+      }),
     }),
   };
 }
@@ -178,6 +187,7 @@ export async function createHarness() {
     settings: new SharingSettingsService(sharingRepo, permissions, changeEvents),
     public: new PublicService(sharingRepo, pagesRepo, canvasesRepo, projectsRepo, notebooksRepo),
     me: new MeService(db),
+    figures: new FiguresService(db, permissions, workspaces, supabase as never),
     planLimits,
     billing: new BillingService(db, planLimits, workspaces, stripe as never, {
       webhookSecret: "whsec_test",

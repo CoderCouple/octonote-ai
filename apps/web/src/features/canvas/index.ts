@@ -10,5 +10,10 @@ export {
   moveCanvasClientApi,
   updateCanvasClientApi,
 } from "./api/canvases-client-api";
-export { canvasKeys } from "./constants";
+export { canvasKeys, FIGURE_DROP_EVENT } from "./constants";
+export {
+  getFigureClientApi,
+  listWorkspaceFiguresClientApi,
+  type FigureSummary,
+} from "./api/figures-client-api";
 export type { Canvas, CanvasReferenceSummary, CanvasSummary } from "./types";

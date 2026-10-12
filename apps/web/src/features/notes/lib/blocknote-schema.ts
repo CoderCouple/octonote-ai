@@ -4,6 +4,7 @@ import {
   defaultInlineContentSpecs,
 } from "@blocknote/core";
 import { CanvasReferenceBlock } from "../blocks/canvas-reference-block";
+import { FigureBlock } from "../blocks/figure-block";
 import { MathBlock, MathInline } from "../blocks/math";
 import { MermaidBlock } from "../blocks/mermaid-block";
 
@@ -16,6 +17,7 @@ export const octoBlockNoteSchema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     canvasReference: CanvasReferenceBlock(),
+    figure: FigureBlock(),
     mathBlock: MathBlock(),
     mermaid: MermaidBlock(),
   },

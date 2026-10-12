@@ -16,6 +16,7 @@ export const ID_PREFIXES = {
   changeEvent: "evt",
   userPreference: "prf",
   studentEmailSuffix: "sfx",
+  canvasFigure: "fig",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

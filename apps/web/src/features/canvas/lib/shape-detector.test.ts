@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { detectShape, detectShapeVerbose, type Point } from "./shape-detector";
 
-function lineStroke(x1: number, y1: number, x2: number, y2: number, steps = 40): Point[] {
+function lineStroke(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  steps = 40,
+): Point[] {
   const out: Point[] = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
@@ -19,19 +25,30 @@ function circleStroke(cx: number, cy: number, r: number, steps = 64): Point[] {
   return out;
 }
 
-function rectStroke(x: number, y: number, w: number, h: number, perSide = 20): Point[] {
+function rectStroke(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  perSide = 20,
+): Point[] {
   const out: Point[] = [];
   for (let i = 0; i < perSide; i++) out.push({ x: x + (i / perSide) * w, y });
-  for (let i = 0; i < perSide; i++) out.push({ x: x + w, y: y + (i / perSide) * h });
-  for (let i = 0; i < perSide; i++) out.push({ x: x + w - (i / perSide) * w, y: y + h });
-  for (let i = 0; i <= perSide; i++) out.push({ x, y: y + h - (i / perSide) * h });
+  for (let i = 0; i < perSide; i++)
+    out.push({ x: x + w, y: y + (i / perSide) * h });
+  for (let i = 0; i < perSide; i++)
+    out.push({ x: x + w - (i / perSide) * w, y: y + h });
+  for (let i = 0; i <= perSide; i++)
+    out.push({ x, y: y + h - (i / perSide) * h });
   return out;
 }
 
 describe("detectShape — guards", () => {
   it("returns null when given too few points", () => {
     expect(detectShape([{ x: 0, y: 0 }])).toBeNull();
-    expect(detectShapeVerbose([{ x: 0, y: 0 }]).debug.decision).toBe("skip-too-few-points");
+    expect(detectShapeVerbose([{ x: 0, y: 0 }]).debug.decision).toBe(
+      "skip-too-few-points",
+    );
   });
 
   it("returns null when the path is too short", () => {

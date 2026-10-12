@@ -7,6 +7,8 @@ import {
   BillingWebhookController,
 } from "../api/v1/controller/billing.controller";
 import { BILLING_CONFIG, BillingService, STRIPE_CLIENT } from "../service/billing.service";
+import { FiguresController } from "../api/v1/controller/figures.controller";
+import { FiguresService } from "../service/figures.service";
 import { CanvasesController } from "../api/v1/controller/canvases.controller";
 import { ChangeEventsController } from "../api/v1/controller/change-events.controller";
 import { NotebooksController } from "../api/v1/controller/notebooks.controller";
@@ -38,6 +40,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     AnalyticsController,
     BillingController,
     BillingWebhookController,
+    FiguresController,
   ],
   providers: [
     NotebooksService,
@@ -50,6 +53,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     ChangeEventsReaderService,
     AnalyticsService,
     BillingService,
+    FiguresService,
     {
       provide: STRIPE_CLIENT,
       useFactory: () =>

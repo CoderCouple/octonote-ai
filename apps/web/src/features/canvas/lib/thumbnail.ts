@@ -39,7 +39,8 @@ export async function uploadCanvasThumbnail(
     .upload(path, blob, { contentType: "image/png", upsert: false });
   if (error) throw new Error(`Thumbnail upload failed: ${error.message}`);
 
-  const url = supabase.storage.from(THUMBNAIL_BUCKET).getPublicUrl(path).data.publicUrl;
+  const url = supabase.storage.from(THUMBNAIL_BUCKET).getPublicUrl(path)
+    .data.publicUrl;
   await updateCanvasClientApi(canvasId, { thumbnailUrl: url });
 
   const previousPath = previousUrl?.split(`/${THUMBNAIL_BUCKET}/`)[1];

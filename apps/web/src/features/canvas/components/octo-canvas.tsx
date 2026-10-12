@@ -18,7 +18,13 @@ import type { SaveState } from "@/components/save-indicator";
 import { env } from "@/env/client";
 import { updateCanvasClientApi } from "../api/canvases-client-api";
 import { detectShape, type Point } from "../lib/shape-detector";
+import {
+  enableFigureDragOut,
+  listCanvasFiguresClientApi,
+  syncFigures,
+} from "../lib/figures";
 import { uploadCanvasThumbnail } from "../lib/thumbnail";
+import { SHAPE_UTILS } from "../shapes/figure-shape";
 
 // tldraw hides the canvas after 5s on non-localhost domains without a key.
 const TLDRAW_LICENSE_KEY = env.NEXT_PUBLIC_TLDRAW_LICENSE_KEY || undefined;
@@ -27,6 +33,8 @@ const SAVE_DEBOUNCE_MS = 1200;
 // Thumbnails are expensive (render + upload); refresh them far less often than saves.
 const THUMBNAIL_DEBOUNCE_MS = 8000;
 const BIND_DISTANCE_PX = 50;
+// Figure images refresh soon after a save so embeds catch up quickly.
+const FIGURE_SYNC_DEBOUNCE_MS = 2500;
 
 export interface OctoCanvasProps {
   canvasId: string;
@@ -37,6 +45,8 @@ export interface OctoCanvasProps {
   /** When true, freehand pencil strokes snap to clean shapes. */
   autoShape?: boolean;
   onSaveStateChange?: (state: SaveState) => void;
+  /** Hands the tldraw editor to the pane (for the Figure / Ungroup buttons). */
+  onEditor?: (editor: Editor) => void;
 }
 
 export function OctoCanvas({
@@ -46,11 +56,15 @@ export function OctoCanvas({
   readOnly = false,
   autoShape = false,
   onSaveStateChange,
+  onEditor,
 }: OctoCanvasProps) {
   const autoShapeRef = useRef(autoShape);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thumbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thumbnailUrl = useRef<string | null>(initialThumbnailUrl);
+  const figureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // figureId → fingerprint last pushed to the API; null until loaded.
+  const knownFigures = useRef<Map<string, string> | null>(null);
   const onSaveStateRef = useRef(onSaveStateChange);
   onSaveStateRef.current = onSaveStateChange;
 
@@ -59,7 +73,11 @@ export function OctoCanvas({
   }, [autoShape]);
 
   const snapshot = useMemo(() => {
-    if (initialDocument && typeof initialDocument === "object" && Object.keys(initialDocument).length > 0) {
+    if (
+      initialDocument &&
+      typeof initialDocument === "object" &&
+      Object.keys(initialDocument).length > 0
+    ) {
       return initialDocument as TLStoreSnapshot;
     }
     return null;
@@ -69,10 +87,11 @@ export function OctoCanvas({
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
       if (thumbTimer.current) clearTimeout(thumbTimer.current);
+      if (figureTimer.current) clearTimeout(figureTimer.current);
     };
   }, []);
 
-  function onMount(editor: Editor) {
+  function onMount(editor: Editor): void | (() => void) {
     if (snapshot) {
       try {
         loadSnapshot(editor.store, snapshot);
@@ -81,14 +100,31 @@ export function OctoCanvas({
       }
     }
     editor.updateInstanceState({ isReadonly: readOnly });
+    onEditor?.(editor);
     if (readOnly) {
       editor.zoomToFit();
       return;
     }
     registerShapeDetection(editor, autoShapeRef);
-    editor.store.listen(() => scheduleSave(editor), { scope: "document", source: "user" });
+    // Drag a figure across into the note next to it (project split view).
+    const stopDragOut = enableFigureDragOut(editor);
+    editor.store.listen(() => scheduleSave(editor), {
+      scope: "document",
+      source: "user",
+    });
     // Canvases created before their first thumbnail get one on open.
     if (!thumbnailUrl.current) scheduleThumbnail(editor);
+    // Learn which figures the API already has, then catch up any that changed.
+    void listCanvasFiguresClientApi(canvasId)
+      .then((figures) => {
+        knownFigures.current = new Map(
+          figures.map((f) => [f.id, f.contentHash ?? ""]),
+        );
+        scheduleFigureSync(editor);
+      })
+      .catch((err) => console.warn("Couldn't load figures", err));
+    // tldraw runs this when the editor goes away (not on React's dev double-mount).
+    return stopDragOut;
   }
 
   function scheduleSave(editor: Editor) {
@@ -96,9 +132,12 @@ export function OctoCanvas({
     saveTimer.current = setTimeout(async () => {
       onSaveStateRef.current?.("saving");
       try {
-        await updateCanvasClientApi(canvasId, { document: getSnapshot(editor.store) });
+        await updateCanvasClientApi(canvasId, {
+          document: getSnapshot(editor.store),
+        });
         onSaveStateRef.current?.("saved");
         scheduleThumbnail(editor);
+        scheduleFigureSync(editor);
       } catch (err) {
         console.error("Canvas save failed", err);
         onSaveStateRef.current?.("error");
@@ -110,7 +149,11 @@ export function OctoCanvas({
     if (thumbTimer.current) clearTimeout(thumbTimer.current);
     thumbTimer.current = setTimeout(async () => {
       try {
-        const url = await uploadCanvasThumbnail(editor, canvasId, thumbnailUrl.current);
+        const url = await uploadCanvasThumbnail(
+          editor,
+          canvasId,
+          thumbnailUrl.current,
+        );
         if (url) thumbnailUrl.current = url;
       } catch (err) {
         // Non-fatal: the reference block falls back to a placeholder.
@@ -119,18 +162,39 @@ export function OctoCanvas({
     }, THUMBNAIL_DEBOUNCE_MS);
   }
 
+  function scheduleFigureSync(editor: Editor) {
+    if (!knownFigures.current) return;
+    if (figureTimer.current) clearTimeout(figureTimer.current);
+    figureTimer.current = setTimeout(async () => {
+      try {
+        await syncFigures(editor, canvasId, knownFigures.current!);
+      } catch (err) {
+        // Non-fatal: embeds keep the previous picture; the next save retries.
+        console.warn("Figure sync failed", err);
+      }
+    }, FIGURE_SYNC_DEBOUNCE_MS);
+  }
+
   // tldraw needs explicit pixel dimensions; an absolute inset-0 wrapper keeps
   // the viewport from collapsing to 0x0 during flex layout passes.
   return (
     <div className="relative h-full w-full">
       <div className="absolute inset-0">
-        <Tldraw onMount={onMount} licenseKey={TLDRAW_LICENSE_KEY} hideUi={readOnly} />
+        <Tldraw
+          onMount={onMount}
+          licenseKey={TLDRAW_LICENSE_KEY}
+          hideUi={readOnly}
+          shapeUtils={SHAPE_UTILS}
+        />
       </div>
     </div>
   );
 }
 
-function registerShapeDetection(editor: Editor, isOn: React.MutableRefObject<boolean>) {
+function registerShapeDetection(
+  editor: Editor,
+  isOn: React.MutableRefObject<boolean>,
+) {
   function tryConvert(shape: TLDrawShape) {
     if (!isOn.current) return;
     if (!shape.props.isComplete) return;
@@ -235,7 +299,11 @@ function convertShape(
   });
 }
 
-function findGeoShapeNearPoint(editor: Editor, point: Point, exclude: TLShapeId): TLShape | null {
+function findGeoShapeNearPoint(
+  editor: Editor,
+  point: Point,
+  exclude: TLShapeId,
+): TLShape | null {
   let best: { shape: TLShape; dist: number } | null = null;
   for (const shape of editor.getCurrentPageShapes()) {
     if (shape.id === exclude || shape.type !== "geo") continue;
