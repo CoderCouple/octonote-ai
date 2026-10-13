@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Logo } from "./logo";
 
 const FOOTER_LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#sharing", label: "Sharing" },
+  { href: "#notes", label: "Features" },
+  { href: "#publishing", label: "Publishing" },
+  { href: "#examples", label: "Examples" },
   { href: "/login", label: "Log in" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
@@ -16,7 +17,11 @@ export function MarketingFooter() {
         <Logo />
         <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-base">
           {FOOTER_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-foreground transition-colors">
+            <Link
+              key={link.href}
+              href={link.href}
+              className="hover:text-foreground transition-colors"
+            >
               {link.label}
             </Link>
           ))}

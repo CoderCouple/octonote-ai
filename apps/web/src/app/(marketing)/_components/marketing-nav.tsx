@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "./logo";
 
 const NAV_LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#sharing", label: "Sharing" },
-  { href: "#mobile", label: "Mobile" },
+  { href: "#notes", label: "Features" },
+  { href: "#publishing", label: "Publishing" },
+  { href: "#examples", label: "Examples" },
   { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
 ];
@@ -29,7 +29,11 @@ export function MarketingNav() {
         </div>
         <div className="flex items-center gap-1">
           <ThemeToggle />
-          <Button asChild variant="ghost" className="hidden text-base sm:inline-flex">
+          <Button
+            asChild
+            variant="ghost"
+            className="hidden text-base sm:inline-flex"
+          >
             <Link href="/login">Log in</Link>
           </Button>
           <Button asChild className="text-base">

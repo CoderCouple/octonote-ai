@@ -1,95 +1,128 @@
 "use client";
 
-import { BookOpen, CheckSquare, FileText, Heading1, LayoutGrid, List } from "lucide-react";
+import "katex/dist/katex.min.css";
+import katex from "katex";
+import { FileText, GitBranch, Heading1, LayoutGrid, Sigma } from "lucide-react";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { DemoWindow, Reveal } from "./demo-window";
 import { Typed } from "./typed";
 import { useDemoStep } from "./use-demo-step";
 
-const BULLETS = ["Invite the design team", "Publish the field guide", "Ship iOS and Android"];
-const PAGES = ["Launch plan", "Field guide", "Weekly sync", "Reading list"];
+const PAGES = [
+  "Rate limiter",
+  "Big-O cheat sheet",
+  "Bayes' theorem",
+  "Git workflow",
+];
+const EQUATION = String.raw`\text{tokens}(t) = \min\big(b,\; \text{tokens}(t_0) + r\,(t - t_0)\big)`;
 
-/** Writing a note, then `/canvas` dropping a canvas preview into it. */
+/** Writing a note: text, a KaTeX equation, then `/` → Mermaid diagram rendered in place. */
 export function NotesDemo() {
-  const { ref, step } = useDemoStep<HTMLDivElement>(9);
-  const slash = step === 6;
-  const card = step >= 7;
+  const { ref, step } = useDemoStep<HTMLDivElement>(8);
+  const slash = step === 5;
+  const diagram = step >= 6;
+  const equation = useMemo(
+    () =>
+      katex.renderToString(EQUATION, {
+        displayMode: true,
+        throwOnError: false,
+      }),
+    [],
+  );
 
   return (
     <div ref={ref}>
-      <DemoWindow title="Octonote AI — Launch plan" bodyClassName="flex h-[400px] md:h-[560px]">
+      <DemoWindow
+        title="Octonote AI — Rate limiter"
+        bodyClassName="flex h-[460px] md:h-[600px]"
+      >
         <aside className="hidden w-60 shrink-0 border-r p-4 md:block">
-          <p className="text-muted-foreground mb-3 px-2 text-xs font-medium">Notes</p>
+          <p className="text-muted-foreground mb-3 px-2 text-xs font-medium">
+            Notes
+          </p>
           {PAGES.map((p, i) => (
             <div
               key={p}
-              className={cn("flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm", i === 0 && "bg-accent font-medium")}
+              className={cn(
+                "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm",
+                i === 0 && "bg-accent font-medium",
+              )}
             >
               <FileText className="text-muted-foreground size-4" />
               {p}
             </div>
           ))}
-          <p className="text-muted-foreground mt-6 mb-3 px-2 text-xs font-medium">Notebooks</p>
-          <div className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm">
-            <BookOpen className="text-muted-foreground size-4" />
-            Q3 launch
-          </div>
         </aside>
 
-        <div className="relative flex-1 px-8 py-10 md:px-16">
+        <div className="relative flex-1 overflow-hidden px-8 py-10 text-left md:px-16">
           <h3 className="text-foreground-strong min-h-12 text-4xl font-bold tracking-tight">
-            <Typed text="Launch plan" active={step >= 1} done={step >= 2} />
+            <Typed text="Rate limiter" active={step >= 1} done={step >= 2} />
           </h3>
           <p className="text-foreground mt-5 min-h-7 text-lg">
-            <Typed text="Notes and canvases, shipped together." active={step >= 2} done={step >= 3} />
+            <Typed
+              text="Each request spends a token; the bucket refills at rate r."
+              active={step >= 2}
+              done={step >= 3}
+            />
           </p>
-          <ul className="mt-4 space-y-2">
-            {BULLETS.map((b, i) => (
-              <Reveal key={b} show={step >= 3 + i}>
-                <li className="text-foreground flex items-center gap-3 text-lg">
-                  <span className="border-foreground-subtle size-4 rounded-[4px] border-[1.5px]" />
-                  {b}
-                </li>
-              </Reveal>
-            ))}
-          </ul>
 
-          <div className="relative mt-4 h-8">
+          <Reveal show={step >= 3}>
+            <div
+              className="text-foreground-strong mt-4 overflow-x-auto text-lg [&_.katex-display]:my-2"
+              dangerouslySetInnerHTML={{ __html: equation }}
+            />
+          </Reveal>
+
+          <Reveal show={step >= 4}>
+            <h4 className="text-foreground-strong mt-4 text-2xl font-semibold">
+              Request flow
+            </h4>
+          </Reveal>
+
+          <div className="relative mt-3 h-8">
             {slash ? (
               <p className="text-foreground text-lg">
-                <Typed text="/canvas" active done={false} />
+                <Typed text="/mermaid" active done={false} />
               </p>
             ) : null}
             <div
               className={cn(
-                "bg-popover absolute top-9 left-0 z-10 w-64 rounded-lg border p-1.5 shadow-lg transition-all duration-300 ease-standard",
-                slash ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
+                "bg-popover ease-standard absolute top-9 left-0 z-10 w-64 rounded-lg border p-1.5 shadow-lg transition-all duration-300",
+                slash
+                  ? "translate-y-0 opacity-100"
+                  : "pointer-events-none -translate-y-1 opacity-0",
               )}
             >
               {[
                 { icon: Heading1, label: "Heading" },
-                { icon: List, label: "Bulleted list" },
-                { icon: CheckSquare, label: "To-do list" },
-                { icon: LayoutGrid, label: "Canvas", active: true },
+                { icon: Sigma, label: "Math" },
+                { icon: GitBranch, label: "Mermaid diagram", active: true },
+                { icon: LayoutGrid, label: "Canvas figure" },
               ].map(({ icon: Icon, label, active }) => (
                 <div
                   key={label}
-                  className={cn("flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm", active && "bg-accent")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm",
+                    active && "bg-accent",
+                  )}
                 >
                   <Icon className="text-muted-foreground size-4" />
                   {label}
                 </div>
               ))}
             </div>
-            <Reveal show={card} className="absolute top-0 left-0 w-full max-w-lg">
+            <Reveal
+              show={diagram}
+              className="absolute top-0 left-0 w-full max-w-xl"
+            >
               <div className="overflow-hidden rounded-xl border">
-                <div className="bg-muted grid h-40 place-items-center">
-                  <MiniDiagram />
+                <div className="bg-muted/40 grid h-44 place-items-center">
+                  <FlowDiagram />
                 </div>
-                <div className="flex items-center gap-2.5 px-4 py-3 text-base font-medium">
-                  <LayoutGrid className="size-4" />
-                  Launch flow
-                  <span className="text-muted-foreground ml-auto text-sm">Open →</span>
+                <div className="text-muted-foreground flex items-center gap-2 border-t px-4 py-2.5 text-sm">
+                  <GitBranch className="size-4" />
+                  Mermaid · written as text, rendered as a diagram
                 </div>
               </div>
             </Reveal>
@@ -100,13 +133,46 @@ export function NotesDemo() {
   );
 }
 
-function MiniDiagram() {
+/** Static stand-in for the rendered Mermaid flowchart (Clients → Gateway → limiter → App / 429). */
+function FlowDiagram() {
   return (
-    <svg viewBox="0 0 200 70" className="text-foreground h-24 w-72" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <rect x="6" y="20" width="46" height="28" rx="6" />
-      <rect x="77" y="20" width="46" height="28" rx="6" />
-      <ellipse cx="171" cy="34" rx="23" ry="15" />
-      <path d="M52 34h22m-4-3 4 3-4 3M123 34h22m-4-3 4 3-4 3" />
+    <svg
+      viewBox="0 0 360 110"
+      className="text-foreground h-36 w-full max-w-lg"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+    >
+      <g fontSize="11" fill="currentColor" stroke="none" fontFamily="inherit">
+        <text x="30" y="58" textAnchor="middle">
+          Clients
+        </text>
+        <text x="115" y="58" textAnchor="middle">
+          Gateway
+        </text>
+        <text x="205" y="58" textAnchor="middle">
+          Limiter
+        </text>
+        <text x="305" y="30" textAnchor="middle">
+          App
+        </text>
+        <text x="305" y="92" textAnchor="middle">
+          429
+        </text>
+      </g>
+      <rect x="4" y="40" width="52" height="28" rx="6" />
+      <rect x="86" y="40" width="58" height="28" rx="6" />
+      <path d="M205 30l30 24-30 24-30-24z" />
+      <rect x="276" y="12" width="58" height="28" rx="6" />
+      <rect
+        x="276"
+        y="74"
+        width="58"
+        height="28"
+        rx="6"
+        strokeDasharray="3 3"
+      />
+      <path d="M56 54h28m-4-3 4 3-4 3M144 54h29m-4-3 4 3-4 3M232 46l42-18m-5 0 5-0.5-2 4.5M232 62l42 22m-5 1 5-0.5-3-4" />
     </svg>
   );
 }

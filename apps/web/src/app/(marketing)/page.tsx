@@ -6,12 +6,14 @@ import { CanvasDemo } from "./_components/demos/canvas-demo";
 import { MobileDemo } from "./_components/demos/mobile-demo";
 import { NotebookDemo } from "./_components/demos/notebook-demo";
 import { NotesDemo } from "./_components/demos/notes-demo";
+import { ProjectDemo } from "./_components/demos/project-demo";
 import { ShareDemo } from "./_components/demos/share-demo";
+import { ExamplesSection } from "./_components/examples-section";
 import { FAQSection } from "./_components/faq-section";
 import { FeatureSection } from "./_components/feature-section";
-import { HeroSplitDemo } from "./_components/hero-split-demo";
+import { HeroStoryDemo } from "./_components/hero-story-demo";
+import { MeteorShower } from "./_components/meteor-shower";
 import { PricingSection } from "./_components/pricing-section";
-import { WaitlistSection } from "./_components/waitlist-section";
 
 function PrimaryCta({ className }: { className?: string }) {
   return (
@@ -33,6 +35,7 @@ export default function LandingPage() {
     <>
       <section className="relative overflow-hidden px-4 pt-36 pb-24 md:px-8 md:pt-48 md:pb-32">
         <Aura />
+        <MeteorShower />
         <div className="relative mx-auto flex max-w-7xl flex-col items-center text-center">
           <h1 className="text-foreground-strong text-[clamp(1.75rem,7.5vw,6rem)] leading-[1.1] font-bold">
             <span className="animate-word-rise block">
@@ -57,8 +60,8 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="text-muted-foreground animate-word-rise mt-10 max-w-3xl text-xl [animation-delay:800ms] md:text-2xl">
-            Notes, canvas, and agents in one workspace. Every AI change is a
-            typed patch — nothing moves without your OK.
+            Notes, canvases and projects in one workspace — with math, diagrams
+            and drawings side by side. Publish any of it as a beautiful page.
           </p>
           <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row">
             <PrimaryCta />
@@ -68,103 +71,110 @@ export default function LandingPage() {
               variant="ghost"
               className="h-14 px-7 text-lg"
             >
-              <Link href="#sharing">See how sharing works</Link>
+              <Link href="#examples">See examples</Link>
             </Button>
           </div>
           <div className="mt-20 w-full md:mt-28">
-            <HeroSplitDemo />
+            <HeroStoryDemo />
           </div>
         </div>
       </section>
 
-      <div id="features">
-        <FeatureSection
-          eyebrow="Notes"
-          title="A page that gets out of the way."
-          body="Headings, lists, to-dos, code and images — typed, not configured. Type /canvas to drop a live preview of any drawing into the page."
-          demo={<NotesDemo />}
-          points={[
-            {
-              title: "Write without friction",
-              body: "A block editor with the markdown shortcuts your fingers already know.",
-            },
-            {
-              title: "Never lose a word",
-              body: "Everything saves as you type, on every device.",
-            },
-            {
-              title: "Read it your way",
-              body: "Pick the font, size and line height that suit you.",
-            },
-          ]}
-        />
-
-        <FeatureSection
-          eyebrow="Canvas"
-          title="Sketch rough. Get it clean."
-          body="An infinite canvas for flows, maps and diagrams. Turn on auto-shape and wobbly pencil strokes snap into tidy rectangles, circles and arrows."
-          demo={<CanvasDemo />}
-          className="border-t"
-          points={[
-            {
-              title: "Room to think",
-              body: "An infinite, zoomable board for anything you'd draw on a whiteboard.",
-            },
-            {
-              title: "Auto-shape",
-              body: "Draw by hand; get clean shapes and connected arrows.",
-            },
-            {
-              title: "Side by side",
-              body: "Pair a canvas with a note in a project and work on both at once.",
-            },
-          ]}
-        />
-      </div>
-
       <FeatureSection
-        id="sharing"
-        aura
-        className="border-y"
-        eyebrow="Sharing & publishing"
-        title={
-          <>
-            Share like a doc.
-            <br />
-            Publish like a site.
-          </>
-        }
-        body="Invite people as viewers or editors, open it to anyone with the link, or publish a clean public page. Unpublish and it's gone instantly."
-        demo={<ShareDemo />}
+        id="notes"
+        eyebrow="Notes"
+        title="Write like a doc. Explain like a textbook."
+        body="A block editor that speaks math and diagrams. Type an equation, sketch a flow in Mermaid, or drop in a figure from a canvas — all in one page."
+        demo={<NotesDemo />}
         points={[
           {
-            title: "People with access",
-            body: "Add anyone by email as an Editor or Viewer. No account yet? Access starts the moment they sign up.",
+            title: "Math that renders",
+            body: "Inline and display equations with KaTeX, typed as you'd write them.",
           },
           {
-            title: "Anyone with the link",
-            body: "One switch makes the link work for everyone — readers don't need an account.",
+            title: "Diagrams as text",
+            body: "Mermaid flowcharts, sequence diagrams and git graphs, rendered in place.",
           },
           {
-            title: "Publish to the web",
-            body: "A fast, read-only page at its own URL, with proper previews wherever you paste it.",
+            title: "Paste markdown",
+            body: "Math, code and diagrams in pasted markdown convert automatically.",
+          },
+          {
+            title: "Canvas figures",
+            body: "Embed a drawing from any canvas; it stays linked to the original.",
+          },
+          {
+            title: "Every block you expect",
+            body: "Headings, lists, to-dos, code, quotes and images, with markdown shortcuts.",
+          },
+          {
+            title: "Never locked in",
+            body: "Saves as you type, and every note keeps a Markdown copy.",
           },
         ]}
       />
 
       <FeatureSection
+        id="canvases"
+        className="border-t"
+        eyebrow="Canvases"
+        title="Sketch rough. Get it clean."
+        body="An infinite canvas for flows, maps and architecture diagrams. Draw by hand and auto-shape snaps strokes into tidy shapes and connected arrows."
+        demo={<CanvasDemo />}
+        points={[
+          {
+            title: "Room to think",
+            body: "An infinite, zoomable board for anything you'd put on a whiteboard.",
+          },
+          {
+            title: "Auto-shape",
+            body: "Wobbly pencil strokes become clean rectangles, circles and arrows.",
+          },
+          {
+            title: "Figures",
+            body: "Name parts of a canvas, jump between them, and embed them in notes.",
+          },
+        ]}
+      />
+
+      <FeatureSection
+        id="projects"
+        className="border-t"
+        eyebrow="Projects"
+        title="One note. One canvas. Side by side."
+        body="A project pairs a note with a canvas. Group shapes into a figure, drag it into your writing, and it stays in sync as the drawing changes."
+        demo={<ProjectDemo />}
+        points={[
+          {
+            title: "Notes, Split or Canvas",
+            body: "Switch views in one click; the project remembers how you like it.",
+          },
+          {
+            title: "Linked figures",
+            body: "Figures in the note jump straight to their spot on the canvas.",
+          },
+          {
+            title: "Published together",
+            body: "Readers get the same switcher, split view included.",
+          },
+        ]}
+      />
+
+      <FeatureSection
+        id="notebooks"
+        className="border-t"
         eyebrow="Notebooks"
         title="Group it. Share it all at once."
-        body="Collect notes, canvases and projects into a notebook. Share or publish the notebook and everything inside follows — including things you add later, clearly labelled."
+        body="Collect notes, canvases and projects into a notebook. Share or publish it and everything inside follows — including things you add later, clearly labelled."
         demo={<NotebookDemo />}
         points={[
           {
-            title: "One place for related work",
-            body: "Notes, canvases and projects, together.",
+            title: "Any mix of work",
+            body: "Notes, canvases and projects together, in a grid or a list.",
           },
           {
-            title: "Access flows down",
-            body: "Share or publish once; every item inside follows.",
+            title: "A public gallery",
+            body: "Publish a notebook and it becomes a browsable collection, filterable by type.",
           },
           {
             title: "Safe to tidy up",
@@ -174,11 +184,52 @@ export default function LandingPage() {
       />
 
       <FeatureSection
+        id="publishing"
+        aura
+        className="border-y"
+        eyebrow="Share & publish"
+        title={
+          <>
+            Share like a doc.
+            <br />
+            Publish like a site.
+          </>
+        }
+        body="Invite people as viewers or editors, open it to anyone with the link, or publish a clean public page — for a note, canvas, project or whole notebook."
+        demo={<ShareDemo />}
+        points={[
+          {
+            title: "A page worth reading",
+            body: "Your name and date, reading time, a heading minimap and upvotes from readers.",
+          },
+          {
+            title: "Previews everywhere",
+            body: "Its own URL, with proper link previews wherever you paste it.",
+          },
+          {
+            title: "Know who read it",
+            body: "Views and unique readers for every published page — no trackers, nothing stored about readers.",
+          },
+          {
+            title: "People with access",
+            body: "Add anyone by email as an Editor or Viewer. No account yet? Access starts when they sign up.",
+          },
+          {
+            title: "Anyone with the link",
+            body: "One switch and the link works for everyone — readers don't need an account.",
+          },
+          {
+            title: "Gone when you say",
+            body: "Unpublish and the page disappears instantly.",
+          },
+        ]}
+      />
+
+      <FeatureSection
         id="mobile"
-        className="border-t"
-        eyebrow="Mobile"
+        eyebrow="Everywhere"
         title="Native on iPhone and Android."
-        body="Real native navigation, lists and gestures — with the same editor you use on the web, so nothing gets lost between devices."
+        body="Real native apps with the same five tabs on both — Home, Notes, Canvases, Projects and Notebooks — and the same editor you use on the web."
         demo={<MobileDemo />}
         points={[
           {
@@ -186,28 +237,30 @@ export default function LandingPage() {
             body: "Native tabs, navigation and swipe-back on both platforms.",
           },
           {
-            title: "No passwords",
-            body: "Sign in with a one-time code from your email.",
+            title: "Find anything",
+            body: "Search notes, canvases, projects and notebooks by name.",
           },
           {
-            title: "Same notes everywhere",
-            body: "Start on your laptop, finish on the train.",
+            title: "No passwords",
+            body: "Sign in with a one-time code from your email.",
           },
         ]}
       />
 
+      <ExamplesSection />
+
       <PricingSection />
       <FAQSection />
-      <WaitlistSection />
 
       <section className="relative overflow-hidden border-t px-4 py-32 text-center md:px-8 md:py-44">
         <Aura />
+        <MeteorShower />
         <div className="relative mx-auto max-w-3xl">
           <h2 className="text-foreground-strong md:text-display-xl text-5xl font-bold">
             Your first note is one click away.
           </h2>
           <p className="text-muted-foreground mt-8 text-xl md:text-2xl">
-            Free to start. Email or Google sign-in.
+            Free to start. No credit card, no password.
           </p>
           <PrimaryCta className="mt-10" />
         </div>
