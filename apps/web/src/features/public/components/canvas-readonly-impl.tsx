@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
+  DefaultMinimap,
   loadSnapshot,
   Tldraw,
   type Editor,
@@ -13,6 +14,7 @@ import {
   FIGURE_TYPE,
   SHAPE_UTILS,
 } from "@/features/canvas/shapes/figure-shape";
+import { useTldrawTheme } from "@/features/canvas/lib/use-tldraw-theme";
 
 // The public page runs on the production domain too, so it needs the key as well.
 const TLDRAW_LICENSE_KEY = env.NEXT_PUBLIC_TLDRAW_LICENSE_KEY || undefined;
@@ -70,8 +72,13 @@ export function CanvasReadOnlyImpl({
     }
     return null;
   }, [initialDocument]);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  useTldrawTheme(editor);
+  // No figures to navigate by: show an overview of the whole canvas instead.
+  const [hasFigures, setHasFigures] = useState(true);
 
   function onMount(editor: Editor) {
+    setEditor(editor);
     if (snapshot) {
       try {
         loadSnapshot(editor.store, snapshot);
@@ -89,6 +96,7 @@ export function CanvasReadOnlyImpl({
       .map((s) => ({ shape: s, bounds: editor.getShapePageBounds(s.id)! }))
       .filter((f) => f.bounds)
       .sort((a, b) => a.bounds.y - b.bounds.y || a.bounds.x - b.bounds.x);
+    setHasFigures(figureShapes.length > 0);
     const figures = figureShapes.map(({ shape }) => ({
       id: shape.id as string,
       label: ((shape.props as { label?: string }).label || "Figure").trim(),
@@ -158,7 +166,17 @@ export function CanvasReadOnlyImpl({
           hideUi
           licenseKey={TLDRAW_LICENSE_KEY}
           shapeUtils={SHAPE_UTILS}
-        />
+        >
+          {/* Desktop only, above the zoom controls; click or drag it to move around. */}
+          {!hasFigures && editor && editor.getCurrentPageShapeIds().size > 0 ? (
+            <div
+              aria-label="Canvas overview"
+              className="bg-background absolute right-6 bottom-30 z-[300] hidden h-36 w-56 overflow-hidden rounded-xl border shadow-md lg:block [&_.tlui-minimap]:!h-full [&_.tlui-minimap]:!w-full"
+            >
+              <DefaultMinimap />
+            </div>
+          ) : null}
+        </Tldraw>
       </div>
     </div>
   );

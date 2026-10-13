@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createShapeId,
   getPointsFromDrawSegments,
@@ -24,6 +24,7 @@ import {
   syncFigures,
 } from "../lib/figures";
 import { uploadCanvasThumbnail } from "../lib/thumbnail";
+import { useTldrawTheme } from "../lib/use-tldraw-theme";
 import { SHAPE_UTILS } from "../shapes/figure-shape";
 
 // tldraw hides the canvas after 5s on non-localhost domains without a key.
@@ -67,6 +68,8 @@ export function OctoCanvas({
   const knownFigures = useRef<Map<string, string> | null>(null);
   const onSaveStateRef = useRef(onSaveStateChange);
   onSaveStateRef.current = onSaveStateChange;
+  const [editor, setEditor] = useState<Editor | null>(null);
+  useTldrawTheme(editor);
 
   useEffect(() => {
     autoShapeRef.current = autoShape;
@@ -100,6 +103,7 @@ export function OctoCanvas({
       }
     }
     editor.updateInstanceState({ isReadonly: readOnly });
+    setEditor(editor);
     onEditor?.(editor);
     if (readOnly) {
       editor.zoomToFit();

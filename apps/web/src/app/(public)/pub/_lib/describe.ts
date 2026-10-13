@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { PublicResource } from "@/features/public/types";
 
-/** Title + description + OG image (canvas thumbnail) for link previews. */
+/** Title + description for link previews; the image is each route's opengraph-image. */
 export function describe(title: string, resource: PublicResource): Metadata {
   const description =
     resource.kind === "page"
@@ -14,12 +14,6 @@ export function describe(title: string, resource: PublicResource): Metadata {
         : resource.kind === "notebook"
           ? `A notebook with ${resource.items.length} item${resource.items.length === 1 ? "" : "s"}`
           : "A canvas on Octonote AI";
-  const image =
-    resource.kind === "canvas"
-      ? resource.thumbnailUrl
-      : resource.kind === "project"
-        ? (resource.canvas?.thumbnailUrl ?? null)
-        : null;
   const fullTitle = `${title || "Untitled"} · Octonote AI`;
   return {
     title: fullTitle,
@@ -27,10 +21,9 @@ export function describe(title: string, resource: PublicResource): Metadata {
     openGraph: {
       title: fullTitle,
       description,
-      ...(image ? { images: [image] } : {}),
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title: fullTitle,
       description,
     },
