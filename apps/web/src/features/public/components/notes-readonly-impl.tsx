@@ -14,6 +14,8 @@ export interface NotesReadOnlyImplProps {
   initialContent: unknown;
   /** Published root slug — canvas-reference blocks resolve and link within it. */
   slug: string;
+  /** Published project: embedded figures get "See on canvas". */
+  onOpenFigure?: (figureId: string) => void;
 }
 
 /** Readers never see editor hints like "Heading" or "Type '/' for commands" on empty blocks. */
@@ -27,6 +29,7 @@ const readerDictionary = {
 export function NotesReadOnlyImpl({
   initialContent,
   slug,
+  onOpenFigure,
 }: NotesReadOnlyImplProps) {
   const blocks =
     initialContent &&
@@ -39,7 +42,10 @@ export function NotesReadOnlyImpl({
     initialContent: blocks,
     dictionary: readerDictionary,
   });
-  const resolver = useMemo(() => publicCanvasResolver(slug), [slug]);
+  const resolver = useMemo(
+    () => ({ ...publicCanvasResolver(slug), openFigure: onOpenFigure }),
+    [slug, onOpenFigure],
+  );
 
   return (
     <CanvasReferenceContext.Provider value={resolver}>

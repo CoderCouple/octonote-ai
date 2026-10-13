@@ -34,9 +34,9 @@ import {
   type NotebookContext,
 } from "./notebook-nav";
 import { PublishedCanvas } from "./published-canvas";
+import { PublishedProject } from "./published-project";
 import { ReaderBar } from "./reader-bar";
 import { VoteButtons, VotesProvider } from "./votes";
-import { CanvasReadOnly } from "./canvas-readonly";
 import { NotesReadOnly } from "./notes-readonly";
 
 const KIND_ICON: Record<PublicKind, typeof FileText> = {
@@ -89,37 +89,13 @@ export function PublicPage({
       );
     case "project":
       return (
-        <div className="flex min-h-[calc(100svh-3.5rem)] flex-col">
-          <div className="border-b px-4 py-4 md:px-6">
-            {back}
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {resource.name}
-            </h1>
-            {resource.description ? (
-              <p className="text-muted-foreground mt-1 text-sm">
-                {resource.description}
-              </p>
-            ) : null}
-          </div>
-          {/* Stacked on phones, side by side from md up. */}
-          <div className="flex flex-1 flex-col md:flex-row">
-            {resource.note && resource.defaultView !== "canvas" ? (
-              <div className="overflow-auto md:w-1/2 md:border-r">
-                <div className="mx-auto max-w-[42rem] px-4 py-8 md:px-8">
-                  <NotesReadOnly
-                    initialContent={resource.note.document}
-                    slug={root.slug}
-                  />
-                </div>
-              </div>
-            ) : null}
-            {resource.canvas && resource.defaultView !== "notes" ? (
-              <div className="h-[70svh] md:h-auto md:flex-1">
-                <CanvasReadOnly initialDocument={resource.canvas.document} />
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <PublishedProject
+          project={resource}
+          slug={root.slug}
+          byline={view.byline}
+          notebook={notebook}
+          back={back}
+        />
       );
     case "notebook":
       return (

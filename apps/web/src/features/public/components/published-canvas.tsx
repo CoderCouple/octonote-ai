@@ -50,11 +50,6 @@ export function PublishedCanvas({
   back: React.ReactNode;
 }) {
   const [api, setApi] = useState<CanvasViewApi | null>(null);
-  const [view, setView] = useState<CanvasViewState>({
-    zoom: 1,
-    activeFigureId: null,
-  });
-  const [figuresOpen, setFiguresOpen] = useState(false);
   const title = canvas.title || "Untitled canvas";
   const figures = api?.figures ?? [];
   const date = new Date(
@@ -118,88 +113,131 @@ export function PublishedCanvas({
         </header>
 
         <div className="relative flex-1">
-          <CanvasReadOnly
-            initialDocument={canvas.document}
+          <CanvasStage
+            canvasDocument={canvas.document}
+            title={title}
+            notebook={notebook}
             onReady={setApi}
-            onViewChange={setView}
-            startOnFirstFigure={isNarrow()}
           />
+        </div>
+      </div>
+    </VotesProvider>
+  );
+}
 
-          {figures.length > 0 ? (
-            <div className="absolute top-1/2 right-3 z-20 hidden -translate-y-1/2 lg:block">
-              <FiguresRail api={api!} activeId={view.activeFigureId} />
-            </div>
-          ) : null}
-          {notebook ? (
-            <div className="absolute top-1/2 left-3 z-20 hidden -translate-y-1/2 lg:block">
-              <NotebookRail nb={notebook} />
-            </div>
-          ) : null}
+/**
+ * The read-only canvas with its reading aids: the figures minimap on the
+ * right edge and zoom controls (desktop), the floating votes · Figures ·
+ * fit · share bar and the Figures sheet (phones). Used by published
+ * canvases and by the canvas pane of published projects.
+ */
+export function CanvasStage({
+  canvasDocument,
+  title,
+  notebook,
+  onReady,
+}: {
+  canvasDocument: unknown;
+  title: string;
+  /** Read inside a published notebook: its minimap on the left edge. */
+  notebook: NotebookContext | null;
+  onReady?: (api: CanvasViewApi) => void;
+}) {
+  const [api, setApi] = useState<CanvasViewApi | null>(null);
+  const [view, setView] = useState<CanvasViewState>({
+    zoom: 1,
+    activeFigureId: null,
+  });
+  const [figuresOpen, setFiguresOpen] = useState(false);
+  const figures = api?.figures ?? [];
 
-          {/* Desktop zoom controls. */}
-          {api ? (
-            <div className="bg-background absolute right-6 bottom-16 z-20 hidden h-10 items-center rounded-xl border shadow-md lg:flex">
-              <button
-                type="button"
-                aria-label="Zoom out"
-                onClick={api.zoomOut}
-                className="hover:bg-accent grid size-10 place-items-center rounded-l-xl"
-              >
-                <Minus className="size-4" />
-              </button>
-              <span className="w-12 text-center text-xs tabular-nums">
-                {Math.round(view.zoom * 100)}%
-              </span>
-              <button
-                type="button"
-                aria-label="Zoom in"
-                onClick={api.zoomIn}
-                className="hover:bg-accent grid size-10 place-items-center"
-              >
-                <Plus className="size-4" />
-              </button>
-              <span aria-hidden className="bg-border h-5 w-px" />
-              <button
-                type="button"
-                onClick={api.fit}
-                className="hover:bg-accent h-10 rounded-r-xl px-3 text-xs font-semibold"
-              >
-                Fit
-              </button>
-            </div>
-          ) : null}
+  return (
+    <>
+      <div className="relative h-full w-full">
+        <CanvasReadOnly
+          initialDocument={canvasDocument}
+          onReady={(a) => {
+            setApi(a);
+            onReady?.(a);
+          }}
+          onViewChange={setView}
+          startOnFirstFigure={isNarrow()}
+        />
 
-          {/* Phones: votes · Figures · fit · share. */}
-          <div className="bg-background absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-full border p-1 shadow-lg lg:hidden">
-            <VoteButtons size="sm" />
-            <span aria-hidden className="bg-border mx-1 h-5 w-px" />
-            {figures.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setFiguresOpen(true)}
-                className="hover:bg-accent flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold"
-              >
-                <Group className="size-4" />
-                Figures
-              </button>
-            ) : null}
+        {figures.length > 0 ? (
+          <div className="absolute top-1/2 right-3 z-20 hidden -translate-y-1/2 lg:block">
+            <FiguresRail api={api!} activeId={view.activeFigureId} />
+          </div>
+        ) : null}
+        {notebook ? (
+          <div className="absolute top-1/2 left-3 z-20 hidden -translate-y-1/2 lg:block">
+            <NotebookRail nb={notebook} />
+          </div>
+        ) : null}
+
+        {/* Desktop zoom controls. */}
+        {api ? (
+          <div className="bg-background absolute right-6 bottom-16 z-20 hidden h-10 items-center rounded-xl border shadow-md lg:flex">
             <button
               type="button"
-              aria-label="Show the whole canvas"
-              onClick={() => api?.fit()}
-              className="hover:bg-accent grid size-10 place-items-center rounded-full"
+              aria-label="Zoom out"
+              onClick={api.zoomOut}
+              className="hover:bg-accent grid size-10 place-items-center rounded-l-xl"
             >
-              <Maximize2 className="size-[18px]" />
+              <Minus className="size-4" />
             </button>
+            <span className="w-12 text-center text-xs tabular-nums">
+              {Math.round(view.zoom * 100)}%
+            </span>
             <button
               type="button"
-              aria-label="Share"
-              onClick={() => void shareThisPage(title)}
-              className="hover:bg-accent grid size-10 place-items-center rounded-full"
+              aria-label="Zoom in"
+              onClick={api.zoomIn}
+              className="hover:bg-accent grid size-10 place-items-center"
             >
-              <Share className="size-[18px]" />
+              <Plus className="size-4" />
+            </button>
+            <span aria-hidden className="bg-border h-5 w-px" />
+            <button
+              type="button"
+              onClick={api.fit}
+              className="hover:bg-accent h-10 rounded-r-xl px-3 text-xs font-semibold"
+            >
+              Fit
             </button>
           </div>
+        ) : null}
+
+        {/* Phones: votes · Figures · fit · share. */}
+        <div className="bg-background absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded-full border p-1 shadow-lg lg:hidden">
+          <VoteButtons size="sm" />
+          <span aria-hidden className="bg-border mx-1 h-5 w-px" />
+          {figures.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setFiguresOpen(true)}
+              className="hover:bg-accent flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold"
+            >
+              <Group className="size-4" />
+              Figures
+            </button>
+          ) : null}
+          <button
+            type="button"
+            aria-label="Show the whole canvas"
+            onClick={() => api?.fit()}
+            className="hover:bg-accent grid size-10 place-items-center rounded-full"
+          >
+            <Maximize2 className="size-[18px]" />
+          </button>
+          <button
+            type="button"
+            aria-label="Share"
+            onClick={() => void shareThisPage(title)}
+            className="hover:bg-accent grid size-10 place-items-center rounded-full"
+          >
+            <Share className="size-[18px]" />
+          </button>
         </div>
       </div>
 
@@ -247,7 +285,7 @@ export function PublishedCanvas({
           </div>
         </DrawerContent>
       </Drawer>
-    </VotesProvider>
+    </>
   );
 }
 

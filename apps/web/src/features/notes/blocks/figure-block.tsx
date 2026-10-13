@@ -218,6 +218,15 @@ function FigureCard({
             <ExternalLink className="size-3.5" />
             Open canvas
           </Link>
+        ) : resolver.openFigure && figureId ? (
+          <button
+            type="button"
+            onClick={() => resolver.openFigure!(figureId)}
+            className="bg-background/95 text-foreground-strong absolute top-2 right-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium shadow-sm transition-opacity group-hover/figure:opacity-100 focus-visible:opacity-100 lg:opacity-0"
+          >
+            <ExternalLink className="size-3.5" />
+            See on canvas
+          </button>
         ) : null}
       </div>
       {shown.title ? (

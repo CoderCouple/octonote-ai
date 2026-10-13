@@ -24,6 +24,11 @@ export interface CanvasReferenceResolver {
    * serves the newest picture) is enough, and the canvas isn't exposed.
    */
   resolveFigure?: (figureId: string) => Promise<FigureTarget | null>;
+  /**
+   * Published project: the figure's canvas is on the same page, so the
+   * block offers "See on canvas", which switches to it and zooms there.
+   */
+  openFigure?: (figureId: string) => void;
 }
 
 export interface FigureTarget {

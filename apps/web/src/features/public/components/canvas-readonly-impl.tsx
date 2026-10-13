@@ -21,6 +21,8 @@ const TLDRAW_LICENSE_KEY = env.NEXT_PUBLIC_TLDRAW_LICENSE_KEY || undefined;
 export interface CanvasFigure {
   id: string;
   label: string;
+  /** The `fig_` id notes embed the figure by (null on figures never synced). */
+  figureId: string | null;
 }
 
 /**
@@ -30,6 +32,8 @@ export interface CanvasFigure {
 export interface CanvasViewApi {
   figures: CanvasFigure[];
   zoomToFigure: (id: string) => void;
+  /** Zoom to the figure a note embeds (by its `fig_` id); false if it isn't on this canvas. */
+  zoomToEmbeddedFigure: (figureId: string) => boolean;
   fit: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -88,6 +92,7 @@ export function CanvasReadOnlyImpl({
     const figures = figureShapes.map(({ shape }) => ({
       id: shape.id as string,
       label: ((shape.props as { label?: string }).label || "Figure").trim(),
+      figureId: (shape.meta as { figureId?: string }).figureId ?? null,
     }));
 
     const fit = (animated = true) => {
@@ -134,6 +139,11 @@ export function CanvasReadOnlyImpl({
     onReady?.({
       figures,
       zoomToFigure,
+      zoomToEmbeddedFigure: (figureId) => {
+        const f = figures.find((x) => x.figureId === figureId);
+        if (f) zoomToFigure(f.id);
+        return Boolean(f);
+      },
       fit: () => fit(),
       zoomIn: () => editor.zoomIn(editor.getViewportScreenCenter(), ANIMATE),
       zoomOut: () => editor.zoomOut(editor.getViewportScreenCenter(), ANIMATE),

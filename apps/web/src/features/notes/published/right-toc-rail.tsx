@@ -20,6 +20,11 @@ import { cn } from "@/lib/utils";
 interface RightTocRailProps {
   sections: SectionEntry[];
   footnote?: string;
+  /**
+   * The element that scrolls the note when it isn't the window (the note
+   * pane of a published project). Null while it mounts.
+   */
+  scrollRoot?: HTMLElement | null;
 }
 
 const LEVEL_WIDTH: Record<1 | 2 | 3, string> = {
@@ -40,7 +45,11 @@ const LEVEL_TEXT: Record<1 | 2 | 3, string> = {
   3: "text-xs",
 };
 
-export function RightTocRail({ sections, footnote }: RightTocRailProps) {
+export function RightTocRail({
+  sections,
+  footnote,
+  scrollRoot,
+}: RightTocRailProps) {
   const [activeId, setActiveId] = useState<string | null>(
     sections[0]?.id ?? null,
   );
@@ -53,10 +62,15 @@ export function RightTocRail({ sections, footnote }: RightTocRailProps) {
   const compute = useCallback(() => {
     let bestId: string | null = null;
     let bestDelta = Number.POSITIVE_INFINITY;
+    const offset = scrollRoot
+      ? scrollRoot.getBoundingClientRect().top + 24
+      : 96; // account for sticky offset
     for (const id of ids) {
-      const el = document.querySelector<HTMLElement>(`[data-id="${id}"]`);
+      const el = (scrollRoot ?? document).querySelector<HTMLElement>(
+        `[data-id="${id}"]`,
+      );
       if (!el) continue;
-      const top = el.getBoundingClientRect().top - 96; // account for sticky offset
+      const top = el.getBoundingClientRect().top - offset;
       if (top <= 0 && Math.abs(top) < bestDelta) {
         bestDelta = Math.abs(top);
         bestId = id;
@@ -66,7 +80,7 @@ export function RightTocRail({ sections, footnote }: RightTocRailProps) {
     // never renders a fully-empty active state.
     setActiveId(bestId ?? ids[0] ?? null);
     rafRef.current = 0;
-  }, [ids]);
+  }, [ids, scrollRoot]);
 
   useEffect(() => {
     if (ids.length === 0) return;
@@ -74,22 +88,34 @@ export function RightTocRail({ sections, footnote }: RightTocRailProps) {
       if (rafRef.current) return;
       rafRef.current = requestAnimationFrame(compute);
     };
+    const target: HTMLElement | Window = scrollRoot ?? window;
     compute();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    target.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      target.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [ids, compute]);
+  }, [ids, compute, scrollRoot]);
 
   const scrollTo = (id: string) => (event: React.MouseEvent) => {
     event.preventDefault();
-    const el = document.querySelector<HTMLElement>(`[data-id="${id}"]`);
+    const el = (scrollRoot ?? document).querySelector<HTMLElement>(
+      `[data-id="${id}"]`,
+    );
     if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY - 96;
-    window.scrollTo({ top, behavior: "smooth" });
+    if (scrollRoot) {
+      const top =
+        el.getBoundingClientRect().top -
+        scrollRoot.getBoundingClientRect().top +
+        scrollRoot.scrollTop -
+        24;
+      scrollRoot.scrollTo({ top, behavior: "smooth" });
+    } else {
+      const top = el.getBoundingClientRect().top + window.scrollY - 96;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
     history.replaceState(null, "", `#${id}`);
   };
 

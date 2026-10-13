@@ -35,25 +35,29 @@ export async function shareThisPage(title: string) {
 export function ReaderBar({
   sections,
   title,
+  scrollRoot,
 }: {
   sections: SectionEntry[];
   title: string;
+  /** The element that scrolls the note, when it isn't the window. */
+  scrollRoot?: HTMLElement | null;
 }) {
   const [hidden, setHidden] = useState(false);
   const [contentsOpen, setContentsOpen] = useState(false);
   const lastY = useRef(0);
 
   useEffect(() => {
+    const target: HTMLElement | Window = scrollRoot ?? window;
     const onScroll = () => {
-      const y = window.scrollY;
+      const y = scrollRoot ? scrollRoot.scrollTop : window.scrollY;
       // Hide when scrolling down past the top; show on any scroll up.
       if (Math.abs(y - lastY.current) < 6) return;
       setHidden(y > lastY.current && y > 120);
       lastY.current = y;
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    target.addEventListener("scroll", onScroll, { passive: true });
+    return () => target.removeEventListener("scroll", onScroll);
+  }, [scrollRoot]);
 
   return (
     <>
@@ -88,6 +92,7 @@ export function ReaderBar({
         open={contentsOpen}
         onOpenChange={setContentsOpen}
         sections={sections}
+        scrollRoot={scrollRoot}
       />
     </>
   );
@@ -98,21 +103,26 @@ function ContentsSheet({
   open,
   onOpenChange,
   sections,
+  scrollRoot,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sections: SectionEntry[];
+  scrollRoot?: HTMLElement | null;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   useEffect(() => {
     if (!open) return;
     let best: string | null = sections[0]?.id ?? null;
+    const offset = scrollRoot
+      ? scrollRoot.getBoundingClientRect().top + 24
+      : 96;
     for (const s of sections) {
       const el = document.querySelector<HTMLElement>(`[data-id="${s.id}"]`);
-      if (el && el.getBoundingClientRect().top - 96 <= 0) best = s.id;
+      if (el && el.getBoundingClientRect().top - offset <= 0) best = s.id;
     }
     setActiveId(best);
-  }, [open, sections]);
+  }, [open, sections, scrollRoot]);
 
   function jump(id: string) {
     onOpenChange(false);
@@ -120,10 +130,21 @@ function ContentsSheet({
     if (!el) return;
     // After the sheet closes, so the scroll isn't fought by the drawer.
     setTimeout(() => {
-      window.scrollTo({
-        top: el.getBoundingClientRect().top + window.scrollY - 72,
-        behavior: "smooth",
-      });
+      if (scrollRoot) {
+        scrollRoot.scrollTo({
+          top:
+            el.getBoundingClientRect().top -
+            scrollRoot.getBoundingClientRect().top +
+            scrollRoot.scrollTop -
+            16,
+          behavior: "smooth",
+        });
+      } else {
+        window.scrollTo({
+          top: el.getBoundingClientRect().top + window.scrollY - 72,
+          behavior: "smooth",
+        });
+      }
     }, 250);
   }
 
