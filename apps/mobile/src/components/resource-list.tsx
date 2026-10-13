@@ -23,6 +23,7 @@ import {
   type ListItem,
 } from "@/features/resources";
 import { KIND_ICON } from "@/lib/kind-icons";
+import type { ListView } from "@/lib/list-view";
 import { usePalette } from "@/lib/theme";
 
 interface ResourceListProps {
@@ -40,6 +41,8 @@ interface ResourceListProps {
   emptyKind?: EmptyKind;
   /** Button under the empty state (e.g. "New note"). */
   emptyAction?: { label: string; onPress: () => void };
+  /** Rows (default) or a two-column grid of cards. */
+  view?: ListView;
 }
 
 export function ResourceList({
@@ -53,6 +56,7 @@ export function ResourceList({
   header,
   emptyKind,
   emptyAction,
+  view = "list",
 }: ResourceListProps) {
   const c = usePalette();
   const router = useRouter();
@@ -95,6 +99,10 @@ export function ResourceList({
   return (
     <>
       <FlatList
+        // FlatList can't change its column count in place.
+        key={view}
+        numColumns={view === "grid" ? 2 : 1}
+        columnWrapperStyle={view === "grid" ? styles.gridRow : undefined}
         data={items ?? []}
         keyExtractor={(i) => `${i.kind}:${i.id}`}
         contentInsetAdjustmentBehavior="automatic"
@@ -104,9 +112,15 @@ export function ResourceList({
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListHeaderComponent={header ?? null}
-        ItemSeparatorComponent={() => (
-          <View style={[styles.separator, { backgroundColor: c.separator }]} />
-        )}
+        ItemSeparatorComponent={
+          view === "grid"
+            ? () => <View style={styles.gridGap} />
+            : () => (
+                <View
+                  style={[styles.separator, { backgroundColor: c.separator }]}
+                />
+              )
+        }
         ListEmptyComponent={
           error || !emptyKind ? (
             <Text style={[styles.empty, { color: c.textSecondary }]}>
@@ -120,93 +134,104 @@ export function ResourceList({
             />
           )
         }
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push(ROUTE[item.kind](item.id))}
-            onLongPress={readOnly ? undefined : () => setMenuFor(item)}
-            style={({ pressed }) => [
-              styles.row,
-              { backgroundColor: pressed ? c.pressed : c.background },
-            ]}
-            accessibilityRole="button"
-            accessibilityHint={
-              readOnly ? undefined : "Long-press for analytics and more"
-            }
-          >
-            <View
-              style={[
-                styles.thumb,
-                { backgroundColor: c.pressed, borderColor: c.separator },
+        renderItem={({ item }) =>
+          view === "grid" ? (
+            <Card
+              item={item}
+              onPress={() => router.push(ROUTE[item.kind](item.id))}
+              onLongPress={readOnly ? undefined : () => setMenuFor(item)}
+            />
+          ) : (
+            <Pressable
+              onPress={() => router.push(ROUTE[item.kind](item.id))}
+              onLongPress={readOnly ? undefined : () => setMenuFor(item)}
+              style={({ pressed }) => [
+                styles.row,
+                { backgroundColor: pressed ? c.pressed : c.background },
               ]}
+              accessibilityRole="button"
+              accessibilityHint={
+                readOnly ? undefined : "Long-press for analytics and more"
+              }
             >
-              {item.thumbnailUrl ? (
-                <Image
-                  source={item.thumbnailUrl}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                />
-              ) : (
-                <KindIcon kind={item.kind} color={c.textSecondary} />
-              )}
-            </View>
-            <View style={styles.texts}>
-              <View style={styles.titleRow}>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.title, { color: c.textStrong }]}
-                >
-                  {item.title}
-                </Text>
-                <Text style={[styles.date, { color: c.textSecondary }]}>
-                  {new Date(item.updatedAt).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </Text>
+              <View
+                style={[
+                  styles.thumb,
+                  { backgroundColor: c.pressed, borderColor: c.separator },
+                ]}
+              >
+                {item.thumbnailUrl ? (
+                  <Image
+                    source={item.thumbnailUrl}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <KindIcon kind={item.kind} color={c.textSecondary} />
+                )}
               </View>
-              {item.subtitle ? (
-                <Text
-                  numberOfLines={1}
-                  style={[styles.subtitle, { color: c.textSecondary }]}
-                >
-                  {item.subtitle}
-                </Text>
-              ) : null}
-              {item.access ? (
-                <View style={styles.details}>
-                  <Text
-                    style={[
-                      styles.access,
-                      item.access === "public"
-                        ? {
-                            color: c.onTint,
-                            backgroundColor: c.tint,
-                            borderColor: c.tint,
-                          }
-                        : { color: c.textSecondary, borderColor: c.separator },
-                    ]}
-                  >
-                    {ACCESS_LABEL[item.access]}
-                  </Text>
+              <View style={styles.texts}>
+                <View style={styles.titleRow}>
                   <Text
                     numberOfLines={1}
-                    style={[styles.detailText, { color: c.textSecondary }]}
+                    style={[styles.title, { color: c.textStrong }]}
                   >
-                    {[
-                      item.notebookName ? `▤ ${item.notebookName}` : null,
-                      item.owner,
-                      item.sharedCount
-                        ? `${item.sharedCount} ${item.sharedCount === 1 ? "person" : "people"}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join("  ·  ")}
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.date, { color: c.textSecondary }]}>
+                    {new Date(item.updatedAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </Text>
                 </View>
-              ) : null}
-            </View>
-          </Pressable>
-        )}
+                {item.subtitle ? (
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.subtitle, { color: c.textSecondary }]}
+                  >
+                    {item.subtitle}
+                  </Text>
+                ) : null}
+                {item.access ? (
+                  <View style={styles.details}>
+                    <Text
+                      style={[
+                        styles.access,
+                        item.access === "public"
+                          ? {
+                              color: c.onTint,
+                              backgroundColor: c.tint,
+                              borderColor: c.tint,
+                            }
+                          : {
+                              color: c.textSecondary,
+                              borderColor: c.separator,
+                            },
+                      ]}
+                    >
+                      {ACCESS_LABEL[item.access]}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.detailText, { color: c.textSecondary }]}
+                    >
+                      {[
+                        item.notebookName ? `▤ ${item.notebookName}` : null,
+                        item.owner,
+                        item.sharedCount
+                          ? `${item.sharedCount} ${item.sharedCount === 1 ? "person" : "people"}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join("  ·  ")}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </Pressable>
+          )
+        }
       />
       <ActionSheet
         visible={menuFor !== null}
@@ -279,6 +304,37 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
+  gridRow: { gap: 12, paddingHorizontal: 16 },
+  gridGap: { height: 12 },
+  card: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  cardPicture: {
+    aspectRatio: 4 / 3,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  cardExcerpt: {
+    alignSelf: "stretch",
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  cardBody: { padding: 10, gap: 6 },
+  cardTitle: { fontSize: 15, fontWeight: "600", lineHeight: 19 },
+  cardMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 6,
+  },
   empty: { textAlign: "center", padding: 32, fontSize: 14, lineHeight: 20 },
   emptyWrap: {
     alignItems: "center",
@@ -309,6 +365,106 @@ const styles = StyleSheet.create({
   },
   emptyButtonText: { fontSize: 15, fontWeight: "600" },
 });
+
+/** Grid card: the picture (canvas thumbnail, a note's opening, or the kind), title, access and date. */
+function Card({
+  item,
+  onPress,
+  onLongPress,
+}: {
+  item: ListItem;
+  onPress: () => void;
+  onLongPress?: () => void;
+}) {
+  const c = usePalette();
+  return (
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      accessibilityRole="button"
+      accessibilityLabel={item.title}
+      accessibilityHint={
+        onLongPress ? "Long-press for analytics and more" : undefined
+      }
+      style={({ pressed }) => [
+        styles.card,
+        {
+          borderColor: c.separator,
+          backgroundColor: pressed ? c.pressed : c.card,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.cardPicture,
+          { backgroundColor: c.pressed, borderColor: c.separator },
+        ]}
+      >
+        {item.thumbnailUrl ? (
+          <Image
+            source={item.thumbnailUrl}
+            style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]}
+            contentFit="contain"
+          />
+        ) : item.kind === "page" && item.subtitle ? (
+          <Text
+            numberOfLines={6}
+            style={[
+              styles.cardExcerpt,
+              { color: c.textSecondary, backgroundColor: c.background },
+            ]}
+          >
+            {item.subtitle}
+          </Text>
+        ) : (
+          <KindIcon kind={item.kind} color={c.textSecondary} />
+        )}
+      </View>
+      <View style={styles.cardBody}>
+        <Text
+          numberOfLines={2}
+          style={[styles.cardTitle, { color: c.textStrong }]}
+        >
+          {item.title}
+        </Text>
+        {item.kind !== "page" && item.subtitle ? (
+          <Text
+            numberOfLines={1}
+            style={[styles.detailText, { color: c.textSecondary }]}
+          >
+            {item.subtitle}
+          </Text>
+        ) : null}
+        <View style={styles.cardMeta}>
+          {item.access ? (
+            <Text
+              style={[
+                styles.access,
+                item.access === "public"
+                  ? {
+                      color: c.onTint,
+                      backgroundColor: c.tint,
+                      borderColor: c.tint,
+                    }
+                  : { color: c.textSecondary, borderColor: c.separator },
+              ]}
+            >
+              {ACCESS_LABEL[item.access]}
+            </Text>
+          ) : (
+            <View />
+          )}
+          <Text style={[styles.date, { color: c.textSecondary }]}>
+            {new Date(item.updatedAt).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
 /** The kind's icon, same as the web app's table rows. */
 function KindIcon({ kind, color }: { kind: ListItem["kind"]; color: string }) {

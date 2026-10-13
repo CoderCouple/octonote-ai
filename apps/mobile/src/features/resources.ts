@@ -121,7 +121,15 @@ function toItem(
         ? snippet(r.contentMd, String(r.title ?? ""))
         : kind === "project"
           ? ((r.description as string) ?? "Note + canvas")
-          : undefined,
+          : kind === "notebook" && r.counts
+            ? contentsLabel(
+                r.counts as {
+                  notes: number;
+                  canvases: number;
+                  projects: number;
+                },
+              )
+            : undefined,
     thumbnailUrl: (r.thumbnailUrl as string | null | undefined) ?? null,
     access: accessOf(r, notebook),
     notebookName: nb?.name ?? null,
@@ -357,4 +365,23 @@ export function useBilling() {
     queryFn: () =>
       api.get<BillingSummary>(`/workspaces/${workspaceId}/billing`),
   });
+}
+
+/** "3 notes · 1 canvas · 2 projects" — what a notebook holds (as on web). */
+function contentsLabel(c: {
+  notes: number;
+  canvases: number;
+  projects: number;
+}) {
+  const part = (n: number, one: string, many: string) =>
+    n ? `${n} ${n === 1 ? one : many}` : null;
+  return (
+    [
+      part(c.notes, "note", "notes"),
+      part(c.canvases, "canvas", "canvases"),
+      part(c.projects, "project", "projects"),
+    ]
+      .filter(Boolean)
+      .join(" · ") || "Empty"
+  );
 }

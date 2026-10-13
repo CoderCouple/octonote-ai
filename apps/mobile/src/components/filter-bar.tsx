@@ -3,9 +3,10 @@
  * access tabs (All / Private / Shared / Published); a notebook uses type tabs.
  */
 import type { Access } from "@octonote/shared";
-import { ArrowUpDown } from "lucide-react-native";
+import { ArrowUpDown, LayoutGrid, List } from "lucide-react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ListItem } from "@/features/resources";
+import type { ListView } from "@/lib/list-view";
 import { usePalette } from "@/lib/theme";
 
 export type Filter = "all" | "private" | "shared" | "public";
@@ -43,12 +44,17 @@ export function FilterBar<K extends string>({
   onSelect,
   sortLabel,
   onSort,
+  view,
+  onView,
 }: {
   tabs: Tab<K>[];
   active: K;
   onSelect: (key: K) => void;
   sortLabel: string;
   onSort: () => void;
+  /** With onView: a list/grid switch next to sort. */
+  view?: ListView;
+  onView?: (v: ListView) => void;
 }) {
   const c = usePalette();
   return (
@@ -113,6 +119,29 @@ export function FilterBar<K extends string>({
       >
         <ArrowUpDown size={16} color={c.textStrong} strokeWidth={2} />
       </Pressable>
+      {view && onView ? (
+        <Pressable
+          onPress={() => onView(view === "grid" ? "list" : "grid")}
+          accessibilityRole="button"
+          accessibilityLabel={
+            view === "grid" ? "Show as a list" : "Show as a grid"
+          }
+          style={({ pressed }) => [
+            styles.sort,
+            styles.viewButton,
+            {
+              borderColor: c.separator,
+              backgroundColor: pressed ? c.pressed : c.card,
+            },
+          ]}
+        >
+          {view === "grid" ? (
+            <List size={16} color={c.textStrong} strokeWidth={2} />
+          ) : (
+            <LayoutGrid size={16} color={c.textStrong} strokeWidth={2} />
+          )}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -155,4 +184,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sortText: { fontSize: 15, fontWeight: "600" },
+  // Sits right after sort (sort's auto margin already pushes both right).
+  viewButton: { marginLeft: 0 },
 });

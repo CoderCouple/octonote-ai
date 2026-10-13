@@ -27,6 +27,7 @@ import {
   type Filter,
 } from "./filter-bar";
 import { handlePlanLimit } from "@/lib/upgrade";
+import { useListView } from "@/lib/list-view";
 
 // Same wording as the web app's empty tables.
 const EMPTY: Record<ResourceKind, string> = {
@@ -60,6 +61,7 @@ export function KindTabScreen({ kind }: { kind: ResourceKind }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("updated-desc");
   const [sortOpen, setSortOpen] = useState(false);
+  const [view, setView] = useListView(kind);
 
   const visible = useMemo(() => {
     const rows = (list.data ?? []).filter((i) =>
@@ -131,6 +133,7 @@ export function KindTabScreen({ kind }: { kind: ResourceKind }) {
             : EMPTY[kind]
         }
         error={list.error}
+        view={view}
         emptyKind={list.data?.length ? undefined : kind}
         emptyAction={{ label: `New ${LABEL[kind].one}`, onPress: create }}
         header={
@@ -146,6 +149,8 @@ export function KindTabScreen({ kind }: { kind: ResourceKind }) {
                 onSelect={setFilter}
                 sortLabel={SORTS.find((s) => s.key === sortKey)!.short}
                 onSort={() => setSortOpen(true)}
+                view={view}
+                onView={setView}
               />
             </>
           ) : null

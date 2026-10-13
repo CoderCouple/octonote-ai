@@ -21,6 +21,7 @@ import {
   type ListItem,
   type ResourceKind,
 } from "@/features/resources";
+import { useListView } from "@/lib/list-view";
 import { usePalette } from "@/lib/theme";
 import { handlePlanLimit } from "@/lib/upgrade";
 
@@ -52,6 +53,7 @@ export default function NotebookScreen() {
   const [tab, setTab] = useState<KindTab>("all");
   const [sortKey, setSortKey] = useState<SortKey>("updated-desc");
   const [sortOpen, setSortOpen] = useState(false);
+  const [view, setView] = useListView("notebook-contents");
   const [addOpen, setAddOpen] = useState(false);
   const canEdit =
     nb.data?.notebook.myRole === "editor" ||
@@ -128,6 +130,7 @@ export default function NotebookScreen() {
         }}
       />
       <ResourceList
+        view={view}
         readOnly={!canEdit}
         items={nb.data ? visible : undefined}
         loading={nb.isLoading}
@@ -176,6 +179,8 @@ export default function NotebookScreen() {
                   onSelect={setTab}
                   sortLabel={SORTS.find((s) => s.key === sortKey)!.short}
                   onSort={() => setSortOpen(true)}
+                  view={view}
+                  onView={setView}
                 />
               ) : null}
             </View>
