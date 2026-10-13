@@ -13,7 +13,11 @@ export type OutputMode = "json" | "pretty";
 let mode: OutputMode = process.stdout.isTTY ? "pretty" : "json";
 let quiet = false;
 
-export function setOutputMode(next: { json?: boolean; pretty?: boolean; quiet?: boolean }) {
+export function setOutputMode(next: {
+  json?: boolean;
+  pretty?: boolean;
+  quiet?: boolean;
+}) {
   if (next.json) mode = "json";
   else if (next.pretty) mode = "pretty";
   quiet = Boolean(next.quiet);
@@ -40,21 +44,35 @@ export function reportError(err: unknown): number {
   const e =
     err instanceof CliError
       ? err
-      : new CliError(err instanceof Error ? err.message : String(err), "INTERNAL");
+      : new CliError(
+          err instanceof Error ? err.message : String(err),
+          "INTERNAL",
+        );
   if (mode === "json") {
     process.stdout.write(`${JSON.stringify(e.toJSON(), null, 2)}\n`);
   } else {
-    process.stderr.write(`✗ ${e.message}${e.code !== "INTERNAL" ? ` (${e.code})` : ""}\n`);
+    process.stderr.write(
+      `✗ ${e.message}${e.code !== "INTERNAL" ? ` (${e.code})` : ""}\n`,
+    );
     if (e.hint) process.stderr.write(`  ${e.hint}\n`);
   }
   return e.exitCode;
 }
 
 /** A plain text table for people. */
-export function table(rows: Record<string, string>[], columns: string[]): string {
+export function table(
+  rows: Record<string, string>[],
+  columns: string[],
+): string {
   if (rows.length === 0) return "(none)";
-  const widths = columns.map((c) => Math.max(c.length, ...rows.map((r) => (r[c] ?? "").length)));
-  const line = (cells: string[]) => cells.map((cell, i) => cell.padEnd(widths[i]!)).join("  ").trimEnd();
+  const widths = columns.map((c) =>
+    Math.max(c.length, ...rows.map((r) => (r[c] ?? "").length)),
+  );
+  const line = (cells: string[]) =>
+    cells
+      .map((cell, i) => cell.padEnd(widths[i]!))
+      .join("  ")
+      .trimEnd();
   return [
     line(columns.map((c) => c.toUpperCase())),
     ...rows.map((r) => line(columns.map((c) => r[c] ?? ""))),

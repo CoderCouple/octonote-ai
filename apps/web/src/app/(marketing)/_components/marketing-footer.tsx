@@ -2,9 +2,10 @@ import Link from "next/link";
 import { Logo } from "./logo";
 
 const FOOTER_LINKS = [
-  { href: "#notes", label: "Features" },
-  { href: "#publishing", label: "Publishing" },
-  { href: "#examples", label: "Examples" },
+  { href: "/#notes", label: "Features" },
+  { href: "/#publishing", label: "Publishing" },
+  { href: "/#examples", label: "Examples" },
+  { href: "/cli", label: "CLI" },
   { href: "/login", label: "Log in" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },

@@ -7,7 +7,11 @@
  */
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import { hostname } from "node:os";
 import { createInterface } from "node:readline";
 import { CliError } from "./errors.js";
@@ -27,7 +31,10 @@ export function openBrowser(url: string): boolean {
         ? ["cmd", ["/c", "start", "", url]]
         : ["xdg-open", [url]];
   try {
-    const child = spawn(cmd as string, args as string[], { stdio: "ignore", detached: true });
+    const child = spawn(cmd as string, args as string[], {
+      stdio: "ignore",
+      detached: true,
+    });
     child.on("error", () => undefined);
     child.unref();
     return true;
@@ -65,7 +72,10 @@ export async function browserLogin(opts: {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     if (url.pathname !== "/cb") return void res.writeHead(404).end();
     if (req.method === "OPTIONS") return void res.writeHead(204).end();
-    if (req.method !== "POST" || (req.headers.origin && req.headers.origin !== origin)) {
+    if (
+      req.method !== "POST" ||
+      (req.headers.origin && req.headers.origin !== origin)
+    ) {
       return void res.writeHead(403).end();
     }
     let body = "";
@@ -83,7 +93,9 @@ export async function browserLogin(opts: {
       if (data.state !== state || !data.token || !TOKEN_RE.test(data.token)) {
         return void res.writeHead(400).end();
       }
-      res.writeHead(200, { "content-type": "application/json" }).end('{"ok":true}');
+      res
+        .writeHead(200, { "content-type": "application/json" })
+        .end('{"ok":true}');
       settle({ token: data.token, email: data.email || null });
     });
   }
@@ -111,7 +123,12 @@ export async function browserLogin(opts: {
     });
   }
   const timer = setTimeout(
-    () => fail(new CliError("Timed out waiting for the browser.", "LOGIN_TIMEOUT", { hint: "Run `octonote login` again." })),
+    () =>
+      fail(
+        new CliError("Timed out waiting for the browser.", "LOGIN_TIMEOUT", {
+          hint: "Run `octonote login` again.",
+        }),
+      ),
     opts.timeoutMs ?? 5 * 60_000,
   );
   try {

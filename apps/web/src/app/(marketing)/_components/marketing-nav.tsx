@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "./logo";
 
 const NAV_LINKS = [
-  { href: "#notes", label: "Features" },
-  { href: "#publishing", label: "Publishing" },
-  { href: "#examples", label: "Examples" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#notes", label: "Features" },
+  { href: "/#publishing", label: "Publishing" },
+  { href: "/#examples", label: "Examples" },
+  { href: "/cli", label: "CLI" },
+  { href: "/#pricing", label: "Pricing" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
 export function MarketingNav() {

@@ -1,17 +1,25 @@
 {
   "name": "@octonote/cli",
   "version": "0.1.0",
-  "description": "The octonote command-line tool: lets you — and agents like Claude Code and Codex — create, edit, publish and share Octonote notes, canvases, projects and notebooks.",
+  "description": "The octonote command-line tool: lets you \u2014 and agents like Claude Code and Codex \u2014 create, edit, publish and share Octonote notes, canvases, projects and notebooks.",
   "type": "module",
-  "bin": { "octonote": "dist/index.js" },
-  "files": ["dist", "README.md"],
-  "engines": { "node": ">=20" },
+  "bin": {
+    "octonote": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/gen-reference.mjs",
     "dev": "tsx src/index.ts",
     "lint": "echo \"lint pending\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:reference": "node scripts/gen-reference.mjs --check"
   },
   "dependencies": {
     "commander": "^12.1.0"
@@ -22,6 +30,15 @@
     "typescript": "^5.7.2",
     "vitest": "^4.1.9"
   },
-  "keywords": ["octonote", "cli", "notes", "canvas", "mermaid", "claude", "codex", "ai-agent"],
+  "keywords": [
+    "octonote",
+    "cli",
+    "notes",
+    "canvas",
+    "mermaid",
+    "claude",
+    "codex",
+    "ai-agent"
+  ],
   "license": "MIT"
 }

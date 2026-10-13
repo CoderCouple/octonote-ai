@@ -8,7 +8,12 @@ export class CliError extends Error {
   constructor(
     message: string,
     readonly code: string,
-    readonly opts: { hint?: string; status?: number; exitCode?: number; details?: unknown } = {},
+    readonly opts: {
+      hint?: string;
+      status?: number;
+      exitCode?: number;
+      details?: unknown;
+    } = {},
   ) {
     super(message);
     this.name = "CliError";
@@ -52,4 +57,5 @@ export class CliError extends Error {
   }
 }
 
-export const usage = (message: string, hint?: string) => new CliError(message, "USAGE", { hint });
+export const usage = (message: string, hint?: string) =>
+  new CliError(message, "USAGE", { hint });

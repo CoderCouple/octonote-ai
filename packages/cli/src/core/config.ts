@@ -44,16 +44,24 @@ export async function readStored(): Promise<StoredConfig> {
   }
 }
 
-export async function writeStored(patch: Partial<StoredConfig>, replace = false) {
+export async function writeStored(
+  patch: Partial<StoredConfig>,
+  replace = false,
+) {
   const next = replace ? patch : { ...(await readStored()), ...patch };
-  for (const k of Object.keys(next) as (keyof StoredConfig)[]) if (next[k] === undefined) delete next[k];
+  for (const k of Object.keys(next) as (keyof StoredConfig)[])
+    if (next[k] === undefined) delete next[k];
   await mkdir(configDir(), { recursive: true, mode: 0o700 });
-  await writeFile(configPath(), `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });
+  await writeFile(configPath(), `${JSON.stringify(next, null, 2)}\n`, {
+    mode: 0o600,
+  });
   // writeFile's mode only applies on create; tighten an existing file too.
   await chmod(configPath(), 0o600).catch(() => undefined);
 }
 
-export async function resolveConfig(flags: { apiUrl?: string; webUrl?: string; workspace?: string } = {}): Promise<ResolvedConfig> {
+export async function resolveConfig(
+  flags: { apiUrl?: string; webUrl?: string; workspace?: string } = {},
+): Promise<ResolvedConfig> {
   const stored = await readStored();
   const envToken = process.env.OCTONOTE_TOKEN?.trim();
   const strip = (u: string) => u.replace(/\/+$/, "");
@@ -61,8 +69,22 @@ export async function resolveConfig(flags: { apiUrl?: string; webUrl?: string; w
     token: envToken || stored.token || null,
     tokenSource: envToken ? "env" : stored.token ? "file" : null,
     email: stored.email ?? null,
-    workspaceId: flags.workspace || process.env.OCTONOTE_WORKSPACE || stored.workspaceId || null,
-    apiUrl: strip(flags.apiUrl || process.env.OCTONOTE_API_URL || stored.apiUrl || DEFAULT_API_URL),
-    webUrl: strip(flags.webUrl || process.env.OCTONOTE_WEB_URL || stored.webUrl || DEFAULT_WEB_URL),
+    workspaceId:
+      flags.workspace ||
+      process.env.OCTONOTE_WORKSPACE ||
+      stored.workspaceId ||
+      null,
+    apiUrl: strip(
+      flags.apiUrl ||
+        process.env.OCTONOTE_API_URL ||
+        stored.apiUrl ||
+        DEFAULT_API_URL,
+    ),
+    webUrl: strip(
+      flags.webUrl ||
+        process.env.OCTONOTE_WEB_URL ||
+        stored.webUrl ||
+        DEFAULT_WEB_URL,
+    ),
   };
 }

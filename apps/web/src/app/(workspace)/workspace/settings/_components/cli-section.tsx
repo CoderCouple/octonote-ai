@@ -107,6 +107,14 @@ export function CliSection() {
           <Input value={INSTALL} readOnly className="font-mono text-xs" />
           <CopyButton value={INSTALL} />
         </div>
+        <a
+          href="/cli"
+          target="_blank"
+          rel="noreferrer"
+          className="text-foreground-strong mt-2 inline-block text-xs font-medium underline underline-offset-4"
+        >
+          Full guide: commands, Claude Code &amp; Codex setup →
+        </a>
       </Row>
       <Row
         label="Tokens"

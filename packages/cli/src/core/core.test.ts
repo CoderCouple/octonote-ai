@@ -8,13 +8,19 @@ const ID = "pag_0b6f1c8e-2d4a-4b6e-9f00-123456789abc";
 
 describe("front matter", () => {
   it("round-trips the note id and title (quotes and colons included)", () => {
-    const text = withFrontMatter({ octonote: ID, title: 'Plan: "v2"' }, "# Hi\n");
+    const text = withFrontMatter(
+      { octonote: ID, title: 'Plan: "v2"' },
+      "# Hi\n",
+    );
     const { data, body } = parseFrontMatter(text);
     expect(data).toEqual({ octonote: ID, title: 'Plan: "v2"' });
     expect(body).toBe("# Hi\n");
   });
   it("leaves files without front matter alone", () => {
-    expect(parseFrontMatter("# Just markdown")).toEqual({ data: {}, body: "# Just markdown" });
+    expect(parseFrontMatter("# Just markdown")).toEqual({
+      data: {},
+      body: "# Just markdown",
+    });
   });
 });
 
@@ -31,7 +37,11 @@ describe("ids", () => {
 });
 
 describe("API errors", () => {
-  const env = (statusCode: number, errorCode: string, extra?: Record<string, unknown>) => ({
+  const env = (
+    statusCode: number,
+    errorCode: string,
+    extra?: Record<string, unknown>,
+  ) => ({
     success: false,
     result: null,
     statusCode,
@@ -48,20 +58,34 @@ describe("API errors", () => {
     expect(toCliError(503, null, "Bad gateway").code).toBe("SERVER_ERROR");
   });
   it("prefers the API's specific code", () => {
-    const e = toCliError(400, env(400, "BAD_REQUEST", { code: "MERMAID_INVALID", line: 2 }), "");
+    const e = toCliError(
+      400,
+      env(400, "BAD_REQUEST", { code: "MERMAID_INVALID", line: 2 }),
+      "",
+    );
     expect(e.code).toBe("MERMAID_INVALID");
-    expect(e.toJSON().error.details).toEqual({ code: "MERMAID_INVALID", line: 2 });
+    expect(e.toJSON().error.details).toEqual({
+      code: "MERMAID_INVALID",
+      line: 2,
+    });
   });
 });
 
 describe("setup section", () => {
   it("adds once, then updates in place, keeping the rest of the file", () => {
     const first = upsertSection("# My project\n\nRules.\n", "## Octonote v1");
-    expect(first).toContain("# My project\n\nRules.\n\n<!-- octonote:start -->\n## Octonote v1\n<!-- octonote:end -->");
-    const second = upsertSection(`${first}\n## Later section\n`, "## Octonote v2");
+    expect(first).toContain(
+      "# My project\n\nRules.\n\n<!-- octonote:start -->\n## Octonote v1\n<!-- octonote:end -->",
+    );
+    const second = upsertSection(
+      `${first}\n## Later section\n`,
+      "## Octonote v2",
+    );
     expect(second).not.toContain("v1");
     expect(second.match(/octonote:start/g)).toHaveLength(1);
     expect(second).toContain("## Later section");
-    expect(upsertSection("", "## X")).toBe("<!-- octonote:start -->\n## X\n<!-- octonote:end -->\n");
+    expect(upsertSection("", "## X")).toBe(
+      "<!-- octonote:start -->\n## X\n<!-- octonote:end -->\n",
+    );
   });
 });

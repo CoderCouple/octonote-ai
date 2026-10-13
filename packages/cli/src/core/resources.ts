@@ -15,7 +15,13 @@ export interface Item {
 export function item(
   ctx: Ctx,
   kind: Kind,
-  row: { id: string; title?: string; name?: string; notebookId?: string | null; updatedAt?: string },
+  row: {
+    id: string;
+    title?: string;
+    name?: string;
+    notebookId?: string | null;
+    updatedAt?: string;
+  },
 ): Item {
   return {
     kind: KIND_NAME[kind],
@@ -32,12 +38,21 @@ export interface PublishState {
   publicUrl: string | null;
 }
 
-export async function setPublished(ctx: Ctx, kind: Kind, id: string, published: boolean) {
+export async function setPublished(
+  ctx: Ctx,
+  kind: Kind,
+  id: string,
+  published: boolean,
+) {
   return ctx.api.put<PublishState>(`/${kind}/${id}/publish`, { published });
 }
 
 export function describeItem(i: Item): string {
-  return [`${i.kind} ${i.title ? `“${i.title}” ` : ""}${i.id}`, `  ${i.url}`, i.publicUrl ? `  public: ${i.publicUrl}` : ""]
+  return [
+    `${i.kind} ${i.title ? `“${i.title}” ` : ""}${i.id}`,
+    `  ${i.url}`,
+    i.publicUrl ? `  public: ${i.publicUrl}` : "",
+  ]
     .filter(Boolean)
     .join("\n");
 }

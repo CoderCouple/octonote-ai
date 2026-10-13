@@ -11,6 +11,9 @@ octonote login                 # opens the browser; click Authorize
 octonote setup claude          # or: octonote setup codex — teaches your agent
 ```
 
+Full docs — every command, Claude Code & Codex setup, troubleshooting:
+**https://octonote.ai/cli**
+
 Then just ask your agent: *“Write up the auth flow in my Architecture notebook,
 with a diagram, and publish it.”*
 

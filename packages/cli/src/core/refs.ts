@@ -21,12 +21,21 @@ export const KIND_NAME: Record<Kind, string> = {
   notebook: "notebook",
 };
 
-const APP_PATH: Record<Kind, string> = { page: "n", canvas: "c", project: "p", notebook: "nb" };
+const APP_PATH: Record<Kind, string> = {
+  page: "n",
+  canvas: "c",
+  project: "p",
+  notebook: "nb",
+};
 
-const ID_RE = /^(pag|cnv|prj|ntb)_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const ID_RE =
+  /^(pag|cnv|prj|ntb)_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Accepts a bare id or an app / share URL that contains one. */
-export function parseRef(input: string, expect?: Kind): { kind: Kind; id: string } {
+export function parseRef(
+  input: string,
+  expect?: Kind,
+): { kind: Kind; id: string } {
   const match = input.match(/(pag|cnv|prj|ntb)_[0-9a-f-]{36}/);
   const id = match?.[0];
   if (!id || !ID_RE.test(id)) {

@@ -14,14 +14,19 @@ export interface Globals extends GlobalFlags {
 
 type Handler<A extends unknown[]> = (ctx: Ctx, ...args: A) => Promise<void>;
 
-export function action<A extends unknown[]>(handler: Handler<A>, opts: { auth?: boolean } = {}) {
+export function action<A extends unknown[]>(
+  handler: Handler<A>,
+  opts: { auth?: boolean } = {},
+) {
   return async (...args: unknown[]) => {
     // Commander passes (...positional, options, command).
     const command = args[args.length - 1] as Command;
     const globals = command.optsWithGlobals() as Globals;
     setOutputMode(globals);
     try {
-      const ctx = await createContext(globals, { requireAuth: opts.auth !== false });
+      const ctx = await createContext(globals, {
+        requireAuth: opts.auth !== false,
+      });
       await handler(ctx, ...(args.slice(0, -1) as A));
     } catch (err) {
       process.exitCode = reportError(err);

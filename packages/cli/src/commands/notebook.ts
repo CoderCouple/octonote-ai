@@ -12,7 +12,9 @@ interface Notebook {
 }
 
 export function registerNotebook(program: Command) {
-  const notebook = program.command("notebook").description("Notebooks: folders for notes, canvases and projects");
+  const notebook = program
+    .command("notebook")
+    .description("Notebooks: folders for notes, canvases and projects");
 
   notebook
     .command("list")
@@ -20,15 +22,22 @@ export function registerNotebook(program: Command) {
     .action(
       action(async (ctx) => {
         const ws = await ctx.workspaceId();
-        const rows = await ctx.api.get<Notebook[]>(`/workspaces/${ws}/notebooks`);
+        const rows = await ctx.api.get<Notebook[]>(
+          `/workspaces/${ws}/notebooks`,
+        );
         emit(
-          rows.map((n) => ({ ...item(ctx, "notebook", n), counts: n.counts ?? null })),
+          rows.map((n) => ({
+            ...item(ctx, "notebook", n),
+            counts: n.counts ?? null,
+          })),
           (list) =>
             table(
               list.map((n) => ({
                 id: n.id,
                 name: n.title,
-                contents: n.counts ? `${n.counts.notes} notes · ${n.counts.canvases} canvases · ${n.counts.projects} projects` : "",
+                contents: n.counts
+                  ? `${n.counts.notes} notes · ${n.counts.canvases} canvases · ${n.counts.projects} projects`
+                  : "",
               })),
               ["id", "name", "contents"],
             ),
@@ -43,7 +52,9 @@ export function registerNotebook(program: Command) {
     .action(
       action(async (ctx, name: string) => {
         const ws = await ctx.workspaceId();
-        const nb = await ctx.api.post<Notebook>(`/workspaces/${ws}/notebooks`, { name: name.slice(0, 120) });
+        const nb = await ctx.api.post<Notebook>(`/workspaces/${ws}/notebooks`, {
+          name: name.slice(0, 120),
+        });
         emit(item(ctx, "notebook", nb), describeItem);
       }),
     );

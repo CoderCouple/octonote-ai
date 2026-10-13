@@ -44,7 +44,9 @@ export class ApiClient {
       } catch (err) {
         last = err;
         const retryable =
-          err instanceof CliError && (err.code === "NETWORK" || [502, 503, 504].includes(err.opts.status ?? 0));
+          err instanceof CliError &&
+          (err.code === "NETWORK" ||
+            [502, 503, 504].includes(err.opts.status ?? 0));
         if (!retryable || i === attempts - 1) throw err;
         await new Promise((r) => setTimeout(r, 400 * 2 ** i));
       }
@@ -52,7 +54,11 @@ export class ApiClient {
     throw last;
   }
 
-  private async once<T>(method: Method, path: string, body?: unknown): Promise<T> {
+  private async once<T>(
+    method: Method,
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${this.opts.apiUrl}${path}`, {
@@ -61,7 +67,9 @@ export class ApiClient {
           accept: "application/json",
           "user-agent": this.opts.userAgent ?? "octonote-cli",
           ...(body !== undefined ? { "content-type": "application/json" } : {}),
-          ...(this.opts.token ? { authorization: `Bearer ${this.opts.token}` } : {}),
+          ...(this.opts.token
+            ? { authorization: `Bearer ${this.opts.token}` }
+            : {}),
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: AbortSignal.timeout(this.opts.timeoutMs ?? 30_000),
@@ -69,7 +77,9 @@ export class ApiClient {
     } catch (err) {
       const timedOut = err instanceof Error && err.name === "TimeoutError";
       throw new CliError(
-        timedOut ? "Octonote took too long to answer." : `Couldn't reach Octonote at ${this.opts.apiUrl}.`,
+        timedOut
+          ? "Octonote took too long to answer."
+          : `Couldn't reach Octonote at ${this.opts.apiUrl}.`,
         "NETWORK",
         { hint: "Check your connection (or OCTONOTE_API_URL) and try again." },
       );
@@ -83,7 +93,8 @@ export class ApiClient {
       // Not JSON (a proxy error page, say): reported below by status.
     }
     const envelope = isEnvelope(json) ? json : null;
-    if (res.ok && (!envelope || envelope.success)) return (envelope ? envelope.result : json) as T;
+    if (res.ok && (!envelope || envelope.success))
+      return (envelope ? envelope.result : json) as T;
     throw toCliError(res.status, envelope, text);
   }
 }
@@ -98,14 +109,25 @@ interface Envelope {
 }
 
 function isEnvelope(v: unknown): v is Envelope {
-  return typeof v === "object" && v !== null && "success" in v && "statusCode" in v && "message" in v;
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "success" in v &&
+    "statusCode" in v &&
+    "message" in v
+  );
 }
 
-export function toCliError(status: number, envelope: Envelope | null, raw: string): CliError {
+export function toCliError(
+  status: number,
+  envelope: Envelope | null,
+  raw: string,
+): CliError {
   const extra = envelope?.extra ?? {};
   // A specific code from the API (e.g. MERMAID_INVALID, WEB_SESSION_REQUIRED) wins over the generic one.
   const specific = typeof extra.code === "string" ? extra.code : null;
-  const message = envelope?.message || raw.slice(0, 200) || `Request failed (${status}).`;
+  const message =
+    envelope?.message || raw.slice(0, 200) || `Request failed (${status}).`;
   const code =
     specific ??
     (status === 401
@@ -129,5 +151,9 @@ export function toCliError(status: number, envelope: Envelope | null, raw: strin
           : code === "WEB_SESSION_REQUIRED"
             ? "Do this in the web app, signed in."
             : undefined;
-  return new CliError(message, code, { status, hint, details: Object.keys(extra).length ? extra : undefined });
+  return new CliError(message, code, {
+    status,
+    hint,
+    details: Object.keys(extra).length ? extra : undefined,
+  });
 }

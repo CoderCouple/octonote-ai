@@ -7,7 +7,10 @@ import { usage } from "./errors.js";
 
 export async function readStdin(): Promise<string> {
   if (process.stdin.isTTY) {
-    throw usage("Nothing on stdin.", "Pipe content in (e.g. `cat note.md | octonote note create --stdin`) or pass --file.");
+    throw usage(
+      "Nothing on stdin.",
+      "Pipe content in (e.g. `cat note.md | octonote note create --stdin`) or pass --file.",
+    );
   }
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
@@ -15,7 +18,10 @@ export async function readStdin(): Promise<string> {
 }
 
 /** `--file path` (or "-" for stdin), `--stdin`, or nothing. */
-export async function readContent(opts: { file?: string; stdin?: boolean }): Promise<string | null> {
+export async function readContent(opts: {
+  file?: string;
+  stdin?: boolean;
+}): Promise<string | null> {
   if (opts.stdin || opts.file === "-") return readStdin();
   if (!opts.file) return null;
   try {

@@ -11,7 +11,11 @@ import type { Command } from "commander";
 import { usage } from "../core/errors.js";
 import { emit } from "../core/output.js";
 import { action } from "../core/run.js";
-import { AGENT_GUIDE, CLAUDE_SKILL, PROJECT_SECTION } from "../guide/agent-guide.js";
+import {
+  AGENT_GUIDE,
+  CLAUDE_SKILL,
+  PROJECT_SECTION,
+} from "../guide/agent-guide.js";
 
 const START = "<!-- octonote:start -->";
 const END = "<!-- octonote:end -->";
@@ -54,27 +58,53 @@ export function registerAgents(program: Command) {
 
   program
     .command("setup")
-    .description("Teach an agent to use Octonote: writes a section into CLAUDE.md (claude) or AGENTS.md (codex)")
+    .description(
+      "Teach an agent to use Octonote: writes a section into CLAUDE.md (claude) or AGENTS.md (codex)",
+    )
     .argument("<agent>", "claude | codex")
     .option("--dir <path>", "project folder", ".")
-    .option("--global", "for every project: ~/.claude/CLAUDE.md or ~/.codex/AGENTS.md")
-    .option("--skill", "claude only: also install the Octonote skill (.claude/skills/octonote)")
+    .option(
+      "--global",
+      "for every project: ~/.claude/CLAUDE.md or ~/.codex/AGENTS.md",
+    )
+    .option(
+      "--skill",
+      "claude only: also install the Octonote skill (.claude/skills/octonote)",
+    )
     .action(
       action(
-        async (_ctx, agent: string, opts: { dir: string; global?: boolean; skill?: boolean }) => {
+        async (
+          _ctx,
+          agent: string,
+          opts: { dir: string; global?: boolean; skill?: boolean },
+        ) => {
           const which = agent.toLowerCase();
-          if (which !== "claude" && which !== "codex") throw usage(`Unknown agent "${agent}".`, "Use claude or codex.");
-          if (opts.skill && which !== "claude") throw usage("--skill is for Claude Code only.");
-          const base = opts.global ? join(homedir(), which === "claude" ? ".claude" : ".codex") : resolve(opts.dir);
-          const file = join(base, which === "claude" ? "CLAUDE.md" : "AGENTS.md");
+          if (which !== "claude" && which !== "codex")
+            throw usage(`Unknown agent "${agent}".`, "Use claude or codex.");
+          if (opts.skill && which !== "claude")
+            throw usage("--skill is for Claude Code only.");
+          const base = opts.global
+            ? join(homedir(), which === "claude" ? ".claude" : ".codex")
+            : resolve(opts.dir);
+          const file = join(
+            base,
+            which === "claude" ? "CLAUDE.md" : "AGENTS.md",
+          );
           await write(file, upsertSection(await readOr(file), PROJECT_SECTION));
           const written = [file];
           if (opts.skill) {
-            const skill = join(opts.global ? join(homedir(), ".claude") : join(base, ".claude"), "skills/octonote/SKILL.md");
+            const skill = join(
+              opts.global ? join(homedir(), ".claude") : join(base, ".claude"),
+              "skills/octonote/SKILL.md",
+            );
             await write(skill, CLAUDE_SKILL);
             written.push(skill);
           }
-          emit({ agent: which, files: written }, (d) => `Updated:\n${d.files.map((f) => `  ${f}`).join("\n")}\n${which === "claude" ? "Claude Code" : "Codex"} will now use Octonote when you ask.`);
+          emit(
+            { agent: which, files: written },
+            (d) =>
+              `Updated:\n${d.files.map((f) => `  ${f}`).join("\n")}\n${which === "claude" ? "Claude Code" : "Codex"} will now use Octonote when you ask.`,
+          );
         },
         { auth: false },
       ),

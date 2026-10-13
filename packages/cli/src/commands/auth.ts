@@ -10,7 +10,9 @@ import { action } from "../core/run.js";
 export function registerAuth(program: Command) {
   program
     .command("login")
-    .description("Sign in through the browser (or --paste a token from Settings → CLI & agents)")
+    .description(
+      "Sign in through the browser (or --paste a token from Settings → CLI & agents)",
+    )
     .option("--paste", "read a token from stdin instead of opening the browser")
     .action(
       action(
@@ -18,7 +20,10 @@ export function registerAuth(program: Command) {
           let token: string;
           if (opts.paste) {
             token = (await readStdin()).trim();
-            if (!TOKEN_RE.test(token)) throw usage("That isn't an Octonote token (they start with ont_).");
+            if (!TOKEN_RE.test(token))
+              throw usage(
+                "That isn't an Octonote token (they start with ont_).",
+              );
           } else {
             if (!process.stdout.isTTY && !process.stderr.isTTY) {
               throw usage(
@@ -29,18 +34,37 @@ export function registerAuth(program: Command) {
             ({ token } = await browserLogin({
               webUrl: ctx.config.webUrl,
               onUrl: (url) => {
-                process.stderr.write(`Opening your browser to connect the CLI…\nIf it doesn't open, visit:\n  ${url}\n`);
-                if (process.stdin.isTTY) process.stderr.write("…or paste a token here and press Enter.\n");
+                process.stderr.write(
+                  `Opening your browser to connect the CLI…\nIf it doesn't open, visit:\n  ${url}\n`,
+                );
+                if (process.stdin.isTTY)
+                  process.stderr.write(
+                    "…or paste a token here and press Enter.\n",
+                  );
               },
             }));
           }
           // Check the token works before saving it.
-          const me = await new ApiClient({ apiUrl: ctx.config.apiUrl, token }).get<{
+          const me = await new ApiClient({
+            apiUrl: ctx.config.apiUrl,
+            token,
+          }).get<{
             user: { email: string; name: string };
           }>("/me");
-          await writeStored({ token, email: me.user.email, apiUrl: ctx.config.apiUrl, webUrl: ctx.config.webUrl });
-          emit({ signedIn: true, email: me.user.email }, () => `✓ Signed in as ${me.user.email}`);
-          if (ctx.config.tokenSource === "env") info("Note: OCTONOTE_TOKEN is set and takes precedence over this sign-in.");
+          await writeStored({
+            token,
+            email: me.user.email,
+            apiUrl: ctx.config.apiUrl,
+            webUrl: ctx.config.webUrl,
+          });
+          emit(
+            { signedIn: true, email: me.user.email },
+            () => `✓ Signed in as ${me.user.email}`,
+          );
+          if (ctx.config.tokenSource === "env")
+            info(
+              "Note: OCTONOTE_TOKEN is set and takes precedence over this sign-in.",
+            );
         },
         { auth: false },
       ),
@@ -55,9 +79,15 @@ export function registerAuth(program: Command) {
           const stored = await readStored();
           if (stored.token) {
             // Best effort: the token is forgotten locally either way.
-            await ctx.api.delete("/me/cli-tokens/current").catch(() => undefined);
+            await ctx.api
+              .delete("/me/cli-tokens/current")
+              .catch(() => undefined);
           }
-          await writeStored({ token: undefined, email: undefined, workspaceId: undefined });
+          await writeStored({
+            token: undefined,
+            email: undefined,
+            workspaceId: undefined,
+          });
           emit({ signedOut: true }, () => "Signed out.");
         },
         { auth: false },
@@ -71,22 +101,29 @@ export function registerAuth(program: Command) {
       action(async (ctx) => {
         const me = await ctx.me();
         const ws = await ctx.workspaceId();
-        const workspace = me.memberships.find((m) => m.workspace.id === ws)?.workspace;
+        const workspace = me.memberships.find(
+          (m) => m.workspace.id === ws,
+        )?.workspace;
         emit(
           {
             email: me.user.email,
             name: me.user.name,
-            workspace: workspace ? { id: workspace.id, name: workspace.name } : null,
+            workspace: workspace
+              ? { id: workspace.id, name: workspace.name }
+              : null,
             tokenSource: ctx.config.tokenSource,
             apiUrl: ctx.config.apiUrl,
             webUrl: ctx.config.webUrl,
           },
-          (d) => `${d.name} <${d.email}>\nworkspace: ${d.workspace?.name ?? "—"} (${d.workspace?.id ?? ""})\nsigned in via: ${d.tokenSource === "env" ? "OCTONOTE_TOKEN" : "octonote login"}`,
+          (d) =>
+            `${d.name} <${d.email}>\nworkspace: ${d.workspace?.name ?? "—"} (${d.workspace?.id ?? ""})\nsigned in via: ${d.tokenSource === "env" ? "OCTONOTE_TOKEN" : "octonote login"}`,
         );
       }),
     );
 
-  const workspace = program.command("workspace").description("Choose which workspace commands work in");
+  const workspace = program
+    .command("workspace")
+    .description("Choose which workspace commands work in");
   workspace
     .command("list")
     .description("Workspaces you belong to")
@@ -116,24 +153,51 @@ export function registerAuth(program: Command) {
       action(async (ctx, ref: string) => {
         const me = await ctx.me();
         const match = me.memberships.find(
-          (m) => m.workspace.id === ref || m.workspace.name.toLowerCase() === ref.toLowerCase(),
+          (m) =>
+            m.workspace.id === ref ||
+            m.workspace.name.toLowerCase() === ref.toLowerCase(),
         );
-        if (!match) throw new CliError(`You're not in a workspace called "${ref}".`, "NOT_FOUND", { hint: "`octonote workspace list` shows yours." });
+        if (!match)
+          throw new CliError(
+            `You're not in a workspace called "${ref}".`,
+            "NOT_FOUND",
+            { hint: "`octonote workspace list` shows yours." },
+          );
         await writeStored({ workspaceId: match.workspace.id });
-        emit({ workspace: { id: match.workspace.id, name: match.workspace.name } }, (d) => `Now using ${d.workspace.name}`);
+        emit(
+          { workspace: { id: match.workspace.id, name: match.workspace.name } },
+          (d) => `Now using ${d.workspace.name}`,
+        );
       }),
     );
 
-  const token = program.command("token").description("Your CLI tokens (create new ones in Settings → CLI & agents)");
+  const token = program
+    .command("token")
+    .description(
+      "Your CLI tokens (create new ones in Settings → CLI & agents)",
+    );
   token
     .command("list")
     .description("List your tokens")
     .action(
       action(async (ctx) => {
-        const rows = await ctx.api.get<{ id: string; name: string; preview: string; lastUsedAt: string | null }[]>("/me/cli-tokens");
+        const rows =
+          await ctx.api.get<
+            {
+              id: string;
+              name: string;
+              preview: string;
+              lastUsedAt: string | null;
+            }[]
+          >("/me/cli-tokens");
         emit(rows, (list) =>
           table(
-            list.map((t) => ({ id: t.id, name: t.name, token: t.preview, "last used": t.lastUsedAt?.slice(0, 10) ?? "never" })),
+            list.map((t) => ({
+              id: t.id,
+              name: t.name,
+              token: t.preview,
+              "last used": t.lastUsedAt?.slice(0, 10) ?? "never",
+            })),
             ["id", "name", "token", "last used"],
           ),
         );

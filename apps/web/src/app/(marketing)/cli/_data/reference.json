@@ -1,0 +1,632 @@
+{
+  "version": "0.1.0",
+  "globalOptions": [
+    {
+      "flags": "--json",
+      "description": "JSON output (default when piped)",
+      "required": false
+    },
+    {
+      "flags": "--pretty",
+      "description": "human output (default in a terminal)",
+      "required": false
+    },
+    {
+      "flags": "-q, --quiet",
+      "description": "no progress messages",
+      "required": false
+    },
+    {
+      "flags": "-w, --workspace <id>",
+      "description": "workspace to use (default: yours)",
+      "required": false
+    },
+    {
+      "flags": "--api-url <url>",
+      "description": "Octonote API (default: OCTONOTE_API_URL or the hosted API)",
+      "required": false
+    },
+    {
+      "flags": "--web-url <url>",
+      "description": "Octonote web app (default: OCTONOTE_WEB_URL or https://octonote.ai)",
+      "required": false
+    }
+  ],
+  "commands": [
+    {
+      "name": "login",
+      "aliases": [],
+      "description": "Sign in through the browser (or --paste a token from Settings → CLI & agents)",
+      "arguments": [],
+      "options": [
+        {
+          "flags": "--paste",
+          "description": "read a token from stdin instead of opening the browser",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "logout",
+      "aliases": [],
+      "description": "Sign out here and revoke this computer's token",
+      "arguments": [],
+      "options": []
+    },
+    {
+      "name": "whoami",
+      "aliases": [],
+      "description": "Who you're signed in as, and which workspace commands use",
+      "arguments": [],
+      "options": []
+    },
+    {
+      "name": "workspace list",
+      "aliases": [],
+      "description": "Workspaces you belong to",
+      "arguments": [],
+      "options": []
+    },
+    {
+      "name": "workspace use",
+      "aliases": [],
+      "description": "Use this workspace from now on (id or exact name)",
+      "arguments": [
+        {
+          "name": "workspace",
+          "description": "workspace id or name",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "token list",
+      "aliases": [],
+      "description": "List your tokens",
+      "arguments": [],
+      "options": []
+    },
+    {
+      "name": "token revoke",
+      "aliases": [],
+      "description": "Revoke a token",
+      "arguments": [
+        {
+          "name": "id",
+          "description": "token id (tok_…)",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "note create",
+      "aliases": [],
+      "description": "Create a note, optionally filled from markdown",
+      "arguments": [
+        {
+          "name": "title",
+          "description": "title (defaults to the file's front matter / first heading)",
+          "required": false,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "-f, --file <path>",
+          "description": "markdown file (\"-\" for stdin)",
+          "required": false
+        },
+        {
+          "flags": "--stdin",
+          "description": "read markdown from stdin",
+          "required": false
+        },
+        {
+          "flags": "-n, --notebook <notebook>",
+          "description": "put it in a notebook (id or exact name)",
+          "required": false
+        },
+        {
+          "flags": "--publish",
+          "description": "publish it to the web and print the public URL",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "note show",
+      "aliases": [
+        "read"
+      ],
+      "description": "Print a note as markdown",
+      "arguments": [
+        {
+          "name": "note",
+          "description": "note id (pag_…) or URL",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "note pull",
+      "aliases": [],
+      "description": "Save a note to a markdown file (with front matter, so `note push` knows which note it is)",
+      "arguments": [
+        {
+          "name": "note",
+          "description": "note id (pag_…) or URL",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "-o, --out <path>",
+          "description": "file to write (default: <id>.md)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "note push",
+      "aliases": [],
+      "description": "Replace a note's content with a markdown file (uses the file's front matter id, or --id)",
+      "arguments": [
+        {
+          "name": "file",
+          "description": "markdown file (\"-\" for stdin)",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "--id <note>",
+          "description": "note to update (overrides the front matter)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "note append",
+      "aliases": [],
+      "description": "Add markdown to the end of a note",
+      "arguments": [
+        {
+          "name": "note",
+          "description": "note id (pag_…) or URL",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "-f, --file <path>",
+          "description": "markdown file (\"-\" for stdin)",
+          "required": false
+        },
+        {
+          "flags": "--stdin",
+          "description": "read markdown from stdin",
+          "required": false
+        },
+        {
+          "flags": "-t, --text <markdown>",
+          "description": "markdown given inline",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "note rename",
+      "aliases": [],
+      "description": "Rename a note",
+      "arguments": [
+        {
+          "name": "note",
+          "description": "note id (pag_…)",
+          "required": true,
+          "variadic": false
+        },
+        {
+          "name": "title",
+          "description": "new title",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "canvas create",
+      "aliases": [],
+      "description": "Create a canvas — drawn from a mermaid flowchart, from tldraw JSON, or empty",
+      "arguments": [
+        {
+          "name": "title",
+          "description": "title",
+          "required": false,
+          "variadic": false,
+          "default": "Untitled canvas"
+        }
+      ],
+      "options": [
+        {
+          "flags": "-m, --from-mermaid <path>",
+          "description": "mermaid flowchart file (\"-\" for stdin) to draw as real shapes",
+          "required": false
+        },
+        {
+          "flags": "-f, --file <path>",
+          "description": "tldraw snapshot JSON (from `canvas pull`)",
+          "required": false
+        },
+        {
+          "flags": "-n, --notebook <notebook>",
+          "description": "put it in a notebook (id or exact name)",
+          "required": false
+        },
+        {
+          "flags": "--publish",
+          "description": "publish it to the web and print the public URL",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "canvas redraw",
+      "aliases": [],
+      "description": "Replace a canvas with a drawing of a mermaid flowchart",
+      "arguments": [
+        {
+          "name": "canvas",
+          "description": "canvas id (cnv_…) or URL",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "-m, --from-mermaid <path>",
+          "description": "mermaid flowchart file (\"-\" for stdin)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "canvas pull",
+      "aliases": [],
+      "description": "Save a canvas as tldraw JSON",
+      "arguments": [
+        {
+          "name": "canvas",
+          "description": "canvas id (cnv_…) or URL",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "-o, --out <path>",
+          "description": "file to write (default: <id>.json)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "canvas push",
+      "aliases": [],
+      "description": "Replace a canvas with tldraw JSON (from `canvas pull`)",
+      "arguments": [
+        {
+          "name": "file",
+          "description": "tldraw snapshot JSON (\"-\" for stdin)",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "--id <canvas>",
+          "description": "canvas to update",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "project create",
+      "aliases": [],
+      "description": "Create a project; fill its note from markdown and draw its canvas from mermaid in one go",
+      "arguments": [
+        {
+          "name": "name",
+          "description": "project name",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "-d, --description <text>",
+          "description": "one-line description",
+          "required": false
+        },
+        {
+          "flags": "--note <path>",
+          "description": "markdown file for the project's note (\"-\" for stdin)",
+          "required": false
+        },
+        {
+          "flags": "--canvas-mermaid <path>",
+          "description": "mermaid flowchart file to draw on the project's canvas",
+          "required": false
+        },
+        {
+          "flags": "--view <view>",
+          "description": "what readers see first: notes | canvas | split",
+          "required": false,
+          "default": "split"
+        },
+        {
+          "flags": "-n, --notebook <notebook>",
+          "description": "put it in a notebook (id or exact name)",
+          "required": false
+        },
+        {
+          "flags": "--publish",
+          "description": "publish it to the web and print the public URL",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "project show",
+      "aliases": [],
+      "description": "Show a project and the ids of its note and canvas",
+      "arguments": [
+        {
+          "name": "project",
+          "description": "project id (prj_…) or URL",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "notebook list",
+      "aliases": [],
+      "description": "List notebooks with what's inside",
+      "arguments": [],
+      "options": []
+    },
+    {
+      "name": "notebook create",
+      "aliases": [],
+      "description": "Create a notebook",
+      "arguments": [
+        {
+          "name": "name",
+          "description": "notebook name",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "notebook show",
+      "aliases": [],
+      "description": "Show a notebook (id or exact name)",
+      "arguments": [
+        {
+          "name": "notebook",
+          "description": "notebook id or exact name",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "list",
+      "aliases": [
+        "ls"
+      ],
+      "description": "List notes, canvases, projects and notebooks (newest first)",
+      "arguments": [],
+      "options": [
+        {
+          "flags": "-k, --kind <kind>",
+          "description": "only this kind: note | canvas | project | notebook",
+          "required": false
+        },
+        {
+          "flags": "-n, --notebook <notebook>",
+          "description": "only what's inside this notebook (id or exact name)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "search",
+      "aliases": [],
+      "description": "Find notes, canvases, projects and notebooks by title",
+      "arguments": [
+        {
+          "name": "query",
+          "description": "words to look for in titles",
+          "required": true,
+          "variadic": true
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "open",
+      "aliases": [],
+      "description": "Print the app link for an item (and open it when run in a terminal)",
+      "arguments": [
+        {
+          "name": "id",
+          "description": "any Octonote id or URL",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "move",
+      "aliases": [],
+      "description": "Move a note, canvas or project into a notebook (or out with --out)",
+      "arguments": [
+        {
+          "name": "id",
+          "description": "note, canvas or project id",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "-n, --notebook <notebook>",
+          "description": "target notebook (id or exact name)",
+          "required": false
+        },
+        {
+          "flags": "--out",
+          "description": "take it out of its notebook",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "delete",
+      "aliases": [
+        "rm"
+      ],
+      "description": "Delete a note, canvas, project or notebook (a notebook's contents move to the top level)",
+      "arguments": [
+        {
+          "name": "id",
+          "description": "any Octonote id",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "-y, --yes",
+          "description": "required: confirms the delete (agents: only when the user asked)",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "publish",
+      "aliases": [],
+      "description": "Publish to the web; prints the public URL",
+      "arguments": [
+        {
+          "name": "id",
+          "description": "any Octonote id",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "unpublish",
+      "aliases": [],
+      "description": "Stop publishing to the web",
+      "arguments": [
+        {
+          "name": "id",
+          "description": "any Octonote id",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "share",
+      "aliases": [],
+      "description": "Share with a person by email, or set who can open the link",
+      "arguments": [
+        {
+          "name": "id",
+          "description": "any Octonote id",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "-e, --email <email>",
+          "description": "invite this person (they get an email; non-users join on sign-up)",
+          "required": false
+        },
+        {
+          "flags": "-r, --role <role>",
+          "description": "viewer | editor",
+          "required": false,
+          "default": "viewer"
+        },
+        {
+          "flags": "--link <access>",
+          "description": "anyone with the link: off | view | edit",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "guide",
+      "aliases": [],
+      "description": "Print the usage guide for AI agents (Claude Code, Codex, …)",
+      "arguments": [],
+      "options": []
+    },
+    {
+      "name": "setup",
+      "aliases": [],
+      "description": "Teach an agent to use Octonote: writes a section into CLAUDE.md (claude) or AGENTS.md (codex)",
+      "arguments": [
+        {
+          "name": "agent",
+          "description": "claude | codex",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": [
+        {
+          "flags": "--dir <path>",
+          "description": "project folder",
+          "required": false,
+          "default": "."
+        },
+        {
+          "flags": "--global",
+          "description": "for every project: ~/.claude/CLAUDE.md or ~/.codex/AGENTS.md",
+          "required": false
+        },
+        {
+          "flags": "--skill",
+          "description": "claude only: also install the Octonote skill (.claude/skills/octonote)",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "guide": "# Octonote CLI — guide for agents\n\nOctonote holds the user's **notes** (markdown documents), **canvases** (diagrams),\n**projects** (one note + one canvas, side by side) and **notebooks** (folders).\nThe `octonote` CLI is how you read and write them on the user's behalf.\n\n## Rules\n- Output is JSON when piped (force with --json). Errors print\n  `{\"error\":{\"code\",\"message\",\"hint\"}}` and exit non-zero; branch on `code`.\n- Never prompts. Content comes from --file <path>, --stdin, or \"-\" as the path.\n- Every result has `id`, `url` (app link) and, once published, `publicUrl`.\n  Give the user the link at the end.\n- Ids carry their kind: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook.\n  Notebooks can also be named by exact name (--notebook \"Architecture\").\n- Publish, share, invite or delete only when the user asked for it.\n  `delete` requires --yes.\n- Not signed in (code NOT_LOGGED_IN)? Ask the user to run `octonote login`\n  (or set OCTONOTE_TOKEN). Don't try to sign in yourself.\n\n## Write a note\n  octonote note create \"Title\" --file doc.md [--notebook \"Name\"] [--publish]\n  cat doc.md | octonote note create \"Title\" --stdin\nMarkdown → rich note: headings, lists, checklists, tables, code, quotes,\nimages (by URL), `$inline math$`, `$$display math$$`, and ```mermaid blocks\n(rendered diagrams inside the note).\n\n## Read and edit a note\n  octonote note show <id>                 # markdown to stdout\n  octonote note pull <id> -o note.md      # file with front matter (keeps the id)\n  # …edit note.md…\n  octonote note push note.md              # replaces the note's content\n  octonote note append <id> --text \"- new item\"   # or --file / --stdin\n  octonote note rename <id> \"New title\"\n\n## Draw a canvas (diagram)\nWrite a mermaid **flowchart** and let Octonote lay it out as real shapes:\n  octonote canvas create \"Login flow\" --from-mermaid flow.mmd [--publish]\n  octonote canvas redraw <id> --from-mermaid flow.mmd\nSupported: `graph|flowchart TD|LR|BT|RL`; nodes A[box] A(round) A([stadium])\nA((circle)) A{decision} A[(database)] A{{hexagon}}; edges --> --- -.-> ==> <-->\nwith labels (A -->|yes| B or A -- yes --> B); chains; A & B --> C;\n`subgraph id [Title] … end`. Other diagram types (sequence, gantt…) can't be\ncanvases — put them in a note as a ```mermaid block instead.\nRaw tldraw JSON also works: `canvas pull <id> -o c.json` / `canvas push c.json --id <id>`.\n\n## Project = note + canvas\n  octonote project create \"Auth flow\" --note auth.md --canvas-mermaid auth.mmd \\\n    [--view split|notes|canvas] [--notebook \"Name\"] [--publish]\n  octonote project show <id>     # ids of its note and canvas (edit them as above)\n\n## Organise\n  octonote list [--kind note|canvas|project|notebook] [--notebook \"Name\"]\n  octonote search <words>                 # by title\n  octonote notebook list | create \"Name\" | show \"Name\"\n  octonote move <id> --notebook \"Name\"    # or --out\n  octonote delete <id> --yes\n\n## Publish and share\n  octonote publish <id>        # → publicUrl (a public, read-only page)\n  octonote unpublish <id>\n  octonote share <id> --email person@example.com --role viewer|editor\n  octonote share <id> --link view|edit|off   # anyone with the app link\nPublishing a notebook publishes everything inside it.\n\n## Account\n  octonote whoami | workspace list | workspace use <name|id> | logout\n",
+  "projectSection": "## Octonote (notes & canvases)\n\nThe user keeps notes, diagrams (canvases), projects and notebooks in Octonote. Use the `octonote` CLI to read and write them — never ask the user to copy-paste.\n\n- Run `octonote guide` once per session before using it; `octonote <command> --help` for details.\n- Write notes as markdown files (mermaid, `$math$`, code and tables work); draw diagrams as mermaid flowcharts (`--from-mermaid`), which become real, editable canvases.\n- Output is JSON when piped: read `id`, `url` and `publicUrl` from it, and always give the user the link.\n- Only publish, share or delete when the user asked to.\n"
+}
