@@ -34,6 +34,7 @@ import type { PublicByline, PublicProject } from "../types";
 import type { CanvasViewApi } from "./canvas-readonly";
 import { NotebookLine, type NotebookContext } from "./notebook-nav";
 import { NotesReadOnly } from "./notes-readonly";
+import { HeaderSlot } from "./header-slot";
 import { CanvasStage } from "./published-canvas";
 import { ReaderBar } from "./reader-bar";
 import { VoteButtons, VotesProvider } from "./votes";
@@ -87,9 +88,10 @@ export function PublishedProject({
   const [noteEl, setNoteEl] = useState<HTMLDivElement | null>(null);
   const [pendingFigure, setPendingFigure] = useState<string | null>(null);
 
+  const [loaded, setLoaded] = useState<unknown[] | null>(null);
   const sections = useMemo(
-    () => (note ? collectSections(note.document) : []),
-    [note],
+    () => (note ? collectSections(loaded ?? note.document) : []),
+    [loaded, note],
   );
   const minutes = useMemo(
     () => (note ? computeReadingMinutes(note.contentMd) : 0),
@@ -155,18 +157,66 @@ export function PublishedProject({
   return (
     <VotesProvider slug={slug} kind="project" id={project.id}>
       <div className="flex h-[calc(100svh-3.5rem)] flex-col">
-        <header className="grid shrink-0 gap-2.5 border-b px-4 pt-2 pb-2.5 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6 lg:px-6 lg:py-3">
+        {/* Desktop: title, byline, view switcher, votes and share sit in the site header. */}
+        <HeaderSlot>
+          <div className="hidden min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-6 lg:grid">
+            <div className="flex min-w-0 items-center gap-3">
+              <span aria-hidden className="bg-border h-6 w-px shrink-0" />
+              <h1 className="text-foreground-strong max-w-[60%] shrink-0 truncate text-base font-bold tracking-tight">
+                {title}
+              </h1>
+              <p className="text-muted-foreground min-w-0 truncate text-sm">
+                {notebook ? `in ${notebook.name} · ` : null}
+                {author ? (
+                  <span className="text-foreground-strong font-semibold">
+                    {author}
+                  </span>
+                ) : null}
+                {author ? " · " : null}
+                {date}
+                {note ? ` · ${minutes} min read` : null}
+              </p>
+            </div>
+            {both ? (
+              <Segmented
+                className="inline-flex"
+                label="View"
+                value={deskMode}
+                onChange={setDeskMode}
+                options={[
+                  { value: "notes", label: "Note" },
+                  { value: "split", label: "Split" },
+                  { value: "canvas", label: "Canvas" },
+                ]}
+              />
+            ) : (
+              <span />
+            )}
+            <div className="flex items-center justify-end gap-2">
+              <VoteButtons />
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText(window.location.href);
+                  toast.success("Link copied");
+                }}
+                className="hover:bg-accent flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm"
+              >
+                <Link2 className="size-3.5" />
+                Copy link
+              </button>
+            </div>
+          </div>
+        </HeaderSlot>
+
+        {/* Phones: a compact title strip and the Note | Canvas toggle. */}
+        <header className="grid shrink-0 gap-2.5 border-b px-4 pt-2 pb-2.5 lg:hidden">
           <div className="flex min-w-0 flex-col">
             {notebook ? (
-              <div className="lg:hidden">
-                <NotebookLine nb={notebook} />
-              </div>
+              <NotebookLine nb={notebook} />
             ) : (
-              <div className="lg:hidden [&>a]:mb-1">{back}</div>
+              <div className="[&>a]:mb-1">{back}</div>
             )}
-            <span className="text-muted-foreground hidden text-2xs font-semibold tracking-[0.08em] uppercase lg:block">
-              {notebook ? `Project · in ${notebook.name}` : "Project"}
-            </span>
             <h1 className="text-foreground-strong truncate text-xl font-extrabold tracking-tight">
               {title}
             </h1>
@@ -179,61 +229,25 @@ export function PublishedProject({
               {author ? " · " : null}
               {date}
               {note ? ` · ${minutes} min read` : null}
-              {figures ? (
-                <span className="hidden lg:inline">
-                  {` · ${figures} ${figures === 1 ? "figure" : "figures"}`}
-                </span>
-              ) : null}
             </p>
           </div>
-
           {both ? (
-            <>
-              <Segmented
-                className="hidden lg:inline-flex"
-                label="View"
-                value={deskMode}
-                onChange={setDeskMode}
-                options={[
-                  { value: "notes", label: "Note" },
-                  { value: "split", label: "Split" },
-                  { value: "canvas", label: "Canvas" },
-                ]}
-              />
-              <Segmented
-                className="grid grid-cols-2 lg:hidden"
-                label="View"
-                value={phoneTab}
-                onChange={setPhoneTab}
-                options={[
-                  { value: "notes", label: "Note" },
-                  {
-                    value: "canvas",
-                    label: figures
-                      ? `Canvas · ${figures} ${figures === 1 ? "figure" : "figures"}`
-                      : "Canvas",
-                  },
-                ]}
-              />
-            </>
-          ) : (
-            <span className="hidden lg:block" />
-          )}
-
-          <div className="hidden items-center justify-end gap-2 lg:flex">
-            <VoteButtons />
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard.writeText(window.location.href);
-                toast.success("Link copied");
-              }}
-              className="hover:bg-accent flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm"
-            >
-              <Link2 className="size-3.5" />
-              Copy link
-            </button>
-          </div>
+            <Segmented
+              className="grid grid-cols-2"
+              label="View"
+              value={phoneTab}
+              onChange={setPhoneTab}
+              options={[
+                { value: "notes", label: "Note" },
+                {
+                  value: "canvas",
+                  label: figures
+                    ? `Canvas · ${figures} ${figures === 1 ? "figure" : "figures"}`
+                    : "Canvas",
+                },
+              ]}
+            />
+          ) : null}
         </header>
 
         <div className="relative flex min-h-0 flex-1">
@@ -264,6 +278,7 @@ export function PublishedProject({
                     initialContent={note.document}
                     slug={slug}
                     onOpenFigure={canvas ? openFigure : undefined}
+                    onLoaded={setLoaded}
                   />
                   <p className="text-muted-foreground mt-16 border-t pt-6 text-center text-xs">
                     <Link href="/" className="hover:text-foreground-strong">

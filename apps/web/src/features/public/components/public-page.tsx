@@ -157,9 +157,10 @@ function PublishedNote({
   notebook: NotebookContext | null;
 }) {
   const { style } = useNoteTypography();
+  const [loaded, setLoaded] = useState<unknown[] | null>(null);
   const sections = useMemo(
-    () => collectSections(note.document),
-    [note.document],
+    () => collectSections(loaded ?? note.document),
+    [loaded, note.document],
   );
   const minutes = useMemo(
     () => computeReadingMinutes(note.contentMd),
@@ -220,7 +221,11 @@ function PublishedNote({
               </div>
             </header>
             <div className="mt-6 md:mt-10">
-              <NotesReadOnly initialContent={note.document} slug={slug} />
+              <NotesReadOnly
+                initialContent={note.document}
+                slug={slug}
+                onLoaded={setLoaded}
+              />
             </div>
             <EndOfArticle author={author} notebook={notebook} />
           </article>

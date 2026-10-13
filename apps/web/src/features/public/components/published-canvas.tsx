@@ -29,6 +29,7 @@ import {
   NotebookRail,
   type NotebookContext,
 } from "./notebook-nav";
+import { HeaderSlot } from "./header-slot";
 import { shareThisPage } from "./reader-bar";
 import { VoteButtons, VotesProvider } from "./votes";
 
@@ -67,25 +68,15 @@ export function PublishedCanvas({
   return (
     <VotesProvider slug={slug} kind="canvas" id={canvas.id}>
       <div className="flex h-[calc(100svh-3.5rem)] flex-col">
-        <header className="flex shrink-0 flex-col gap-0.5 border-b px-4 py-2 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:py-3 lg:pr-6 lg:pl-16">
-          <div className="flex min-w-0 flex-col lg:flex-row lg:items-center lg:gap-4">
-            {notebook ? (
-              <div className="lg:hidden">
-                <NotebookLine nb={notebook} />
-              </div>
-            ) : (
-              <div className="lg:hidden [&>a]:mb-1">{back}</div>
-            )}
-            <div className="flex min-w-0 flex-col">
-              <span className="text-muted-foreground hidden text-2xs font-semibold tracking-[0.08em] uppercase lg:block">
-                {notebook ? `Canvas · in ${notebook.name}` : "Canvas"}
-              </span>
-              <h1 className="text-foreground-strong truncate text-xl font-extrabold tracking-tight">
-                {title}
-              </h1>
-            </div>
-            <span aria-hidden className="bg-border hidden h-8 w-px lg:block" />
-            <p className="text-muted-foreground mt-1 truncate text-sm lg:mt-0">
+        {/* Desktop: title, byline, votes and share sit in the site header. */}
+        <HeaderSlot>
+          <div className="hidden min-w-0 items-center gap-3 lg:flex">
+            <span aria-hidden className="bg-border h-6 w-px shrink-0" />
+            <h1 className="text-foreground-strong max-w-[60%] shrink-0 truncate text-base font-bold tracking-tight">
+              {title}
+            </h1>
+            <p className="text-muted-foreground min-w-0 truncate text-sm">
+              {notebook ? `in ${notebook.name} · ` : null}
               {author ? (
                 <span className="text-foreground-strong font-semibold">
                   {author}
@@ -110,6 +101,28 @@ export function PublishedCanvas({
               Copy link
             </button>
           </div>
+        </HeaderSlot>
+
+        {/* Phones: a compact title strip under the site header. */}
+        <header className="flex shrink-0 flex-col gap-0.5 border-b px-4 py-2 lg:hidden">
+          {notebook ? (
+            <NotebookLine nb={notebook} />
+          ) : (
+            <div className="[&>a]:mb-1">{back}</div>
+          )}
+          <h1 className="text-foreground-strong truncate text-xl font-extrabold tracking-tight">
+            {title}
+          </h1>
+          <p className="text-muted-foreground mt-1 truncate text-sm">
+            {author ? (
+              <span className="text-foreground-strong font-semibold">
+                {author}
+              </span>
+            ) : null}
+            {author ? " · " : null}
+            {date}
+            {figureCount ? ` · ${figureCount}` : null}
+          </p>
         </header>
 
         <div className="relative flex-1">
