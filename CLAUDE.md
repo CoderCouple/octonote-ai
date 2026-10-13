@@ -224,7 +224,7 @@ API tests under `test/integration/` run against real Postgres in-process (PGlite
 |---|---|
 | Supabase | project **OctonoteAI**, ref `xdjeshxjvrbgksgmurnh`, East US, CoderCouple's Org. Linked in `supabase/`. |
 | API | Railway project **octonote-ai**, service `api` → https://api-production-fb09.up.railway.app (deploy: `railway up --service api --detach` from the repo root; `.railwayignore` keeps the upload to what the Dockerfile needs) |
-| Web | Vercel project **octonote-ai** (root `apps/web`) → https://octonote-ai.vercel.app (deploy: `vercel deploy --prod --yes` from the repo root; `.vercelignore` keeps env files out) |
+| Web | Vercel project **octonote-ai** (root `apps/web`) → https://octonote-ai.vercel.app (**auto-deploys on every push to `main`** — prefer that; manual `vercel deploy --prod --yes` from the repo root uploads the working tree incl. uncommitted files; `.vercelignore` keeps env files out) |
 
 - Hosted credentials live in the git-ignored root **`.env.hosted`** (DB password, keys, URLs). Never print or commit them.
 - DB migrations against hosted: `set -a; . ./.env.hosted; set +a; DATABASE_URL="$DATABASE_URL" pnpm --filter @octonote/api db:migrate`, plus `supabase db push` for `supabase/migrations`.
