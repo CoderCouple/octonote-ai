@@ -1,42 +1,49 @@
 <!doctype html>
-<html>
-  <body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#37352f;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+    <title>Your Octonote AI sign-in code</title>
+  </head>
+  <!--
+    Monochrome: white hero + body, black footer with the wordmark.
+    Colors are design tokens (packages/design-tokens): dark #0A0A0B, white, warm grays — inlined for email clients.
+    confirmation.html is generated from this file — keep them in sync.
+  -->
+  <body style="margin:0;padding:0;background:#FFFFFF;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ .Token }} is your Octonote AI sign-in code. It expires in 1 hour.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFFFF;">
       <tr>
-        <td align="center" style="padding:48px 24px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;">
+        <td align="center" style="padding:24px 12px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+            <!-- Hero -->
             <tr>
-              <td style="padding-bottom:28px;">
-                <span style="display:inline-block;width:36px;height:36px;border-radius:9px;background:#191919;color:#ffffff;font-size:18px;line-height:36px;text-align:center;font-weight:700;">O</span>
-                <span style="font-size:17px;font-weight:700;color:#191919;vertical-align:middle;margin-left:10px;">Octonote AI</span>
+              <td style="background:#FFFFFF;border:1px solid #E9E9E7;border-bottom:0;padding:40px 40px 36px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="vertical-align:middle;"><img src="https://octonote.ai/brand-logo-120.png" width="30" height="30" alt="" style="display:block;border:0;" /></td>
+                    <td style="vertical-align:middle;padding-left:8px;font-size:18px;font-weight:600;color:#191919;letter-spacing:-0.2px;">Octonote AI</td>
+                  </tr>
+                </table>
+                <div style="font-size:40px;line-height:46px;font-weight:600;color:#191919;letter-spacing:-1px;padding:36px 0 14px;">Your sign-in code</div>
+                <div style="font-size:16px;line-height:24px;color:#73726E;padding-bottom:28px;">Enter it in Octonote AI to sign in as {{ .Email }}.</div>
+                <div style="font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:40px;line-height:48px;letter-spacing:10px;font-weight:600;color:#191919;padding-bottom:32px;">{{ .Token }}</div>
+                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#191919;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:600;line-height:20px;padding:13px 26px;border-radius:999px;">Sign in on this device</a>
               </td>
             </tr>
+            <!-- Body -->
             <tr>
-              <td style="font-size:26px;line-height:32px;font-weight:700;color:#191919;letter-spacing:-0.5px;padding-bottom:12px;">
-                Sign in to Octonote AI
+              <td style="background:#FFFFFF;border-left:1px solid #E9E9E7;border-right:1px solid #E9E9E7;border-top:1px solid #E9E9E7;padding:24px 40px 32px;font-size:14px;line-height:22px;color:#37352F;">
+                The code and button expire in 1 hour and work once. Never share this code — Octonote will never ask you for it.
               </td>
             </tr>
+            <!-- Footer -->
             <tr>
-              <td style="font-size:15px;line-height:23px;color:#73726e;padding-bottom:28px;">
-                Click the button to sign in on this device, or enter the code in the app.
-              </td>
-            </tr>
-            <tr>
-              <td style="padding-bottom:28px;">
-                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#191919;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:13px 24px;border-radius:10px;">Sign in</a>
-              </td>
-            </tr>
-            <tr>
-              <td style="font-size:13px;color:#73726e;padding-bottom:8px;">Your 6-digit code</td>
-            </tr>
-            <tr>
-              <td style="padding-bottom:28px;">
-                <span style="display:inline-block;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:30px;letter-spacing:8px;font-weight:700;color:#191919;border:1px solid #e9e9e7;border-radius:10px;padding:12px 18px;">{{ .Token }}</span>
-              </td>
-            </tr>
-            <tr>
-              <td style="font-size:13px;line-height:20px;color:#9b9a97;border-top:1px solid #e9e9e7;padding-top:20px;">
-                The link and code expire in 1 hour and work once. If you didn't try to sign in, you can ignore this email.
+              <td style="background:#0A0A0B;padding:24px 40px 0;font-size:12px;line-height:19px;color:#9B9A97;">
+                <div style="padding-bottom:10px;">Sent to {{ .Email }}. Didn't request it? Ignore this email. © 2026 Octonote AI</div>
+                <a href="https://octonote.ai" style="color:#FFFFFF;text-decoration:underline;">Home</a> &nbsp;·&nbsp; <a href="mailto:support@octonote.ai" style="color:#FFFFFF;text-decoration:underline;">Help</a> &nbsp;·&nbsp; <a href="https://octonote.ai/privacy" style="color:#FFFFFF;text-decoration:underline;">Privacy</a> &nbsp;·&nbsp; <a href="https://octonote.ai/terms" style="color:#FFFFFF;text-decoration:underline;">Terms</a>
+                <div style="font-size:44px;line-height:44px;font-weight:600;color:#FFFFFF;letter-spacing:-1.5px;padding:18px 0 4px;white-space:nowrap;overflow:hidden;">Octonote AI</div>
               </td>
             </tr>
           </table>

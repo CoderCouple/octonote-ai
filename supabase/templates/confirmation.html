@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+    <title>Confirm your email for Octonote AI</title>
+  </head>
+  <!--
+    Monochrome: white hero + body, black footer with the wordmark.
+    Colors are design tokens (packages/design-tokens): dark #0A0A0B, white, warm grays — inlined for email clients.
+    Generated from magic_link.html (sign-up variant) — edit that file, then regenerate.
+  -->
+  <body style="margin:0;padding:0;background:#FFFFFF;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{ .Token }} is your code to create your Octonote AI account.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFFFF;">
+      <tr>
+        <td align="center" style="padding:24px 12px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+            <!-- Hero -->
+            <tr>
+              <td style="background:#FFFFFF;border:1px solid #E9E9E7;border-bottom:0;padding:40px 40px 36px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="vertical-align:middle;"><img src="https://octonote.ai/brand-logo-120.png" width="30" height="30" alt="" style="display:block;border:0;" /></td>
+                    <td style="vertical-align:middle;padding-left:8px;font-size:18px;font-weight:600;color:#191919;letter-spacing:-0.2px;">Octonote AI</td>
+                  </tr>
+                </table>
+                <div style="font-size:40px;line-height:46px;font-weight:600;color:#191919;letter-spacing:-1px;padding:36px 0 14px;">Welcome to Octonote AI</div>
+                <div style="font-size:16px;line-height:24px;color:#73726E;padding-bottom:28px;">Enter this code to confirm {{ .Email }} and create your account.</div>
+                <div style="font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:40px;line-height:48px;letter-spacing:10px;font-weight:600;color:#191919;padding-bottom:32px;">{{ .Token }}</div>
+                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#191919;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:600;line-height:20px;padding:13px 26px;border-radius:999px;">Confirm email</a>
+              </td>
+            </tr>
+            <!-- Body -->
+            <tr>
+              <td style="background:#FFFFFF;border-left:1px solid #E9E9E7;border-right:1px solid #E9E9E7;border-top:1px solid #E9E9E7;padding:24px 40px 32px;font-size:14px;line-height:22px;color:#37352F;">
+                Notes, canvases and one-click publishing are a code away. The code and button expire in 1 hour and work once. Never share this code — Octonote will never ask you for it.
+              </td>
+            </tr>
+            <!-- Footer -->
+            <tr>
+              <td style="background:#0A0A0B;padding:24px 40px 0;font-size:12px;line-height:19px;color:#9B9A97;">
+                <div style="padding-bottom:10px;">Sent to {{ .Email }}. Didn't sign up? Ignore this email — no account is created without the code. © 2026 Octonote AI</div>
+                <a href="https://octonote.ai" style="color:#FFFFFF;text-decoration:underline;">Home</a> &nbsp;·&nbsp; <a href="mailto:support@octonote.ai" style="color:#FFFFFF;text-decoration:underline;">Help</a> &nbsp;·&nbsp; <a href="https://octonote.ai/privacy" style="color:#FFFFFF;text-decoration:underline;">Privacy</a> &nbsp;·&nbsp; <a href="https://octonote.ai/terms" style="color:#FFFFFF;text-decoration:underline;">Terms</a>
+                <div style="font-size:44px;line-height:44px;font-weight:600;color:#FFFFFF;letter-spacing:-1.5px;padding:18px 0 4px;white-space:nowrap;overflow:hidden;">Octonote AI</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -230,10 +230,10 @@ API tests under `test/integration/` run against real Postgres in-process (PGlite
 - DB migrations against hosted: `set -a; . ./.env.hosted; set +a; DATABASE_URL="$DATABASE_URL" pnpm --filter @octonote/api db:migrate`, plus `supabase db push` for `supabase/migrations`.
 - Auth settings (site URL, redirect URLs, the sign-in email template with the 6-digit code) are in `supabase/config.toml` under `[remotes.production]`; apply with `supabase config push`.
 - **Every `public` table must have RLS on with no policies** (migration `0003_lock_public_tables`, enforced by `test/integration/security.test.ts`): Supabase serves `public` over its Data API with the anon key, and only `services/api` may touch app data.
-- Email uses Supabase's built-in sender: a few emails per hour, and it only delivers to members of the Supabase org until custom SMTP (Resend) is set up.
+- Email: production SMTP is Resend (`[remotes.production.auth.email.smtp]` in `supabase/config.toml`, sender hello@octonote.ai, project cap `email_sent = 100`/hour, pushed 2026-10-13). Share-invite emails come from the API itself (`common/email.service.ts`) and need `RESEND_API_KEY` + `RESEND_FROM` on the Railway `api` service (set 2026-10-13). The key comes from `RESEND_API_KEY` in `.env.hosted` at push time: `set -a; . ./.env.hosted; set +a; supabase config push`. octonote.ai DNS is at Namecheap; Resend's DKIM/SPF records live there. Without SMTP, Supabase's built-in sender only delivers to members of the Supabase org.
 - Mobile: `pnpm mobile:env hosted` / `pnpm mobile:env local` switches the app (writes/removes `apps/mobile/.env.local`), then restart Expo with `--clear`.
 - Stripe (test mode first): API env `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO_MONTH`, `STRIPE_PRICE_PRO_YEAR` (+ `PUBLIC_APP_URL` for redirects). Locally, `stripe listen --forward-to localhost:4000/billing/webhook` prints the webhook secret.
-- Before a public launch: tldraw license key (`NEXT_PUBLIC_TLDRAW_LICENSE_KEY` on Vercel), Resend SMTP, Google OAuth, custom domain.
+- Before a public launch: Resend domain verified + config pushed (see Email above), Google OAuth. (Done: tldraw license key on Vercel, custom domain octonote.ai.)
 
 ## API structure notes
 

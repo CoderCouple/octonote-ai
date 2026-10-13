@@ -413,13 +413,15 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
 # Sign-in email (magic link + 6-digit code; mobile signs in with the code).
+# The code leads each subject so Gmail doesn't fold repeat emails into one thread
+# and the code shows in the notification preview.
 [auth.email.template.magic_link]
-subject = "Your Octonote AI sign-in code"
+subject = "{{ .Token }} is your Octonote AI sign-in code"
 content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.confirmation]
-subject = "Your Octonote AI sign-in code"
-content_path = "./supabase/templates/magic_link.html"
+subject = "{{ .Token }} — welcome to Octonote AI"
+content_path = "./supabase/templates/confirmation.html"
 
 # Hosted project (`supabase config push` applies these over the local values).
 [remotes.production]
@@ -432,3 +434,19 @@ additional_redirect_urls = ["https://octonote.ai/auth/callback", "https://octono
 [remotes.production.auth.email]
 # One sign-in email per address per minute in production (local dev uses 1s).
 max_frequency = "60s"
+
+# Custom SMTP via Resend (domain octonote.ai, DNS at Namecheap). Without it Supabase's
+# built-in sender only delivers to members of the Supabase org. The key is read from
+# RESEND_API_KEY in .env.hosted at `supabase config push` time — never commit it.
+[remotes.production.auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "hello@octonote.ai"
+sender_name = "Octonote AI"
+
+[remotes.production.auth.rate_limit]
+# Sign-in emails per hour across the whole project (Resend free tier: 100/day, 3,000/month).
+email_sent = 100
