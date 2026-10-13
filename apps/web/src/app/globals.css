@@ -197,3 +197,15 @@ body {
   --tl-color-low: var(--canvas-paper) !important;
   --tl-color-low-border: var(--canvas-border) !important;
 }
+
+/* Published notes on desktop: the heading minimap pinned to the right edge
+   is the scrollbar, so hide the browser's own. Phones keep their overlay
+   scrollbars (and the top progress bar). */
+@media (min-width: 64rem) {
+  html:has(.published-note) {
+    scrollbar-width: none;
+  }
+  html:has(.published-note)::-webkit-scrollbar {
+    display: none;
+  }
+}

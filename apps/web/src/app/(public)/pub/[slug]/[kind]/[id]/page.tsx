@@ -1,7 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PublicPage, publicTitle, type PublicKind } from "@/features/public";
-import { fetchPublishedChild } from "@/features/public/lib/fetch-public";
+import {
+  PublicPage,
+  publicTitle,
+  type NotebookContext,
+  type PublicKind,
+  type PublicView,
+} from "@/features/public";
+import {
+  fetchPublishedChild,
+  fetchPublishedRoot,
+} from "@/features/public/lib/fetch-public";
 import { describe } from "../../../_lib/describe";
 
 const KINDS = new Set<PublicKind>(["page", "canvas", "project", "notebook"]);
@@ -22,5 +31,25 @@ export async function generateMetadata(props: Params): Promise<Metadata> {
 export default async function PublishedChildPage(props: Params) {
   const view = await load(props, true);
   if (!view) notFound();
-  return <PublicPage view={view} />;
+  return <PublicPage view={view} notebook={await notebookFor(view)} />;
+}
+
+/**
+ * Opened from inside a published notebook: load the notebook too, for the
+ * left rail (desktop) and the notebook sheet (phones).
+ */
+async function notebookFor(view: PublicView): Promise<NotebookContext | null> {
+  if (view.root.kind !== "notebook") return null;
+  const root = await fetchPublishedRoot(view.root.slug);
+  if (!root || root.resource.kind !== "notebook") return null;
+  return {
+    slug: view.root.slug,
+    name: root.resource.name,
+    items: root.resource.items.map(({ kind, id, title }) => ({
+      kind,
+      id,
+      title,
+    })),
+    current: { kind: view.resource.kind, id: view.resource.id },
+  };
 }

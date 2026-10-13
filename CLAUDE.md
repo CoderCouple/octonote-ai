@@ -39,7 +39,8 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - **Published state is inherited at read time**, not copied to children: a resource is publicly readable if it or any ancestor is published. Items added later to a published notebook become public automatically — the editor must show a "Published via <notebook>" badge so this is never a surprise.
 - **Inheritance like Google Drive:** notebook → project → note/canvas. Highest grant wins.
 - Applies to notes, canvases, projects, notebooks.
-- **Not in v1:** Commenter role (arrives with comments), comments, highlights, votes, follows, password/expiring/max-use links.
+- **Published notes (built 2026-10-13):** byline (author display name + avatar, publish date, read time — never emails/ids), **upvote/downvote** (user decision 2026-10-13: in v1; `resource_votes`, one vote per signed-in reader, counts on both arrows, signed-out taps go to /login?next=), heading minimap pinned to the right window edge *as the scrollbar* (native scrollbar hidden on desktop), notebook minimap on the left edge only when read inside a published notebook, phone floating bar (votes · contents · share) that hides on scroll down.
+- **Not in v1:** Commenter role (arrives with comments), comments, highlights, follows, password/expiring/max-use links.
 
 ## v1 MVP scope — hard limit
 
@@ -65,7 +66,7 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - Custom diagrams-as-code DSL beyond Mermaid
 - AI diagram generation (Claude)
 - Multiplayer (Yjs / Hocuspocus) — single-user with auto-save is enough
-- Comments, highlights, votes, follows, Commenter role
+- Comments, highlights, follows, Commenter role (votes moved into v1 on 2026-10-13)
 - Export (PDF / PNG)
 - Custom eraser-style DSL
 - Mind maps, flashcards, charts, live code, infographics — all the overload-triggers from the prior MVP

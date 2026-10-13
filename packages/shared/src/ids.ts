@@ -17,6 +17,7 @@ export const ID_PREFIXES = {
   userPreference: "prf",
   studentEmailSuffix: "sfx",
   canvasFigure: "fig",
+  resourceVote: "vot",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import {
   OptionalSupabaseAuthGuard,
@@ -11,7 +11,10 @@ import {
   PublicService,
   type PublicView,
 } from "../../../service/public.service";
+import { VotesService, type VoteSummary } from "../../../service/votes.service";
 import { ResourceKindSchema } from "../request/sharing.request";
+
+const VoteSchema = z.object({ value: z.union([z.literal(1), z.literal(-1), z.literal(0)]) });
 
 // "_" is accepted for slugs minted before randomSuffix() was fixed.
 const SlugParam = new ZodValidationPipe(z.string().regex(/^[a-z0-9_-]{1,80}$/));
@@ -36,7 +39,31 @@ export class PublicController {
   constructor(
     private readonly publicService: PublicService,
     private readonly analytics: AnalyticsService,
+    private readonly votes: VotesService,
   ) {}
+
+  /** Up/down counts (and your own vote, if signed in) for an item under a published slug. */
+  @Get(":slug/:kind/:id/votes")
+  getVotes(
+    @Param("slug", SlugParam) slug: string,
+    @Param("kind", KindParam) kind: ResourceKind,
+    @Param("id", IdParam) id: string,
+    @Req() req: OptionalAuthRequest,
+  ): Promise<VoteSummary> {
+    return this.votes.summary(slug, kind, id, req.user?.id ?? null);
+  }
+
+  /** Cast, change (1 / -1) or remove (0) your vote. Signed-in readers only. */
+  @Put(":slug/:kind/:id/votes")
+  vote(
+    @Param("slug", SlugParam) slug: string,
+    @Param("kind", KindParam) kind: ResourceKind,
+    @Param("id", IdParam) id: string,
+    @Body(new ZodValidationPipe(VoteSchema)) body: z.infer<typeof VoteSchema>,
+    @Req() req: OptionalAuthRequest,
+  ): Promise<VoteSummary> {
+    return this.votes.vote(slug, kind, id, req.user?.id ?? null, body.value);
+  }
 
   @Get(":slug")
   async getBySlug(

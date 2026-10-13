@@ -2,3 +2,4 @@
 export { PublicPage } from "./components/public-page";
 export { publicTitle } from "./types";
 export type { PublicKind, PublicView } from "./types";
+export type { NotebookContext } from "./components/notebook-nav";

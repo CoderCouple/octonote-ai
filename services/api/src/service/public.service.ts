@@ -3,8 +3,9 @@
  *
  * A published notebook or project exposes its contents too, but only items
  * actually inside it: getChild verifies the requested item's ancestor chain
- * reaches the published root. Responses carry content only — no emails,
- * user ids or workspace details.
+ * reaches the published root. Responses carry content plus a byline (the
+ * author's display name and avatar, like any blog) — never emails, user ids
+ * or workspace details.
  */
 import { Injectable } from "@nestjs/common";
 import { NotFound } from "../common/error/error-factory";
@@ -13,6 +14,7 @@ import { NotebooksRepository } from "../db/repository/notebooks.repository";
 import { PagesRepository } from "../db/repository/pages.repository";
 import { ProjectsRepository } from "../db/repository/projects.repository";
 import { SharingRepository, type ShareableRow } from "../db/repository/sharing.repository";
+import { UsersRepository } from "../db/repository/users.repository";
 import type { ResourceKind } from "../model/sharing.model";
 
 export interface PublicNote {
@@ -54,10 +56,18 @@ export interface PublicNotebook {
 
 export type PublicResource = PublicNote | PublicCanvas | PublicProject | PublicNotebook;
 
+export interface PublicByline {
+  /** Who made the item: display name and avatar only. */
+  author: { name: string; avatarUrl: string | null } | null;
+  /** When the published root went public. */
+  publishedAt: string | null;
+}
+
 export interface PublicView {
   /** The published entry point (what the slug points at). */
   root: { kind: ResourceKind; id: string; title: string; slug: string };
   resource: PublicResource;
+  byline: PublicByline;
 }
 
 @Injectable()
@@ -68,11 +78,16 @@ export class PublicService {
     private readonly canvasesRepo: CanvasesRepository,
     private readonly projectsRepo: ProjectsRepository,
     private readonly notebooksRepo: NotebooksRepository,
+    private readonly usersRepo: UsersRepository,
   ) {}
 
   async getBySlug(slug: string): Promise<PublicView> {
     const root = await this.publishedRoot(slug);
-    return { root: rootRef(root, slug), resource: await this.render(root.kind, root.id) };
+    return {
+      root: rootRef(root, slug),
+      resource: await this.render(root.kind, root.id),
+      byline: await this.byline(root.kind, root.id, root),
+    };
   }
 
   /**
@@ -81,12 +96,41 @@ export class PublicService {
    * a canvas linked from a published note. Anything else is 404.
    */
   async getChild(slug: string, kind: ResourceKind, id: string): Promise<PublicView> {
+    const root = await this.assertReadable(slug, kind, id);
+    return {
+      root: rootRef(root, slug),
+      resource: await this.render(kind, id),
+      byline: await this.byline(kind, id, root),
+    };
+  }
+
+  /**
+   * Throws 404 unless `kind/id` can be read under the published `slug` (it is
+   * the root, inside it, or public in its own right). Returns the root.
+   */
+  async assertReadable(slug: string, kind: ResourceKind, id: string): Promise<ShareableRow> {
     const root = await this.publishedRoot(slug);
+    if (root.kind === kind && root.id === id) return root;
     const target = { kind, id };
     if (!(await this.isWithin(target, root)) && !(await this.isPublished(target))) {
       throw NotFound("Not found.");
     }
-    return { root: rootRef(root, slug), resource: await this.render(kind, id) };
+    return root;
+  }
+
+  private async byline(kind: ResourceKind, id: string, root: ShareableRow): Promise<PublicByline> {
+    const repo = {
+      page: this.pagesRepo,
+      canvas: this.canvasesRepo,
+      project: this.projectsRepo,
+      notebook: this.notebooksRepo,
+    }[kind] as { findById: (id: string) => Promise<{ createdByUserId: string } | null> };
+    const row = await repo.findById(id);
+    const user = row ? await this.usersRepo.findById(row.createdByUserId) : null;
+    return {
+      author: user ? { name: user.name, avatarUrl: user.avatarUrl } : null,
+      publishedAt: root.publishedAt?.toISOString() ?? null,
+    };
   }
 
   private async isPublished(target: { kind: ResourceKind; id: string }): Promise<boolean> {

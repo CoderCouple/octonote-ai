@@ -98,7 +98,7 @@ export function RightTocRail({ sections, footnote }: RightTocRailProps) {
   return (
     <nav
       aria-label="Table of contents"
-      className="sticky top-24 hidden max-h-[calc(100vh-8rem)] w-fit self-start lg:flex"
+      className="hidden max-h-[calc(100vh-8rem)] w-fit lg:flex"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >

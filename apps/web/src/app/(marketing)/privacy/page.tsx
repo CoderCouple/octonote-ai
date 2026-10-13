@@ -40,7 +40,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             Anything you publish to the web can be read by anyone, including
-            search engines.
+            search engines, and shows your name (and profile photo, if you
+            have one) as its author.
           </li>
         </ul>
       </LegalSection>
@@ -139,6 +140,13 @@ export default function PrivacyPage() {
           unpublish. Items added to a published notebook or project are
           published too; the editor labels them so this is never a surprise.
           Don&apos;t publish anything you wouldn&apos;t want to be public.
+          A published page shows its author&apos;s name and profile photo, and
+          the date it was published.
+        </p>
+        <p>
+          <strong>Votes.</strong> Signed-in readers can upvote or downvote a
+          published page. We store each vote with the account that cast it so
+          it can be changed or removed; everyone sees only the totals.
         </p>
       </LegalSection>
 

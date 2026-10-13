@@ -23,6 +23,7 @@ import { SharingRepository } from "../../src/db/repository/sharing.repository";
 import { UserPreferencesRepository } from "../../src/db/repository/user-preferences.repository";
 import { WorkspaceMembersRepository } from "../../src/db/repository/workspace-members.repository";
 import { WorkspacesRepository } from "../../src/db/repository/workspaces.repository";
+import { UsersRepository } from "../../src/db/repository/users.repository";
 import * as schema from "../../src/db/schema";
 import { CanvasesService } from "../../src/service/canvases.service";
 import { ChangeEventsReaderService } from "../../src/service/change-events-reader.service";
@@ -31,6 +32,7 @@ import { AnalyticsService } from "../../src/service/analytics.service";
 import { ViewsRepository } from "../../src/db/repository/views.repository";
 import { NotebookPlacement } from "../../src/service/lib/notebook-placement";
 import { MeService } from "../../src/service/me.service";
+import { VotesService } from "../../src/service/votes.service";
 import { FiguresService } from "../../src/service/figures.service";
 import { AccountService } from "../../src/service/account.service";
 import { PreferencesService } from "../../src/service/preferences.service";
@@ -185,8 +187,18 @@ export async function createHarness() {
       new UserPreferencesRepository(db),
     ),
     settings: new SharingSettingsService(sharingRepo, permissions, changeEvents),
-    public: new PublicService(sharingRepo, pagesRepo, canvasesRepo, projectsRepo, notebooksRepo),
+    public: new PublicService(
+      sharingRepo,
+      pagesRepo,
+      canvasesRepo,
+      projectsRepo,
+      notebooksRepo,
+      new UsersRepository(db),
+    ),
     me: new MeService(db),
+    get votes() {
+      return new VotesService(db, this.public);
+    },
     figures: new FiguresService(db, permissions, workspaces, supabase as never),
     planLimits,
     billing: new BillingService(db, planLimits, workspaces, stripe as never, {

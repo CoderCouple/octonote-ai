@@ -57,6 +57,13 @@
       "when": 1791838102074,
       "tag": "0007_canvas_figures",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791914835656,
+      "tag": "0008_resource_votes",
+      "breakpoints": true
     }
   ]
 }

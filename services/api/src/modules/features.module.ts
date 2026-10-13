@@ -9,6 +9,7 @@ import {
 import { BILLING_CONFIG, BillingService, STRIPE_CLIENT } from "../service/billing.service";
 import { FiguresController } from "../api/v1/controller/figures.controller";
 import { FiguresService } from "../service/figures.service";
+import { VotesService } from "../service/votes.service";
 import { CanvasesController } from "../api/v1/controller/canvases.controller";
 import { ChangeEventsController } from "../api/v1/controller/change-events.controller";
 import { NotebooksController } from "../api/v1/controller/notebooks.controller";
@@ -54,6 +55,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     AnalyticsService,
     BillingService,
     FiguresService,
+    VotesService,
     {
       provide: STRIPE_CLIENT,
       useFactory: () =>
