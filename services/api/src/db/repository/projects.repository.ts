@@ -17,6 +17,8 @@ export interface CreatorSummary {
 export type ProjectRowWithCounts = typeof projects.$inferSelect & {
   hasNote: boolean;
   hasCanvas: boolean;
+  /** The project canvas's thumbnail (grid views). */
+  thumbnailUrl: string | null;
   creator: CreatorSummary | null;
   sharedCount: number;
 };
@@ -54,7 +56,7 @@ export class ProjectsRepository extends BaseRepository<typeof projects> {
         .from(pages)
         .where(and(inArray(pages.projectId, projectIds), isNull(pages.deletedAt))),
       this.db
-        .select({ projectId: canvases.projectId })
+        .select({ projectId: canvases.projectId, thumbnailUrl: canvases.thumbnailUrl })
         .from(canvases)
         .where(and(inArray(canvases.projectId, projectIds), isNull(canvases.deletedAt))),
       this.db
@@ -65,12 +67,14 @@ export class ProjectsRepository extends BaseRepository<typeof projects> {
 
     const hasNoteSet = new Set(pageRows.map((r) => r.projectId));
     const hasCanvasSet = new Set(canvasRows.map((r) => r.projectId));
+    const thumbByProject = new Map(canvasRows.map((r) => [r.projectId, r.thumbnailUrl]));
     const creatorById = new Map(creatorRows.map((r) => [r.id, r]));
 
     return projectRows.map((row) => ({
       ...row,
       hasNote: hasNoteSet.has(row.id),
       hasCanvas: hasCanvasSet.has(row.id),
+      thumbnailUrl: thumbByProject.get(row.id) ?? null,
       creator: creatorById.get(row.createdByUserId) ?? null,
       sharedCount: Number(row.sharedCount),
     }));

@@ -22,6 +22,7 @@ export default async function NotebooksPage() {
         kind: "notebook",
         id: n.id,
         title: n.name,
+        subtitle: n.counts ? contentsLabel(n.counts) : undefined,
         access: accessOf(n),
         sharedCount: n.sharedCount ?? 0,
         owner: n.createdByUserId === me.user.id ? me.user.name : null,
@@ -29,5 +30,24 @@ export default async function NotebooksPage() {
         updatedAt: n.updatedAt,
       }))}
     />
+  );
+}
+
+/** "3 notes · 1 canvas · 2 projects" — what a notebook holds. */
+function contentsLabel(c: {
+  notes: number;
+  canvases: number;
+  projects: number;
+}) {
+  const part = (n: number, one: string, many: string) =>
+    n ? `${n} ${n === 1 ? one : many}` : null;
+  return (
+    [
+      part(c.notes, "note", "notes"),
+      part(c.canvases, "canvas", "canvases"),
+      part(c.projects, "project", "projects"),
+    ]
+      .filter(Boolean)
+      .join(" · ") || "Empty"
   );
 }

@@ -80,6 +80,7 @@ export function NotebookView({
       id: p.id,
       title: p.name,
       subtitle: p.description ?? "Note + canvas",
+      thumbnailUrl: p.thumbnailUrl ?? null,
       notebookId: p.notebookId,
       access: accessOf(p, notebook),
       publishedVia: via(p),

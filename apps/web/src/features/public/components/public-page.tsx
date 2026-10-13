@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  BookOpen,
-  Check,
-  ChevronLeft,
-  FileText,
-  Focus,
-  FolderKanban,
-  LayoutGrid,
-  Link2,
-} from "lucide-react";
+import { Check, ChevronLeft, Focus, Link2 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -22,29 +13,18 @@ import { TypographyPicker } from "@/features/notes/typography/typography-picker"
 import { useNoteTypography } from "@/features/notes/typography/use-note-typography";
 import { SUPPORT_EMAIL } from "@octonote/shared";
 import { cn } from "@/lib/utils";
-import type {
-  PublicByline,
-  PublicKind,
-  PublicNote,
-  PublicView,
-} from "../types";
+import type { PublicByline, PublicNote, PublicView } from "../types";
 import {
   NotebookLine,
   NotebookRail,
   type NotebookContext,
 } from "./notebook-nav";
 import { PublishedCanvas } from "./published-canvas";
+import { PublishedNotebook } from "./published-notebook";
 import { PublishedProject } from "./published-project";
 import { ReaderBar } from "./reader-bar";
 import { VoteButtons, VotesProvider } from "./votes";
 import { NotesReadOnly } from "./notes-readonly";
-
-const KIND_ICON: Record<PublicKind, typeof FileText> = {
-  page: FileText,
-  canvas: LayoutGrid,
-  project: FolderKanban,
-  notebook: BookOpen,
-};
 
 export function PublicPage({
   view,
@@ -99,46 +79,11 @@ export function PublicPage({
       );
     case "notebook":
       return (
-        <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
-          {back}
-          <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
-            <BookOpen className="size-3.5" />
-            Notebook
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {resource.name}
-          </h1>
-          {resource.items.length === 0 ? (
-            <p className="text-muted-foreground mt-10 text-sm">
-              This notebook is empty.
-            </p>
-          ) : (
-            <ul className="mt-8 divide-y border-y">
-              {resource.items.map((item) => {
-                const Icon = KIND_ICON[item.kind];
-                return (
-                  <li key={`${item.kind}:${item.id}`}>
-                    <Link
-                      href={`/pub/${root.slug}/${item.kind}/${item.id}`}
-                      className="hover:bg-accent/40 flex items-center gap-3 px-2 py-3 transition-colors"
-                    >
-                      <Icon className="text-muted-foreground size-4 shrink-0" />
-                      <span className="flex-1 truncate text-sm font-medium">
-                        {item.title || "Untitled"}
-                      </span>
-                      <span className="text-muted-foreground text-xs tabular-nums">
-                        {new Date(item.updatedAt).toLocaleDateString(
-                          undefined,
-                          { month: "short", day: "numeric" },
-                        )}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <PublishedNotebook
+          notebook={resource}
+          slug={root.slug}
+          byline={view.byline}
+        />
       );
   }
 }

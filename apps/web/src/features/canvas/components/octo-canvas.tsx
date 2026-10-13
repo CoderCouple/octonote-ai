@@ -113,7 +113,7 @@ export function OctoCanvas({
       source: "user",
     });
     // Canvases created before their first thumbnail get one on open.
-    if (!thumbnailUrl.current) scheduleThumbnail(editor);
+    if (!thumbnailUrl.current) scheduleThumbnail(editor, 2000);
     // Learn which figures the API already has, then catch up any that changed.
     void listCanvasFiguresClientApi(canvasId)
       .then((figures) => {
@@ -145,7 +145,7 @@ export function OctoCanvas({
     }, SAVE_DEBOUNCE_MS);
   }
 
-  function scheduleThumbnail(editor: Editor) {
+  function scheduleThumbnail(editor: Editor, delay = THUMBNAIL_DEBOUNCE_MS) {
     if (thumbTimer.current) clearTimeout(thumbTimer.current);
     thumbTimer.current = setTimeout(async () => {
       try {
@@ -159,7 +159,7 @@ export function OctoCanvas({
         // Non-fatal: the reference block falls back to a placeholder.
         console.warn(err);
       }
-    }, THUMBNAIL_DEBOUNCE_MS);
+    }, delay);
   }
 
   function scheduleFigureSync(editor: Editor) {

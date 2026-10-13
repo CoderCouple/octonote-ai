@@ -22,3 +22,9 @@ export function previewFromMarkdown(md: string, title?: string, max = 140): stri
   const text = lines.join(" · ");
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
+
+/** Minutes to read a note's markdown at 220 words a minute (at least 1). */
+export function readingMinutes(md: string): number {
+  const words = md ? md.trim().split(/\s+/).filter(Boolean).length : 0;
+  return Math.max(1, Math.ceil(words / 220));
+}

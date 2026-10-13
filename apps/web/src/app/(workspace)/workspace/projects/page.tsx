@@ -33,6 +33,7 @@ export default async function ProjectsPage() {
           id: p.id,
           title: p.name,
           subtitle: p.description ?? "Note + canvas",
+          thumbnailUrl: p.thumbnailUrl ?? null,
           notebookId: p.notebookId,
           notebookName,
           access: accessOf(p, notebook),

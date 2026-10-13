@@ -8,6 +8,7 @@
  * or workspace details.
  */
 import { Injectable } from "@nestjs/common";
+import { previewFromMarkdown, readingMinutes } from "@octonote/shared";
 import { NotFound } from "../common/error/error-factory";
 import { CanvasesRepository } from "../db/repository/canvases.repository";
 import { NotebooksRepository } from "../db/repository/notebooks.repository";
@@ -51,8 +52,22 @@ export interface PublicNotebook {
   kind: "notebook";
   id: string;
   name: string;
-  items: { kind: ResourceKind; id: string; title: string; updatedAt: string }[];
+  items: PublicNotebookItem[];
   updatedAt: string;
+}
+
+/** What a notebook's grid card / list row shows for each item. */
+export interface PublicNotebookItem {
+  kind: ResourceKind;
+  id: string;
+  title: string;
+  updatedAt: string;
+  /** Canvas thumbnail (a project's comes from its canvas); null for notes. */
+  thumbnailUrl: string | null;
+  /** The opening of the note (a project's own note), plain text. */
+  excerpt: string | null;
+  /** Reading time of the note; null for canvases. */
+  minutes: number | null;
 }
 
 export type PublicResource = PublicNote | PublicCanvas | PublicProject | PublicNotebook;
@@ -235,14 +250,49 @@ export class PublicService {
       this.canvasesRepo.listByNotebook(id),
       this.projectsRepo.listByNotebook(id),
     ]);
+    // A project's card reads its own note (excerpt, reading time).
+    const projectNotes = await Promise.all(
+      projects.map((p) => this.pagesRepo.findActiveByProject(p.id)),
+    );
+    const noteMeta = (md: string, title: string) => ({
+      excerpt: previewFromMarkdown(md, title, 220) || null,
+      minutes: readingMinutes(md),
+    });
     return {
       kind: "notebook",
       id: row.id,
       name: row.name,
       items: [
-        ...notes.map((n) => ({ kind: "page" as const, id: n.id, title: n.title, updatedAt: n.updatedAt.toISOString() })),
-        ...canvases.map((c) => ({ kind: "canvas" as const, id: c.id, title: c.title, updatedAt: c.updatedAt.toISOString() })),
-        ...projects.map((p) => ({ kind: "project" as const, id: p.id, title: p.name, updatedAt: p.updatedAt.toISOString() })),
+        ...notes.map((n) => ({
+          kind: "page" as const,
+          id: n.id,
+          title: n.title,
+          updatedAt: n.updatedAt.toISOString(),
+          thumbnailUrl: null,
+          ...noteMeta(n.contentMd, n.title),
+        })),
+        ...canvases.map((c) => ({
+          kind: "canvas" as const,
+          id: c.id,
+          title: c.title,
+          updatedAt: c.updatedAt.toISOString(),
+          thumbnailUrl: c.thumbnailUrl,
+          excerpt: null,
+          minutes: null,
+        })),
+        ...projects.map((p, i) => {
+          const note = projectNotes[i];
+          return {
+            kind: "project" as const,
+            id: p.id,
+            title: p.name,
+            updatedAt: p.updatedAt.toISOString(),
+            thumbnailUrl: p.thumbnailUrl,
+            ...(note
+              ? noteMeta(note.contentMd, note.title)
+              : { excerpt: p.description, minutes: null }),
+          };
+        }),
       ],
       updatedAt: row.updatedAt.toISOString(),
     };

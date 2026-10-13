@@ -2,7 +2,8 @@
 
 /**
  * The list screen for notes, canvases, projects, notebooks and Shared:
- * four stat cards, access tabs with counts, sort, a table and pagination.
+ * four stat cards, access tabs with counts, sort, a table or a grid of
+ * cards (each reader's choice, remembered per list) and pagination.
  * Pure white surfaces (Notion-style); structure comes from hairline borders.
  */
 import {
@@ -21,6 +22,8 @@ import {
   Globe,
   LayoutGrid,
   Link2,
+  List,
+  MoreHorizontal,
   Lock,
   Trash2,
   TrendingDown,
@@ -29,11 +32,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
 import { EmptyTableState, type EmptyKind } from "@/components/empty-state";
 import { AnalyticsSheet } from "@/features/analytics";
+import { ThumbnailBackfill } from "@/features/canvas/components/thumbnail-backfill";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -197,6 +201,9 @@ export function LibraryTable({
   const [sortKey, setSortKey] = useState<SortKey>("updated-desc");
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
+  const [view, setView] = useListView(noun);
+  // An empty list keeps the table's empty state (its skeleton rows).
+  const shownView = pageRows0Empty(rows, filter) ? "table" : view;
 
   const counts = useMemo(
     () =>
@@ -232,6 +239,13 @@ export function LibraryTable({
   return (
     // min-h-full + flex-1 on the table card: the card always reaches the bottom of the screen.
     <div className="flex min-h-full flex-col gap-6 px-4 py-6 lg:px-6">
+      {readOnly ? null : (
+        <ThumbnailBackfill
+          canvasIds={rows
+            .filter((r) => r.kind === "canvas" && !r.thumbnailUrl)
+            .map((r) => r.id)}
+        />
+      )}
       {header}
       {readOnly || mixedKinds ? null : <StatCards rows={rows} noun={noun} />}
 
@@ -298,64 +312,86 @@ export function LibraryTable({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          <ViewToggle value={view} onChange={setView} />
           {createAction}
         </div>
       </div>
 
-      <div className="bg-card flex flex-1 flex-col overflow-hidden rounded-xl border">
-        <TooltipProvider delayDuration={200}>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-muted-foreground h-11 pl-4 font-medium">
-                  Name
-                </TableHead>
-                {mixedKinds ? (
-                  <TableHead className="text-muted-foreground hidden font-medium sm:table-cell">
-                    Type
-                  </TableHead>
-                ) : null}
-                <TableHead className="text-muted-foreground font-medium">
-                  {readOnly ? "Your access" : "Access"}
-                </TableHead>
-                {readOnly ? null : (
-                  <>
-                    {hideNotebookColumn ? null : (
-                      <TableHead className="text-muted-foreground hidden font-medium md:table-cell">
-                        Notebook
-                      </TableHead>
-                    )}
-                    <TableHead className="text-muted-foreground hidden font-medium lg:table-cell">
-                      Owner
-                    </TableHead>
-                    <TableHead className="text-muted-foreground hidden font-medium lg:table-cell">
-                      Shared with
-                    </TableHead>
-                  </>
-                )}
-                <TableHead className="text-muted-foreground font-medium">
-                  {readOnly ? "Shared" : "Updated"}
-                </TableHead>
-                <TableHead className="w-36 pr-4">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div
+        className={cn(
+          "flex flex-1 flex-col",
+          shownView === "table" && "bg-card overflow-hidden rounded-xl border",
+        )}
+      >
+        {shownView === "grid" ? (
+          <TooltipProvider delayDuration={200}>
+            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {pageRows.map((row) => (
-                <Row
+                <Card
                   key={`${row.kind}:${row.id}`}
                   row={row}
                   workspaceId={workspaceId}
-                  readOnly={readOnly}
-                  showNotebook={!hideNotebookColumn}
                   showKind={mixedKinds}
                   actions={rowActions}
                 />
               ))}
-            </TableBody>
-          </Table>
-        </TooltipProvider>
+            </ul>
+          </TooltipProvider>
+        ) : (
+          <TooltipProvider delayDuration={200}>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-muted-foreground h-11 pl-4 font-medium">
+                    Name
+                  </TableHead>
+                  {mixedKinds ? (
+                    <TableHead className="text-muted-foreground hidden font-medium sm:table-cell">
+                      Type
+                    </TableHead>
+                  ) : null}
+                  <TableHead className="text-muted-foreground font-medium">
+                    {readOnly ? "Your access" : "Access"}
+                  </TableHead>
+                  {readOnly ? null : (
+                    <>
+                      {hideNotebookColumn ? null : (
+                        <TableHead className="text-muted-foreground hidden font-medium md:table-cell">
+                          Notebook
+                        </TableHead>
+                      )}
+                      <TableHead className="text-muted-foreground hidden font-medium lg:table-cell">
+                        Owner
+                      </TableHead>
+                      <TableHead className="text-muted-foreground hidden font-medium lg:table-cell">
+                        Shared with
+                      </TableHead>
+                    </>
+                  )}
+                  <TableHead className="text-muted-foreground font-medium">
+                    {readOnly ? "Shared" : "Updated"}
+                  </TableHead>
+                  <TableHead className="w-36 pr-4">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pageRows.map((row) => (
+                  <Row
+                    key={`${row.kind}:${row.id}`}
+                    row={row}
+                    workspaceId={workspaceId}
+                    readOnly={readOnly}
+                    showNotebook={!hideNotebookColumn}
+                    showKind={mixedKinds}
+                    actions={rowActions}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
+        )}
         {pageRows.length === 0 ? (
           <div className="flex flex-1 items-center justify-center">
             {rows.length === 0 ? (
@@ -519,23 +555,10 @@ function Row({
   showKind: boolean;
   actions: boolean;
 }) {
-  const router = useRouter();
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [moving, setMoving] = useState(false);
-  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const Icon = KIND_ICON[row.kind];
   const href = RESOURCE_PATH[row.kind](row.id);
   const access = ACCESS[row.access];
-
-  async function remove() {
-    try {
-      await deleteResource(row.kind, row.id);
-      toast.success(`Deleted ${KIND_LABEL[row.kind]}.`);
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't delete.");
-    }
-  }
+  const act = useItemActions(row, workspaceId, actions);
 
   return (
     <TableRow className="group">
@@ -640,75 +663,282 @@ function Row({
           </IconAction>
           {actions ? (
             <>
-              <IconAction
-                label="Analytics"
-                onClick={() => setAnalyticsOpen(true)}
-              >
+              <IconAction label="Analytics" onClick={act.openAnalytics}>
                 <BarChart3 className="size-3.5" />
               </IconAction>
               {row.kind !== "notebook" ? (
-                <IconAction
-                  label="Move to notebook"
-                  onClick={() => setMoving(true)}
-                >
+                <IconAction label="Move to notebook" onClick={act.openMove}>
                   <FolderInput className="size-3.5" />
                 </IconAction>
               ) : null}
-              <IconAction
-                label="Delete"
-                onClick={() => setConfirmDelete(true)}
-                destructive
-              >
+              <IconAction label="Delete" onClick={act.openDelete} destructive>
                 <Trash2 className="size-3.5" />
               </IconAction>
             </>
           ) : null}
         </div>
-        <AnalyticsSheet
-          target={
-            analyticsOpen
-              ? {
-                  kind: row.kind,
-                  id: row.id,
-                  title: row.title,
-                  createdAt: row.createdAt,
-                  updatedAt: row.updatedAt,
-                  accessLabel: row.publishedVia
-                    ? `Published via ${row.publishedVia}`
-                    : access.label,
-                }
-              : null
-          }
-          onOpenChange={setAnalyticsOpen}
-        />
-        <ConfirmActionDialog
-          open={confirmDelete}
-          onOpenChange={setConfirmDelete}
-          title={`Delete “${row.title || "Untitled"}”?`}
-          description={DELETE_COPY[row.kind]}
-          onConfirm={remove}
-        />
-        {row.kind !== "notebook" && actions ? (
-          <MoveToNotebookDialog
-            open={moving}
-            onOpenChange={setMoving}
-            workspaceId={workspaceId}
-            currentNotebookId={row.notebookId ?? null}
-            onMove={async (notebookId) => {
-              if (row.kind === "notebook") return;
-              await moveResource(row.kind, row.id, notebookId);
-              toast.success(
-                notebookId
-                  ? "Moved to notebook."
-                  : "Moved out of the notebook.",
-              );
-              router.refresh();
-            }}
-          />
-        ) : null}
+        {act.dialogs}
       </TableCell>
     </TableRow>
   );
+}
+
+/* ───────────── Item actions (shared by rows and cards) ───────────── */
+
+function useItemActions(
+  row: LibraryRow,
+  workspaceId: string,
+  actions: boolean,
+) {
+  const router = useRouter();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const access = ACCESS[row.access];
+
+  async function remove() {
+    try {
+      await deleteResource(row.kind, row.id);
+      toast.success(`Deleted ${KIND_LABEL[row.kind]}.`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't delete.");
+    }
+  }
+
+  const dialogs = (
+    <>
+      <AnalyticsSheet
+        target={
+          analyticsOpen
+            ? {
+                kind: row.kind,
+                id: row.id,
+                title: row.title,
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt,
+                accessLabel: row.publishedVia
+                  ? `Published via ${row.publishedVia}`
+                  : access.label,
+              }
+            : null
+        }
+        onOpenChange={setAnalyticsOpen}
+      />
+      <ConfirmActionDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete “${row.title || "Untitled"}”?`}
+        description={DELETE_COPY[row.kind]}
+        onConfirm={remove}
+      />
+      {row.kind !== "notebook" && actions ? (
+        <MoveToNotebookDialog
+          open={moving}
+          onOpenChange={setMoving}
+          workspaceId={workspaceId}
+          currentNotebookId={row.notebookId ?? null}
+          onMove={async (notebookId) => {
+            if (row.kind === "notebook") return;
+            await moveResource(row.kind, row.id, notebookId);
+            toast.success(
+              notebookId ? "Moved to notebook." : "Moved out of the notebook.",
+            );
+            router.refresh();
+          }}
+        />
+      ) : null}
+    </>
+  );
+  return {
+    openAnalytics: () => setAnalyticsOpen(true),
+    openMove: () => setMoving(true),
+    openDelete: () => setConfirmDelete(true),
+    dialogs,
+  };
+}
+
+/* ───────────── Grid cards ───────────── */
+
+function Card({
+  row,
+  workspaceId,
+  showKind,
+  actions,
+}: {
+  row: LibraryRow;
+  workspaceId: string;
+  showKind: boolean;
+  actions: boolean;
+}) {
+  const Icon = KIND_ICON[row.kind];
+  const href = RESOURCE_PATH[row.kind](row.id);
+  const access = ACCESS[row.access];
+  const act = useItemActions(row, workspaceId, actions);
+
+  return (
+    <li className="group bg-card relative flex flex-col overflow-hidden rounded-xl border transition-shadow hover:shadow-md">
+      <Link href={href} className="flex flex-1 flex-col">
+        {/* The picture: a canvas (or a project's canvas), a note's opening, or the kind. */}
+        <span className="bg-muted/40 relative block aspect-[16/10] overflow-hidden border-b">
+          {row.thumbnailUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={row.thumbnailUrl}
+              alt=""
+              loading="lazy"
+              className="h-full w-full bg-white object-contain p-2"
+            />
+          ) : row.kind === "page" && row.subtitle ? (
+            <span className="bg-background text-muted-foreground block h-full overflow-hidden px-4 pt-3.5 text-sm leading-relaxed [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
+              {row.subtitle}
+            </span>
+          ) : (
+            <span className="grid h-full place-items-center">
+              <Icon className="text-muted-foreground/70 size-8" />
+            </span>
+          )}
+        </span>
+        <span className="flex flex-1 flex-col gap-2 px-4 pt-3 pb-3.5">
+          <span className="text-foreground-strong line-clamp-2 font-semibold leading-snug underline-offset-4 group-hover:underline">
+            {row.title || "Untitled"}
+          </span>
+          {row.kind !== "page" && row.subtitle ? (
+            <span className="text-muted-foreground line-clamp-1 text-xs">
+              {row.subtitle}
+            </span>
+          ) : null}
+          <span className="mt-auto flex items-center justify-between gap-2 pt-1">
+            {row.roleLabel ? (
+              <Pill icon={Users}>{row.roleLabel}</Pill>
+            ) : (
+              <Pill icon={access.icon} strong={row.access === "public"}>
+                {row.publishedVia ? "Published via notebook" : access.label}
+              </Pill>
+            )}
+            <span className="text-muted-foreground truncate text-xs tabular-nums">
+              {showKind ? `${KIND_NAME[row.kind]} · ` : null}
+              {formatDate(row.updatedAt)}
+            </span>
+          </span>
+        </span>
+      </Link>
+      {actions ? (
+        <div className="absolute top-2 right-2 opacity-100 transition-opacity lg:opacity-0 lg:group-focus-within:opacity-100 lg:group-hover:opacity-100">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label={`Actions for ${row.title || "Untitled"}`}
+                className="bg-background/95 size-8 shadow-sm"
+              >
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem asChild>
+                <Link href={href}>
+                  <ArrowUpRight className="size-4" />
+                  Open
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={act.openAnalytics}>
+                <BarChart3 className="size-4" />
+                Analytics
+              </DropdownMenuItem>
+              {row.kind !== "notebook" ? (
+                <DropdownMenuItem onSelect={act.openMove}>
+                  <FolderInput className="size-4" />
+                  Move to notebook
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                onSelect={act.openDelete}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="size-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ) : null}
+      {act.dialogs}
+    </li>
+  );
+}
+
+/* ───────────── Table / grid toggle ───────────── */
+
+type ListView = "table" | "grid";
+
+/** The reader's choice for this list (by noun), remembered in this browser. */
+function useListView(noun: string): [ListView, (v: ListView) => void] {
+  const key = `octonote:list-view:${noun}`;
+  const [view, setView] = useState<ListView>("table");
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(key) === "grid") setView("grid");
+    } catch {
+      // Storage blocked: stay on the table.
+    }
+  }, [key]);
+  return [
+    view,
+    (v) => {
+      setView(v);
+      try {
+        localStorage.setItem(key, v);
+      } catch {
+        // Not remembered; fine for this visit.
+      }
+    },
+  ];
+}
+
+function ViewToggle({
+  value,
+  onChange,
+}: {
+  value: ListView;
+  onChange: (v: ListView) => void;
+}) {
+  const options: [ListView, string, typeof List][] = [
+    ["table", "Table view", List],
+    ["grid", "Grid view", LayoutGrid],
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="View"
+      className="bg-muted flex h-9 items-center gap-0.5 rounded-lg p-[3px]"
+    >
+      {options.map(([v, label, Icon]) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={value === v}
+          aria-label={label}
+          title={label}
+          onClick={() => onChange(v)}
+          className={cn(
+            "grid h-full w-8 place-items-center rounded-md transition-colors",
+            value === v
+              ? "bg-background text-foreground-strong shadow-sm"
+              : "text-muted-foreground hover:text-foreground-strong",
+          )}
+        >
+          <Icon className="size-4" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function pageRows0Empty(rows: LibraryRow[], filter: Filter) {
+  return !rows.some((r) => matches(r, filter));
 }
 
 function Pill({

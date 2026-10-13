@@ -14,6 +14,8 @@ export interface NotebookDto extends SharingDto {
   createdAt: string;
   updatedAt: string;
   sharedCount?: number;
+  /** Live items inside, by kind (list endpoint only). */
+  counts?: { notes: number; canvases: number; projects: number };
 }
 
 export interface NotebookContentsDto {
@@ -34,5 +36,6 @@ export function notebookToDto(notebook: Notebook, myRole?: Role): NotebookDto {
     createdAt: notebook.createdAt.toISOString(),
     updatedAt: notebook.updatedAt.toISOString(),
     ...(notebook.sharedCount !== undefined ? { sharedCount: notebook.sharedCount } : {}),
+    ...(notebook.counts ? { counts: notebook.counts } : {}),
   };
 }

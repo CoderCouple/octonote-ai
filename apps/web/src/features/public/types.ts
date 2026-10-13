@@ -34,8 +34,22 @@ export interface PublicNotebook {
   kind: "notebook";
   id: string;
   name: string;
-  items: { kind: PublicKind; id: string; title: string; updatedAt: string }[];
+  items: PublicNotebookItem[];
   updatedAt: string;
+}
+
+/** A notebook item, with what its grid card / list row shows. */
+export interface PublicNotebookItem {
+  kind: PublicKind;
+  id: string;
+  title: string;
+  updatedAt: string;
+  /** Canvas thumbnail (a project's comes from its canvas); null for notes. */
+  thumbnailUrl: string | null;
+  /** The opening of the note (a project's own note), plain text. */
+  excerpt: string | null;
+  /** Reading time; null for canvases. */
+  minutes: number | null;
 }
 
 export type PublicResource =

@@ -203,6 +203,8 @@ export const NotebookSchema = z.object({
   updatedAt: z.string(),
   /** Live per-person grants; list endpoints only. */
   sharedCount: z.number().optional(),
+  /** Live items inside, by kind (list endpoint only). */
+  counts: z.object({ notes: z.number(), canvases: z.number(), projects: z.number() }).optional(),
 });
 
 // =============================================================================
@@ -239,6 +241,8 @@ export const ProjectSchema = z.object({
   /** Set by list endpoints only; undefined on single-resource fetches. */
   hasNote: z.boolean().optional(),
   hasCanvas: z.boolean().optional(),
+  /** The project canvas's thumbnail (list endpoints only). */
+  thumbnailUrl: z.string().nullable().optional(),
   /** Set by list endpoints only. */
   creator: z.object({ id: z.string(), name: z.string(), email: z.string() }).nullable().optional(),
   /** Live per-person grants; list endpoints only. */

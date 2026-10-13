@@ -22,6 +22,8 @@ export interface ProjectDto extends SharingDto {
   archivedAt: string | null;
   hasNote?: boolean;
   hasCanvas?: boolean;
+  /** The project canvas's thumbnail (list endpoints only). */
+  thumbnailUrl?: string | null;
   creator?: CreatorDto | null;
   sharedCount?: number;
 }
@@ -42,6 +44,7 @@ export function projectToDto(project: Project, myRole?: Role): ProjectDto {
     archivedAt: project.archivedAt ? project.archivedAt.toISOString() : null,
     ...(project.hasNote !== undefined ? { hasNote: project.hasNote } : {}),
     ...(project.hasCanvas !== undefined ? { hasCanvas: project.hasCanvas } : {}),
+    ...(project.thumbnailUrl !== undefined ? { thumbnailUrl: project.thumbnailUrl } : {}),
     ...(project.creator !== undefined ? { creator: project.creator as CreatorDto | null } : {}),
     ...(project.sharedCount !== undefined ? { sharedCount: project.sharedCount } : {}),
   };

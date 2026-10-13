@@ -22,6 +22,8 @@ export interface Project extends SharingState {
   /** List-endpoint enrichment; undefined on single-project fetches. */
   hasNote?: boolean;
   hasCanvas?: boolean;
+  /** The project canvas's thumbnail; list endpoints only. */
+  thumbnailUrl?: string | null;
   creator?: CreatorSummary | null;
   /** Live per-person grants; list endpoints only. */
   sharedCount?: number;
@@ -31,6 +33,7 @@ export function toProject(
   row: typeof projects.$inferSelect & {
     hasNote?: boolean;
     hasCanvas?: boolean;
+    thumbnailUrl?: string | null;
     creator?: CreatorSummary | null;
     sharedCount?: number;
   },
@@ -50,6 +53,7 @@ export function toProject(
     archivedAt: row.archivedAt,
     ...(row.hasNote !== undefined ? { hasNote: row.hasNote } : {}),
     ...(row.hasCanvas !== undefined ? { hasCanvas: row.hasCanvas } : {}),
+    ...(row.thumbnailUrl !== undefined ? { thumbnailUrl: row.thumbnailUrl } : {}),
     ...(row.creator !== undefined ? { creator: row.creator } : {}),
     ...(row.sharedCount !== undefined ? { sharedCount: Number(row.sharedCount) } : {}),
   };
