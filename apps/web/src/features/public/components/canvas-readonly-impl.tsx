@@ -76,6 +76,8 @@ export function CanvasReadOnlyImpl({
   useTldrawTheme(editor);
   // No figures to navigate by: show an overview of the whole canvas instead.
   const [hasFigures, setHasFigures] = useState(true);
+  // …and only while part of the canvas is off screen (when it all fits, it'd just cover the drawing).
+  const [offScreen, setOffScreen] = useState(false);
 
   function onMount(editor: Editor) {
     setEditor(editor);
@@ -134,6 +136,8 @@ export function CanvasReadOnlyImpl({
         }
       }
       onViewChange?.({ zoom, activeFigureId: active });
+      const content = editor.getCurrentPageBounds();
+      setOffScreen(Boolean(content && !view.contains(content)));
     };
     // Camera moves are session-scoped store changes.
     editor.store.listen(report, { scope: "session" });
@@ -168,7 +172,7 @@ export function CanvasReadOnlyImpl({
           shapeUtils={SHAPE_UTILS}
         >
           {/* Desktop only, above the zoom controls; click or drag it to move around. */}
-          {!hasFigures && editor && editor.getCurrentPageShapeIds().size > 0 ? (
+          {!hasFigures && offScreen ? (
             <div
               aria-label="Canvas overview"
               className="bg-background absolute right-6 bottom-30 z-[300] hidden h-36 w-56 overflow-hidden rounded-xl border shadow-md lg:block [&_.tlui-minimap]:!h-full [&_.tlui-minimap]:!w-full"

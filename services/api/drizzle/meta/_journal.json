@@ -64,6 +64,13 @@
       "when": 1791914835656,
       "tag": "0008_resource_votes",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791931066255,
+      "tag": "0009_cli_tokens",
+      "breakpoints": true
     }
   ]
 }

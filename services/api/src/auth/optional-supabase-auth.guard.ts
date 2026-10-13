@@ -1,6 +1,8 @@
 import { CanActivate, ExecutionContext, Inject, Injectable } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { buildIdFromUuid } from "@octonote/shared";
+import { isCliToken, userForCliToken } from "./cli-token-user";
 import { SUPABASE_CLIENT } from "./supabase.tokens";
 
 export interface OptionalAuthRequest {
@@ -15,7 +17,10 @@ export interface OptionalAuthRequest {
  */
 @Injectable()
 export class OptionalSupabaseAuthGuard implements CanActivate {
-  constructor(@Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient) {}
+  constructor(
+    @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
+    private readonly moduleRef: ModuleRef,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<OptionalAuthRequest>();
@@ -23,6 +28,10 @@ export class OptionalSupabaseAuthGuard implements CanActivate {
     const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : undefined;
     if (!token) return true;
     try {
+      if (isCliToken(token)) {
+        request.user = (await userForCliToken(this.moduleRef, token)) ?? undefined;
+        return true;
+      }
       const { data, error } = await this.supabase.auth.getUser(token);
       if (!error && data.user) {
         request.user = { ...data.user, id: buildIdFromUuid("usr", data.user.id) };

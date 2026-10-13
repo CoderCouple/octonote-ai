@@ -11,6 +11,10 @@ import { FiguresController } from "../api/v1/controller/figures.controller";
 import { FiguresService } from "../service/figures.service";
 import { VotesService } from "../service/votes.service";
 import { CanvasesController } from "../api/v1/controller/canvases.controller";
+import { CliTokensController } from "../api/v1/controller/cli-tokens.controller";
+import { NoteMarkdownController } from "../api/v1/controller/note-markdown.controller";
+import { NoteMarkdownService } from "../service/note-markdown.service";
+import { CanvasDiagramService } from "../service/canvas-diagram.service";
 import { ChangeEventsController } from "../api/v1/controller/change-events.controller";
 import { NotebooksController } from "../api/v1/controller/notebooks.controller";
 import { PagesController } from "../api/v1/controller/pages.controller";
@@ -42,6 +46,8 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     BillingController,
     BillingWebhookController,
     FiguresController,
+    CliTokensController,
+    NoteMarkdownController,
   ],
   providers: [
     NotebooksService,
@@ -56,6 +62,8 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     BillingService,
     FiguresService,
     VotesService,
+    NoteMarkdownService,
+    CanvasDiagramService,
     {
       provide: STRIPE_CLIENT,
       useFactory: () =>

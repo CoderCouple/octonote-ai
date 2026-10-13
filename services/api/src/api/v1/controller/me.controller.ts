@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Patch, Req, UseGuards } from "@nestjs/co
 import { z } from "zod";
 import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
+import { requireWebSession } from "../../../common/require-web-session";
 import { ZodValidationPipe } from "../../../common/zod-validation.pipe";
 import { AccountService } from "../../../service/account.service";
 import { MeService } from "../../../service/me.service";
@@ -49,6 +50,7 @@ export class MeController {
     @Body(new ZodValidationPipe(DeleteAccountSchema)) body: { confirmEmail: string },
     @Req() req: AuthenticatedRequest,
   ): Promise<{ deleted: true }> {
+    requireWebSession(req, "Deleting your account");
     await this.account.deleteAccount(req.user.id, req.user.email ?? "", body.confirmEmail);
     return { deleted: true };
   }

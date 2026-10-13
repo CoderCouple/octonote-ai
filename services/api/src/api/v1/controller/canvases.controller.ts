@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import type { OptionalAuthRequest } from "../../../auth/optional-supabase-auth.guard";
 import { OptionalSupabaseAuthGuard } from "../../../auth/optional-supabase-auth.guard";
@@ -6,8 +6,11 @@ import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
 import { ZodValidationPipe } from "../../../common/zod-validation.pipe";
 import type { CanvasSummaryRow } from "../../../db/repository/canvases.repository";
+import { CanvasDiagramService } from "../../../service/canvas-diagram.service";
 import { CanvasesService } from "../../../service/canvases.service";
 import {
+  CanvasMermaidSchema,
+  type CanvasMermaid,
   CanvasCreateSchema,
   CanvasUpdateSchema,
   type CanvasCreate,
@@ -24,7 +27,10 @@ function summaryToDto(r: CanvasSummaryRow): CanvasSummaryDto {
 
 @Controller()
 export class CanvasesController {
-  constructor(private readonly canvases: CanvasesService) {}
+  constructor(
+    private readonly canvases: CanvasesService,
+    private readonly diagrams: CanvasDiagramService,
+  ) {}
 
   /** Standalone canvases (not owned by a project), each with its notebookId. */
   @Get("workspaces/:workspaceId/canvases")
@@ -53,7 +59,22 @@ export class CanvasesController {
     @Body(new ZodValidationPipe(CanvasCreateSchema)) body: CanvasCreate,
     @Req() req: AuthenticatedRequest,
   ): Promise<CanvasDto> {
-    return canvasToDto(await this.canvases.create(workspaceId, body, req.user.id), "owner");
+    // With `mermaid` (CLI / agents) the canvas starts drawn.
+    const canvas = body.mermaid
+      ? await this.diagrams.create(workspaceId, body, req.user.id)
+      : await this.canvases.create(workspaceId, body, req.user.id);
+    return canvasToDto(canvas, "owner");
+  }
+
+  /** Redraw from a mermaid flowchart (replaces the canvas content). */
+  @Put("canvases/:id/mermaid")
+  @UseGuards(SupabaseAuthGuard)
+  async redraw(
+    @Param("id", IdParam) id: string,
+    @Body(new ZodValidationPipe(CanvasMermaidSchema)) body: CanvasMermaid,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<CanvasDto> {
+    return canvasToDto(await this.diagrams.replace(id, body.mermaid, body.title, req.user.id));
   }
 
   /** Optional auth: "anyone with the link" works for signed-out visitors. */

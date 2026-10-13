@@ -5,6 +5,7 @@ import { OptionalSupabaseAuthGuard } from "../../../auth/optional-supabase-auth.
 import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
 import { ZodValidationPipe } from "../../../common/zod-validation.pipe";
+import { NoteMarkdownService } from "../../../service/note-markdown.service";
 import { PagesService } from "../../../service/pages.service";
 import { MoveToNotebookSchema, type MoveToNotebook } from "../request/notebook.request";
 import {
@@ -19,7 +20,10 @@ const IdParam = new ZodValidationPipe(z.string().min(1).max(64));
 
 @Controller()
 export class PagesController {
-  constructor(private readonly pages: PagesService) {}
+  constructor(
+    private readonly pages: PagesService,
+    private readonly noteMarkdown: NoteMarkdownService,
+  ) {}
 
   /** Standalone notes (not owned by a project), each with its notebookId. */
   @Get("workspaces/:workspaceId/pages")
@@ -43,7 +47,11 @@ export class PagesController {
     @Body(new ZodValidationPipe(PageCreateSchema)) body: PageCreate,
     @Req() req: AuthenticatedRequest,
   ): Promise<PageDto> {
-    return pageToDto(await this.pages.create(workspaceId, body, req.user.id), "owner");
+    // With `markdown` (CLI / agents) the note starts filled in.
+    const page = body.markdown
+      ? await this.noteMarkdown.create(workspaceId, body, req.user.id)
+      : await this.pages.create(workspaceId, body, req.user.id);
+    return pageToDto(page, "owner");
   }
 
   /** Optional auth: "anyone with the link" works for signed-out visitors. */

@@ -254,10 +254,22 @@ export const ProjectSchema = z.object({
 // =============================================================================
 
 /** Standalone note. A project's note is created with its project. */
+/** Markdown accepted by the API (CLI / agents); about 2 MB of text. */
+export const NoteMarkdownSchema = z.string().max(2_000_000);
+
 export const PageCreateSchema = z.object({
   title: z.string().min(1).max(120).default("Untitled"),
   notebookId: NotebookIdSchema.optional(),
+  /** Optional starting content, converted to note blocks by the API. */
+  markdown: NoteMarkdownSchema.optional(),
 });
+
+/** PUT /pages/:id/markdown (replace) and POST /pages/:id/markdown/append. */
+export const PageMarkdownSchema = z.object({
+  markdown: NoteMarkdownSchema,
+  title: z.string().min(1).max(120).optional(),
+});
+export type PageMarkdown = z.infer<typeof PageMarkdownSchema>;
 
 export const PageUpdateSchema = z.object({
   title: z.string().min(1).max(120).optional(),
@@ -286,10 +298,22 @@ export const PageSchema = z.object({
 // =============================================================================
 
 /** Standalone canvas. A project's canvas is created with its project. */
+/** A mermaid flowchart the API lays out as a canvas (CLI / agents). */
+export const CanvasMermaidSourceSchema = z.string().min(1).max(200_000);
+
 export const CanvasCreateSchema = z.object({
   title: z.string().min(1).max(120).default("Untitled canvas"),
   notebookId: NotebookIdSchema.optional(),
+  /** Optional starting diagram: a mermaid flowchart, drawn as real shapes. */
+  mermaid: CanvasMermaidSourceSchema.optional(),
 });
+
+/** PUT /canvases/:id/mermaid — redraw the canvas from a flowchart. */
+export const CanvasMermaidSchema = z.object({
+  mermaid: CanvasMermaidSourceSchema,
+  title: z.string().min(1).max(120).optional(),
+});
+export type CanvasMermaid = z.infer<typeof CanvasMermaidSchema>;
 
 export const CanvasUpdateSchema = z.object({
   title: z.string().min(1).max(120).optional(),

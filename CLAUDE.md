@@ -56,6 +56,8 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - **View analytics for published pages** (added 2026-10-09, user decision): anonymous hourly views + daily unique visitors (`resource_views`; uniques via Plausible-style daily-rotating salt hash of account id or IP+UA, salt and hashes deleted daily), bots/link previews and the item's own owners/editors skipped, nothing about the visitor stored; owners + editors see a chart in the list's Analytics panel. No third-party analytics, no visitor tracking.
 - **Billing — Free + Pro** (added 2026-10-12, user decision). Billing belongs to the **workspace** (individuals/creators upgrade their personal one; a per-member **Team** plan, a **Creator** plan and a separate **AI** plan come later — `workspace_billing.plan` is free text so they slot in). **Free:** 10 notes, 10 canvases, 10 projects, 10 notebooks per workspace (a project's own note/canvas don't count; deleted/archived free a slot) and **one owned workspace**. **Pro:** $10/mo or $100/yr, unlimited. Constants in `packages/shared/src/billing.ts`. Enforced server-side in every create (`PlanLimitsService.assertCanCreate` → HTTP 402 `PLAN_LIMIT`) — **only when `STRIPE_SECRET_KEY` is set**. Clients turn 402 into the upgrade prompt; once *any* kind is at its limit the prompt also appears proactively, at most once a day per workspace. Payment = Stripe Checkout + Billing Portal on the **web only**; webhook `POST /billing/webhook` mirrors subscriptions into `workspace_billing`. Mobile never sells: "See plans" opens the web page (re-check App Store/Play rules on linking out before store submission).
 - **Students get Pro free for 12 months**: first sign-in with an email whose domain ends in a row of the **`student_email_suffixes`** table (seeded with `edu`; add rows like `ac.uk` in Supabase Studio — no deploy; `enabled = false` retires one; `id` defaults to `sfx_<uuid>` in SQL) sets `users.student_pro_until`; never extended; covers workspaces they own.
+- **`octonote` CLI for agents** (added 2026-10-13, user decision — "the last interface and a very important one"): `packages/cli` (`@octonote/cli`, bin `octonote`) lets Claude Code / Codex / scripts create, read and edit notes (markdown), draw canvases from mermaid flowcharts, manage projects/notebooks, publish and share. Talks only to the public API (own small HTTP client, no private workspace deps, so it can ship to npm). JSON when piped, stable error codes + exit codes, never prompts. Auth: `octonote login` → `/cli/connect` (Authorize) → token handed to a 127.0.0.1 listener (paste fallback); or `OCTONOTE_TOKEN` from Settings → CLI & agents. Tokens (`cli_tokens`, `ont_…`, SHA-256 at rest) work in both auth guards and can't mint tokens or delete the account (`requireWebSession`). Agents learn it via `octonote guide` / `octonote setup claude|codex` (+ `--skill`); the guide text lives in `packages/cli/src/guide/agent-guide.ts`.
+- **Content formats live in `packages/content`** (`@octonote/content`): markdown ⇄ note blocks (the editor's paste importer, the API's `/pages/:id/markdown` routes and the CLI all use it) and mermaid flowchart → tldraw canvas (dagre layout, validated by tldraw's schema; pinned to the web app's tldraw version — a test fails on drift). Server-only parts are in `@octonote/content/server`, which loads BlockNote's ES build with a native import (its CJS build is broken in Node).
 - **Grid / list views** (added 2026-10-13, user decision): every library list (web Notes/Canvases/Projects/Notebooks/notebook view, mobile tabs + notebook page) and the published notebook toggle between table/list and a grid of cards, remembered per list per device. Cards show the canvas thumbnail (a project's canvas), a note's opening lines, or a notebook's item counts. Canvases missing a thumbnail get one from `ThumbnailBackfill` when a web list shows them.
 - **Title search** (added 2026-10-12, user decision): a search field on Home (web + mobile) that finds notes, canvases, projects and notebooks by name. Full-text search stays v2.
 - Auth (Supabase: email + Google OAuth)
@@ -72,7 +74,7 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - Export (PDF / PNG)
 - Custom eraser-style DSL
 - Mind maps, flashcards, charts, live code, infographics — all the overload-triggers from the prior MVP
-- Desktop app, CLI
+- Desktop app (the CLI moved into v1 on 2026-10-13)
 - Voice / transcription / meetings
 - AI agents
 
@@ -100,6 +102,8 @@ services/
 packages/
   shared       Zod schemas + ID helpers (ported from octo-focus-ai as-is)
   api-client   Typed client for services/api — imported by web and mobile
+  content      Markdown ⇄ note blocks, mermaid → canvas (web, API, CLI share it)
+  cli          `octonote` CLI for people and agents (public API only)
 supabase/      SQL migrations + minimal RLS. Supabase = identity + storage
                + Postgres. Business logic lives in services/api, never in RLS.
 ```

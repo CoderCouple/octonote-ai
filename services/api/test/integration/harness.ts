@@ -24,6 +24,10 @@ import { UserPreferencesRepository } from "../../src/db/repository/user-preferen
 import { WorkspaceMembersRepository } from "../../src/db/repository/workspace-members.repository";
 import { WorkspacesRepository } from "../../src/db/repository/workspaces.repository";
 import { UsersRepository } from "../../src/db/repository/users.repository";
+import { CliTokensRepository } from "../../src/db/repository/cli-tokens.repository";
+import { CliTokensService } from "../../src/service/cli-tokens.service";
+import { NoteMarkdownService } from "../../src/service/note-markdown.service";
+import { CanvasDiagramService } from "../../src/service/canvas-diagram.service";
 import * as schema from "../../src/db/schema";
 import { CanvasesService } from "../../src/service/canvases.service";
 import { ChangeEventsReaderService } from "../../src/service/change-events-reader.service";
@@ -148,6 +152,7 @@ export async function createHarness() {
   const workspaces = new WorkspacesService(db, workspacesRepo, membersRepo, changeEvents, planLimits);
 
   const services = {
+    cliTokens: new CliTokensService(new CliTokensRepository(db), new UsersRepository(db)),
     permissions,
     workspaces,
     pages: new PagesService(pagesRepo, permissions, placement, workspaces, changeEvents, planLimits),
@@ -232,7 +237,9 @@ export async function createHarness() {
     };
   }
 
-  return { pg, db, email, supabase, stripe, signIn, ...services };
+  const noteMarkdown = new NoteMarkdownService(services.pages);
+  const canvasDiagrams = new CanvasDiagramService(services.canvases);
+  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

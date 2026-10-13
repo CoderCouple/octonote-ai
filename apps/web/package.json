@@ -21,6 +21,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.4.0",
     "@octonote/api-client": "workspace:*",
+    "@octonote/content": "workspace:*",
     "@octonote/design-tokens": "workspace:*",
     "@octonote/shared": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.17",
