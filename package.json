@@ -12,7 +12,8 @@
     "format": "prettier . --write",
     "dev:user": "node scripts/dev-user.mjs",
     "dev:ip": "node scripts/dev-ip.mjs",
-    "mobile:env": "node scripts/mobile-env.mjs"
+    "mobile:env": "node scripts/mobile-env.mjs",
+    "cli:pack": "node scripts/pack-cli.mjs"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

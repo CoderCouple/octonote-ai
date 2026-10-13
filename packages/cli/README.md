@@ -6,7 +6,7 @@ mermaid flowcharts, organise them in notebooks, publish and share — all
 through the same API the app uses, with your permissions.
 
 ```bash
-npm i -g @octonote/cli
+npm i -g https://octonote.ai/cli/octonote-cli.tgz
 octonote login                 # opens the browser; click Authorize
 octonote setup claude          # or: octonote setup codex — teaches your agent
 ```
