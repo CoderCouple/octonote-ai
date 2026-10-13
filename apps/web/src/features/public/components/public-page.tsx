@@ -33,6 +33,7 @@ import {
   NotebookRail,
   type NotebookContext,
 } from "./notebook-nav";
+import { PublishedCanvas } from "./published-canvas";
 import { ReaderBar } from "./reader-bar";
 import { VoteButtons, VotesProvider } from "./votes";
 import { CanvasReadOnly } from "./canvas-readonly";
@@ -78,17 +79,13 @@ export function PublicPage({
       );
     case "canvas":
       return (
-        <div className="flex h-[calc(100svh-3.5rem)] flex-col">
-          <div className="flex items-center gap-3 border-b px-4 py-3 md:px-6">
-            {back ? <div className="[&>a]:mb-0">{back}</div> : null}
-            <h1 className="truncate text-lg font-semibold">
-              {resource.title || "Untitled canvas"}
-            </h1>
-          </div>
-          <div className="flex-1">
-            <CanvasReadOnly initialDocument={resource.document} />
-          </div>
-        </div>
+        <PublishedCanvas
+          canvas={resource}
+          slug={root.slug}
+          byline={view.byline}
+          notebook={notebook}
+          back={back}
+        />
       );
     case "project":
       return (
@@ -311,7 +308,7 @@ function Avatar({
         box,
       )}
     >
-      {author ? initials(author.name) : <Focus className="size-1/2" />}
+      {author?.name ? initials(author.name) : <Focus className="size-1/2" />}
     </span>
   );
 }
@@ -331,7 +328,7 @@ function Byline({
       {/* Phones: one compact line. */}
       <div className="text-muted-foreground mt-4 flex items-center gap-2 text-sm md:hidden">
         <Avatar author={author} size="sm" />
-        {author ? (
+        {author?.name ? (
           <span className="text-foreground-strong font-semibold">
             {author.name}
           </span>
@@ -343,7 +340,7 @@ function Byline({
       <div className="mt-8 hidden items-center gap-3 md:flex">
         <Avatar author={author} size="md" />
         <div className="flex flex-col">
-          {author ? (
+          {author?.name ? (
             <span className="text-foreground-strong text-[15px] font-semibold">
               {author.name}
             </span>
@@ -405,7 +402,7 @@ function EndOfArticle({
         <VoteButtons size="lg" variant="wide" />
       </div>
 
-      {author ? (
+      {author?.name ? (
         <div className="flex items-center gap-4 rounded-2xl border p-5 md:p-6">
           <Avatar author={author} size="lg" />
           <div className="flex min-w-0 flex-col gap-0.5">

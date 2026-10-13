@@ -353,6 +353,7 @@ function AccountSection({
           </div>
         </div>
       </Row>
+      <DisplayNameRow name={user.name} email={user.email} />
       <Row
         label="Email"
         description="Change requires re-verifying via your identity provider."
@@ -373,6 +374,64 @@ function AccountSection({
         </Button>
       </Row>
     </SectionShell>
+  );
+}
+
+/** Your display name: shown in the app and as the author on published pages. */
+function DisplayNameRow({ name, email }: { name: string; email: string }) {
+  const router = useRouter();
+  const [value, setValue] = useState(name);
+  const [saving, setSaving] = useState(false);
+  // Accounts without a name start as the email's first part, which is never published.
+  const placeholderName = name === email.split("@")[0];
+  const dirty = value.trim() !== "" && value.trim() !== name;
+
+  async function save() {
+    if (!dirty) return;
+    setSaving(true);
+    try {
+      await clientApi.patch("/me", { name: value.trim() });
+      toast.success("Name updated.");
+      router.refresh();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't update your name.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Row
+      label="Name"
+      description={
+        placeholderName
+          ? "Not set yet — published pages show no author name until you add one."
+          : "Shown in the app and as the author on pages you publish."
+      }
+    >
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
+        <Input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          maxLength={80}
+          aria-label="Your name"
+          placeholder="Your name"
+          disabled={saving}
+        />
+        <Button type="submit" disabled={!dirty || saving}>
+          {saving ? <Loader2 className="size-4 animate-spin" /> : null}
+          Save
+        </Button>
+      </form>
+    </Row>
   );
 }
 

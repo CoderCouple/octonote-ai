@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../database.module";
 import { analyticsSalts, resourceViews, visitorHashes } from "../schemas/analytics";
+import { resourceVotes } from "../schemas/votes";
 import type { ResourceKind } from "../../model/sharing.model";
 
 export type BucketUnit = "hour" | "day" | "week" | "month";
@@ -89,6 +90,18 @@ export class ViewsRepository {
       visitors: Number(row?.visitors ?? 0),
       lastHour: last ? new Date(last) : null,
     };
+  }
+
+  /** All-time up/down votes on a published item. */
+  async votes(kind: ResourceKind, id: string): Promise<{ up: number; down: number }> {
+    const [row] = await this.db
+      .select({
+        up: sql<number>`count(*) filter (where ${resourceVotes.value} = 1)::int`,
+        down: sql<number>`count(*) filter (where ${resourceVotes.value} = -1)::int`,
+      })
+      .from(resourceVotes)
+      .where(and(eq(resourceVotes.resourceKind, kind), eq(resourceVotes.resourceId, id)));
+    return { up: Number(row?.up ?? 0), down: Number(row?.down ?? 0) };
   }
 
   private sums() {

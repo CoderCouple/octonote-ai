@@ -39,6 +39,8 @@ export interface Analytics {
   allTime: number;
   allTimeVisitors: number;
   lastViewedAt: Date | null;
+  /** All-time reader votes on the published page. */
+  votes: { up: number; down: number };
 }
 
 /** Who opened a published page, as far as the counter needs to know. */
@@ -123,10 +125,11 @@ export class AnalyticsService {
     const end = stepUtc(truncUtc(now, unit), unit, 1);
     const start = stepUtc(end, unit, -count);
     const prevStart = stepUtc(start, unit, -count);
-    const [series, previous, life] = await Promise.all([
+    const [series, previous, life, votes] = await Promise.all([
       this.views.series(kind, id, unit, start, end),
       this.views.total(kind, id, prevStart, start),
       this.views.lifetime(kind, id),
+      this.views.votes(kind, id),
     ]);
     const buckets = Array.from({ length: count }, (_, i) => {
       const s = stepUtc(start, unit, i);
@@ -144,6 +147,7 @@ export class AnalyticsService {
       allTime: life.views,
       allTimeVisitors: life.visitors,
       lastViewedAt: life.lastHour,
+      votes,
     };
   }
 

@@ -242,6 +242,16 @@ function Body({ target }: { target: AnalyticsTarget }) {
               a ? (a.lastViewedAt ? relative(a.lastViewedAt) : "Never") : null
             }
           />
+          <Tile
+            label="Upvotes"
+            value={a ? a.votes.up.toLocaleString() : null}
+            hint="All time"
+          />
+          <Tile
+            label="Downvotes"
+            value={a ? a.votes.down.toLocaleString() : null}
+            hint="All time"
+          />
         </div>
 
         <p className="text-muted-foreground text-xs leading-relaxed">

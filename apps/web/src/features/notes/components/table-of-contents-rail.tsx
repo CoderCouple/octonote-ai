@@ -14,8 +14,10 @@ import { cn } from "@/lib/utils";
  *     level (H1 widest → H3 narrowest); the active heading is drawn in
  *     the foreground colour.
  *   - Hovered: expands into a scrollable menu of heading text, again
- *     with the active heading highlighted. Fires `onHoverChange` so the
- *     parent can hide the notes-area scrollbar while the rail is open.
+ *     with the active heading highlighted.
+ *
+ * The notes pane hides its native scrollbar: this rail is the scrollbar
+ * (the dark bar follows your scroll position), same as the published page.
  *
  * Positioning: the rail is `position: absolute` — its parent must be
  * the *non-scrolling* wrapper of the notes editor so the rail stays
@@ -27,7 +29,7 @@ interface TableOfContentsRailProps {
   editor: BlockNoteEditor<never, never, never>;
   /**
    * The scrollable container hosting the editor. Used as the
-   * IntersectionObserver root and for smooth-scrolling on click, so
+   * scroll-spy source and for smooth-scrolling on click, so
    * scroll-spy works when the rail lives outside that container.
    */
   scrollRef?: RefObject<HTMLElement | null>;
@@ -139,34 +141,45 @@ export function TableOfContentsRail({
     });
   }, [editor]);
 
-  // Scroll-spy. `rootMargin` pushes the activation line ~30% down the
-  // container so the highlighted entry reads as "the section I'm in".
+  // Scroll-spy: on every scroll of the notes pane (rAF-throttled) the last
+  // heading above the activation line — 30% down the pane — is active, so
+  // the dark bar moves with you like a scrollbar thumb. At the very bottom
+  // the last heading wins even if it never reaches the line.
   useEffect(() => {
-    if (headings.length < minHeadings) {
+    const container = scrollRef?.current;
+    if (!container || headings.length < minHeadings) {
       setActiveId(null);
       return;
     }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length === 0) return;
-        const top = visible.reduce((a, b) =>
-          a.boundingClientRect.top < b.boundingClientRect.top ? a : b,
-        );
-        const id = top.target.getAttribute("data-id");
-        if (id) setActiveId(id);
-      },
-      {
-        root: scrollRef?.current ?? null,
-        rootMargin: "0px 0px -70% 0px",
-        threshold: 0,
-      },
-    );
-    for (const h of headings) {
-      const el = document.querySelector(`[data-id="${h.id}"]`);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
+    let frame = 0;
+    const compute = () => {
+      frame = 0;
+      const box = container.getBoundingClientRect();
+      const line = box.top + box.height * 0.3;
+      let active: string | null = headings[0]?.id ?? null;
+      for (const h of headings) {
+        const el = container.querySelector(`[data-id="${h.id}"]`);
+        if (el && el.getBoundingClientRect().top <= line) active = h.id;
+      }
+      if (
+        container.scrollTop + container.clientHeight >=
+        container.scrollHeight - 4
+      ) {
+        active = headings[headings.length - 1]?.id ?? active;
+      }
+      setActiveId(active);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(compute);
+    };
+    compute();
+    container.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [headings, minHeadings, scrollRef]);
 
   const visibleHeadings = useMemo(

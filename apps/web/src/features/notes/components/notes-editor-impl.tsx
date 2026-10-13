@@ -212,7 +212,6 @@ export function NotesEditor({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [figurePickerOpen, setFigurePickerOpen] = useState(false);
   const [rawMd, setRawMd] = useState("");
-  const [tocHovered, setTocHovered] = useState(false);
 
   useEffect(
     () => () => {
@@ -337,7 +336,8 @@ export function NotesEditor({
       >
         <div
           ref={scrollRef}
-          className={`h-full overflow-auto ${tocHovered ? "hide-scrollbar" : ""}`}
+          // The heading minimap on the right is the scrollbar, so hide the native one.
+          className="hide-scrollbar h-full overflow-auto"
         >
           {view === "raw" ? null : header}
           <div className={view === "raw" ? "hidden" : "contents"}>
@@ -373,11 +373,7 @@ export function NotesEditor({
           ) : null}
         </div>
         {view === "edit" ? (
-          <TableOfContentsRail
-            editor={editor as never}
-            scrollRef={scrollRef}
-            onHoverChange={setTocHovered}
-          />
+          <TableOfContentsRail editor={editor as never} scrollRef={scrollRef} />
         ) : null}
         {readOnly ? null : (
           <>

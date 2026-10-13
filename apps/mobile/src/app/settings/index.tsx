@@ -84,7 +84,11 @@ export default function Settings() {
             </Text>
           </View>
         </Field>
-        <Field label="Name" description={me?.user.name} />
+        <DisplayName
+          c={c}
+          name={me?.user.name ?? ""}
+          email={me?.user.email ?? ""}
+        />
         <Field label="Email" description={me?.user.email}>
           <CopyButton c={c} value={me?.user.email ?? ""} />
         </Field>
@@ -312,6 +316,77 @@ function NotificationsSection({ c }: { c: Palette }) {
         />
       </Field>
     </Section>
+  );
+}
+
+/** Your display name — shown in the app and as the author on published pages. */
+function DisplayName({
+  c,
+  name,
+  email,
+}: {
+  c: Palette;
+  name: string;
+  email: string;
+}) {
+  const qc = useQueryClient();
+  const [value, setValue] = useState(name);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => setValue(name), [name]);
+  const placeholderName = name !== "" && name === email.split("@")[0];
+  const dirty = value.trim() !== "" && value.trim() !== name;
+
+  async function save() {
+    if (!dirty) return;
+    setSaving(true);
+    try {
+      await api.patch("/me", { name: value.trim() });
+      await qc.invalidateQueries({ queryKey: ["me"] });
+    } catch (e) {
+      Alert.alert(
+        "Couldn't update your name",
+        e instanceof Error ? e.message : String(e),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Field
+      label="Name"
+      description={
+        placeholderName
+          ? "Not set yet — published pages show no author name until you add one."
+          : "Shown in the app and as the author on pages you publish."
+      }
+      stacked
+    >
+      <View style={styles.nameRow}>
+        <TextInput
+          value={value}
+          onChangeText={setValue}
+          editable={!saving}
+          maxLength={80}
+          placeholder="Your name"
+          placeholderTextColor={c.textSubtle}
+          returnKeyType="done"
+          onSubmitEditing={save}
+          accessibilityLabel="Your name"
+          style={[
+            styles.input,
+            { color: c.textStrong, borderColor: c.separator },
+          ]}
+        />
+        <SmallButton
+          c={c}
+          label={saving ? "" : "Save"}
+          busy={saving}
+          disabled={!dirty}
+          onPress={save}
+        />
+      </View>
+    </Field>
   );
 }
 

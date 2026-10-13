@@ -43,7 +43,8 @@ export type PublicResource =
 
 export interface PublicByline {
   /** Display name and avatar only — never an email or id. */
-  author: { name: string; avatarUrl: string | null } | null;
+  /** `name` is null until the author sets one (email-derived names are never shown). */
+  author: { name: string | null; avatarUrl: string | null } | null;
   /** When the published root went public. */
   publishedAt: string | null;
 }

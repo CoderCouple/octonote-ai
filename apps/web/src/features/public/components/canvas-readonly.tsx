@@ -13,3 +13,9 @@ export const CanvasReadOnly = dynamic(
     ),
   },
 );
+
+export type {
+  CanvasFigure,
+  CanvasViewApi,
+  CanvasViewState,
+} from "./canvas-readonly-impl";

@@ -16,6 +16,7 @@ import { ProjectsRepository } from "../db/repository/projects.repository";
 import { SharingRepository, type ShareableRow } from "../db/repository/sharing.repository";
 import { UsersRepository } from "../db/repository/users.repository";
 import type { ResourceKind } from "../model/sharing.model";
+import { emailLocalPart } from "./me.service";
 
 export interface PublicNote {
   kind: "page";
@@ -58,7 +59,7 @@ export type PublicResource = PublicNote | PublicCanvas | PublicProject | PublicN
 
 export interface PublicByline {
   /** Who made the item: display name and avatar only. */
-  author: { name: string; avatarUrl: string | null } | null;
+  author: { name: string | null; avatarUrl: string | null } | null;
   /** When the published root went public. */
   publishedAt: string | null;
 }
@@ -127,8 +128,11 @@ export class PublicService {
     }[kind] as { findById: (id: string) => Promise<{ createdByUserId: string } | null> };
     const row = await repo.findById(id);
     const user = row ? await this.usersRepo.findById(row.createdByUserId) : null;
+    // Never publish an email-derived placeholder name ("sam.lee" from
+    // sam.lee@…): show no name until the author sets one in Settings.
+    const named = user && user.name !== emailLocalPart(user.email) ? user.name : null;
     return {
-      author: user ? { name: user.name, avatarUrl: user.avatarUrl } : null,
+      author: user ? { name: named, avatarUrl: user.avatarUrl } : null,
       publishedAt: root.publishedAt?.toISOString() ?? null,
     };
   }

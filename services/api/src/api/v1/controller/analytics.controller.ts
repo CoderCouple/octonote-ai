@@ -29,6 +29,7 @@ export interface AnalyticsDto {
   allTime: number;
   allTimeVisitors: number;
   lastViewedAt: string | null;
+  votes: { up: number; down: number };
 }
 
 /** Published-page view counts, for owners and editors. */

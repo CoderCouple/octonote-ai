@@ -129,4 +129,13 @@ describe("published page analytics", () => {
     await h.shares.add({ resourceKind: "page", resourceId: note.id, email: bob.email, role: "editor" }, alice);
     expect(await statusOf(h.analytics.get(bob.id, "page", note.id, "7d"))).toBe(200);
   });
+
+  it("includes the page's up/down votes", async () => {
+    const note = await publishedNote();
+    const [row] = await h.db.query.pages.findMany({ where: (p, { eq }) => eq(p.id, note.id), limit: 1 });
+    await h.votes.vote(row!.publicSlug!, "page", note.id, bob.id, 1);
+    const carol = await h.signIn("carol@example.com");
+    await h.votes.vote(row!.publicSlug!, "page", note.id, carol.id, -1);
+    expect((await h.analytics.get(alice.id, "page", note.id, "7d")).votes).toEqual({ up: 1, down: 1 });
+  });
 });

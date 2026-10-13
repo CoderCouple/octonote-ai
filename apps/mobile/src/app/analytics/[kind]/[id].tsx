@@ -213,6 +213,12 @@ export default function AnalyticsScreen() {
                 : undefined
             }
           />
+          <Tile label="Upvotes" value={a?.votes.up.toLocaleString()} hint="All time" />
+          <Tile
+            label="Downvotes"
+            value={a?.votes.down.toLocaleString()}
+            hint="All time"
+          />
         </View>
 
         <View style={[styles.fields, { borderColor: c.separator }]}>

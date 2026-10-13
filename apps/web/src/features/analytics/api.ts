@@ -14,6 +14,8 @@ export interface Analytics {
   previousVisitors: number;
   allTime: number;
   allTimeVisitors: number;
+  /** All-time reader votes on the published page. */
+  votes: { up: number; down: number };
   lastViewedAt: string | null;
 }
 

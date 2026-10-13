@@ -13,7 +13,7 @@
  */
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { emailDomainSuffixes, STUDENT_PRO_MONTHS } from "@octonote/shared";
 import { BadRequest } from "../common/error/error-factory";
 import { Database, DRIZZLE } from "../db/database.module";
@@ -56,6 +56,11 @@ async function isStudentEmail(db: Pick<Database, "select">, email: string): Prom
   return hit.length > 0;
 }
 
+/** The placeholder name a new account gets when its sign-in has no name. */
+export function emailLocalPart(email: string): string {
+  return email.split("@")[0] ?? email;
+}
+
 @Injectable()
 export class MeService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
@@ -65,10 +70,11 @@ export class MeService {
     if (!email) throw BadRequest("Supabase user has no email.");
 
     const meta = supabaseUser.user_metadata ?? {};
+    const emailName = emailLocalPart(email);
     const name =
       (meta.full_name as string | undefined) ??
       (meta.name as string | undefined) ??
-      (email.split("@")[0] ?? email);
+      emailName;
     const avatarUrl = (meta.avatar_url as string | undefined) ?? null;
 
     return this.db.transaction(async (tx) => {
@@ -77,7 +83,14 @@ export class MeService {
         .values({ id: supabaseUser.id, email, name, avatarUrl })
         .onConflictDoUpdate({
           target: users.id,
-          set: { email, name, avatarUrl, updatedAt: new Date() },
+          // Keep a name the user chose in Settings; only fill in a real
+          // provider name over the email-derived placeholder.
+          set: {
+            email,
+            name: sql`case when ${users.name} = ${emailName} then excluded.name else ${users.name} end`,
+            avatarUrl,
+            updatedAt: new Date(),
+          },
         })
         .returning();
       if (!userRow) throw BadRequest("Failed to upsert user.");
@@ -141,5 +154,18 @@ export class MeService {
         })),
       };
     });
+  }
+
+  /** Settings → Account: the name shown everywhere, including published bylines. */
+  async updateName(userId: string, name: string): Promise<User> {
+    const clean = name.trim().replace(/\s+/g, " ");
+    if (clean.length < 1 || clean.length > 80) throw BadRequest("Names are 1–80 characters.");
+    const [row] = await this.db
+      .update(users)
+      .set({ name: clean, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    if (!row) throw BadRequest("Account not found.");
+    return toUser(row);
   }
 }

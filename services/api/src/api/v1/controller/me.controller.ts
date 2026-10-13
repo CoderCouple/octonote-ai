@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Patch, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
@@ -13,6 +13,7 @@ import {
 
 // Defined before the class: decorator arguments run when the class is defined.
 const DeleteAccountSchema = z.object({ confirmEmail: z.string().min(3).max(320) });
+const UpdateMeSchema = z.object({ name: z.string().min(1).max(80) });
 
 @Controller("me")
 @UseGuards(SupabaseAuthGuard)
@@ -31,6 +32,15 @@ export class MeController {
         membershipPairToDto(m.membership, m.workspace),
       ),
     };
+  }
+
+  /** Change your display name (shown in the app and on published pages). */
+  @Patch()
+  async updateMe(
+    @Body(new ZodValidationPipe(UpdateMeSchema)) body: { name: string },
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return userToDto(await this.me.updateName(req.user.id, body.name));
   }
 
   /** Permanently delete the signed-in account. Body: the user's email, typed to confirm. */

@@ -29,10 +29,43 @@ async function slugOf(id: string) {
 }
 
 describe("published byline", () => {
+  it("never shows an email-derived name; a name set in Settings shows and survives sign-in", async () => {
+    const { slug } = await publishedNote();
+    // alice@example.com signed in without a name, so she's "alice" — not published.
+    expect((await h.public.getBySlug(slug)).byline.author?.name).toBeNull();
+
+    await h.me.updateName(alice.id, "  Alice   Smith ");
+    expect((await h.public.getBySlug(slug)).byline.author?.name).toBe("Alice Smith");
+    // Signing in again must not reset it to the provider/email name.
+    await h.me.sync({
+      id: alice.id,
+      email: alice.email,
+      user_metadata: { name: "alice" },
+      app_metadata: {},
+      aud: "authenticated",
+      created_at: new Date().toISOString(),
+    } as never);
+    expect((await h.public.getBySlug(slug)).byline.author?.name).toBe("Alice Smith");
+  });
+
+  it("fills in a real provider name over the email placeholder", async () => {
+    const { slug } = await publishedNote();
+    await h.me.sync({
+      id: alice.id,
+      email: alice.email,
+      user_metadata: { full_name: "Alice Google" },
+      app_metadata: {},
+      aud: "authenticated",
+      created_at: new Date().toISOString(),
+    } as never);
+    expect((await h.public.getBySlug(slug)).byline.author?.name).toBe("Alice Google");
+  });
+
   it("names the author and the publish date, without emails or ids", async () => {
     const { slug } = await publishedNote();
+    await h.me.updateName(alice.id, "Alice Smith");
     const view = await h.public.getBySlug(slug);
-    expect(view.byline.author?.name).toBe(alice.name);
+    expect(view.byline.author?.name).toBe("Alice Smith");
     expect(view.byline.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     const json = JSON.stringify(view);
     expect(json).not.toContain(alice.email);
