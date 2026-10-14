@@ -68,7 +68,7 @@ const SUPABASE_URL = pick("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL") ??
   (isLocal ? "http://127.0.0.1:54321" : "https://xdjeshxjvrbgksgmurnh.supabase.co");
 const ANON_KEY = pick("SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_PUBLISHABLE_KEY", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
 const API_URL = (pick("API_URL", "NEXT_PUBLIC_API_URL") ??
-  (isLocal ? "http://localhost:4000" : "https://api-production-fb09.up.railway.app")).replace(/\/$/, "");
+  (isLocal ? "http://localhost:4000" : "https://api.octonote.ai")).replace(/\/$/, "");
 const WEB_URL = (pick("PUBLIC_APP_URL", "NEXT_PUBLIC_APP_URL", "WEB_URL") ??
   (isLocal ? "http://localhost:3000" : "https://octonote.ai")).replace(/\/$/, "");
 if (!ANON_KEY) fail(`No Supabase anon/publishable key found in ${isLocal ? ".env" : ".env.hosted"}.`);
