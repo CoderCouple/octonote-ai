@@ -60,15 +60,10 @@ export async function writeStored(
   await chmod(configPath(), 0o600).catch(() => undefined);
 }
 
-/** API addresses that are gone; configs still holding them use the default instead. */
-const RETIRED_API_URLS = new Set([
-  "https://api-production-fb09.up.railway.app",
-]);
-
-/** Only keep an address in the config when it isn't the default (or a retired one). */
+/** Only keep an address in the config when it isn't the default, so installs follow the default if hosting moves. */
 export function customUrl(url: string, fallback: string): string | undefined {
   const clean = url.replace(/\/+$/, "");
-  return clean === fallback || RETIRED_API_URLS.has(clean) ? undefined : clean;
+  return clean === fallback ? undefined : clean;
 }
 
 export async function resolveConfig(
@@ -89,9 +84,7 @@ export async function resolveConfig(
     apiUrl: strip(
       flags.apiUrl ||
         process.env.OCTONOTE_API_URL ||
-        (stored.apiUrl && !RETIRED_API_URLS.has(strip(stored.apiUrl))
-          ? stored.apiUrl
-          : undefined) ||
+        stored.apiUrl ||
         DEFAULT_API_URL,
     ),
     webUrl: strip(
