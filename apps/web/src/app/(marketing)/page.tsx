@@ -105,9 +105,8 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="text-muted-foreground animate-word-rise mt-10 max-w-3xl text-xl [animation-delay:800ms] md:text-2xl">
-            Notes, canvases and projects with math, diagrams and drawings side
-            by side — written by you, or by Claude Code and Codex. Publish any
-            of it as a beautiful page.
+            Notes and Canvases side by side — written by You, or Claude or
+            Codex. Publish it as a beautiful page.
           </p>
           <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row">
             <PrimaryCta />
