@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CodeBlock } from "./_components/code-block";
 import { Toc } from "./_components/toc";
+import { INSTALL } from "./_data/install";
 import reference from "./_data/reference.json";
 
 export const metadata: Metadata = {
@@ -17,7 +18,6 @@ export const metadata: Metadata = {
     "The octonote command-line tool: let Claude Code, Codex and your scripts write notes, draw canvases from mermaid, and publish to Octonote.",
 };
 
-const INSTALL = "npm i -g https://octonote.ai/cli/octonote-cli.tgz";
 
 interface RefCommand {
   name: string;

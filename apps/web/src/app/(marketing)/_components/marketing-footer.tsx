@@ -3,7 +3,7 @@ import { Logo } from "./logo";
 
 const FOOTER_LINKS = [
   { href: "/#notes", label: "Features" },
-  { href: "/#publishing", label: "Publishing" },
+  { href: "/#agents", label: "Agents" },
   { href: "/#examples", label: "Examples" },
   { href: "/cli", label: "CLI" },
   { href: "/login", label: "Log in" },

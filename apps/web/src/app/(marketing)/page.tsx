@@ -1,19 +1,64 @@
-import { ArrowRight, Bot, User } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bot, User } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Aura } from "./_components/aura";
+import { AgentsDemo } from "./_components/demos/agents-demo";
 import { CanvasDemo } from "./_components/demos/canvas-demo";
 import { MobileDemo } from "./_components/demos/mobile-demo";
-import { NotebookDemo } from "./_components/demos/notebook-demo";
 import { NotesDemo } from "./_components/demos/notes-demo";
 import { ProjectDemo } from "./_components/demos/project-demo";
-import { ShareDemo } from "./_components/demos/share-demo";
 import { ExamplesSection } from "./_components/examples-section";
 import { FAQSection } from "./_components/faq-section";
 import { FeatureSection } from "./_components/feature-section";
 import { HeroStoryDemo } from "./_components/hero-story-demo";
 import { MeteorShower } from "./_components/meteor-shower";
 import { PricingSection } from "./_components/pricing-section";
+import { CodeBlock } from "./cli/_components/code-block";
+import { INSTALL } from "./cli/_data/install";
+
+const SETUP = [
+  { step: "1", title: "Install", code: INSTALL },
+  { step: "2", title: "Sign in", code: "octonote login" },
+  {
+    step: "3",
+    title: "Teach your agent",
+    code: "octonote setup claude --skill",
+  },
+];
+
+/** The three setup commands, copyable, with a link to the full CLI docs. */
+function AgentSetup() {
+  return (
+    <div className="text-left">
+      <ol className="flex flex-col gap-3">
+        {SETUP.map((s) => (
+          <li
+            key={s.step}
+            className="grid min-w-0 items-center gap-2 md:grid-cols-[11rem_minmax(0,1fr)] md:gap-4"
+          >
+            <p className="text-foreground-strong flex items-center gap-2 text-base font-semibold">
+              <span className="bg-foreground-strong text-background inline-grid size-6 place-items-center rounded-full text-xs">
+                {s.step}
+              </span>
+              {s.title}
+            </p>
+            <CodeBlock code={s.code} />
+          </li>
+        ))}
+      </ol>
+      <p className="text-muted-foreground mt-6 text-center text-lg">
+        Using Codex? Run{" "}
+        <code className="font-mono text-base">octonote setup codex</code>.{" "}
+        <Link
+          href="/cli"
+          className="text-foreground-strong inline-flex items-center gap-1 underline underline-offset-4"
+        >
+          CLI docs <ArrowUpRight className="size-4" />
+        </Link>
+      </p>
+    </div>
+  );
+}
 
 function PrimaryCta({ className }: { className?: string }) {
   return (
@@ -60,8 +105,9 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="text-muted-foreground animate-word-rise mt-10 max-w-3xl text-xl [animation-delay:800ms] md:text-2xl">
-            Notes, canvases and projects in one workspace — with math, diagrams
-            and drawings side by side. Publish any of it as a beautiful page.
+            Notes, canvases and projects with math, diagrams and drawings side
+            by side — written by you, or by Claude Code and Codex. Publish any
+            of it as a beautiful page.
           </p>
           <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row">
             <PrimaryCta />
@@ -97,19 +143,7 @@ export default function LandingPage() {
           },
           {
             title: "Paste markdown",
-            body: "Math, code and diagrams in pasted markdown convert automatically.",
-          },
-          {
-            title: "Canvas figures",
-            body: "Embed a drawing from any canvas; it stays linked to the original.",
-          },
-          {
-            title: "Every block you expect",
-            body: "Headings, lists, to-dos, code, quotes and images, with markdown shortcuts.",
-          },
-          {
-            title: "Never locked in",
-            body: "Saves as you type, and every note keeps a Markdown copy.",
+            body: "Math, code and diagrams in pasted markdown convert automatically — and every note keeps a Markdown copy.",
           },
         ]}
       />
@@ -150,79 +184,39 @@ export default function LandingPage() {
             body: "Switch views in one click; the project remembers how you like it.",
           },
           {
-            title: "Linked figures",
-            body: "Figures in the note jump straight to their spot on the canvas.",
+            title: "Figures you can drag",
+            body: "Group shapes into a figure and drag it by its title into the note.",
           },
           {
-            title: "Published together",
-            body: "Readers get the same switcher, split view included.",
+            title: "Always in sync",
+            body: "Change the drawing and every embedded figure updates.",
           },
         ]}
       />
 
       <FeatureSection
-        id="notebooks"
-        className="border-t"
-        eyebrow="Notebooks"
-        title="Group it. Share it all at once."
-        body="Collect notes, canvases and projects into a notebook. Share or publish it and everything inside follows — including things you add later, clearly labelled."
-        demo={<NotebookDemo />}
-        points={[
-          {
-            title: "Any mix of work",
-            body: "Notes, canvases and projects together, in a grid or a list.",
-          },
-          {
-            title: "A public gallery",
-            body: "Publish a notebook and it becomes a browsable collection, filterable by type.",
-          },
-          {
-            title: "Safe to tidy up",
-            body: "Delete a notebook and everything in it stays.",
-          },
-        ]}
-      />
-
-      <FeatureSection
-        id="publishing"
+        id="agents"
         aura
         className="border-y"
-        eyebrow="Share & publish"
-        title={
-          <>
-            Share like a doc.
-            <br />
-            Publish like a site.
-          </>
-        }
-        body="Invite people as viewers or editors, open it to anyone with the link, or publish a clean public page — for a note, canvas, project or whole notebook."
-        demo={<ShareDemo />}
+        eyebrow="Agents"
+        title="Your AI agent writes here too."
+        body="Claude Code, Codex and your scripts use the octonote CLI to write notes from markdown, draw canvases from mermaid and publish — with your permissions."
+        demo={<AgentsDemo />}
         points={[
           {
-            title: "A page worth reading",
-            body: "Your name and date, reading time, a heading minimap and upvotes from readers.",
+            title: "Claude Code",
+            body: "One command adds Octonote to CLAUDE.md, plus an optional skill.",
           },
           {
-            title: "Previews everywhere",
-            body: "Its own URL, with proper link previews wherever you paste it.",
+            title: "Codex",
+            body: "The same setup writes AGENTS.md — per project or for every project.",
           },
           {
-            title: "Know who read it",
-            body: "Views and unique readers for every published page — no trackers, nothing stored about readers.",
-          },
-          {
-            title: "People with access",
-            body: "Add anyone by email as an Editor or Viewer. No account yet? Access starts when they sign up.",
-          },
-          {
-            title: "Anyone with the link",
-            body: "One switch and the link works for everyone — readers don't need an account.",
-          },
-          {
-            title: "Gone when you say",
-            body: "Unpublish and the page disappears instantly.",
+            title: "Cloud agents & CI",
+            body: "Use a token from Settings in GitHub Actions or cloud agents.",
           },
         ]}
+        footer={<AgentSetup />}
       />
 
       <FeatureSection

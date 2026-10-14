@@ -17,6 +17,7 @@ export function FeatureSection({
   body,
   points,
   demo,
+  footer,
   aura,
   className,
 }: {
@@ -26,6 +27,8 @@ export function FeatureSection({
   body: string;
   points: FeaturePoint[];
   demo: React.ReactNode;
+  /** Optional content under the points (e.g. setup steps). */
+  footer?: React.ReactNode;
   /** Endel-style glow behind the section in dark mode. */
   aura?: boolean;
   className?: string;
@@ -47,6 +50,7 @@ export function FeatureSection({
           </div>
         ))}
       </div>
+      {footer ? <div className="relative mx-auto mt-20 max-w-4xl md:mt-24">{footer}</div> : null}
     </section>
   );
 }
