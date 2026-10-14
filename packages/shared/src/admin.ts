@@ -84,3 +84,95 @@ export interface AdminMetrics {
     cliTokens: number;
   };
 }
+
+// --- Admin portal: people, workspaces, grants, student domains, audit -------
+
+export type PlanSource = "stripe" | "promo" | "student" | "grant" | null;
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: string;
+  isAdmin: boolean;
+  /** Last day they used Octonote (UTC "YYYY-MM-DD"), if seen since tracking began. */
+  lastActive: string | null;
+  workspaces: number;
+  /** Whether any workspace they own is on Pro. */
+  pro: boolean;
+}
+
+export interface AdminPlan {
+  plan: "free" | "pro";
+  source: PlanSource;
+  until: string | null;
+}
+
+export interface AdminWorkspaceRow {
+  id: string;
+  name: string;
+  role: string;
+  plan: AdminPlan;
+}
+
+export interface AdminUserDetail extends AdminUserRow {
+  studentProUntil: string | null;
+  /** Apps used in the last 30 days. */
+  sources: ("web" | "mobile" | "cli")[];
+  activeDays30: number;
+  cliTokens: number;
+  memberships: AdminWorkspaceRow[];
+}
+
+export interface AdminGrant {
+  id: string;
+  months: number;
+  proUntil: string;
+  reason: string;
+  grantedBy: string | null;
+  endedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminWorkspaceDetail {
+  id: string;
+  name: string;
+  createdAt: string;
+  plan: AdminPlan;
+  billing: {
+    status: string | null;
+    interval: string | null;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+    hasSubscription: boolean;
+    /** Link to the customer in the Stripe dashboard. */
+    stripeUrl: string | null;
+  };
+  members: { userId: string; email: string; name: string; role: string }[];
+  usage: Record<"page" | "canvas" | "project" | "notebook", number>;
+  published: number;
+  codes: { code: string; description: string; proUntil: string | null; createdAt: string }[];
+  grants: AdminGrant[];
+  history: { kind: string; interval: string | null; amountCents: number | null; createdAt: string }[];
+}
+
+export interface StudentDomain {
+  id: string;
+  suffix: string;
+  label: string | null;
+  enabled: boolean;
+  /** Students currently on the free year from this ending. */
+  activeStudents: number;
+  createdAt: string;
+}
+
+export interface AdminAuditEntry {
+  id: string;
+  actorEmail: string;
+  action: string;
+  targetKind: string | null;
+  targetId: string | null;
+  targetLabel: string | null;
+  details: Record<string, unknown> | null;
+  createdAt: string;
+}

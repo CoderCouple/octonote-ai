@@ -30,6 +30,8 @@ import { NoteMarkdownService } from "../../src/service/note-markdown.service";
 import { PromotionsService } from "../../src/service/promotions.service";
 import { ActivityService } from "../../src/common/activity.service";
 import { AdminMetricsService } from "../../src/service/admin-metrics.service";
+import { AdminAuditService } from "../../src/common/admin-audit.service";
+import { AdminService } from "../../src/service/admin.service";
 import { CanvasDiagramService } from "../../src/service/canvas-diagram.service";
 import * as schema from "../../src/db/schema";
 import { CanvasesService } from "../../src/service/canvases.service";
@@ -68,10 +70,15 @@ export class FakeEmail {
 /** Records Supabase admin calls made by account deletion. */
 export class FakeSupabase {
   deletedUsers: string[] = [];
+  links: string[] = [];
   removedObjects: string[] = [];
   failDeleteUser = false;
   auth = {
     admin: {
+      generateLink: async ({ email }: { email: string }) => {
+        this.links.push(email);
+        return { data: { properties: { hashed_token: `hash_for_${email}` } }, error: null };
+      },
       deleteUser: async (id: string) => {
         if (this.failDeleteUser) return { error: new Error("auth down") };
         this.deletedUsers.push(id);
@@ -127,7 +134,21 @@ export class FakeStripe {
       }
       return sub;
     },
+    cancel: async (id: string) => {
+      const sub = this.subscriptionsById[id] as Record<string, any>;
+      sub.status = "canceled";
+      this.cancelled.push(id);
+      return sub;
+    },
   };
+  refunds = {
+    create: async (params: { payment_intent: string }) => {
+      this.refunded.push(params.payment_intent);
+      return { id: "re_1", amount: 500 };
+    },
+  };
+  cancelled: string[] = [];
+  refunded: string[] = [];
   coupons = {
     create: async (params: Record<string, unknown>) => {
       this.couponsCreated.push(params);
@@ -135,6 +156,7 @@ export class FakeStripe {
     },
   };
   invoices = {
+    retrieve: async (id: string) => ({ id, amount_paid: 500, payment_intent: `pi_for_${id}` }),
     list: async () => ({
       data: [
         {
@@ -285,9 +307,11 @@ export async function createHarness() {
 
   const activity = new ActivityService(db);
   const adminMetrics = new AdminMetricsService(db);
+  const adminAudit = new AdminAuditService(db);
+  const admin = new AdminService(db, supabase as never, planLimits, services.billing, adminAudit);
   const noteMarkdown = new NoteMarkdownService(services.pages);
   const canvasDiagrams = new CanvasDiagramService(services.canvases);
-  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, ...services };
+  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminAudit, admin, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

@@ -145,7 +145,9 @@ export function BillingSection({ workspaceId }: { workspaceId: string }) {
                 ? "Pro · Student"
                 : s.source === "promo"
                   ? "Pro · Code"
-                  : "Pro"
+                  : s.source === "grant"
+                    ? "Pro · Gift"
+                    : "Pro"
               : "Free"}
           </Badge>
           {paying && s?.interval ? (
@@ -425,6 +427,8 @@ function planLine(s: BillingSummary | null): string | undefined {
     return `Free for students until ${until}. After that, Pro is $${PRO_PRICE.month}/month.`;
   if (s.source === "promo")
     return `Pro with a code until ${until}. After that the workspace returns to Free unless you upgrade.`;
+  if (s.source === "grant")
+    return `Pro from the Octonote team until ${until}. After that the workspace returns to Free unless you upgrade.`;
   if (s.source === "stripe") {
     if (!until) return undefined;
     return s.cancelAtPeriodEnd

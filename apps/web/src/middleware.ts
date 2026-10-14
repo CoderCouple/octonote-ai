@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { adminHostFor, isAdminHost } from "@/features/admin/portal-url";
 import { SITE_HOST } from "@/lib/site";
 import { updateSession } from "./lib/supabase/middleware";
 
@@ -18,7 +19,27 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  const path = request.nextUrl.pathname;
+  const isPortalPath = path === "/admin" || path.startsWith("/admin/") || path === "/admin-enter";
+
+  // admin.octonote.ai serves the admin portal and nothing else.
+  if (isAdminHost(host) && !isPortalPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  // On the main site, /admin opens the portal on its own address (signing in there via the handoff).
+  if (!isAdminHost(host) && adminHostFor(host) !== host && (path === "/admin" || path.startsWith("/admin/"))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/workspace/admin-open";
+    url.search = `?to=${encodeURIComponent(path)}`;
+    return NextResponse.redirect(url);
+  }
+
   const response = await updateSession(request);
+  if (isAdminHost(host)) response.headers.set("X-Robots-Tag", "noindex, nofollow");
   // Previews and any other host stay out of search results.
   if (host.endsWith(".vercel.app")) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");

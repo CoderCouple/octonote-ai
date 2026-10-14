@@ -234,6 +234,30 @@ export class BillingService {
     return this.summary(workspaceId, actorUserId);
   }
 
+  /**
+   * Admin only (the portal): ends the subscription now instead of at the
+   * period's end, optionally refunding its last payment in full. Customers
+   * cancel at the period's end from their Billing page.
+   */
+  async cancelNow(workspaceId: string, refundLastPayment: boolean): Promise<{ refundedCents: number }> {
+    const subId = await this.requireSubscription(workspaceId);
+    const stripe = this.requireStripe();
+    let refundedCents = 0;
+    if (refundLastPayment) {
+      const sub = await stripe.subscriptions.retrieve(subId);
+      const invoiceId = typeof sub.latest_invoice === "string" ? sub.latest_invoice : sub.latest_invoice?.id;
+      const invoice = invoiceId ? await stripe.invoices.retrieve(invoiceId) : null;
+      const paymentIntent = (invoice as unknown as { payment_intent?: string | { id: string } | null } | null)?.payment_intent;
+      const intentId = typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id;
+      if (invoice && intentId && invoice.amount_paid > 0) {
+        const refund = await stripe.refunds.create({ payment_intent: intentId });
+        refundedCents = refund.amount;
+      }
+    }
+    await this.syncSubscription(await stripe.subscriptions.cancel(subId));
+    return { refundedCents };
+  }
+
   private async requireSubscription(workspaceId: string): Promise<string> {
     const subId = (await this.row(workspaceId))?.stripeSubscriptionId;
     if (!subId) throw BadRequest("This workspace has no subscription to change.");

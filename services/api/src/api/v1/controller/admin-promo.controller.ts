@@ -9,6 +9,7 @@ import { z } from "zod";
 import { AdminGuard } from "../../../auth/admin.guard";
 import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
+import { AdminAuditService } from "../../../common/admin-audit.service";
 import { ZodValidationPipe } from "../../../common/zod-validation.pipe";
 import { PromotionsService } from "../../../service/promotions.service";
 
@@ -19,7 +20,10 @@ const EnabledSchema = z.object({ enabled: z.boolean() });
 @Controller("admin/promo-codes")
 @UseGuards(SupabaseAuthGuard, AdminGuard)
 export class AdminPromoController {
-  constructor(private readonly promotions: PromotionsService) {}
+  constructor(
+    private readonly promotions: PromotionsService,
+    private readonly audit: AdminAuditService,
+  ) {}
 
   @Get()
   list(): Promise<PromoCodeDto[]> {
@@ -27,19 +31,35 @@ export class AdminPromoController {
   }
 
   @Post()
-  create(
+  async create(
     @Body(new ZodValidationPipe(PromoCodeCreateSchema)) body: PromoCodeCreate,
     @Req() req: AuthenticatedRequest,
   ): Promise<PromoCodeDto> {
-    return this.promotions.create(body, req.user.id);
+    const code = await this.promotions.create(body, req.user.id);
+    await this.audit.record(req.user.id, {
+      action: "promo.create",
+      targetKind: "promo_code",
+      targetId: code.id,
+      targetLabel: code.code,
+      details: { description: code.description, audience: code.audience, maxRedemptions: code.maxRedemptions },
+    });
+    return code;
   }
 
   @Patch(":id")
-  setEnabled(
+  async setEnabled(
     @Param("id", IdParam) id: string,
     @Body(new ZodValidationPipe(EnabledSchema)) body: { enabled: boolean },
+    @Req() req: AuthenticatedRequest,
   ): Promise<PromoCodeDto> {
-    return this.promotions.setEnabled(id, body.enabled);
+    const code = await this.promotions.setEnabled(id, body.enabled);
+    await this.audit.record(req.user.id, {
+      action: body.enabled ? "promo.enable" : "promo.disable",
+      targetKind: "promo_code",
+      targetId: code.id,
+      targetLabel: code.code,
+    });
+    return code;
   }
 
   @Get(":id/redemptions")

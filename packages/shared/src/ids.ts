@@ -22,6 +22,8 @@ export const ID_PREFIXES = {
   promoCode: "pmc",
   promoRedemption: "pmr",
   billingEvent: "bev",
+  proGrant: "pgr",
+  adminAudit: "adm",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

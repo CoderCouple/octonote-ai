@@ -68,7 +68,7 @@ export function AppSidebar({
               ? [
                   {
                     title: "Admin",
-                    url: "/workspace/admin/codes",
+                    url: "/workspace/admin-open",
                     icon: ShieldCheck,
                   },
                 ]

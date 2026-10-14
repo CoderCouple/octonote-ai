@@ -21,6 +21,7 @@ import { notebooks } from "../db/schemas/notebooks";
 import { pages } from "../db/schemas/pages";
 import { projects } from "../db/schemas/projects";
 import { promoRedemptions } from "../db/schemas/promotions";
+import { proGrants } from "../db/schemas/tracking";
 import { users } from "../db/schemas/users";
 import { workspaceMembers } from "../db/schemas/workspaces";
 import { PlanLimit } from "./error/error-factory";
@@ -55,7 +56,7 @@ export class PlanLimitsService {
   async planDetails(
     workspaceId: string,
     now = new Date(),
-  ): Promise<{ plan: Plan; source: "stripe" | "promo" | "student" | null; until: Date | null }> {
+  ): Promise<{ plan: Plan; source: "stripe" | "promo" | "student" | "grant" | null; until: Date | null }> {
     const [row] = await this.db
       .select({
         plan: workspaceBilling.plan,
@@ -90,13 +91,24 @@ export class PlanLimitsService {
           gt(promoRedemptions.proUntil, now),
         ),
       );
-    const promoUntil = promo?.until ? new Date(promo.until) : null;
-    const studentUntil = student?.until ? new Date(student.until) : null;
-    if (promoUntil && (!studentUntil || promoUntil >= studentUntil)) {
-      return { plan: "pro", source: "promo", until: promoUntil };
-    }
-    if (studentUntil) return { plan: "pro", source: "student", until: studentUntil };
-    return { plan: "free", source: null, until: null };
+    // Pro given by hand from the admin portal.
+    const [grant] = await this.db
+      .select({ until: max(proGrants.proUntil) })
+      .from(proGrants)
+      .where(and(eq(proGrants.workspaceId, workspaceId), isNull(proGrants.endedAt), gt(proGrants.proUntil, now)));
+    // Free Pro from a code, a grant or the student year: whichever lasts longest.
+    const candidates = (
+      [
+        ["promo", promo?.until],
+        ["grant", grant?.until],
+        ["student", student?.until],
+      ] as const
+    )
+      .filter(([, until]) => until)
+      .map(([source, until]) => ({ source, until: new Date(until!) }))
+      .sort((a, b) => b.until.getTime() - a.until.getTime());
+    const best = candidates[0];
+    return best ? { plan: "pro", source: best.source, until: best.until } : { plan: "free", source: null, until: null };
   }
 
   /**

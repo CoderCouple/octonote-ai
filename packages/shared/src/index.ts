@@ -494,3 +494,31 @@ export const PromoCodeCreateSchema = z
   });
 export type PromoCodeCreate = z.infer<typeof PromoCodeCreateSchema>;
 export * from "./admin";
+
+// --- Admin portal inputs -------------------------------------------------------
+
+/** Give or extend Pro by hand: months are added after any grant still running. */
+export const AdminGrantSchema = z.object({
+  months: z.number().int().min(1).max(36),
+  reason: z.string().trim().min(3, "Say why, for the audit log.").max(200),
+});
+export type AdminGrantInput = z.infer<typeof AdminGrantSchema>;
+
+/** Cancel a subscription now (not at the period end), optionally refunding the last payment. */
+export const AdminCancelSchema = z.object({
+  refundLastPayment: z.boolean(),
+  reason: z.string().trim().min(3, "Say why, for the audit log.").max(200),
+});
+export type AdminCancelInput = z.infer<typeof AdminCancelSchema>;
+
+/** An email ending for the student year, e.g. "edu", "ac.uk", "ox.ac.uk" (no leading dot). */
+export const StudentDomainCreateSchema = z.object({
+  suffix: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .transform((s) => s.replace(/^[.@]+/, ""))
+    .pipe(z.string().regex(/^[a-z0-9-]+(\.[a-z0-9-]+)*$/, "Like edu, ac.uk or ox.ac.uk").max(100)),
+  label: z.string().trim().max(100).optional(),
+});
+export type StudentDomainCreate = z.infer<typeof StudentDomainCreateSchema>;

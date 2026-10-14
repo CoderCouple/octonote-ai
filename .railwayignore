@@ -10,3 +10,9 @@ apps
 supabase/.temp
 packages/api-client
 packages/design-tokens
+.git
+**/.turbo
+.claude
+.vercel
+scripts
+packages/cli

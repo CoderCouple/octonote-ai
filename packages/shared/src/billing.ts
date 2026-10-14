@@ -43,7 +43,7 @@ export const PLAN_LIMIT_CODE = "PLAN_LIMIT";
 export interface BillingSummary {
   plan: Plan;
   /** Why it's Pro: a Stripe subscription, a free promo code, or the free student year. */
-  source: "stripe" | "promo" | "student" | null;
+  source: "stripe" | "promo" | "student" | "grant" | null;
   /** Stripe status when there is a subscription: active, trialing, past_due, canceled… */
   status: string | null;
   interval: BillingInterval | null;
