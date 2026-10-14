@@ -104,9 +104,12 @@ export default function LandingPage() {
               </span>
             </span>
           </h1>
-          <p className="text-muted-foreground animate-word-rise mt-10 max-w-3xl text-xl [animation-delay:800ms] md:text-2xl">
-            Notes and Canvases side by side — written by You, or Claude or
-            Codex. Publish it as a beautiful page.
+          <p className="text-muted-foreground animate-word-rise mt-10 max-w-4xl text-xl [animation-delay:800ms] md:text-2xl">
+            <span className="block md:whitespace-nowrap">
+              Notes and Canvas side by side — written by You, or Claude or
+              Codex.
+            </span>
+            Publish it as a beautiful page.
           </p>
           <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row">
             <PrimaryCta />
