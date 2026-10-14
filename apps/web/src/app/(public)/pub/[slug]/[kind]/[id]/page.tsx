@@ -28,7 +28,7 @@ async function load({ params }: Params, countView = false) {
 }
 
 export async function generateMetadata(props: Params): Promise<Metadata> {
-  const view = await load(props);
+  const view = await load(props, true);
   if (!view) return { title: "Not found · Octonote AI" };
   return describe(view, await pathOf(props));
 }

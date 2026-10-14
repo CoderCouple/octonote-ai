@@ -4,14 +4,16 @@
  */
 import "server-only";
 import { headers } from "next/headers";
+import { cache } from "react";
 import { unwrapBaseResponse } from "@octonote/api-client";
 import { env } from "@/env/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { PublicKind, PublicView } from "../types";
 
 /**
- * `countView` is set only by the page render — not by generateMetadata, which
- * fetches the same item — so each visit counts once. For the counter we
+ * `countView` is set by the page render and its generateMetadata, which share
+ * one request per visit through React's `cache` (so each visit counts once
+ * and the API is called once). For the counter we
  * forward the reader's user agent (to skip bots), IP (only hashed with a
  * daily-rotating salt to count unique visitors) and, if they're signed in,
  * their token (to count them by account and skip the item's own editors).
@@ -45,8 +47,11 @@ async function get(
   return unwrapBaseResponse<PublicView>(await res.json(), path);
 }
 
+/** One fetch per request for the same path (page + its metadata). */
+const getOnce = cache(get);
+
 export function fetchPublishedRoot(slug: string, { countView = false } = {}) {
-  return get(`/public/${encodeURIComponent(slug)}`, countView);
+  return getOnce(`/public/${encodeURIComponent(slug)}`, countView);
 }
 
 export function fetchPublishedChild(
@@ -55,7 +60,7 @@ export function fetchPublishedChild(
   id: string,
   { countView = false } = {},
 ) {
-  return get(
+  return getOnce(
     `/public/${encodeURIComponent(slug)}/${kind}/${encodeURIComponent(id)}`,
     countView,
   );
