@@ -1,8 +1,26 @@
+# The API service. Railway builds it from GitHub on every push to main (only
+# when a file below changed), runs the database migrations, then switches
+# traffic to the new version once /health answers.
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+# Web-only pushes don't rebuild the API.
+watchPatterns = [
+  "services/api/**",
+  "packages/shared/**",
+  "packages/content/**",
+  "Dockerfile",
+  "railway.toml",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "package.json",
+  "tsconfig.base.json",
+]
 
 [deploy]
+# Migrate before the new version takes traffic; a failed migration stops the deploy.
+preDeployCommand = ["pnpm --filter @octonote/api db:migrate:deployed"]
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 healthcheckPath = "/health"
