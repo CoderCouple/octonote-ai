@@ -15,8 +15,9 @@ import { registerItems } from "./commands/items.js";
 import { registerNote } from "./commands/note.js";
 import { registerNotebook } from "./commands/notebook.js";
 import { registerProject } from "./commands/project.js";
+import { VERSION } from "./version.js";
 
-export const VERSION = "0.1.0";
+export { VERSION } from "./version.js";
 
 export function buildProgram() {
   const program = new Command()

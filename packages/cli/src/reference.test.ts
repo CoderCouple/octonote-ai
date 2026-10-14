@@ -20,3 +20,12 @@ describe("docs reference", () => {
     for (const c of ref.commands) expect(c.description, c.name).toBeTruthy();
   });
 });
+
+describe("version", () => {
+  it("matches package.json", () => {
+    const pkg = JSON.parse(
+      readFileSync(join(__dirname, "../package.json"), "utf8"),
+    );
+    expect(VERSION).toBe(pkg.version);
+  });
+});

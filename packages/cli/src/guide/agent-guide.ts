@@ -81,6 +81,7 @@ Publishing a notebook publishes everything inside it.
 
 ## Account
   octonote whoami | workspace list | workspace use <name|id> | logout
+  octonote account rename "Full Name"     # display name (author on published pages)
 `;
 
 /** Claude Code skill file (.claude/skills/octonote/SKILL.md). */

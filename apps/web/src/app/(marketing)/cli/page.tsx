@@ -110,9 +110,10 @@ $ octonote share pag_… --link view               # anyone with the link`,
     id: "ref-account",
     title: "Account",
     blurb: "Sign in, pick a workspace, manage tokens.",
-    match: (n) => /^(login|logout|whoami|workspace |token )/.test(n),
+    match: (n) => /^(login|logout|whoami|account |workspace |token )/.test(n),
     example: `$ octonote login
 $ octonote whoami
+$ octonote account rename "Sam Lee"
 $ octonote workspace use "Team"`,
   },
   {

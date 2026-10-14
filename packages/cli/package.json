@@ -1,6 +1,6 @@
 {
   "name": "@octonote/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The octonote command-line tool: lets you \u2014 and agents like Claude Code and Codex \u2014 create, edit, publish and share Octonote notes, canvases, projects and notebooks.",
   "type": "module",
   "bin": {

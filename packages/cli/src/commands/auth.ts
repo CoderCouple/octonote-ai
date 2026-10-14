@@ -121,6 +121,32 @@ export function registerAuth(program: Command) {
       }),
     );
 
+  const account = program
+    .command("account")
+    .description("Your Octonote account");
+  account
+    .command("rename")
+    .description(
+      "Change your display name (shown in the app and as the author of pages you publish)",
+    )
+    .argument("<name>", "new display name, 1–80 characters")
+    .action(
+      action(async (ctx, name: string) => {
+        const trimmed = name.trim().replace(/\s+/g, " ");
+        if (!trimmed || trimmed.length > 80) {
+          throw usage("A name needs 1–80 characters.");
+        }
+        const user = await ctx.api.patch<{ name: string; email: string }>(
+          "/me",
+          { name: trimmed },
+        );
+        emit(
+          { name: user.name, email: user.email },
+          (d) => `Your name is now ${d.name}`,
+        );
+      }),
+    );
+
   const workspace = program
     .command("workspace")
     .description("Choose which workspace commands work in");
@@ -181,15 +207,14 @@ export function registerAuth(program: Command) {
     .description("List your tokens")
     .action(
       action(async (ctx) => {
-        const rows =
-          await ctx.api.get<
-            {
-              id: string;
-              name: string;
-              preview: string;
-              lastUsedAt: string | null;
-            }[]
-          >("/me/cli-tokens");
+        const rows = await ctx.api.get<
+          {
+            id: string;
+            name: string;
+            preview: string;
+            lastUsedAt: string | null;
+          }[]
+        >("/me/cli-tokens");
         emit(rows, (list) =>
           table(
             list.map((t) => ({

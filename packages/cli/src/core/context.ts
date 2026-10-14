@@ -6,6 +6,7 @@
 import { CliError, usage } from "./errors.js";
 import { ApiClient } from "./http.js";
 import { resolveConfig, type ResolvedConfig } from "./config.js";
+import { VERSION } from "../version.js";
 
 export interface GlobalFlags {
   apiUrl?: string;
@@ -28,8 +29,6 @@ export interface Ctx {
   me(): Promise<Me>;
   workspaceId(): Promise<string>;
 }
-
-const VERSION = "0.1.0";
 
 export async function createContext(
   flags: GlobalFlags,
