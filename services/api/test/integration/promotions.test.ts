@@ -85,7 +85,7 @@ describe("free codes", () => {
     expect(await h.planLimits.planDetails(alice.workspaceId)).toMatchObject({ plan: "pro", source: "promo" });
     await h.pages.create(alice.workspaceId, { title: "11th" }, alice.id);
     const summary = await h.billing.summary(alice.workspaceId, alice.id);
-    expect(summary.promo).toEqual({ code: "CREATOR6", kind: "free_pro", description: "Pro free for 6 months" });
+    expect(summary.promo).toEqual({ code: "CREATOR6", kind: "free_pro", description: "Pro free for 6 months", discount: null });
     const [code] = await h.db.select().from(promoCodes).where(eq(promoCodes.code, "CREATOR6"));
     expect(code!.redemptionCount).toBe(1);
   });
@@ -200,7 +200,30 @@ describe("discount codes", () => {
     await h.billing.handleWebhook(event, "valid"); // Stripe retries: still counted once.
     const [code] = await h.db.select().from(promoCodes).where(eq(promoCodes.code, "FOUNDER"));
     expect(code!.redemptionCount).toBe(1);
-    expect((await h.billing.summary(alice.workspaceId, alice.id)).promo).toMatchObject({ code: "FOUNDER", description: "40% off forever" });
+    expect((await h.billing.summary(alice.workspaceId, alice.id)).promo).toMatchObject({
+      code: "FOUNDER",
+      description: "40% off forever",
+      discount: { percentOff: 40, amountOffCents: null },
+    });
+  });
+
+  it("a one-off discount no longer counts toward the price after the first payment", async () => {
+    await h.promotions.create({ code: "FIRSTPAY", kind: "amount_off", audience: "general", amountOffCents: 500, duration: "once" } as never, admin.id);
+    await h.billing.checkout(alice.workspaceId, "month", alice.id, "FIRSTPAY");
+    const metadata = h.stripe.lastCheckout!.metadata as Record<string, string>;
+    h.stripe.subscriptionsById.sub_8 = {
+      id: "sub_8",
+      customer: "cus_test",
+      status: "active",
+      cancel_at_period_end: false,
+      metadata: { workspaceId: alice.workspaceId },
+      items: { data: [{ id: "si_8", price: { id: "price_month", recurring: { interval: "month" } }, current_period_end: 1_900_000_000 }] },
+    };
+    await h.billing.handleWebhook(
+      JSON.stringify({ type: "checkout.session.completed", data: { object: { subscription: "sub_8", client_reference_id: alice.workspaceId, metadata } } }),
+      "valid",
+    );
+    expect((await h.billing.summary(alice.workspaceId, alice.id)).promo).toMatchObject({ code: "FIRSTPAY", discount: null });
   });
 
   it("a free code can't be used at Checkout", async () => {

@@ -7,6 +7,7 @@
  * cancelling (and undoing it), the card (Stripe), and past invoices.
  */
 import {
+  discountedCents,
   FREE_LIMIT,
   PRO_PRICE,
   type BillingInvoice,
@@ -117,7 +118,11 @@ export function BillingSection({ workspaceId }: { workspaceId: string }) {
   const paying = s?.source === "stripe";
   const canAct = Boolean(s?.canManage && s.billingEnabled);
   const other = s?.interval === "year" ? "month" : "year";
-  const yearlySaving = PRO_PRICE.month * 12 - PRO_PRICE.year;
+  // What this workspace actually pays per interval, after its code's discount.
+  const discount = s?.promo?.discount ?? null;
+  const pays = (interval: "month" | "year") =>
+    discountedCents(s?.prices[interval] ?? PRO_PRICE[interval] * 100, discount);
+  const yearlySaving = pays("month") * 12 - pays("year");
   const openUpgrade = (
     discount: { code: string; description: string } | null = null,
   ) => {
@@ -145,7 +150,12 @@ export function BillingSection({ workspaceId }: { workspaceId: string }) {
           </Badge>
           {paying && s?.interval ? (
             <span className="text-foreground-strong text-sm font-medium">
-              {fmtMoney(s.prices[s.interval])} / {s.interval}
+              {discount ? (
+                <span className="text-muted-foreground mr-1.5 font-normal line-through">
+                  {fmtMoney(s.prices[s.interval])}
+                </span>
+              ) : null}
+              {fmtMoney(pays(s.interval))} / {s.interval}
             </span>
           ) : null}
           {s?.promo ? (
@@ -227,8 +237,8 @@ export function BillingSection({ workspaceId }: { workspaceId: string }) {
             label={`Switch to ${other === "year" ? "yearly" : "monthly"}`}
             description={
               other === "year"
-                ? `$${PRO_PRICE.year}/year — save $${yearlySaving}. You pay the difference now, prorated.`
-                : `$${PRO_PRICE.month}/month. The unused part of your year becomes credit.`
+                ? `${fmtMoney(pays("year"))}/year — save ${fmtMoney(yearlySaving)}. You pay the difference now, prorated.`
+                : `${fmtMoney(pays("month"))}/month. The unused part of your year becomes credit.`
             }
           >
             <Button
@@ -393,8 +403,8 @@ export function BillingSection({ workspaceId }: { workspaceId: string }) {
         title={`Switch to ${other === "year" ? "yearly" : "monthly"} billing?`}
         description={
           other === "year"
-            ? `You'll pay $${PRO_PRICE.year}/year from now on. Stripe charges the difference for the rest of this period today.`
-            : `You'll pay $${PRO_PRICE.month}/month from now on. The unused part of your year becomes credit on future invoices.`
+            ? `You'll pay ${fmtMoney(pays("year"))}/year from now on. Stripe charges the difference for the rest of this period today.`
+            : `You'll pay ${fmtMoney(pays("month"))}/month from now on. The unused part of your year becomes credit on future invoices.`
         }
         onConfirm={() =>
           run(

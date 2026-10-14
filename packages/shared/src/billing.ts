@@ -57,8 +57,14 @@ export interface BillingSummary {
   /** Owners and admins can upgrade or manage billing. */
   canManage: boolean;
   /** The code behind a free Pro period, or the discount on the subscription. */
-  promo: { code: string; kind: PromoKind; description: string } | null;
-  /** Pro price per interval, in cents (for showing the plan). */
+  promo: {
+    code: string;
+    kind: PromoKind;
+    description: string;
+    /** The discount still taken off future payments; null once it has run out (or for free codes). */
+    discount: PromoDiscount | null;
+  } | null;
+  /** Pro list price per interval, in cents (before any discount). */
   prices: { month: number; year: number };
 }
 
@@ -67,6 +73,19 @@ export interface BillingSummary {
 export type PromoKind = "percent_off" | "amount_off" | "free_pro";
 export type PromoAudience = "founder" | "creator" | "student" | "partner" | "general";
 export type PromoDuration = "once" | "repeating" | "forever";
+
+export interface PromoDiscount {
+  percentOff: number | null;
+  amountOffCents: number | null;
+}
+
+/** A price in cents after a discount (never below zero). */
+export function discountedCents(cents: number, d: PromoDiscount | null | undefined): number {
+  if (!d) return cents;
+  if (d.percentOff) return Math.round((cents * (100 - d.percentOff)) / 100);
+  if (d.amountOffCents) return Math.max(0, cents - d.amountOffCents);
+  return cents;
+}
 
 /** What a code does, in words: "40% off forever", "$5 off for 3 months", "Pro free for 6 months". */
 export function describePromo(p: {

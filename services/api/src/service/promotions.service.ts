@@ -14,6 +14,7 @@ import {
   type PromoApplyResult,
   type PromoCodeCreate,
   type PromoCodeDto,
+  type PromoDiscount,
   type PromoDuration,
   type PromoKind,
   type PromoRedemptionDto,
@@ -142,17 +143,21 @@ export class PromotionsService {
         ),
       )
       .limit(1);
-    let row = free?.code ?? null;
-    if (!row && subscriptionId) {
-      const [paid] = await this.db
-        .select({ code: promoCodes })
-        .from(promoRedemptions)
-        .innerJoin(promoCodes, eq(promoCodes.id, promoRedemptions.promoCodeId))
-        .where(and(eq(promoRedemptions.workspaceId, workspaceId), eq(promoRedemptions.stripeSubscriptionId, subscriptionId)))
-        .limit(1);
-      row = paid?.code ?? null;
-    }
-    return row ? { code: row.code, kind: row.kind as PromoKind, description: describeCode(row) } : null;
+    if (free) return { code: free.code.code, kind: free.code.kind as PromoKind, description: describeCode(free.code), discount: null };
+    if (!subscriptionId) return null;
+    const [paid] = await this.db
+      .select({ code: promoCodes, redeemedAt: promoRedemptions.createdAt })
+      .from(promoRedemptions)
+      .innerJoin(promoCodes, eq(promoCodes.id, promoRedemptions.promoCodeId))
+      .where(and(eq(promoRedemptions.workspaceId, workspaceId), eq(promoRedemptions.stripeSubscriptionId, subscriptionId)))
+      .limit(1);
+    if (!paid) return null;
+    return {
+      code: paid.code.code,
+      kind: paid.code.kind as PromoKind,
+      description: describeCode(paid.code),
+      discount: discountInForce(paid.code, paid.redeemedAt),
+    };
   }
 
   private async find(code: string): Promise<CodeRow | null> {
@@ -288,4 +293,19 @@ function toDto(row: CodeRow): PromoCodeDto {
     note: row.note,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+/**
+ * Whether a discount still comes off future payments, mirroring Stripe's
+ * coupon durations: "once" covers only the first payment, "repeating" the
+ * months after redemption, "forever" every payment.
+ */
+function discountInForce(row: CodeRow, redeemedAt: Date): PromoDiscount | null {
+  if (row.duration === "once") return null;
+  if (row.duration === "repeating") {
+    const end = new Date(redeemedAt);
+    end.setMonth(end.getMonth() + (row.durationMonths ?? 0));
+    if (end.getTime() <= Date.now()) return null;
+  }
+  return { percentOff: row.percentOff, amountOffCents: row.amountOffCents };
 }
