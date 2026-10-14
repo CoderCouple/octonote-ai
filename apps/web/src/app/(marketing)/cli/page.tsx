@@ -249,7 +249,7 @@ function Hero() {
       {/* One row per step, so the long install URL is never cut off. */}
       <ol id="quick-start" className="mt-8 flex scroll-mt-24 flex-col gap-3">
         {[
-          { step: "1", title: "Install", code: INSTALL },
+          { step: "1", title: "Install", code: `${INSTALL} && octonote` },
           { step: "2", title: "Sign in", code: "octonote login" },
           {
             step: "3",
@@ -278,7 +278,9 @@ function Hero() {
             “Write up the auth flow in my Architecture notebook, with a diagram,
             and publish it.”
           </i>{" "}
-          Node 20+. Works on macOS, Linux and Windows.
+          Running <C>octonote</C> on its own prints a getting-started screen
+          with all of this, so you never need this page in the terminal. No PATH
+          setup needed. Node 20+, on macOS, Linux and Windows.
         </span>
       </P>
     </header>
@@ -740,6 +742,10 @@ function Troubleshooting() {
     <Section id="troubleshooting" title="Troubleshooting">
       <div className="overflow-hidden rounded-xl border text-sm">
         {[
+          [
+            "“octonote: command not found”",
+            "npm's global folder isn't on your PATH (rare: npm and nvm normally set it up). Add export PATH=\"$(npm prefix -g)/bin:$PATH\" to ~/.zshrc or ~/.bashrc and open a new terminal. With nvm, install again after switching Node versions.",
+          ],
           [
             "“You're not signed in”",
             "Run octonote login — or set OCTONOTE_TOKEN for agents and CI.",

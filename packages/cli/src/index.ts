@@ -15,6 +15,8 @@ import { registerItems } from "./commands/items.js";
 import { registerNote } from "./commands/note.js";
 import { registerNotebook } from "./commands/notebook.js";
 import { registerProject } from "./commands/project.js";
+import { resolveConfig } from "./core/config.js";
+import { DOCS_URL, gettingStarted } from "./guide/getting-started.js";
 import { VERSION } from "./version.js";
 
 export { VERSION } from "./version.js";
@@ -44,6 +46,16 @@ export function buildProgram() {
       outputError: (str, write) => write(str),
     });
 
+  // `octonote` on its own: the getting-started screen (also shown right
+  // after install — the install line ends in `&& octonote`).
+  program.action(async () => {
+    const { token, tokenSource, email } = await resolveConfig();
+    const signedInAs = token
+      ? (email ?? (tokenSource === "env" ? "OCTONOTE_TOKEN" : "your account"))
+      : null;
+    process.stdout.write(gettingStarted({ version: VERSION, signedInAs }));
+  });
+
   registerAuth(program);
   registerNote(program);
   registerCanvas(program);
@@ -53,7 +65,7 @@ export function buildProgram() {
   registerAgents(program);
   program.addHelpText(
     "after",
-    '\nExamples:\n  octonote login\n  octonote note create "Plan" --file plan.md --publish\n  octonote canvas create "Flow" --from-mermaid flow.mmd\n  octonote setup claude',
+    `\nGetting started (sign-in, Claude Code & Codex setup): run \`octonote\` on its own.\nAgents: \`octonote guide\`. Docs: ${DOCS_URL}`,
   );
   return program;
 }
