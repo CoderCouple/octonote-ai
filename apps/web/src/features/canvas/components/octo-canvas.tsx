@@ -182,7 +182,8 @@ export function OctoCanvas({
   // tldraw needs explicit pixel dimensions; an absolute inset-0 wrapper keeps
   // the viewport from collapsing to 0x0 during flex layout passes.
   return (
-    <div className="relative h-full w-full">
+    // ph-no-capture: the canvas never appears in product-analytics replays.
+    <div className="ph-no-capture relative h-full w-full">
       <div className="absolute inset-0">
         <Tldraw
           onMount={onMount}

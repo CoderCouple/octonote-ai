@@ -2,9 +2,10 @@
  * CLI / agent tokens: create (plaintext returned once), list, revoke, and
  * verify — the auth guards call verify() for `ont_…` bearer tokens.
  */
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
 import { NotFound } from "../common/error/error-factory";
+import { ProductAnalytics } from "../common/product-analytics.service";
 import { CliTokensRepository } from "../db/repository/cli-tokens.repository";
 import { UsersRepository } from "../db/repository/users.repository";
 
@@ -46,6 +47,7 @@ export class CliTokensService {
   constructor(
     private readonly repo: CliTokensRepository,
     private readonly usersRepo: UsersRepository,
+    @Optional() private readonly analytics: ProductAnalytics | null = null,
   ) {}
 
   async list(userId: string): Promise<CliTokenDto[]> {
@@ -66,6 +68,7 @@ export class CliTokensService {
         ? new Date(Date.now() + input.expiresInDays * 86_400_000)
         : null,
     });
+    void this.analytics?.capture(userId, "cli_connected");
     return { token: toDto(row), plaintext };
   }
 

@@ -12,10 +12,11 @@
  * tx-aware repos to do this cleanly any other way.
  */
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { emailDomainSuffixes, STUDENT_PRO_MONTHS } from "@octonote/shared";
 import { BadRequest } from "../common/error/error-factory";
+import { ProductAnalytics } from "../common/product-analytics.service";
 import { Database, DRIZZLE } from "../db/database.module";
 import { studentEmailSuffixes } from "../db/schemas/billing";
 import { users } from "../db/schemas/users";
@@ -63,7 +64,10 @@ export function emailLocalPart(email: string): string {
 
 @Injectable()
 export class MeService {
-  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Database,
+    @Optional() private readonly analytics: ProductAnalytics | null = null,
+  ) {}
 
   async sync(supabaseUser: SupabaseUser & { id: string }): Promise<MeResult> {
     const email = supabaseUser.email;
@@ -77,7 +81,9 @@ export class MeService {
       emailName;
     const avatarUrl = (meta.avatar_url as string | undefined) ?? null;
 
-    return this.db.transaction(async (tx) => {
+    let isNew = false;
+    let student = false;
+    const result = await this.db.transaction(async (tx) => {
       const [userRow] = await tx
         .insert(users)
         .values({ id: supabaseUser.id, email, name, avatarUrl })
@@ -94,6 +100,8 @@ export class MeService {
         })
         .returning();
       if (!userRow) throw BadRequest("Failed to upsert user.");
+      // A brand-new row has created_at == updated_at (an upsert bumps updated_at).
+      isNew = userRow.createdAt.getTime() === userRow.updatedAt.getTime();
 
       // Students (.edu and friends) get Pro free for a year from their first
       // sign-in with that email. Set once; never extended.
@@ -103,6 +111,7 @@ export class MeService {
         await tx.update(users).set({ studentProUntil: until }).where(eq(users.id, userRow.id));
         userRow.studentProUntil = until;
       }
+      student = Boolean(userRow.studentProUntil);
 
       // Pending share invites sent to this email become active grants.
       // Supabase verifies email ownership before issuing a session, so the
@@ -154,6 +163,10 @@ export class MeService {
         })),
       };
     });
+    if (isNew) {
+      void this.analytics?.capture(result.user.id, "signed_up", { student });
+    }
+    return result;
   }
 
   /** Settings → Account: the name shown everywhere, including published bylines. */

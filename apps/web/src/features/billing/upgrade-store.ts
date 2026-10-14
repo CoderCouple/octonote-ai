@@ -7,6 +7,7 @@
 import { ApiError } from "@octonote/api-client";
 import { PLAN_LIMIT_CODE, type LimitedKind } from "@octonote/shared";
 import { create } from "zustand";
+import { track } from "@/lib/product-analytics/posthog";
 
 export type UpgradeReason = LimitedKind | "workspace" | null;
 
@@ -30,8 +31,10 @@ export const useUpgrade = create<UpgradeState>((set) => ({
   reason: null,
   workspaceId: null,
   discount: null,
-  show: (reason = null, discount = null) =>
-    set({ open: true, reason, discount }),
+  show: (reason = null, discount = null) => {
+    track("upgrade_prompt_shown", { reason: reason ?? "button" });
+    set({ open: true, reason, discount });
+  },
   hide: () => set({ open: false }),
   setWorkspace: (workspaceId) => set({ workspaceId }),
 }));

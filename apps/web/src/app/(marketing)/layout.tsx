@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE } from "@/lib/site";
+import { SiteAnalytics } from "@/lib/product-analytics/analytics-components";
 import { MarketingFooter } from "./_components/marketing-footer";
 import { MarketingNav } from "./_components/marketing-nav";
 
@@ -49,6 +50,7 @@ export default function MarketingLayout({
       <MarketingNav />
       <main className="relative">{children}</main>
       <MarketingFooter />
+      <SiteAnalytics />
     </div>
   );
 }

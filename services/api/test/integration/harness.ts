@@ -29,6 +29,7 @@ import { CliTokensService } from "../../src/service/cli-tokens.service";
 import { NoteMarkdownService } from "../../src/service/note-markdown.service";
 import { PromotionsService } from "../../src/service/promotions.service";
 import { ActivityService } from "../../src/common/activity.service";
+import { ProductAnalytics } from "../../src/common/product-analytics.service";
 import { AdminMetricsService } from "../../src/service/admin-metrics.service";
 import { AdminAuditService } from "../../src/common/admin-audit.service";
 import { AdminService } from "../../src/service/admin.service";
@@ -206,16 +207,21 @@ export async function createHarness() {
   const email = new FakeEmail();
   const supabase = new FakeSupabase();
   const stripe = new FakeStripe();
-  const changeEvents = new ChangeEventsService(db);
+  // PostHog with a fake transport: tests read `posthog.sent`.
+  const posthog = { sent: [] as { event: string; distinct_id: string; properties: Record<string, unknown> }[] };
+  const productAnalytics = new ProductAnalytics(db, { key: "phc_test", host: "https://ph.test" }, async (_url, body) => {
+    posthog.sent.push(body as (typeof posthog.sent)[number]);
+  });
+  const changeEvents = new ChangeEventsService(db, productAnalytics);
   const permissions = new PermissionsService(db);
   const placement = new NotebookPlacement(permissions);
   // Limits on, as in production once Stripe is configured.
   const planLimits = new PlanLimitsService(db, true);
   const workspaces = new WorkspacesService(db, workspacesRepo, membersRepo, changeEvents, planLimits);
-  const promotions = new PromotionsService(db, planLimits, workspaces, stripe as never);
+  const promotions = new PromotionsService(db, planLimits, workspaces, stripe as never, productAnalytics);
 
   const services = {
-    cliTokens: new CliTokensService(new CliTokensRepository(db), new UsersRepository(db)),
+    cliTokens: new CliTokensService(new CliTokensRepository(db), new UsersRepository(db), productAnalytics),
     permissions,
     workspaces,
     pages: new PagesService(pagesRepo, permissions, placement, workspaces, changeEvents, planLimits),
@@ -263,7 +269,7 @@ export async function createHarness() {
       notebooksRepo,
       new UsersRepository(db),
     ),
-    me: new MeService(db),
+    me: new MeService(db, productAnalytics),
     get votes() {
       return new VotesService(db, this.public);
     },
@@ -277,9 +283,10 @@ export async function createHarness() {
       stripe as never,
       { webhookSecret: "whsec_test", prices: { month: "price_month", year: "price_year" } },
       promotions,
+      productAnalytics,
     ),
     account: new AccountService(db, supabase as never),
-    preferences: new PreferencesService(new UserPreferencesRepository(db)),
+    preferences: new PreferencesService(new UserPreferencesRepository(db), productAnalytics),
     recent: new ChangeEventsReaderService(new ChangeEventsRepository(db), workspaces),
     analytics: new AnalyticsService(new ViewsRepository(db), permissions),
   };
@@ -311,7 +318,7 @@ export async function createHarness() {
   const admin = new AdminService(db, supabase as never, planLimits, services.billing, adminAudit);
   const noteMarkdown = new NoteMarkdownService(services.pages);
   const canvasDiagrams = new CanvasDiagramService(services.canvases);
-  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminAudit, admin, ...services };
+  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminAudit, admin, productAnalytics, posthog, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

@@ -144,6 +144,7 @@ export default function Settings() {
       </Section>
 
       <NotificationsSection c={c} />
+      <PrivacySection c={c} />
 
       <Section
         title="Workspace"
@@ -280,24 +281,29 @@ export default function Settings() {
   );
 }
 
-function NotificationsSection({ c }: { c: Palette }) {
+type Prefs = { emailOnShare: boolean; analytics?: boolean };
+
+/** The preference switches (Notifications and Privacy share one query). */
+function usePrefs() {
   const qc = useQueryClient();
   const prefs = useQuery({
     queryKey: ["preferences"],
-    queryFn: () => api.get<{ emailOnShare: boolean }>("/me/preferences"),
+    queryFn: () => api.get<Prefs>("/me/preferences"),
   });
   const save = useMutation({
-    mutationFn: (emailOnShare: boolean) =>
-      api.patch("/me/preferences", { emailOnShare }),
-    onMutate: (emailOnShare) =>
-      qc.setQueryData<{ emailOnShare: boolean }>(["preferences"], (p) =>
-        p ? { ...p, emailOnShare } : p,
-      ),
+    mutationFn: (patch: Partial<Prefs>) => api.patch("/me/preferences", patch),
+    onMutate: (patch) =>
+      qc.setQueryData<Prefs>(["preferences"], (p) => (p ? { ...p, ...patch } : p)),
     onError: (e) => {
       void qc.invalidateQueries({ queryKey: ["preferences"] });
       Alert.alert("Couldn't save", e instanceof Error ? e.message : String(e));
     },
   });
+  return { prefs, save };
+}
+
+function NotificationsSection({ c }: { c: Palette }) {
+  const { prefs, save } = usePrefs();
   return (
     <Section
       title="Notifications"
@@ -311,7 +317,28 @@ function NotificationsSection({ c }: { c: Palette }) {
         <Switch
           value={prefs.data?.emailOnShare ?? true}
           disabled={!prefs.data}
-          onValueChange={(v) => save.mutate(v)}
+          onValueChange={(v) => save.mutate({ emailOnShare: v })}
+          trackColor={{ true: c.tint }}
+        />
+      </Field>
+    </Section>
+  );
+}
+
+/** "Help improve Octonote": usage analytics for this person (off stops the API sending anything). */
+function PrivacySection({ c }: { c: Palette }) {
+  const { prefs, save } = usePrefs();
+  return (
+    <Section title="Privacy" description="Published pages and the people who read them are never tracked.">
+      <Field
+        first
+        label="Help improve Octonote"
+        description="Share how you use the app with the Octonote team. Never what you write or draw."
+      >
+        <Switch
+          value={prefs.data?.analytics ?? true}
+          disabled={!prefs.data}
+          onValueChange={(v) => save.mutate({ analytics: v })}
           trackColor={{ true: c.tint }}
         />
       </Field>

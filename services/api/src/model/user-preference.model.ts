@@ -8,6 +8,7 @@ export interface UserPreference {
   notesLineHeight: NotesLineHeight;
   theme: Theme;
   emailOnShare: boolean;
+  analytics: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,6 +21,7 @@ export function toUserPreference(row: typeof userPreferences.$inferSelect): User
     notesLineHeight: row.notesLineHeight as NotesLineHeight,
     theme: row.theme as Theme,
     emailOnShare: row.emailOnShare,
+    analytics: row.analytics,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

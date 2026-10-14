@@ -8,7 +8,7 @@
  *   - a free code can't start while the workspace already pays.
  * Free redemptions lock the code row, so the last use can't be taken twice.
  */
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   describePromo,
   type PromoApplyResult,
@@ -23,6 +23,7 @@ import { and, desc, eq, gt, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { BadRequest, Conflict, NotFound } from "../common/error/error-factory";
 import { PlanLimitsService } from "../common/plan-limits.service";
+import { ProductAnalytics } from "../common/product-analytics.service";
 import { Database, DRIZZLE } from "../db/database.module";
 import { promoCodes, promoRedemptions } from "../db/schemas/promotions";
 import { users } from "../db/schemas/users";
@@ -60,6 +61,7 @@ export class PromotionsService {
     private readonly planLimits: PlanLimitsService,
     private readonly workspaces: WorkspacesService,
     @Inject(STRIPE_CLIENT) private readonly stripe: Stripe | null,
+    @Optional() private readonly analytics: ProductAnalytics | null = null,
   ) {}
 
   // --- Using a code ----------------------------------------------------------
@@ -89,7 +91,7 @@ export class PromotionsService {
     if ((await this.planLimits.planDetails(workspaceId)).source === "stripe") {
       throw refuse("PROMO_ALREADY_PAYING", "This workspace already pays for Pro, so a free code can't be added.");
     }
-    return this.db.transaction(async (tx) => {
+    const result = await this.db.transaction(async (tx) => {
       // Lock the code row: the uses check and the increment can't interleave.
       const [row] = await tx.select().from(promoCodes).where(eq(promoCodes.code, code)).for("update").limit(1);
       const checked = await this.check(row ?? null, workspaceId, actorUserId, tx as unknown as Database);
@@ -105,15 +107,20 @@ export class PromotionsService {
         .update(promoCodes)
         .set({ redemptionCount: sql`${promoCodes.redemptionCount} + 1`, updatedAt: new Date() })
         .where(eq(promoCodes.id, checked.id));
-      return { kind: "free_pro", code: checked.code, description: describeCode(checked), proUntil: proUntil.toISOString() };
+      return {
+        audience: checked.audience,
+        result: { kind: "free_pro", code: checked.code, description: describeCode(checked), proUntil: proUntil.toISOString() } as const,
+      };
     });
+    void this.analytics?.capture(actorUserId, "code_redeemed", { kind: "free_pro", audience: result.audience });
+    return result.result;
   }
 
   /** Called from the Stripe webhook once a discounted checkout completes. */
   async recordDiscount(promoCodeId: string, workspaceId: string, userId: string | null, subscriptionId: string | null) {
-    await this.db.transaction(async (tx) => {
+    const used = await this.db.transaction(async (tx) => {
       const [code] = await tx.select().from(promoCodes).where(eq(promoCodes.id, promoCodeId)).for("update").limit(1);
-      if (!code) return;
+      if (!code) return null;
       const inserted = await tx
         .insert(promoRedemptions)
         .values({ promoCodeId, workspaceId, userId, kind: code.kind, stripeSubscriptionId: subscriptionId })
@@ -126,7 +133,9 @@ export class PromotionsService {
           .set({ redemptionCount: sql`${promoCodes.redemptionCount} + 1`, updatedAt: new Date() })
           .where(eq(promoCodes.id, promoCodeId));
       }
+      return inserted.length ? code : null;
     });
+    if (used) void this.analytics?.capture(userId, "code_redeemed", { kind: used.kind, audience: used.audience });
   }
 
   /** The code shown on the Billing page: the free code in force, or the subscription's discount. */

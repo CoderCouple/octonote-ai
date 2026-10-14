@@ -332,7 +332,8 @@ export function NotesEditor({
       <div
         ref={dropZoneRef}
         data-figure-drop-zone={readOnly ? undefined : ""}
-        className="bg-card relative h-full data-[figure-drop-active]:ring-2 data-[figure-drop-active]:ring-inset data-[figure-drop-active]:ring-[var(--foreground-strong)]"
+        // ph-no-capture: the note never appears in product-analytics replays.
+        className="ph-no-capture bg-card relative h-full data-[figure-drop-active]:ring-2 data-[figure-drop-active]:ring-inset data-[figure-drop-active]:ring-[var(--foreground-strong)]"
       >
         <div
           ref={scrollRef}

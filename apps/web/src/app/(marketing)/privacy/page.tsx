@@ -15,7 +15,7 @@ const link = "text-foreground underline-offset-4 hover:underline";
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Notice" lastUpdated="October 9, 2026">
+    <LegalLayout title="Privacy Notice" lastUpdated="October 14, 2026">
       <p>
         This notice explains what information Octonote AI (&quot;we&quot;,
         &quot;us&quot;) collects when you use our website, web app and mobile
@@ -32,8 +32,9 @@ export default function PrivacyPage() {
             We don&apos;t sell your data, show ads or use advertising trackers.
           </li>
           <li>
-            We don&apos;t use third-party analytics tools. We only count
-            anonymous views of published pages.
+            We use PostHog to understand how the app is used, without cookies
+            and never with what you write or draw. You can turn it off in
+            Settings → Privacy. Readers of published pages are never tracked.
           </li>
           <li>
             Your notes and canvases are private unless you share or publish
@@ -95,6 +96,22 @@ export default function PrivacyPage() {
           We never store the IP address or browser type, we skip known bots and
           link previews, and visits by a page&apos;s own owners and editors
           aren&apos;t counted.
+        </p>
+        <p>
+          <strong>Product analytics.</strong> To learn which features are used
+          and where people get stuck, we use PostHog (hosted in the US). On our
+          website we record anonymous page views and clicks on sign-up links.
+          In the app we record page views, a few named steps (such as signing
+          up, creating a note, publishing, sharing, upgrading or using a
+          promo code) linked to your account id, and screen recordings of the
+          app in which every piece of text and every input is hidden and your
+          notes and canvases are left out entirely. We never send your name,
+          email address, titles or content to PostHog, and we use no cookies or
+          on-device storage for it: the data lives only in memory while the
+          page is open. Published pages, and the people who read them, are
+          never tracked. You can turn this off at any time in Settings →
+          Privacy (&quot;Help improve Octonote&quot;), and browsers that send
+          &quot;Do Not Track&quot; are not tracked.
         </p>
       </LegalSection>
 
@@ -171,6 +188,10 @@ export default function PrivacyPage() {
             <strong>Resend</strong>: sending sharing invitation emails.
           </li>
           <li>
+            <strong>PostHog</strong>: product analytics, as described above
+            (not on published pages, and off if you turn it off).
+          </li>
+          <li>
             <strong>Google</strong>: only if you choose to sign in with Google.
           </li>
           <li>
@@ -192,8 +213,8 @@ export default function PrivacyPage() {
           as theme. The mobile apps store your sign-in session in your
           device&apos;s secure storage and remember on your device whether
           you&apos;ve seen the introduction. We don&apos;t use advertising or
-          analytics cookies; published-page view counts work without any
-          cookies.
+          analytics cookies: product analytics keeps its data in memory only,
+          and published-page view counts work without any cookies.
         </p>
       </LegalSection>
 
@@ -213,7 +234,8 @@ export default function PrivacyPage() {
         <p>
           You can edit or delete your content and change your profile at any
           time in the app, and delete your whole account yourself in Settings →
-          Delete account (on the web or in the mobile app). You can also ask us
+          Delete account (on the web or in the mobile app). You can turn off
+          product analytics in Settings → Privacy. You can also ask us
           to give you a copy of your information, correct it, delete your
           account and its data, or stop processing it. Depending on where you
           live (for example, in the EU, UK or California), you may have

@@ -10,7 +10,7 @@
  * STRIPE_PRICE_PRO_YEAR, PUBLIC_APP_URL (redirects). Without the secret key
  * billing reports `billingEnabled: false` and limits aren't enforced.
  */
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import {
   FREE_LIMITS,
   PRO_PRICE,
@@ -22,6 +22,7 @@ import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import { BadRequest, Conflict } from "../common/error/error-factory";
 import { PlanLimitsService } from "../common/plan-limits.service";
+import { ProductAnalytics, type ProductEvent } from "../common/product-analytics.service";
 import { Database, DRIZZLE } from "../db/database.module";
 import { workspaceBilling } from "../db/schemas/billing";
 import { billingEvents } from "../db/schemas/tracking";
@@ -53,6 +54,7 @@ export class BillingService {
     @Inject(STRIPE_CLIENT) private readonly stripe: Stripe | null,
     @Inject(BILLING_CONFIG) private readonly config: BillingConfig,
     private readonly promotions: PromotionsService,
+    @Optional() private readonly analytics: ProductAnalytics | null = null,
   ) {}
 
   async summary(workspaceId: string, actorUserId: string): Promise<BillingSummary> {
@@ -114,6 +116,7 @@ export class BillingService {
       cancel_url: `${appUrl()}/workspace/settings#billing`,
     });
     if (!session.url) throw BadRequest("Stripe didn't return a checkout page.");
+    void this.analytics?.capture(actorUserId, "checkout_started", { interval, withCode: Boolean(discount) });
     return { url: session.url };
   }
 
@@ -298,6 +301,10 @@ export class BillingService {
       await this.db.insert(billingEvents).values(
         events.map((kind) => ({ workspaceId, kind, interval: values.interval, stripeSubscriptionId: sub.id })),
       );
+      for (const kind of events) {
+        const event = SUBSCRIPTION_EVENTS[kind];
+        if (event) void this.analytics?.captureForWorkspace(workspaceId, event, { interval: values.interval });
+      }
     }
   }
 
@@ -349,6 +356,14 @@ export class BillingService {
 }
 
 type BillingEventKind = "started" | "cancel_scheduled" | "resumed" | "ended" | "interval_changed" | "past_due";
+
+const SUBSCRIPTION_EVENTS: Partial<Record<BillingEventKind, ProductEvent>> = {
+  started: "subscription_started",
+  cancel_scheduled: "subscription_cancel_scheduled",
+  resumed: "subscription_resumed",
+  ended: "subscription_ended",
+  interval_changed: "subscription_interval_changed",
+};
 
 const LIVE = new Set(["active", "trialing", "past_due"]);
 

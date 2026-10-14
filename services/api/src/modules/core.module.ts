@@ -5,6 +5,7 @@ import { EmailService } from "../common/email.service";
 import { PermissionsService } from "../common/permissions.service";
 import { ActivityService } from "../common/activity.service";
 import { AdminAuditService } from "../common/admin-audit.service";
+import { POSTHOG_CONFIG, postHogConfigFromEnv, ProductAnalytics } from "../common/product-analytics.service";
 import { BILLING_ENFORCED, PlanLimitsService } from "../common/plan-limits.service";
 import { DatabaseModule } from "../db/database.module";
 import { CanvasesRepository } from "../db/repository/canvases.repository";
@@ -44,6 +45,9 @@ const providers = [
   PlanLimitsService,
   ActivityService,
   AdminAuditService,
+  // PostHog, from the API; off without POSTHOG_KEY.
+  ProductAnalytics,
+  { provide: POSTHOG_CONFIG, useFactory: postHogConfigFromEnv },
   // Free-plan limits apply only once payments are set up (see PlanLimitsService).
   { provide: BILLING_ENFORCED, useFactory: () => Boolean(process.env.STRIPE_SECRET_KEY) },
   NotebookPlacement,

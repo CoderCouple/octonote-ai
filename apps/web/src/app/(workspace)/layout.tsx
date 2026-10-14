@@ -15,6 +15,7 @@ import {
 import { getMeApi } from "@/features/workspaces/api/workspaces-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { UpgradeNudge } from "@/features/billing";
+import { AppAnalyticsGate } from "@/lib/product-analytics/app-analytics-gate";
 
 /** App pages never belong in search results. */
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -64,6 +65,7 @@ export default async function WorkspaceLayout({
         <div className="flex-1 overflow-auto">{children}</div>
         <UpgradeNudge workspaceId={active.workspace.id} />
       </SidebarInset>
+      <AppAnalyticsGate />
     </SidebarProvider>
   );
 }

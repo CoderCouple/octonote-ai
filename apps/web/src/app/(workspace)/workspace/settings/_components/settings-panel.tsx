@@ -16,6 +16,7 @@ import {
   Monitor,
   Moon,
   Palette,
+  ShieldCheck,
   Sun,
   Trash2,
   Terminal,
@@ -31,6 +32,7 @@ import {
   setActiveWorkspaceAction,
 } from "@/features/workspaces";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { setAnalyticsAllowed } from "@/lib/product-analytics/posthog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,6 +92,7 @@ const SECTIONS = [
   { id: "account", label: "Account", icon: UserIcon },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "privacy", label: "Privacy", icon: ShieldCheck },
   { id: "workspace", label: "Workspace", icon: Building2 },
   { id: "memberships", label: "Memberships", icon: Layers },
   { id: "billing", label: "Plan & billing", icon: CreditCard },
@@ -176,6 +179,7 @@ export function SettingsPanel({
         <AccountSection user={user} />
         <AppearanceSection />
         <NotificationsSection />
+        <PrivacySection userId={user.id} />
         <WorkspaceSection workspace={workspace} viewerRole={viewerRole} />
         <MembershipsSection
           memberships={memberships}
@@ -455,6 +459,53 @@ function NotificationsSection() {
           disabled={emailOnShare === null}
           onCheckedChange={toggle}
           aria-label="Email me when someone shares with me"
+        />
+      </Row>
+    </SectionShell>
+  );
+}
+
+/**
+ * "Help improve Octonote": usage analytics (PostHog) for this person. On by
+ * default; off stops both the browser and the API from sending anything.
+ */
+function PrivacySection({ userId }: { userId: string }) {
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  useEffect(() => {
+    clientApi
+      .get<{ analytics?: boolean }>("/me/preferences")
+      .then((p) => setAllowed(p.analytics !== false))
+      .catch(() => setAllowed(true));
+  }, []);
+
+  async function toggle(next: boolean) {
+    setAllowed(next);
+    setAnalyticsAllowed(userId, next);
+    try {
+      await clientApi.patch("/me/preferences", { analytics: next });
+    } catch (err) {
+      setAllowed(!next);
+      setAnalyticsAllowed(userId, !next);
+      toast.error(err instanceof Error ? err.message : "Couldn't save.");
+    }
+  }
+
+  return (
+    <SectionShell
+      id="privacy"
+      icon={ShieldCheck}
+      title="Privacy"
+      description="Published pages and the people who read them are never tracked."
+    >
+      <Row
+        label="Help improve Octonote"
+        description="Share how you use the app (which features, where you get stuck) with the Octonote team. Never what you write or draw: text is hidden and notes and canvases are left out. No cookies."
+      >
+        <Switch
+          checked={allowed ?? true}
+          disabled={allowed === null}
+          onCheckedChange={toggle}
+          aria-label="Help improve Octonote"
         />
       </Row>
     </SectionShell>
