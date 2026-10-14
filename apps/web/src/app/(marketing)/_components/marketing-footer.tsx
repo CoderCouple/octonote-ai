@@ -6,6 +6,8 @@ const FOOTER_LINKS = [
   { href: "/#agents", label: "Agents" },
   { href: "/#examples", label: "Examples" },
   { href: "/cli", label: "CLI" },
+  { href: "/use-cases", label: "Use cases" },
+  { href: "/vs", label: "Compare" },
   { href: "/login", label: "Log in" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },

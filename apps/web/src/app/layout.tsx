@@ -24,6 +24,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={READER_FONT_VARIABLES}>
+      <head>
+        {/* Bing reads the language from this as well as from lang="en". */}
+        <meta httpEquiv="content-language" content="en" />
+      </head>
       <body className="antialiased">
         <ThemeProvider
           attribute="class"
