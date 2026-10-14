@@ -60,7 +60,9 @@ export function Points({
             <h3 className="text-foreground-strong text-xl font-semibold">
               {p.title}
             </h3>
-            <p className="text-muted-foreground mt-3 text-lg">{p.body}</p>
+            <p className="text-muted-foreground mt-3 text-lg">
+              <WithCode text={p.body} />
+            </p>
           </div>
         ))}
       </div>
