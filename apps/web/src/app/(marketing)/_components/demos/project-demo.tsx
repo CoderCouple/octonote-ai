@@ -78,15 +78,15 @@ export function ProjectDemo() {
         <div className="relative flex min-h-0 flex-1">
           {/* Note */}
           <div className="w-1/2 overflow-hidden border-r">
-            <div className="mx-auto max-w-xl px-6 py-6 text-left md:px-10">
-              <h3 className="text-foreground-strong min-h-9 text-2xl font-bold md:min-h-10 md:text-3xl">
+            <div className="mx-auto max-w-xl px-4 py-5 text-left md:px-10 md:py-6">
+              <h3 className="text-foreground-strong min-h-7 text-lg font-bold md:min-h-10 md:text-3xl">
                 <Typed
                   text="The redirect path"
                   active={step >= 1}
                   done={step >= 2}
                 />
               </h3>
-              <p className="text-foreground mt-3 min-h-14 text-base md:text-lg">
+              <p className="text-foreground mt-2 min-h-14 text-sm md:mt-3 md:text-lg">
                 <Typed
                   text="One cache lookup. Misses go to the database."
                   active={step >= 2}
@@ -104,14 +104,14 @@ export function ProjectDemo() {
                 {embedded ? (
                   <Reveal show>
                     <div className="overflow-hidden rounded-xl border">
-                      <div className="bg-muted/40 grid h-28 place-items-center md:h-36">
+                      <div className="bg-muted/40 grid h-20 place-items-center md:h-36">
                         <Architecture
                           drawn={2}
                           cdn={edited}
-                          className="h-20 w-52 md:h-28 md:w-72"
+                          className="h-16 w-full max-w-52 md:h-28 md:max-w-72"
                         />
                       </div>
-                      <div className="flex items-center gap-2 border-t px-4 py-2 text-sm">
+                      <div className="flex items-center gap-2 border-t px-3 py-1.5 text-xs md:px-4 md:py-2 md:text-sm">
                         <Group className="text-muted-foreground size-4" />
                         <span className="font-medium">Architecture</span>
                         <span className="text-muted-foreground ml-auto max-md:hidden">
@@ -129,7 +129,7 @@ export function ProjectDemo() {
 
           {/* Canvas */}
           <div className="bg-muted/20 relative w-1/2 overflow-hidden">
-            <div className="grid h-full place-items-center p-6">
+            <div className="grid h-full place-items-center p-2 md:p-6">
               <div className="relative">
                 <div
                   className={cn(
@@ -141,7 +141,7 @@ export function ProjectDemo() {
                 </div>
                 <div
                   className={cn(
-                    "rounded-xl border-2 p-3 transition-all duration-500",
+                    "rounded-xl border-2 p-2 transition-all duration-500 md:p-3",
                     selecting && "border-foreground-subtle border-dashed",
                     grouped &&
                       "border-foreground-strong bg-background/60 border-solid",
@@ -155,14 +155,14 @@ export function ProjectDemo() {
                     )}
                   >
                     <Group className="size-3.5" /> Architecture
-                    <span className="text-muted-foreground ml-auto font-normal">
+                    <span className="text-muted-foreground ml-auto font-normal max-sm:hidden">
                       ⠿ drag
                     </span>
                   </div>
                   <Architecture
                     drawn={drawn}
                     cdn={edited}
-                    className="h-36 w-64 md:h-48 md:w-80"
+                    className="h-20 w-32 sm:h-36 sm:w-64 md:h-48 md:w-80"
                   />
                 </div>
               </div>

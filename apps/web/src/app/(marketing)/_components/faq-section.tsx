@@ -12,9 +12,9 @@ export function FAQSection() {
   return (
     <section
       id="faq"
-      className="relative scroll-mt-16 border-t px-4 py-28 md:px-8 md:py-40"
+      className="relative scroll-mt-16 border-t px-4 py-16 md:px-8 md:py-28"
     >
-      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-20">
+      <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-20">
         <div className="flex flex-col gap-3">
           <span className="text-muted-foreground text-base font-medium">
             FAQ
@@ -36,7 +36,7 @@ export function FAQSection() {
         <Accordion type="single" collapsible className="w-full">
           {FAQS.map((item, i) => (
             <AccordionItem key={item.q} value={`item-${i}`}>
-              <AccordionTrigger className="py-6 text-left text-xl font-medium">
+              <AccordionTrigger className="py-4 text-left text-lg font-medium md:py-6 md:text-xl">
                 {item.q}
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground text-lg leading-relaxed">

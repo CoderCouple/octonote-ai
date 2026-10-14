@@ -55,11 +55,11 @@ export function NotesDemo() {
           ))}
         </aside>
 
-        <div className="relative flex-1 overflow-hidden px-8 py-10 text-left md:px-16">
-          <h3 className="text-foreground-strong min-h-12 text-4xl font-bold tracking-tight">
+        <div className="relative flex-1 overflow-hidden px-5 py-6 text-left md:px-16 md:py-10">
+          <h3 className="text-foreground-strong min-h-10 text-3xl font-bold tracking-tight md:min-h-12 md:text-4xl">
             <Typed text="Rate limiter" active={step >= 1} done={step >= 2} />
           </h3>
-          <p className="text-foreground mt-5 min-h-7 text-lg">
+          <p className="text-foreground mt-3 min-h-7 text-base md:mt-5 md:text-lg">
             <Typed
               text="Each request spends a token; the bucket refills at rate r."
               active={step >= 2}
@@ -69,7 +69,7 @@ export function NotesDemo() {
 
           <Reveal show={step >= 3}>
             <div
-              className="text-foreground-strong mt-4 overflow-x-auto text-lg [&_.katex-display]:my-2"
+              className="text-foreground-strong hide-scrollbar mt-4 overflow-x-auto text-[3.1vw] sm:text-lg [&_.katex-display]:my-2"
               dangerouslySetInnerHTML={{ __html: equation }}
             />
           </Reveal>
@@ -117,10 +117,10 @@ export function NotesDemo() {
               className="absolute top-0 left-0 w-full max-w-xl"
             >
               <div className="overflow-hidden rounded-xl border">
-                <div className="bg-muted/40 grid h-44 place-items-center">
+                <div className="bg-muted/40 grid h-32 place-items-center md:h-44">
                   <FlowDiagram />
                 </div>
-                <div className="text-muted-foreground flex items-center gap-2 border-t px-4 py-2.5 text-sm">
+                <div className="text-muted-foreground flex items-center gap-2 border-t px-4 py-2.5 text-xs md:text-sm">
                   <GitBranch className="size-4" />
                   Mermaid · written as text, rendered as a diagram
                 </div>

@@ -97,6 +97,9 @@ export function HeroStoryDemo() {
   const past = (id: BeatId) => b >= at(id);
   const published = past("published");
   const cursor = CURSOR[BEATS[b]!.id];
+  // Phones show one pane at a time, like the published reader's Note | Canvas
+  // toggle: the canvas while it's being drawn, then the note the figure lands in.
+  const phoneCanvas = past("sketch") && !past("drag");
 
   const equation = useMemo(
     () =>
@@ -147,6 +150,21 @@ export function HeroStoryDemo() {
                 </span>
               ))}
             </div>
+            <div className="bg-muted absolute left-1/2 inline-flex -translate-x-1/2 gap-0.5 rounded-md p-0.5 text-xs font-medium md:hidden">
+              {(["Note", "Canvas"] as const).map((label) => (
+                <span
+                  key={label}
+                  className={cn(
+                    "rounded px-2.5 py-1 transition-colors duration-300",
+                    (label === "Canvas") === phoneCanvas
+                      ? "bg-background text-foreground-strong shadow-sm"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
             <span
               className={cn(
                 "ml-auto rounded-md px-3 py-1 text-xs font-semibold transition-all duration-300",
@@ -172,7 +190,12 @@ export function HeroStoryDemo() {
           )}
         >
           {/* Note */}
-          <div className="w-full overflow-hidden px-6 py-7 md:w-1/2 md:border-r md:px-10">
+          <div
+            className={cn(
+              "w-full overflow-hidden px-6 py-7 md:block md:w-1/2 md:border-r md:px-10",
+              phoneCanvas && "hidden",
+            )}
+          >
             <h3 className="text-foreground-strong min-h-10 text-2xl font-bold tracking-tight md:text-3xl">
               <Typed
                 text="The Transformer"
@@ -189,7 +212,7 @@ export function HeroStoryDemo() {
             </p>
             <div
               className={cn(
-                "text-foreground-strong mt-1 overflow-x-auto transition-all duration-500 [&_.katex-display]:my-3",
+                "text-foreground-strong hide-scrollbar mt-1 overflow-x-auto text-[3.2vw] transition-all duration-500 sm:text-base [&_.katex-display]:my-3",
                 past("equation")
                   ? "translate-y-0 opacity-100"
                   : "translate-y-1 opacity-0",
@@ -199,7 +222,7 @@ export function HeroStoryDemo() {
             {/* Drop zone → embedded figure */}
             <div
               className={cn(
-                "mt-2 hidden rounded-xl transition-colors duration-300 md:block",
+                "mt-2 rounded-xl transition-colors duration-300",
                 BEATS[b]!.id === "drag" &&
                   "bg-accent/60 outline-foreground-subtle outline-2 outline-dashed",
               )}
@@ -210,7 +233,7 @@ export function HeroStoryDemo() {
                     <TransformerDiagram
                       stage={4}
                       compact
-                      className="h-28 w-60"
+                      className="h-28 w-full max-w-60"
                     />
                   </div>
                   <div className="flex items-center gap-2 border-t px-3 py-1.5 text-xs">
@@ -227,7 +250,12 @@ export function HeroStoryDemo() {
           </div>
 
           {/* Canvas */}
-          <div className="bg-muted/20 relative hidden w-1/2 md:block">
+          <div
+            className={cn(
+              "bg-muted/20 relative w-full md:block md:w-1/2",
+              phoneCanvas ? "block" : "hidden",
+            )}
+          >
             <div className="grid h-full place-items-center p-6">
               <div className="relative">
                 <div
@@ -271,7 +299,7 @@ export function HeroStoryDemo() {
                               ? 1
                               : 0
                     }
-                    className="h-[360px] w-[260px] lg:h-[400px] lg:w-[290px]"
+                    className="h-[340px] w-[240px] md:h-[360px] md:w-[260px] lg:h-[400px] lg:w-[290px]"
                   />
                 </div>
               </div>
@@ -281,10 +309,10 @@ export function HeroStoryDemo() {
           {/* Drag chip rides with the cursor from the figure to the note */}
           <div
             className={cn(
-              "bg-foreground-strong text-background pointer-events-none absolute z-20 hidden rounded-lg px-2.5 py-1.5 text-xs font-medium shadow-lg transition-all duration-[1300ms] ease-in-out md:block",
+              "bg-foreground-strong text-background pointer-events-none absolute z-20 rounded-lg px-2.5 py-1.5 text-xs font-medium shadow-lg transition-all duration-[1300ms] ease-in-out",
               BEATS[b]!.id === "drag"
-                ? "top-[72%] left-[16%] opacity-100"
-                : "top-[9%] left-[68%] opacity-0 duration-0",
+                ? "top-[60%] left-[8%] opacity-100 md:top-[72%] md:left-[16%]"
+                : "top-[92%] left-[40%] opacity-0 duration-0 md:top-[9%] md:left-[68%]",
             )}
           >
             ⧉ Transformer block
@@ -325,7 +353,7 @@ export function HeroStoryDemo() {
               Every token decides how much to listen to every other token.
             </p>
             <div
-              className="text-foreground-strong overflow-x-auto [&_.katex-display]:my-3"
+              className="text-foreground-strong hide-scrollbar overflow-x-auto text-[3.2vw] sm:text-base [&_.katex-display]:my-3"
               dangerouslySetInnerHTML={{ __html: equation }}
             />
             <div className="overflow-hidden rounded-xl border">

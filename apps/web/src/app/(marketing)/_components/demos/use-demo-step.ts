@@ -17,14 +17,15 @@ function usePrefersReducedMotion(): boolean {
 }
 
 /**
- * Drives a looping feature demo: advances 0 → steps-1 while the demo is on
- * screen, holds on the final frame, then restarts. Off screen it pauses;
+ * Drives a looping feature demo: starts on the finished frame (so the server
+ * render and a reader scrolling past both see the whole example), holds it,
+ * then plays 0 → steps-1 on a loop while on screen. Off screen it pauses;
  * with reduced motion it shows the finished frame and never moves.
  */
 export function useDemoStep<T extends HTMLElement>(steps: number) {
   const { ref, inView } = useInView<T>(0.4);
   const reduced = usePrefersReducedMotion();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(steps - 1);
   const last = steps - 1;
 
   useEffect(() => {

@@ -34,23 +34,23 @@ export function FeatureSection({
   className?: string;
 }) {
   return (
-    <section id={id} className={cn("relative scroll-mt-16 overflow-hidden px-4 py-32 md:px-8 md:py-48", className)}>
+    <section id={id} className={cn("relative scroll-mt-16 overflow-hidden px-4 py-16 md:px-8 md:py-28", className)}>
       {aura ? <Aura /> : null}
       <div className="relative mx-auto max-w-7xl text-center">
-        <p className="text-muted-foreground text-lg font-medium md:text-xl">{eyebrow}</p>
-        <h2 className="text-foreground-strong mt-5 text-[8vw] leading-[1.1] font-bold md:text-[min(4.5vw,4.5rem)] md:whitespace-nowrap">{title}</h2>
-        <p className="text-muted-foreground mx-auto mt-8 max-w-3xl text-xl md:text-2xl">{body}</p>
+        <p className="text-muted-foreground text-base font-medium md:text-lg">{eyebrow}</p>
+        <h2 className="text-foreground-strong mt-3 text-[8vw] leading-[1.1] font-bold md:text-[min(4.5vw,4.5rem)] md:whitespace-nowrap">{title}</h2>
+        <p className="text-muted-foreground mx-auto mt-5 max-w-3xl text-lg md:mt-6 md:text-xl">{body}</p>
       </div>
-      <div className="relative mx-auto mt-20 max-w-7xl md:mt-24">{demo}</div>
-      <div className="relative mx-auto mt-20 grid max-w-6xl gap-12 md:mt-24 md:grid-cols-3">
+      <div className="relative mx-auto mt-10 max-w-7xl md:mt-16">{demo}</div>
+      <div className="relative mx-auto mt-10 grid max-w-6xl gap-6 md:mt-16 md:grid-cols-3 md:gap-10">
         {points.map((p) => (
           <div key={p.title}>
-            <h3 className="text-foreground-strong text-xl font-semibold md:text-2xl">{p.title}</h3>
-            <p className="text-muted-foreground mt-3 text-lg md:text-xl">{p.body}</p>
+            <h3 className="text-foreground-strong text-lg font-semibold md:text-xl">{p.title}</h3>
+            <p className="text-muted-foreground mt-1.5 text-base md:mt-2 md:text-lg">{p.body}</p>
           </div>
         ))}
       </div>
-      {footer ? <div className="relative mx-auto mt-20 max-w-4xl md:mt-24">{footer}</div> : null}
+      {footer ? <div className="relative mx-auto mt-10 max-w-4xl md:mt-16">{footer}</div> : null}
     </section>
   );
 }

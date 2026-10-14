@@ -80,7 +80,7 @@ export default function LandingPage() {
   return (
     <>
       <HomeStructuredData />
-      <section className="relative overflow-hidden px-4 pt-36 pb-24 md:px-8 md:pt-48 md:pb-32">
+      <section className="relative overflow-hidden px-4 pt-28 pb-14 md:px-8 md:pt-40 md:pb-24">
         <Aura />
         <MeteorShower />
         <div className="relative mx-auto flex max-w-7xl flex-col items-center text-center">
@@ -106,14 +106,14 @@ export default function LandingPage() {
               </span>
             </span>
           </h1>
-          <p className="text-muted-foreground animate-word-rise mt-10 max-w-4xl text-xl [animation-delay:800ms] md:text-2xl">
+          <p className="text-muted-foreground animate-word-rise mt-6 max-w-4xl text-lg [animation-delay:800ms] md:mt-8 md:text-2xl">
             <span className="block md:whitespace-nowrap">
               Notes and Canvas side by side — written by You, or Claude or
               Codex.
             </span>
             Publish it as a beautiful page.
           </p>
-          <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row">
+          <div className="mt-8 flex flex-col items-center gap-2 sm:flex-row sm:gap-4 md:mt-10">
             <PrimaryCta />
             <Button
               asChild
@@ -124,7 +124,7 @@ export default function LandingPage() {
               <Link href="#examples">See examples</Link>
             </Button>
           </div>
-          <div className="mt-20 w-full md:mt-28">
+          <div className="mt-10 w-full md:mt-20">
             <HeroStoryDemo />
           </div>
         </div>
@@ -250,14 +250,14 @@ export default function LandingPage() {
       <PricingSection />
       <FAQSection />
 
-      <section className="relative overflow-hidden border-t px-4 py-32 text-center md:px-8 md:py-44">
+      <section className="relative overflow-hidden border-t px-4 py-20 text-center md:px-8 md:py-32">
         <Aura />
         <MeteorShower />
         <div className="relative mx-auto max-w-3xl">
           <h2 className="text-foreground-strong md:text-display-xl text-5xl font-bold">
             Your first note is one click away.
           </h2>
-          <p className="text-muted-foreground mt-8 text-xl md:text-2xl">
+          <p className="text-muted-foreground mt-5 text-lg md:mt-8 md:text-2xl">
             Free to start. No credit card, no password.
           </p>
           <PrimaryCta className="mt-10" />
