@@ -6,6 +6,8 @@ export interface UserDto {
   name: string;
   email: string;
   avatarUrl: string | null;
+  /** Octonote staff: the app shows the Admin page link. */
+  isAdmin: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,6 +40,7 @@ export function userToDto(user: User): UserDto {
     name: user.name,
     email: user.email,
     avatarUrl: user.avatarUrl,
+    isAdmin: user.isAdmin,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   };

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ShieldCheck,
   BookOpen,
   FileText,
   FolderKanban,
@@ -25,7 +26,13 @@ import {
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   workspace: { id: string; name: string; slug: string };
   memberships: TeamSummary[];
-  user: { id: string; name: string; email: string; avatarUrl: string | null };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl: string | null;
+    isAdmin?: boolean;
+  };
 }
 
 export function AppSidebar({
@@ -56,6 +63,16 @@ export function AppSidebar({
         <NavMain
           items={[
             { title: "Settings", url: "/workspace/settings", icon: Settings },
+            // Octonote staff only (the admin API checks too).
+            ...(user.isAdmin
+              ? [
+                  {
+                    title: "Admin",
+                    url: "/workspace/admin/codes",
+                    icon: ShieldCheck,
+                  },
+                ]
+              : []),
           ]}
           className="p-0 px-1"
         />

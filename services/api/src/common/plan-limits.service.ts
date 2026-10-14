@@ -20,6 +20,7 @@ import { canvases } from "../db/schemas/canvases";
 import { notebooks } from "../db/schemas/notebooks";
 import { pages } from "../db/schemas/pages";
 import { projects } from "../db/schemas/projects";
+import { promoRedemptions } from "../db/schemas/promotions";
 import { users } from "../db/schemas/users";
 import { workspaceMembers } from "../db/schemas/workspaces";
 import { PlanLimit } from "./error/error-factory";
@@ -48,13 +49,13 @@ export class PlanLimitsService {
   }
 
   /**
-   * Pro comes from an active Stripe subscription on the workspace, or from
-   * an owner's free student year. `until` is when that runs out (if known).
+   * Pro comes from an active Stripe subscription on the workspace, a free
+   * promo code in force, or an owner's free student year. `until` is when that runs out (if known).
    */
   async planDetails(
     workspaceId: string,
     now = new Date(),
-  ): Promise<{ plan: Plan; source: "stripe" | "student" | null; until: Date | null }> {
+  ): Promise<{ plan: Plan; source: "stripe" | "promo" | "student" | null; until: Date | null }> {
     const [row] = await this.db
       .select({
         plan: workspaceBilling.plan,
@@ -78,7 +79,23 @@ export class PlanLimitsService {
           gt(users.studentProUntil, now),
         ),
       );
-    if (student?.until) return { plan: "pro", source: "student", until: new Date(student.until) };
+    // A free promo code (Pro for N months) and the student year: whichever lasts longer.
+    const [promo] = await this.db
+      .select({ until: max(promoRedemptions.proUntil) })
+      .from(promoRedemptions)
+      .where(
+        and(
+          eq(promoRedemptions.workspaceId, workspaceId),
+          eq(promoRedemptions.kind, "free_pro"),
+          gt(promoRedemptions.proUntil, now),
+        ),
+      );
+    const promoUntil = promo?.until ? new Date(promo.until) : null;
+    const studentUntil = student?.until ? new Date(student.until) : null;
+    if (promoUntil && (!studentUntil || promoUntil >= studentUntil)) {
+      return { plan: "pro", source: "promo", until: promoUntil };
+    }
+    if (studentUntil) return { plan: "pro", source: "student", until: studentUntil };
     return { plan: "free", source: null, until: null };
   }
 

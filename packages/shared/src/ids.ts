@@ -19,6 +19,8 @@ export const ID_PREFIXES = {
   canvasFigure: "fig",
   resourceVote: "vot",
   cliToken: "tok",
+  promoCode: "pmc",
+  promoRedemption: "pmr",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

@@ -1,6 +1,8 @@
 /**
- * Plan & billing for a workspace, backed by Stripe (hosted Checkout to
- * upgrade, the hosted Billing Portal to manage or cancel). Stripe is the
+ * Plan & billing for a workspace, backed by Stripe: hosted Checkout to
+ * upgrade (with an Octonote-checked promo code), and in-app invoices,
+ * cancel / resume and monthly ⇄ yearly switching (the hosted Billing Portal
+ * stays available for the card). Stripe is the
  * source of truth; its webhook mirrors subscription state into
  * `workspace_billing`, which PlanLimitsService reads.
  *
@@ -11,7 +13,9 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import {
   FREE_LIMITS,
+  PRO_PRICE,
   type BillingInterval,
+  type BillingInvoice,
   type BillingSummary,
 } from "@octonote/shared";
 import { eq } from "drizzle-orm";
@@ -22,9 +26,11 @@ import { Database, DRIZZLE } from "../db/database.module";
 import { workspaceBilling } from "../db/schemas/billing";
 import { users } from "../db/schemas/users";
 import { appUrl } from "./lib/resource-url";
+import { PromotionsService } from "./promotions.service";
 import { WorkspacesService } from "./workspaces.service";
 
-export const STRIPE_CLIENT = Symbol("STRIPE_CLIENT");
+import { STRIPE_CLIENT } from "./stripe.tokens";
+export { STRIPE_CLIENT };
 
 export interface BillingConfig {
   webhookSecret?: string;
@@ -45,6 +51,7 @@ export class BillingService {
     private readonly workspaces: WorkspacesService,
     @Inject(STRIPE_CLIENT) private readonly stripe: Stripe | null,
     @Inject(BILLING_CONFIG) private readonly config: BillingConfig,
+    private readonly promotions: PromotionsService,
   ) {}
 
   async summary(workspaceId: string, actorUserId: string): Promise<BillingSummary> {
@@ -65,6 +72,8 @@ export class BillingService {
       limits: plan === "pro" ? null : FREE_LIMITS,
       billingEnabled: this.planLimits.enforced && this.stripe !== null,
       canManage: role === "OWNER" || role === "ADMIN",
+      promo: await this.promotions.activeFor(workspaceId, row?.stripeSubscriptionId ?? null),
+      prices: { month: PRO_PRICE.month * 100, year: PRO_PRICE.year * 100 },
     };
   }
 
@@ -73,6 +82,7 @@ export class BillingService {
     workspaceId: string,
     interval: BillingInterval,
     actorUserId: string,
+    code?: string,
   ): Promise<{ url: string }> {
     await this.workspaces.requireRole(actorUserId, workspaceId, [...MANAGER_ROLES]);
     const stripe = this.requireStripe();
@@ -82,6 +92,9 @@ export class BillingService {
       throw Conflict("This workspace is already on Pro. Manage it from Plan & billing.");
     }
 
+    // Codes are checked by Octonote (personal codes, one per workspace…), so
+    // Stripe's own code box stays off and a valid code's coupon is applied here.
+    const discount = code ? await this.promotions.discountForCheckout(workspaceId, code, actorUserId) : null;
     const customer = await this.customerFor(workspaceId, actorUserId);
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -90,7 +103,12 @@ export class BillingService {
       line_items: [{ price, quantity: 1 }],
       // The webhook finds the workspace from this.
       subscription_data: { metadata: { workspaceId } },
-      allow_promotion_codes: true,
+      ...(discount
+        ? {
+            discounts: [{ coupon: discount.stripeCouponId }],
+            metadata: { workspaceId, promoCodeId: discount.promoCodeId, userId: actorUserId },
+          }
+        : {}),
       success_url: `${appUrl()}/workspace/settings?billing=success#billing`,
       cancel_url: `${appUrl()}/workspace/settings#billing`,
     });
@@ -128,6 +146,16 @@ export class BillingService {
         if (typeof session.subscription === "string") {
           await this.syncSubscription(await stripe.subscriptions.retrieve(session.subscription));
         }
+        const promoCodeId = session.metadata?.promoCodeId;
+        const workspaceId = session.metadata?.workspaceId ?? session.client_reference_id;
+        if (promoCodeId && workspaceId) {
+          await this.promotions.recordDiscount(
+            promoCodeId,
+            workspaceId,
+            session.metadata?.userId ?? null,
+            typeof session.subscription === "string" ? session.subscription : null,
+          );
+        }
         break;
       }
       case "customer.subscription.created":
@@ -138,6 +166,65 @@ export class BillingService {
       default:
         break;
     }
+  }
+
+  /** Past invoices for the Billing page (newest first): owners and admins. */
+  async invoices(workspaceId: string, actorUserId: string): Promise<BillingInvoice[]> {
+    await this.workspaces.requireRole(actorUserId, workspaceId, [...MANAGER_ROLES]);
+    const customer = (await this.row(workspaceId))?.stripeCustomerId;
+    if (!customer || !this.stripe) return [];
+    const list = await this.stripe.invoices.list({ customer, limit: 24 });
+    return list.data.map((inv) => ({
+      id: inv.id ?? "",
+      number: inv.number ?? null,
+      date: new Date(inv.created * 1000).toISOString(),
+      total: inv.total,
+      currency: inv.currency,
+      status: inv.status ?? null,
+      url: inv.hosted_invoice_url ?? null,
+      pdfUrl: inv.invoice_pdf ?? null,
+    }));
+  }
+
+  /** Cancel at the end of the paid period (`resume` undoes it until then). */
+  async setCancelAtPeriodEnd(workspaceId: string, cancel: boolean, actorUserId: string): Promise<BillingSummary> {
+    await this.workspaces.requireRole(actorUserId, workspaceId, [...MANAGER_ROLES]);
+    const subId = await this.requireSubscription(workspaceId);
+    await this.syncSubscription(
+      await this.requireStripe().subscriptions.update(subId, { cancel_at_period_end: cancel }),
+    );
+    return this.summary(workspaceId, actorUserId);
+  }
+
+  /**
+   * Switch between monthly and yearly. Stripe prorates: moving to yearly
+   * charges the difference now; moving to monthly credits the unused time.
+   */
+  async changeInterval(workspaceId: string, interval: BillingInterval, actorUserId: string): Promise<BillingSummary> {
+    await this.workspaces.requireRole(actorUserId, workspaceId, [...MANAGER_ROLES]);
+    const price = this.config.prices[interval];
+    if (!price) throw BadRequest(`No Stripe price is configured for the ${interval}ly plan.`);
+    const subId = await this.requireSubscription(workspaceId);
+    const stripe = this.requireStripe();
+    const sub = await stripe.subscriptions.retrieve(subId);
+    const item = sub.items.data[0];
+    if (!item) throw BadRequest("This subscription has no plan to change.");
+    if (item.price.id === price) throw Conflict(`This workspace is already billed ${interval}ly.`);
+    await this.syncSubscription(
+      await stripe.subscriptions.update(subId, {
+        items: [{ id: item.id, price }],
+        proration_behavior: "always_invoice",
+        // Switching plans also takes back a pending cancellation.
+        cancel_at_period_end: false,
+      }),
+    );
+    return this.summary(workspaceId, actorUserId);
+  }
+
+  private async requireSubscription(workspaceId: string): Promise<string> {
+    const subId = (await this.row(workspaceId))?.stripeSubscriptionId;
+    if (!subId) throw BadRequest("This workspace has no subscription to change.");
+    return subId;
   }
 
   /** Mirrors a Stripe subscription onto its workspace. */

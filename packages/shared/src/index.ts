@@ -456,3 +456,40 @@ export * from "./text-preview";
 export * from "./library";
 export * from "./support";
 export * from "./billing";
+
+// =============================================================================
+// Promo codes (admin) and billing actions
+// =============================================================================
+
+const PromoCodeText = z
+  .string()
+  .trim()
+  .transform((c) => c.toUpperCase())
+  .pipe(z.string().regex(/^[A-Z0-9][A-Z0-9_-]{2,39}$/, "3–40 letters, digits, - or _"));
+
+export const PromoApplySchema = z.object({ code: PromoCodeText });
+
+export const PromoCodeCreateSchema = z
+  .object({
+    code: PromoCodeText,
+    kind: z.enum(["percent_off", "amount_off", "free_pro"]),
+    audience: z.enum(["founder", "creator", "student", "partner", "general"]).default("general"),
+    percentOff: z.number().int().min(1).max(100).optional(),
+    amountOffCents: z.number().int().min(1).max(100_000).optional(),
+    duration: z.enum(["once", "repeating", "forever"]).optional(),
+    durationMonths: z.number().int().min(1).max(36).optional(),
+    freeMonths: z.number().int().min(1).max(36).optional(),
+    maxRedemptions: z.number().int().min(1).max(1_000_000).optional(),
+    expiresAt: z.string().datetime().optional(),
+    assignedEmail: z.string().email().transform((e) => e.toLowerCase()).optional(),
+    note: z.string().max(500).optional(),
+  })
+  .superRefine((v, ctx) => {
+    const fail = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+    if (v.kind === "percent_off" && !v.percentOff) fail("percentOff is required for a percent-off code");
+    if (v.kind === "amount_off" && !v.amountOffCents) fail("amountOffCents is required for an amount-off code");
+    if (v.kind === "free_pro" && !v.freeMonths) fail("freeMonths is required for a free-Pro code");
+    if (v.kind !== "free_pro" && !v.duration) fail("duration is required for a discount");
+    if (v.duration === "repeating" && !v.durationMonths) fail("durationMonths is required when duration is repeating");
+  });
+export type PromoCodeCreate = z.infer<typeof PromoCodeCreateSchema>;

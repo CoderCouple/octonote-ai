@@ -27,6 +27,7 @@ import { UsersRepository } from "../../src/db/repository/users.repository";
 import { CliTokensRepository } from "../../src/db/repository/cli-tokens.repository";
 import { CliTokensService } from "../../src/service/cli-tokens.service";
 import { NoteMarkdownService } from "../../src/service/note-markdown.service";
+import { PromotionsService } from "../../src/service/promotions.service";
 import { CanvasDiagramService } from "../../src/service/canvas-diagram.service";
 import * as schema from "../../src/db/schema";
 import { CanvasesService } from "../../src/service/canvases.service";
@@ -111,7 +112,44 @@ export class FakeStripe {
   billingPortal = {
     sessions: { create: async () => ({ url: "https://billing.stripe.test/portal" }) },
   };
-  subscriptions = { retrieve: async (id: string) => this.subscriptionsById[id] };
+  subscriptions = {
+    retrieve: async (id: string) => this.subscriptionsById[id],
+    update: async (id: string, params: Record<string, unknown>) => {
+      this.lastSubscriptionUpdate = { id, params };
+      const sub = this.subscriptionsById[id] as Record<string, any>;
+      if ("cancel_at_period_end" in params) sub.cancel_at_period_end = params.cancel_at_period_end;
+      const items = params.items as { price: string }[] | undefined;
+      if (items?.[0]) {
+        const interval = items[0].price === "price_year" ? "year" : "month";
+        sub.items.data[0] = { ...sub.items.data[0], price: { id: items[0].price, recurring: { interval } } };
+      }
+      return sub;
+    },
+  };
+  coupons = {
+    create: async (params: Record<string, unknown>) => {
+      this.couponsCreated.push(params);
+      return { id: `coupon_${this.couponsCreated.length}` };
+    },
+  };
+  invoices = {
+    list: async () => ({
+      data: [
+        {
+          id: "in_1",
+          number: "OCT-0001",
+          created: 1_760_000_000,
+          total: 600,
+          currency: "usd",
+          status: "paid",
+          hosted_invoice_url: "https://invoice.stripe.test/in_1",
+          invoice_pdf: "https://invoice.stripe.test/in_1.pdf",
+        },
+      ],
+    }),
+  };
+  couponsCreated: Record<string, unknown>[] = [];
+  lastSubscriptionUpdate: { id: string; params: Record<string, unknown> } | null = null;
   webhooks = {
     constructEvent: (body: Buffer | string, signature: string) => {
       if (signature !== "valid") throw new Error("bad signature");
@@ -150,6 +188,7 @@ export async function createHarness() {
   // Limits on, as in production once Stripe is configured.
   const planLimits = new PlanLimitsService(db, true);
   const workspaces = new WorkspacesService(db, workspacesRepo, membersRepo, changeEvents, planLimits);
+  const promotions = new PromotionsService(db, planLimits, workspaces, stripe as never);
 
   const services = {
     cliTokens: new CliTokensService(new CliTokensRepository(db), new UsersRepository(db)),
@@ -206,10 +245,15 @@ export async function createHarness() {
     },
     figures: new FiguresService(db, permissions, workspaces, supabase as never),
     planLimits,
-    billing: new BillingService(db, planLimits, workspaces, stripe as never, {
-      webhookSecret: "whsec_test",
-      prices: { month: "price_month", year: "price_year" },
-    }),
+    promotions,
+    billing: new BillingService(
+      db,
+      planLimits,
+      workspaces,
+      stripe as never,
+      { webhookSecret: "whsec_test", prices: { month: "price_month", year: "price_year" } },
+      promotions,
+    ),
     account: new AccountService(db, supabase as never),
     preferences: new PreferencesService(new UserPreferencesRepository(db)),
     recent: new ChangeEventsReaderService(new ChangeEventsRepository(db), workspaces),

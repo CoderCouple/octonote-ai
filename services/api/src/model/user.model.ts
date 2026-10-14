@@ -9,6 +9,8 @@ export interface User {
   name: string;
   email: string;
   avatarUrl: string | null;
+  /** Octonote staff (admin pages). */
+  isAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +21,7 @@ export function toUser(row: typeof users.$inferSelect): User {
     name: row.name,
     email: row.email,
     avatarUrl: row.avatarUrl,
+    isAdmin: row.isAdmin,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

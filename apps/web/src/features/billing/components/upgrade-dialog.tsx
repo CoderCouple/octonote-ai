@@ -12,7 +12,8 @@ import {
   type BillingSummary,
   type LimitedKind,
 } from "@octonote/shared";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Ticket } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getBillingClientApi, startCheckoutClientApi } from "../api";
 import { useUpgrade, type UpgradeReason } from "../upgrade-store";
+import { CodeEntry } from "./code-entry";
 
 const NOUN: Record<LimitedKind, string> = {
   page: "notes",
@@ -48,7 +50,8 @@ const PRO_FEATURES = [
 ];
 
 export function UpgradeDialog() {
-  const { open, reason, workspaceId, hide } = useUpgrade();
+  const { open, reason, workspaceId, hide, discount } = useUpgrade();
+  const router = useRouter();
   const [interval, setInterval] = useState<BillingInterval>("year");
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,7 +71,11 @@ export function UpgradeDialog() {
     if (!workspaceId) return;
     setBusy(true);
     try {
-      const { url } = await startCheckoutClientApi(workspaceId, interval);
+      const { url } = await startCheckoutClientApi(
+        workspaceId,
+        interval,
+        discount?.code,
+      );
       window.location.href = url;
     } catch (err) {
       toast.error(
@@ -170,6 +177,25 @@ export function UpgradeDialog() {
             ))}
           </ul>
         </div>
+
+        {discount ? (
+          <p className="bg-muted flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
+            <Ticket className="size-4 shrink-0" />
+            <span>
+              <b className="font-mono">{discount.code}</b> —{" "}
+              {discount.description}. Applied at checkout.
+            </span>
+          </p>
+        ) : workspaceId && canUpgrade ? (
+          <CodeEntry
+            workspaceId={workspaceId}
+            onDiscount={(d) => useUpgrade.setState({ discount: d })}
+            onFree={() => {
+              hide();
+              router.refresh();
+            }}
+          />
+        ) : null}
 
         {summary && !summary.canManage ? (
           <p className="text-muted-foreground text-sm">

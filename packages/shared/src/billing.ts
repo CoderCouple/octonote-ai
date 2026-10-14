@@ -42,8 +42,8 @@ export const PLAN_LIMIT_CODE = "PLAN_LIMIT";
 
 export interface BillingSummary {
   plan: Plan;
-  /** Why it's Pro: a Stripe subscription, or the free student year. */
-  source: "stripe" | "student" | null;
+  /** Why it's Pro: a Stripe subscription, a free promo code, or the free student year. */
+  source: "stripe" | "promo" | "student" | null;
   /** Stripe status when there is a subscription: active, trialing, past_due, canceled… */
   status: string | null;
   interval: BillingInterval | null;
@@ -56,6 +56,85 @@ export interface BillingSummary {
   billingEnabled: boolean;
   /** Owners and admins can upgrade or manage billing. */
   canManage: boolean;
+  /** The code behind a free Pro period, or the discount on the subscription. */
+  promo: { code: string; kind: PromoKind; description: string } | null;
+  /** Pro price per interval, in cents (for showing the plan). */
+  prices: { month: number; year: number };
+}
+
+// --- Promo codes -------------------------------------------------------------
+
+export type PromoKind = "percent_off" | "amount_off" | "free_pro";
+export type PromoAudience = "founder" | "creator" | "student" | "partner" | "general";
+export type PromoDuration = "once" | "repeating" | "forever";
+
+/** What a code does, in words: "40% off forever", "$5 off for 3 months", "Pro free for 6 months". */
+export function describePromo(p: {
+  kind: PromoKind;
+  percentOff?: number | null;
+  amountOffCents?: number | null;
+  duration?: PromoDuration | null;
+  durationMonths?: number | null;
+  freeMonths?: number | null;
+}): string {
+  const months = (n: number) => `${n} month${n === 1 ? "" : "s"}`;
+  if (p.kind === "free_pro") return `Pro free for ${months(p.freeMonths ?? 0)}`;
+  const off =
+    p.kind === "percent_off"
+      ? `${p.percentOff}% off`
+      : `$${((p.amountOffCents ?? 0) / 100).toFixed((p.amountOffCents ?? 0) % 100 ? 2 : 0)} off`;
+  if (p.duration === "forever") return `${off} forever`;
+  if (p.duration === "repeating") return `${off} for ${months(p.durationMonths ?? 0)}`;
+  return `${off} the first payment`;
+}
+
+/** Result of entering a code in Plan & billing. */
+export type PromoApplyResult =
+  | { kind: "free_pro"; code: string; description: string; proUntil: string }
+  | { kind: "percent_off" | "amount_off"; code: string; description: string };
+
+/** One invoice on the Billing page. */
+export interface BillingInvoice {
+  id: string;
+  number: string | null;
+  date: string;
+  /** Cents. */
+  total: number;
+  currency: string;
+  status: string | null;
+  /** Stripe's hosted invoice page and PDF. */
+  url: string | null;
+  pdfUrl: string | null;
+}
+
+/** A code as the admin page shows it. */
+export interface PromoCodeDto {
+  id: string;
+  code: string;
+  kind: PromoKind;
+  audience: PromoAudience;
+  description: string;
+  percentOff: number | null;
+  amountOffCents: number | null;
+  duration: PromoDuration | null;
+  durationMonths: number | null;
+  freeMonths: number | null;
+  maxRedemptions: number | null;
+  redemptionCount: number;
+  expiresAt: string | null;
+  enabled: boolean;
+  assignedEmail: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface PromoRedemptionDto {
+  id: string;
+  workspace: { id: string; name: string } | null;
+  user: { id: string; name: string; email: string } | null;
+  proUntil: string | null;
+  stripeSubscriptionId: string | null;
+  createdAt: string;
 }
 
 /** Kinds at or over their free limit — any one of these triggers the upgrade prompt. */

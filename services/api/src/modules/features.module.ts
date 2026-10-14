@@ -14,6 +14,9 @@ import { CanvasesController } from "../api/v1/controller/canvases.controller";
 import { CliTokensController } from "../api/v1/controller/cli-tokens.controller";
 import { NoteMarkdownController } from "../api/v1/controller/note-markdown.controller";
 import { NoteMarkdownService } from "../service/note-markdown.service";
+import { AdminPromoController } from "../api/v1/controller/admin-promo.controller";
+import { AdminGuard } from "../auth/admin.guard";
+import { PromotionsService } from "../service/promotions.service";
 import { CanvasDiagramService } from "../service/canvas-diagram.service";
 import { ChangeEventsController } from "../api/v1/controller/change-events.controller";
 import { NotebooksController } from "../api/v1/controller/notebooks.controller";
@@ -48,6 +51,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     FiguresController,
     CliTokensController,
     NoteMarkdownController,
+    AdminPromoController,
   ],
   providers: [
     NotebooksService,
@@ -64,6 +68,8 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     VotesService,
     NoteMarkdownService,
     CanvasDiagramService,
+    PromotionsService,
+    AdminGuard,
     {
       provide: STRIPE_CLIENT,
       useFactory: () =>

@@ -24,6 +24,7 @@ const ROUTE_LABELS: Record<string, string> = {
   notebooks: "Notebooks",
   shared: "Shared",
   settings: "Settings",
+  admin: "Admin",
 };
 
 /**
@@ -33,7 +34,9 @@ const ROUTE_LABELS: Record<string, string> = {
  * cheap access to the resource title — detail pages can render their
  * own title inside the page chrome.
  */
-export function WorkspaceBreadcrumbs({ workspaceName }: WorkspaceBreadcrumbsProps) {
+export function WorkspaceBreadcrumbs({
+  workspaceName,
+}: WorkspaceBreadcrumbsProps) {
   const pathname = usePathname() ?? "/workspace";
   const segments = pathname.replace(/^\/+|\/+$/g, "").split("/");
 
@@ -89,6 +92,8 @@ function leafLabel(tab: string | undefined): string {
       return "Note";
     case "canvas":
       return "Canvas";
+    case "admin":
+      return "Promo codes";
     default:
       return "Details";
   }

@@ -15,7 +15,12 @@ interface UpgradeState {
   /** What ran out, for the headline; null for a plain "Upgrade". */
   reason: UpgradeReason;
   workspaceId: string | null;
-  show: (reason?: UpgradeReason) => void;
+  /** A discount code checked in Plan & billing, applied at checkout. */
+  discount: { code: string; description: string } | null;
+  show: (
+    reason?: UpgradeReason,
+    discount?: { code: string; description: string } | null,
+  ) => void;
   hide: () => void;
   setWorkspace: (id: string) => void;
 }
@@ -24,7 +29,9 @@ export const useUpgrade = create<UpgradeState>((set) => ({
   open: false,
   reason: null,
   workspaceId: null,
-  show: (reason = null) => set({ open: true, reason }),
+  discount: null,
+  show: (reason = null, discount = null) =>
+    set({ open: true, reason, discount }),
   hide: () => set({ open: false }),
   setWorkspace: (workspaceId) => set({ workspaceId }),
 }));

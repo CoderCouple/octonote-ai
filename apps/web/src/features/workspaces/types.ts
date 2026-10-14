@@ -14,6 +14,8 @@ export interface MeUser {
   name: string;
   email: string;
   avatarUrl: string | null;
+  /** Octonote staff: shows the Admin link. */
+  isAdmin?: boolean;
 }
 
 export interface MembershipSummary {

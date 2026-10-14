@@ -71,6 +71,13 @@
       "when": 1791931066255,
       "tag": "0009_cli_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792007456020,
+      "tag": "0010_promo_codes",
+      "breakpoints": true
     }
   ]
 }
