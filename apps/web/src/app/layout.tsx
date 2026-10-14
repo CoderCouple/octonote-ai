@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/sonner";
 import { UpgradeDialog } from "@/features/billing";
 import { READER_FONT_VARIABLES } from "@/features/notes/typography/fonts";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import "./globals.css";
@@ -10,8 +11,10 @@ import "./globals.css";
 import "tldraw/tldraw.css";
 
 export const metadata: Metadata = {
-  title: "Octonote AI",
-  description: "Notes and canvases, together. Share or publish in one click.",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
 };
 
 export default function RootLayout({

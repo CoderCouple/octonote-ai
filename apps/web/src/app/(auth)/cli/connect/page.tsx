@@ -10,7 +10,10 @@ import { checkCliCallback } from "@/features/cli/callback";
 import { CliScreen } from "@/features/cli/cli-screen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Connect the CLI · Octonote AI" };
+export const metadata: Metadata = {
+  title: "Connect the CLI · Octonote AI",
+  robots: { index: false, follow: false },
+};
 
 export default async function CliConnectPage({
   searchParams,

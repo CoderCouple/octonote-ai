@@ -13,6 +13,7 @@ import { FeatureSection } from "./_components/feature-section";
 import { HeroStoryDemo } from "./_components/hero-story-demo";
 import { MeteorShower } from "./_components/meteor-shower";
 import { PricingSection } from "./_components/pricing-section";
+import { HomeStructuredData } from "./_components/structured-data";
 import { CodeBlock } from "./cli/_components/code-block";
 import { INSTALL } from "./cli/_data/install";
 
@@ -78,6 +79,7 @@ function PrimaryCta({ className }: { className?: string }) {
 export default function LandingPage() {
   return (
     <>
+      <HomeStructuredData />
       <section className="relative overflow-hidden px-4 pt-36 pb-24 md:px-8 md:pt-48 md:pb-32">
         <Aura />
         <MeteorShower />

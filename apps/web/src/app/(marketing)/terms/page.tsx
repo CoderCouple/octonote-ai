@@ -2,7 +2,8 @@ import Link from "next/link";
 import { LegalLayout, LegalSection } from "../_components/legal-layout";
 
 export const metadata = {
-  title: "Terms of Service · Octonote AI",
+  title: "Terms of Service",
+  alternates: { canonical: "/terms" },
   description: "The terms that govern your use of Octonote AI.",
 };
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { WorkspaceBreadcrumbs } from "@/components/workspace-breadcrumbs";
@@ -14,6 +15,9 @@ import {
 import { getMeApi } from "@/features/workspaces/api/workspaces-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { UpgradeNudge } from "@/features/billing";
+
+/** App pages never belong in search results. */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function WorkspaceLayout({
   children,

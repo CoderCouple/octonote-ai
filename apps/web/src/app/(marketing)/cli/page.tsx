@@ -12,12 +12,26 @@ import { Toc } from "./_components/toc";
 import { INSTALL } from "./_data/install";
 import reference from "./_data/reference.json";
 
-export const metadata: Metadata = {
-  title: "CLI for Claude Code & Codex",
-  description:
-    "The octonote command-line tool: let Claude Code, Codex and your scripts write notes, draw canvases from mermaid, and publish to Octonote.",
-};
+const CLI_TITLE = "Octonote CLI — notes and diagrams for Claude Code & Codex";
+const CLI_DESCRIPTION =
+  "Let Claude Code, Codex and your scripts write markdown notes, draw canvases from mermaid flowcharts and publish them — with the octonote command-line tool.";
 
+export const metadata: Metadata = {
+  title: { absolute: CLI_TITLE },
+  description: CLI_DESCRIPTION,
+  alternates: { canonical: "/cli" },
+  openGraph: {
+    type: "website",
+    url: "/cli",
+    title: CLI_TITLE,
+    description: CLI_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: CLI_TITLE,
+    description: CLI_DESCRIPTION,
+  },
+};
 
 interface RefCommand {
   name: string;

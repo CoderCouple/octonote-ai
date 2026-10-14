@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   PublicPage,
-  publicTitle,
   type NotebookContext,
   type PublicKind,
   type PublicView,
@@ -11,10 +10,16 @@ import {
   fetchPublishedChild,
   fetchPublishedRoot,
 } from "@/features/public/lib/fetch-public";
-import { describe } from "../../../_lib/describe";
+import { JsonLd } from "@/components/json-ld";
+import { articleJsonLd, describe } from "../../../_lib/describe";
 
 const KINDS = new Set<PublicKind>(["page", "canvas", "project", "notebook"]);
 type Params = { params: Promise<{ slug: string; kind: string; id: string }> };
+
+async function pathOf({ params }: Params) {
+  const { slug, kind, id } = await params;
+  return `/pub/${slug}/${kind}/${id}`;
+}
 
 async function load({ params }: Params, countView = false) {
   const { slug, kind, id } = await params;
@@ -25,13 +30,18 @@ async function load({ params }: Params, countView = false) {
 export async function generateMetadata(props: Params): Promise<Metadata> {
   const view = await load(props);
   if (!view) return { title: "Not found · Octonote AI" };
-  return describe(publicTitle(view.resource), view.resource);
+  return describe(view, await pathOf(props));
 }
 
 export default async function PublishedChildPage(props: Params) {
   const view = await load(props, true);
   if (!view) notFound();
-  return <PublicPage view={view} notebook={await notebookFor(view)} />;
+  return (
+    <>
+      <JsonLd data={articleJsonLd(view, await pathOf(props))} />
+      <PublicPage view={view} notebook={await notebookFor(view)} />
+    </>
+  );
 }
 
 /**

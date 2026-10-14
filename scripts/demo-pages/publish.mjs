@@ -70,7 +70,7 @@ const ANON_KEY = pick("SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUP
 const API_URL = (pick("API_URL", "NEXT_PUBLIC_API_URL") ??
   (isLocal ? "http://localhost:4000" : "https://api-production-fb09.up.railway.app")).replace(/\/$/, "");
 const WEB_URL = (pick("PUBLIC_APP_URL", "NEXT_PUBLIC_APP_URL", "WEB_URL") ??
-  (isLocal ? "http://localhost:3000" : "https://octonote-ai.vercel.app")).replace(/\/$/, "");
+  (isLocal ? "http://localhost:3000" : "https://octonote.ai")).replace(/\/$/, "");
 if (!ANON_KEY) fail(`No Supabase anon/publishable key found in ${isLocal ? ".env" : ".env.hosted"}.`);
 if (!args.email) fail("Pass --email <your Octonote sign-in email>.");
 

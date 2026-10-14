@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   // The link-preview cards read Inter from disk; bundle it with those routes.
   outputFileTracingIncludes: {
     "/pub/**": ["./assets/fonts/**"],
+    "/opengraph-image": ["./assets/fonts/**"],
+    "/cli/opengraph-image": ["./assets/fonts/**"],
   },
 };
 

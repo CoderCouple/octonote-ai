@@ -189,6 +189,68 @@ export async function ogCard(view: PublicView | null) {
   );
 }
 
+/** The card for a site page (home, /cli): headline, one line under it, the URL. */
+export async function siteCard({
+  title,
+  subtitle,
+  path,
+}: {
+  title: string;
+  subtitle: string;
+  path: string;
+}) {
+  return new ImageResponse(
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: 72,
+        background: light.background,
+        color: light.foreground,
+      }}
+    >
+      <Brand />
+      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+        <div
+          style={{
+            fontSize: 76,
+            fontWeight: 800,
+            lineHeight: 1.05,
+            letterSpacing: -2.5,
+            color: light["foreground-strong"],
+          }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            fontSize: 32,
+            lineHeight: 1.4,
+            color: light["muted-foreground"],
+          }}
+        >
+          {subtitle}
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          borderTop: `2px solid ${light.border}`,
+          paddingTop: 28,
+          fontSize: 26,
+          color: light["muted-foreground"],
+        }}
+      >
+        {`octonote.ai${path === "/" ? "" : path}`}
+      </div>
+    </div>,
+    { ...OG_SIZE, fonts: await fonts() },
+  );
+}
+
 function Brand() {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 16 }}>

@@ -1,7 +1,8 @@
 import { LegalLayout, LegalSection } from "../_components/legal-layout";
 
 export const metadata = {
-  title: "Privacy Notice · Octonote AI",
+  title: "Privacy Notice",
+  alternates: { canonical: "/privacy" },
   description:
     "What data Octonote AI collects, why, where it's stored and the choices you have.",
 };
