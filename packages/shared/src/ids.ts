@@ -21,6 +21,7 @@ export const ID_PREFIXES = {
   cliToken: "tok",
   promoCode: "pmc",
   promoRedemption: "pmr",
+  billingEvent: "bev",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

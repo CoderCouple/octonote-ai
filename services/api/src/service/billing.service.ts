@@ -24,6 +24,7 @@ import { BadRequest, Conflict } from "../common/error/error-factory";
 import { PlanLimitsService } from "../common/plan-limits.service";
 import { Database, DRIZZLE } from "../db/database.module";
 import { workspaceBilling } from "../db/schemas/billing";
+import { billingEvents } from "../db/schemas/tracking";
 import { users } from "../db/schemas/users";
 import { appUrl } from "./lib/resource-url";
 import { PromotionsService } from "./promotions.service";
@@ -163,6 +164,18 @@ export class BillingService {
       case "customer.subscription.deleted":
         await this.syncSubscription(event.data.object);
         break;
+      case "invoice.payment_failed": {
+        const invoice = event.data.object;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+        const workspaceId = customerId ? await this.workspaceForCustomer(customerId) : undefined;
+        if (workspaceId) {
+          await this.db
+            .insert(billingEvents)
+            .values({ workspaceId, kind: "payment_failed", amountCents: invoice.amount_due, stripeEventId: event.id })
+            .onConflictDoNothing();
+        }
+        break;
+      }
       default:
         break;
     }
@@ -230,15 +243,7 @@ export class BillingService {
   /** Mirrors a Stripe subscription onto its workspace. */
   async syncSubscription(sub: Stripe.Subscription): Promise<void> {
     const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-    let workspaceId = sub.metadata?.workspaceId;
-    if (!workspaceId) {
-      const [byCustomer] = await this.db
-        .select({ workspaceId: workspaceBilling.workspaceId })
-        .from(workspaceBilling)
-        .where(eq(workspaceBilling.stripeCustomerId, customerId))
-        .limit(1);
-      workspaceId = byCustomer?.workspaceId;
-    }
+    const workspaceId = sub.metadata?.workspaceId ?? (await this.workspaceForCustomer(customerId));
     if (!workspaceId) {
       this.logger.warn(`Subscription ${sub.id} has no workspace; ignoring.`);
       return;
@@ -259,10 +264,26 @@ export class BillingService {
       cancelAtPeriodEnd: sub.cancel_at_period_end,
       updatedAt: new Date(),
     };
+    const before = await this.row(workspaceId);
     await this.db
       .insert(workspaceBilling)
       .values({ workspaceId, ...values })
       .onConflictDoUpdate({ target: workspaceBilling.workspaceId, set: values });
+    const events = billingChanges(before, values);
+    if (events.length) {
+      await this.db.insert(billingEvents).values(
+        events.map((kind) => ({ workspaceId, kind, interval: values.interval, stripeSubscriptionId: sub.id })),
+      );
+    }
+  }
+
+  private async workspaceForCustomer(customerId: string): Promise<string | undefined> {
+    const [row] = await this.db
+      .select({ workspaceId: workspaceBilling.workspaceId })
+      .from(workspaceBilling)
+      .where(eq(workspaceBilling.stripeCustomerId, customerId))
+      .limit(1);
+    return row?.workspaceId;
   }
 
   private async customerFor(workspaceId: string, actorUserId: string): Promise<string> {
@@ -301,4 +322,30 @@ export class BillingService {
     if (!this.stripe) throw BadRequest("Payments aren't set up on this server yet.");
     return this.stripe;
   }
+}
+
+type BillingEventKind = "started" | "cancel_scheduled" | "resumed" | "ended" | "interval_changed" | "past_due";
+
+const LIVE = new Set(["active", "trialing", "past_due"]);
+
+/**
+ * What changed between the stored subscription and Stripe's latest copy, as
+ * history entries. Comparing against the stored row (rather than trusting the
+ * event type) makes this idempotent: our own API calls and Stripe's webhook
+ * retries sync the same state twice, and the second sync finds no change.
+ */
+export function billingChanges(
+  before: { stripeSubscriptionId: string | null; status: string | null; interval: string | null; cancelAtPeriodEnd: boolean } | null,
+  after: { stripeSubscriptionId: string; status: string; interval: string | null; cancelAtPeriodEnd: boolean },
+): BillingEventKind[] {
+  const wasLive = Boolean(before?.stripeSubscriptionId === after.stripeSubscriptionId && before.status && LIVE.has(before.status));
+  const isLive = LIVE.has(after.status);
+  if (!wasLive) return isLive ? ["started"] : [];
+  if (!isLive) return after.status === "canceled" || after.status === "unpaid" || after.status === "incomplete_expired" ? ["ended"] : [];
+  const out: BillingEventKind[] = [];
+  if (before!.interval && after.interval && before!.interval !== after.interval) out.push("interval_changed");
+  if (!before!.cancelAtPeriodEnd && after.cancelAtPeriodEnd) out.push("cancel_scheduled");
+  if (before!.cancelAtPeriodEnd && !after.cancelAtPeriodEnd) out.push("resumed");
+  if (before!.status !== "past_due" && after.status === "past_due") out.push("past_due");
+  return out;
 }

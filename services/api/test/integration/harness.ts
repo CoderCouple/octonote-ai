@@ -28,6 +28,8 @@ import { CliTokensRepository } from "../../src/db/repository/cli-tokens.reposito
 import { CliTokensService } from "../../src/service/cli-tokens.service";
 import { NoteMarkdownService } from "../../src/service/note-markdown.service";
 import { PromotionsService } from "../../src/service/promotions.service";
+import { ActivityService } from "../../src/common/activity.service";
+import { AdminMetricsService } from "../../src/service/admin-metrics.service";
 import { CanvasDiagramService } from "../../src/service/canvas-diagram.service";
 import * as schema from "../../src/db/schema";
 import { CanvasesService } from "../../src/service/canvases.service";
@@ -281,9 +283,11 @@ export async function createHarness() {
     };
   }
 
+  const activity = new ActivityService(db);
+  const adminMetrics = new AdminMetricsService(db);
   const noteMarkdown = new NoteMarkdownService(services.pages);
   const canvasDiagrams = new CanvasDiagramService(services.canvases);
-  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, ...services };
+  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

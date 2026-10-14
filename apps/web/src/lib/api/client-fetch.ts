@@ -8,6 +8,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export const clientApi = createApiClient({
   baseUrl: env.NEXT_PUBLIC_API_URL,
+  // Pages opened inside the mobile app's WebView count as mobile use.
+  client: () => (navigator.userAgent.includes("OctonoteApp") ? "mobile" : "web"),
   getBearerToken: async () => {
     const {
       data: { session },

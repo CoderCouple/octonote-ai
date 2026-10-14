@@ -12,11 +12,20 @@
  */
 import "server-only";
 import { createApiClient } from "@octonote/api-client";
+import { headers } from "next/headers";
 import { env } from "@/env/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const apiClient = createApiClient({
   baseUrl: env.NEXT_PUBLIC_API_URL,
+  // Requests made for the mobile app's WebView count as mobile use.
+  client: async () => {
+    try {
+      return (await headers()).get("user-agent")?.includes("OctonoteApp") ? "mobile" : "web";
+    } catch {
+      return "web"; // outside a request (e.g. build time)
+    }
+  },
   getBearerToken: async () => {
     const supabase = await createSupabaseServerClient();
     const {

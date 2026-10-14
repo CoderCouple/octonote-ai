@@ -3,6 +3,7 @@ import { ModuleRef } from "@nestjs/core";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { buildIdFromUuid } from "@octonote/shared";
 import { isCliToken, userForCliToken } from "./cli-token-user";
+import { recordActivity } from "./record-activity";
 import { SUPABASE_CLIENT } from "./supabase.tokens";
 
 export interface OptionalAuthRequest {
@@ -29,12 +30,15 @@ export class OptionalSupabaseAuthGuard implements CanActivate {
     if (!token) return true;
     try {
       if (isCliToken(token)) {
-        request.user = (await userForCliToken(this.moduleRef, token)) ?? undefined;
+        const user = await userForCliToken(this.moduleRef, token);
+        request.user = user ?? undefined;
+        if (user) recordActivity(this.moduleRef, user, request.headers);
         return true;
       }
       const { data, error } = await this.supabase.auth.getUser(token);
       if (!error && data.user) {
         request.user = { ...data.user, id: buildIdFromUuid("usr", data.user.id) };
+        recordActivity(this.moduleRef, request.user, request.headers);
       }
     } catch {
       // Treat as anonymous.

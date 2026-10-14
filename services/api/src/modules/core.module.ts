@@ -3,6 +3,7 @@ import { AuthModule } from "../auth/auth.module";
 import { ChangeEventsService } from "../common/change-events.service";
 import { EmailService } from "../common/email.service";
 import { PermissionsService } from "../common/permissions.service";
+import { ActivityService } from "../common/activity.service";
 import { BILLING_ENFORCED, PlanLimitsService } from "../common/plan-limits.service";
 import { DatabaseModule } from "../db/database.module";
 import { CanvasesRepository } from "../db/repository/canvases.repository";
@@ -40,6 +41,7 @@ const providers = [
   EmailService,
   PermissionsService,
   PlanLimitsService,
+  ActivityService,
   // Free-plan limits apply only once payments are set up (see PlanLimitsService).
   { provide: BILLING_ENFORCED, useFactory: () => Boolean(process.env.STRIPE_SECRET_KEY) },
   NotebookPlacement,

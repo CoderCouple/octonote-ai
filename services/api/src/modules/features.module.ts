@@ -14,8 +14,10 @@ import { CanvasesController } from "../api/v1/controller/canvases.controller";
 import { CliTokensController } from "../api/v1/controller/cli-tokens.controller";
 import { NoteMarkdownController } from "../api/v1/controller/note-markdown.controller";
 import { NoteMarkdownService } from "../service/note-markdown.service";
+import { AdminMetricsController } from "../api/v1/controller/admin-metrics.controller";
 import { AdminPromoController } from "../api/v1/controller/admin-promo.controller";
 import { AdminGuard } from "../auth/admin.guard";
+import { AdminMetricsService } from "../service/admin-metrics.service";
 import { PromotionsService } from "../service/promotions.service";
 import { CanvasDiagramService } from "../service/canvas-diagram.service";
 import { ChangeEventsController } from "../api/v1/controller/change-events.controller";
@@ -52,6 +54,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     CliTokensController,
     NoteMarkdownController,
     AdminPromoController,
+    AdminMetricsController,
   ],
   providers: [
     NotebooksService,
@@ -69,6 +72,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     NoteMarkdownService,
     CanvasDiagramService,
     PromotionsService,
+    AdminMetricsService,
     AdminGuard,
     {
       provide: STRIPE_CLIENT,

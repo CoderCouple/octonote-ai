@@ -13,6 +13,11 @@ export interface ApiClientConfig {
    * pull from their respective client-side sessions.
    */
   getBearerToken?: BearerTokenSource;
+  /**
+   * Which app is calling ("web" | "mobile"), sent as `x-octonote-client` so
+   * the API can count active users per app. A function is asked per request.
+   */
+  client?: string | (() => string | Promise<string>);
   /** Injected for tests. Defaults to global `fetch`. */
   fetchImpl?: typeof fetch;
 }
@@ -52,7 +57,7 @@ export class ApiError extends Error {
 }
 
 export function createApiClient(config: ApiClientConfig): ApiClient {
-  const { baseUrl, getBearerToken, fetchImpl } = config;
+  const { baseUrl, getBearerToken, fetchImpl, client } = config;
   const doFetch = fetchImpl ?? fetch;
 
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -63,6 +68,9 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     if (getBearerToken) {
       const token = await getBearerToken();
       if (token) headers.set("authorization", `Bearer ${token}`);
+    }
+    if (client) {
+      headers.set("x-octonote-client", typeof client === "function" ? await client() : client);
     }
 
     const response = await doFetch(joinUrl(baseUrl, path), {

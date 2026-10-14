@@ -9,6 +9,7 @@ import { ModuleRef } from "@nestjs/core";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { buildIdFromUuid } from "@octonote/shared";
 import { isCliToken, userForCliToken } from "./cli-token-user";
+import { recordActivity } from "./record-activity";
 import { SUPABASE_CLIENT } from "./supabase.tokens";
 
 export interface AuthenticatedRequest {
@@ -37,6 +38,7 @@ export class SupabaseAuthGuard implements CanActivate {
       const user = await userForCliToken(this.moduleRef, token);
       if (!user) throw new UnauthorizedException("Invalid or revoked CLI token.");
       request.user = user;
+      recordActivity(this.moduleRef, user, request.headers);
       return true;
     }
 
@@ -47,6 +49,7 @@ export class SupabaseAuthGuard implements CanActivate {
 
     // Downstream code always sees the prefixed `usr_<uuid>` form.
     request.user = { ...data.user, id: buildIdFromUuid("usr", data.user.id) };
+    recordActivity(this.moduleRef, request.user, request.headers);
     return true;
   }
 }

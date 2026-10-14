@@ -300,7 +300,7 @@ function toDto(row: CodeRow): PromoCodeDto {
  * coupon durations: "once" covers only the first payment, "repeating" the
  * months after redemption, "forever" every payment.
  */
-function discountInForce(row: CodeRow, redeemedAt: Date): PromoDiscount | null {
+export function discountInForce(row: CodeRow, redeemedAt: Date): PromoDiscount | null {
   if (row.duration === "once") return null;
   if (row.duration === "repeating") {
     const end = new Date(redeemedAt);

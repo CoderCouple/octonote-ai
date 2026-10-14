@@ -26,7 +26,7 @@ import { workspaceMembers } from "../db/schemas/workspaces";
 import { PlanLimit } from "./error/error-factory";
 
 /** Stripe statuses that keep Pro on (past_due gets a grace period while Stripe retries). */
-const PAID_STATUSES = ["active", "trialing", "past_due"];
+export const PAID_STATUSES = ["active", "trialing", "past_due"];
 
 const NOUN: Record<LimitedKind, string> = {
   page: "notes",
