@@ -275,3 +275,14 @@ API tests under `test/integration/` run against real Postgres in-process (PGlite
 ## Memory
 
 Durable product-level context lives in `/Users/suniltiwari/.claude/projects/-Users-suniltiwari-Desktop-octonote-ai/memory/` (auto-loaded index at `MEMORY.md`). The product-direction memory there is authoritative if it conflicts with this file; update both together.
+
+<!-- octonote:start -->
+## Octonote (notes & canvases)
+
+The user keeps notes, diagrams (canvases), projects and notebooks in Octonote. Use the `octonote` CLI to read and write them — never ask the user to copy-paste.
+
+- Run `octonote guide` once per session before using it; `octonote <command> --help` for details.
+- Write notes as markdown files (mermaid, `$math$`, code and tables work); draw diagrams as mermaid flowcharts (`--from-mermaid`), which become real, editable canvases.
+- Output is JSON when piped: read `id`, `url` and `publicUrl` from it, and always give the user the link.
+- Only publish, share or delete when the user asked to.
+<!-- octonote:end -->
