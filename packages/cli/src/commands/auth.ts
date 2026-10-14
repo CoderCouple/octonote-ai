@@ -1,5 +1,11 @@
 import type { Command } from "commander";
-import { readStored, writeStored } from "../core/config.js";
+import {
+  customUrl,
+  DEFAULT_API_URL,
+  DEFAULT_WEB_URL,
+  readStored,
+  writeStored,
+} from "../core/config.js";
 import { CliError, usage } from "../core/errors.js";
 import { ApiClient } from "../core/http.js";
 import { readStdin } from "../core/input.js";
@@ -51,11 +57,13 @@ export function registerAuth(program: Command) {
           }).get<{
             user: { email: string; name: string };
           }>("/me");
+          // Addresses are saved only when custom (e.g. a local stack), so
+          // everyone else follows the defaults if hosting ever moves.
           await writeStored({
             token,
             email: me.user.email,
-            apiUrl: ctx.config.apiUrl,
-            webUrl: ctx.config.webUrl,
+            apiUrl: customUrl(ctx.config.apiUrl, DEFAULT_API_URL),
+            webUrl: customUrl(ctx.config.webUrl, DEFAULT_WEB_URL),
           });
           emit(
             { signedIn: true, email: me.user.email },

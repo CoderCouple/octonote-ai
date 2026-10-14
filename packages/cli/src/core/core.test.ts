@@ -89,3 +89,31 @@ describe("setup section", () => {
     );
   });
 });
+
+describe("API address", () => {
+  it("saves only custom addresses, never the default or a retired one", async () => {
+    const { customUrl, DEFAULT_API_URL } = await import("./config.js");
+    expect(customUrl(DEFAULT_API_URL, DEFAULT_API_URL)).toBeUndefined();
+    expect(
+      customUrl("https://api-production-fb09.up.railway.app/", DEFAULT_API_URL),
+    ).toBeUndefined();
+    expect(customUrl("http://localhost:4000/", DEFAULT_API_URL)).toBe(
+      "http://localhost:4000",
+    );
+  });
+
+  it("ignores a retired address left in an old config", async () => {
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = mkdtempSync(join(tmpdir(), "octonote-cfg-"));
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({ apiUrl: "https://api-production-fb09.up.railway.app" }),
+    );
+    process.env.OCTONOTE_CONFIG_DIR = dir;
+    const { resolveConfig, DEFAULT_API_URL } = await import("./config.js");
+    expect((await resolveConfig()).apiUrl).toBe(DEFAULT_API_URL);
+    delete process.env.OCTONOTE_CONFIG_DIR;
+  });
+});

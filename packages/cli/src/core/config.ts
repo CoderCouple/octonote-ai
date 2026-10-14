@@ -3,7 +3,7 @@
  * (file mode 0600; override the folder with OCTONOTE_CONFIG_DIR). Env vars
  * win over the file, so agents and CI never need it:
  *   OCTONOTE_TOKEN      a token from Settings → CLI & agents
- *   OCTONOTE_API_URL    default https://api-production-fb09.up.railway.app
+ *   OCTONOTE_API_URL    default https://api.octonote.ai
  *   OCTONOTE_WEB_URL    default https://octonote.ai
  *   OCTONOTE_WORKSPACE  workspace id to use
  */
@@ -11,7 +11,8 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export const DEFAULT_API_URL = "https://api-production-fb09.up.railway.app";
+// Our own domain, so the CLI never needs updating when hosting moves.
+export const DEFAULT_API_URL = "https://api.octonote.ai";
 export const DEFAULT_WEB_URL = "https://octonote.ai";
 
 export interface StoredConfig {
@@ -59,6 +60,17 @@ export async function writeStored(
   await chmod(configPath(), 0o600).catch(() => undefined);
 }
 
+/** API addresses that are gone; configs still holding them use the default instead. */
+const RETIRED_API_URLS = new Set([
+  "https://api-production-fb09.up.railway.app",
+]);
+
+/** Only keep an address in the config when it isn't the default (or a retired one). */
+export function customUrl(url: string, fallback: string): string | undefined {
+  const clean = url.replace(/\/+$/, "");
+  return clean === fallback || RETIRED_API_URLS.has(clean) ? undefined : clean;
+}
+
 export async function resolveConfig(
   flags: { apiUrl?: string; webUrl?: string; workspace?: string } = {},
 ): Promise<ResolvedConfig> {
@@ -77,7 +89,9 @@ export async function resolveConfig(
     apiUrl: strip(
       flags.apiUrl ||
         process.env.OCTONOTE_API_URL ||
-        stored.apiUrl ||
+        (stored.apiUrl && !RETIRED_API_URLS.has(strip(stored.apiUrl))
+          ? stored.apiUrl
+          : undefined) ||
         DEFAULT_API_URL,
     ),
     webUrl: strip(

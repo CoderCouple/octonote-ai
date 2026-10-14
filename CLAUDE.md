@@ -227,7 +227,7 @@ API tests under `test/integration/` run against real Postgres in-process (PGlite
 | Piece | Where |
 |---|---|
 | Supabase | project **OctonoteAI**, ref `xdjeshxjvrbgksgmurnh`, East US, CoderCouple's Org. Linked in `supabase/`. |
-| API | Railway project **octonote-ai**, service `api` → https://api-production-fb09.up.railway.app (deploy: `railway up --service api --detach` from the repo root; `.railwayignore` keeps the upload to what the Dockerfile needs) |
+| API | Railway project **octonote-ai**, service `api` → **https://api.octonote.ai** (custom domain; CNAME `api` at Namecheap → Railway). The address lives in **`API_URL` in `.env.hosted`**; after changing it run `pnpm api-url:sync` (Vercel `NEXT_PUBLIC_API_URL` + redeploy, mobile env, prints the Stripe webhook URL). The CLI defaults to api.octonote.ai. (Deploy: `railway up --service api --detach` from the repo root; `.railwayignore` keeps the upload to what the Dockerfile needs) |
 | Web | Vercel project **octonote-ai** (root `apps/web`) → https://octonote-ai.vercel.app (**auto-deploys on every push to `main`** — prefer that; manual `vercel deploy --prod --yes` from the repo root uploads the working tree incl. uncommitted files; `.vercelignore` keeps env files out) |
 
 - Hosted credentials live in the git-ignored root **`.env.hosted`** (DB password, keys, URLs). Never print or commit them.
