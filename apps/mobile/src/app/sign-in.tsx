@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
+import { BRAND_MARKS } from "@octonote/shared";
 import { LogoMark } from "@/components/logo-mark";
 import { env } from "@/lib/env";
 import {
@@ -32,22 +33,10 @@ import { usePalette } from "@/lib/theme";
 
 type Step = "email" | "code";
 
-const PROVIDERS: { id: OAuthProvider; label: string; icon: string }[] = [
-  {
-    id: "google",
-    label: "Google",
-    icon: "M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z",
-  },
-  {
-    id: "apple",
-    label: "Apple",
-    icon: "M16.37 12.75c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.28-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.24-.02 2.02-1.12 2.77-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.65l.04-.04zM14.1 6.01c.63-.77 1.06-1.83.94-2.89-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28z",
-  },
-  {
-    id: "azure",
-    label: "Microsoft",
-    icon: "M2 2h9.5v9.5H2zM12.5 2H22v9.5h-9.5zM2 12.5h9.5V22H2zM12.5 12.5H22V22h-9.5z",
-  },
+const PROVIDERS: { id: OAuthProvider; label: string }[] = [
+  { id: "google", label: "Google" },
+  { id: "apple", label: "Apple" },
+  { id: "azure", label: "Microsoft" },
 ];
 
 /** DEVELOPMENT ONLY: __DEV__ is false in release builds, so this never ships. */
@@ -207,8 +196,19 @@ export default function SignIn() {
                     <ActivityIndicator color={c.textStrong} />
                   ) : (
                     <>
-                      <Svg width={18} height={18} viewBox="0 0 24 24">
-                        <Path d={p.icon} fill={c.textStrong} />
+                      {/* Brand colours for Google/Microsoft; Apple takes the text colour. */}
+                      <Svg
+                        width={18}
+                        height={18}
+                        viewBox={BRAND_MARKS[p.id].viewBox}
+                      >
+                        {BRAND_MARKS[p.id].paths.map((m) => (
+                          <Path
+                            key={m.d}
+                            d={m.d}
+                            fill={m.fill ?? c.textStrong}
+                          />
+                        ))}
                       </Svg>
                       <Text style={[styles.oauthText, { color: c.textStrong }]}>
                         Continue with {p.label}

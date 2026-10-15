@@ -523,3 +523,4 @@ export const StudentDomainCreateSchema = z.object({
   label: z.string().trim().max(100).optional(),
 });
 export type StudentDomainCreate = z.infer<typeof StudentDomainCreateSchema>;
+export * from "./brand-marks";

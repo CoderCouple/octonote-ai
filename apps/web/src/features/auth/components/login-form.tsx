@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { BRAND_MARKS } from "@octonote/shared";
 import { safeNext } from "@/lib/safe-next";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -39,16 +40,11 @@ const COPY = {
 
 const RESEND_SECONDS = 30;
 
-const OAUTH: {
-  id: OAuthProvider;
-  label: string;
-  Icon: () => React.JSX.Element;
-  scopes?: string;
-}[] = [
-  { id: "google", label: "Google", Icon: GoogleIcon },
-  { id: "apple", label: "Apple", Icon: AppleIcon },
+const OAUTH: { id: OAuthProvider; label: string; scopes?: string }[] = [
+  { id: "google", label: "Google" },
+  { id: "apple", label: "Apple" },
   // Entra only returns the email address when asked for the "email" scope.
-  { id: "azure", label: "Microsoft", Icon: MicrosoftIcon, scopes: "email" },
+  { id: "azure", label: "Microsoft", scopes: "email" },
 ];
 
 function nextPath(): string {
@@ -223,7 +219,7 @@ export function LoginForm({
                       {busy === p.id ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
-                        <p.Icon />
+                        <BrandIcon provider={p.id} />
                       )}
                       {busy === p.id
                         ? "Redirecting…"
@@ -410,41 +406,19 @@ function Message({
   );
 }
 
-function GoogleIcon() {
+/** A provider's logo from the shared brand marks (colour where the brand has it). */
+function BrandIcon({ provider }: { provider: OAuthProvider }) {
+  const mark = BRAND_MARKS[provider];
   return (
     <svg
       className="size-4 shrink-0"
-      viewBox="0 0 24 24"
+      viewBox={mark.viewBox}
       fill="currentColor"
       aria-hidden="true"
     >
-      <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
-    </svg>
-  );
-}
-
-function AppleIcon() {
-  return (
-    <svg
-      className="size-4 shrink-0"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M16.37 12.75c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.28-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.24-.02 2.02-1.12 2.77-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.65l.04-.04zM14.1 6.01c.63-.77 1.06-1.83.94-2.89-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28z" />
-    </svg>
-  );
-}
-
-function MicrosoftIcon() {
-  return (
-    <svg
-      className="size-4 shrink-0"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M2 2h9.5v9.5H2zM12.5 2H22v9.5h-9.5zM2 12.5h9.5V22H2zM12.5 12.5H22V22h-9.5z" />
+      {mark.paths.map((p) => (
+        <path key={p.d} d={p.d} fill={p.fill} />
+      ))}
     </svg>
   );
 }
