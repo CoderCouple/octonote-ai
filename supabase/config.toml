@@ -158,9 +158,9 @@ enabled = true
 # in emails.
 site_url = "http://localhost:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
-external_url = "http://192.168.1.88:54321/auth/v1"
+external_url = "http://172.20.62.66:54321/auth/v1"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://localhost:3000/auth/callback", "http://127.0.0.1:3000/auth/callback", "http://192.168.1.88:3000/auth/callback", "octonote://**"]
+additional_redirect_urls = ["http://localhost:3000/auth/callback", "http://127.0.0.1:3000/auth/callback", "http://172.20.62.66:3000/auth/callback", "octonote://**", "exp://**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -429,7 +429,7 @@ project_id = "xdjeshxjvrbgksgmurnh"
 
 [remotes.production.auth]
 site_url = "https://octonote.ai"
-additional_redirect_urls = ["https://octonote.ai/auth/callback", "https://octonote.ai/**", "https://octonote-ai.vercel.app/auth/callback", "octonote://**"]
+additional_redirect_urls = ["https://octonote.ai/auth/callback", "https://octonote.ai/**", "https://octonote-ai.vercel.app/auth/callback", "octonote://**", "exp://**"]
 
 [remotes.production.auth.email]
 # One sign-in email per address per minute in production (local dev uses 1s).
@@ -450,3 +450,29 @@ sender_name = "Octonote AI"
 [remotes.production.auth.rate_limit]
 # Sign-in emails per hour across the whole project (Resend free tier: 100/day, 3,000/month).
 email_sent = 100
+
+# Social sign-in (web + mobile). Every provider redirects to
+# https://xdjeshxjvrbgksgmurnh.supabase.co/auth/v1/callback. IDs and secrets come
+# from .env.hosted at `supabase config push` time — never commit them. The apps
+# only show a provider's button once it's enabled here (GoTrue /settings).
+# Switch a provider on only once its keys are in .env.hosted: a push with empty
+# keys would show a button that fails.
+[remotes.production.auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_OAUTH_CLIENT_ID)"
+secret = "env(GOOGLE_OAUTH_CLIENT_SECRET)"
+
+# Apple: client_id is the Services ID; secret is a JWT signed with the .p8 key
+# that Apple lets live at most 6 months — regenerate it before it expires.
+[remotes.production.auth.external.apple]
+enabled = false
+client_id = "env(APPLE_OAUTH_CLIENT_ID)"
+secret = "env(APPLE_OAUTH_SECRET)"
+
+# Microsoft = Supabase's "azure" provider; the common endpoint accepts personal
+# and work/school accounts.
+[remotes.production.auth.external.azure]
+enabled = false
+client_id = "env(AZURE_OAUTH_CLIENT_ID)"
+secret = "env(AZURE_OAUTH_CLIENT_SECRET)"
+url = "https://login.microsoftonline.com/common"

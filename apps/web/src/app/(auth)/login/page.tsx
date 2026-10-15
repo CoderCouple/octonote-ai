@@ -1,4 +1,5 @@
 import { AuthShell, LoginForm } from "@/features/auth";
+import { getEnabledProviders } from "@/features/auth/lib/enabled-providers";
 import { DevAutoLogin } from "@/features/auth/dev-auto-login";
 
 export const metadata = {
@@ -6,10 +7,11 @@ export const metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const providers = await getEnabledProviders();
   return (
     <AuthShell>
-      <LoginForm mode="login" />
+      <LoginForm mode="login" providers={providers} />
       <DevAutoLogin />
     </AuthShell>
   );

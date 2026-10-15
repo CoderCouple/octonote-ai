@@ -2,7 +2,7 @@
 
 /**
  * Sign in / sign up, matching the mobile app: logo tile, "Welcome to
- * Octonote AI.", Google or email. Email sends one message carrying both a
+ * Octonote AI.", Google / Apple / Microsoft or email. Email sends one message carrying both a
  * magic link and a 6-digit code — the user can click the link or type the
  * code here (handy when the mail is on another device).
  */
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { safeNext } from "@/lib/safe-next";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
+import type { OAuthProvider } from "../lib/enabled-providers";
 
 type Mode = "login" | "signup";
 
@@ -21,15 +22,15 @@ type Step = { kind: "email" } | { kind: "code"; email: string };
 
 const COPY = {
   login: {
-    subtitle: "Sign in with Google or your email.",
-    google: "Continue with Google",
+    subtitle: "Sign in to pick up where you left off.",
+    oauthVerb: "Continue with",
     altPrompt: "New to Octonote AI?",
     altLabel: "Create an account",
     altHref: "/signup",
   },
   signup: {
     subtitle: "Create your free account in seconds. No password needed.",
-    google: "Sign up with Google",
+    oauthVerb: "Sign up with",
     altPrompt: "Already have an account?",
     altLabel: "Sign in",
     altHref: "/login",
@@ -37,6 +38,18 @@ const COPY = {
 } as const;
 
 const RESEND_SECONDS = 30;
+
+const OAUTH: {
+  id: OAuthProvider;
+  label: string;
+  Icon: () => React.JSX.Element;
+  scopes?: string;
+}[] = [
+  { id: "google", label: "Google", Icon: GoogleIcon },
+  { id: "apple", label: "Apple", Icon: AppleIcon },
+  // Entra only returns the email address when asked for the "email" scope.
+  { id: "azure", label: "Microsoft", Icon: MicrosoftIcon, scopes: "email" },
+];
 
 function nextPath(): string {
   return (
@@ -55,15 +68,36 @@ function callbackUrl(): string {
 const field =
   "border-input bg-background placeholder:text-foreground-subtle focus-visible:border-foreground-strong h-12 w-full rounded-xl border px-4 text-base outline-none transition-colors disabled:opacity-50";
 
-export function LoginForm({ mode = "login" }: { mode?: Mode }) {
+export function LoginForm({
+  mode = "login",
+  providers = [],
+}: {
+  mode?: Mode;
+  /** Social sign-ins switched on in Supabase (see getEnabledProviders). */
+  providers?: OAuthProvider[];
+}) {
   const copy = COPY[mode];
+  const oauth = OAUTH.filter((p) => providers.includes(p.id));
   const router = useRouter();
   const [step, setStep] = useState<Step>({ kind: "email" });
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [busy, setBusy] = useState<"email" | "google" | "code" | null>(null);
+  const [busy, setBusy] = useState<"email" | OAuthProvider | "code" | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // /auth/callback sends failed or cancelled Google / Apple / Microsoft sign-ins here.
+  useEffect(() => {
+    if (
+      new URLSearchParams(window.location.search).get("error") === "callback"
+    ) {
+      setError(
+        "Sign-in didn't finish. Try again, or continue with your email.",
+      );
+    }
+  }, []);
   const [cooldown, setCooldown] = useState(0);
   const codeRef = useRef<HTMLInputElement>(null);
 
@@ -111,13 +145,13 @@ export function LoginForm({ mode = "login" }: { mode?: Mode }) {
     requestAnimationFrame(() => codeRef.current?.focus());
   }
 
-  async function onGoogle() {
-    setBusy("google");
+  async function onOAuth(provider: (typeof OAUTH)[number]) {
+    setBusy(provider.id);
     setError(null);
     const { error: err } =
       await createSupabaseBrowserClient().auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: callbackUrl() },
+        provider: provider.id,
+        options: { redirectTo: callbackUrl(), scopes: provider.scopes },
       });
     if (err) {
       setBusy(null);
@@ -174,26 +208,37 @@ export function LoginForm({ mode = "login" }: { mode?: Mode }) {
           <p className="text-muted-foreground mt-3 text-lg">{copy.subtitle}</p>
 
           <div className="mt-10 space-y-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onGoogle}
-              disabled={busy !== null}
-              className="h-12 w-full gap-3 rounded-xl text-base"
-            >
-              {busy === "google" ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <GoogleIcon />
-              )}
-              {busy === "google" ? "Redirecting…" : copy.google}
-            </Button>
+            {oauth.length > 0 && (
+              <>
+                <div className="space-y-2.5">
+                  {oauth.map((p) => (
+                    <Button
+                      key={p.id}
+                      type="button"
+                      variant="outline"
+                      onClick={() => onOAuth(p)}
+                      disabled={busy !== null}
+                      className="h-12 w-full gap-3 rounded-xl text-base"
+                    >
+                      {busy === p.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <p.Icon />
+                      )}
+                      {busy === p.id
+                        ? "Redirecting…"
+                        : `${copy.oauthVerb} ${p.label}`}
+                    </Button>
+                  ))}
+                </div>
 
-            <div className="text-foreground-subtle flex items-center gap-4 text-sm">
-              <span className="bg-border h-px flex-1" />
-              or
-              <span className="bg-border h-px flex-1" />
-            </div>
+                <div className="text-foreground-subtle flex items-center gap-4 text-sm">
+                  <span className="bg-border h-px flex-1" />
+                  or
+                  <span className="bg-border h-px flex-1" />
+                </div>
+              </>
+            )}
 
             <form onSubmit={onEmailSubmit} className="space-y-3" noValidate>
               <label htmlFor="email" className="sr-only">
@@ -374,6 +419,32 @@ function GoogleIcon() {
       aria-hidden="true"
     >
       <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg
+      className="size-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M16.37 12.75c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.28-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.24-.02 2.02-1.12 2.77-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.65l.04-.04zM14.1 6.01c.63-.77 1.06-1.83.94-2.89-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28z" />
+    </svg>
+  );
+}
+
+function MicrosoftIcon() {
+  return (
+    <svg
+      className="size-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M2 2h9.5v9.5H2zM12.5 2H22v9.5h-9.5zM2 12.5h9.5V22H2zM12.5 12.5H22V22h-9.5z" />
     </svg>
   );
 }
