@@ -463,9 +463,10 @@ client_id = "env(GOOGLE_OAUTH_CLIENT_ID)"
 secret = "env(GOOGLE_OAUTH_CLIENT_SECRET)"
 
 # Apple: client_id is the Services ID; secret is a JWT signed with the .p8 key
-# that Apple lets live at most 6 months — regenerate it before it expires.
+# that Apple lets live at most 6 months — regenerate it before it expires
+# (current one: 2027-04-13).
 [remotes.production.auth.external.apple]
-enabled = false
+enabled = true
 client_id = "env(APPLE_OAUTH_CLIENT_ID)"
 secret = "env(APPLE_OAUTH_SECRET)"
 
