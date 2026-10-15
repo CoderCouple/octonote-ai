@@ -3,7 +3,7 @@
  * top; below a divider sit the details we'd otherwise have to ask for.
  * Shared by web and mobile so both send the same shape.
  */
-export const SUPPORT_EMAIL = "support@octonote.ai";
+export const SUPPORT_EMAIL = "hello@octonote.ai";
 
 export interface SupportContext {
   /** "Web", "iOS", "Android". */

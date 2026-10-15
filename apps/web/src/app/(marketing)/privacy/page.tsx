@@ -244,8 +244,8 @@ export default function PrivacyPage() {
         </p>
         <p>
           To make a request, email{" "}
-          <a href="mailto:support@octonote.ai" className={link}>
-            support@octonote.ai
+          <a href="mailto:hello@octonote.ai" className={link}>
+            hello@octonote.ai
           </a>{" "}
           from the address on your account. We&apos;ll respond within 30 days.
         </p>
@@ -280,8 +280,8 @@ export default function PrivacyPage() {
       <LegalSection heading="Contact">
         <p>
           Questions about privacy:{" "}
-          <a href="mailto:support@octonote.ai" className={link}>
-            support@octonote.ai
+          <a href="mailto:hello@octonote.ai" className={link}>
+            hello@octonote.ai
           </a>
           .
         </p>

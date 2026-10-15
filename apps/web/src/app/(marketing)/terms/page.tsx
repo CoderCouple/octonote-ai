@@ -42,8 +42,8 @@ export default function TermsPage() {
           You must be at least 13 years old (or the minimum age in your country)
           to use the Service. Give us accurate information, keep access to your
           email account secure, and tell us straight away at{" "}
-          <a href="mailto:support@octonote.ai" className={link}>
-            support@octonote.ai
+          <a href="mailto:hello@octonote.ai" className={link}>
+            hello@octonote.ai
           </a>{" "}
           if you think your account has been compromised. You&apos;re
           responsible for activity under your account.
@@ -120,8 +120,8 @@ export default function TermsPage() {
           We may remove or unpublish content, or restrict sharing, if we
           reasonably believe it breaks these Terms or the law. To report
           content, email{" "}
-          <a href="mailto:support@octonote.ai" className={link}>
-            support@octonote.ai
+          <a href="mailto:hello@octonote.ai" className={link}>
+            hello@octonote.ai
           </a>
           .
         </p>
@@ -141,8 +141,8 @@ export default function TermsPage() {
         <p>
           You can stop using the Service at any time. Delete your account
           yourself in Settings → Delete account, or ask us to by emailing{" "}
-          <a href="mailto:support@octonote.ai" className={link}>
-            support@octonote.ai
+          <a href="mailto:hello@octonote.ai" className={link}>
+            hello@octonote.ai
           </a>
           . We may suspend or close accounts that seriously or repeatedly break
           these Terms, or if required by law. Where reasonable, we&apos;ll give
@@ -186,8 +186,8 @@ export default function TermsPage() {
       <LegalSection heading="Contact">
         <p>
           Questions about these Terms:{" "}
-          <a href="mailto:support@octonote.ai" className={link}>
-            support@octonote.ai
+          <a href="mailto:hello@octonote.ai" className={link}>
+            hello@octonote.ai
           </a>
           .
         </p>
