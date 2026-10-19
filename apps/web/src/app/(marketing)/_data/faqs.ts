@@ -25,3 +25,27 @@ export const FAQS: { q: string; a: string }[] = [
     a: "No. The guide agents follow tells them to publish, share or delete only when you ask, and deleting from the CLI needs an explicit --yes.",
   },
 ];
+
+/** Shown on /pricing and sent to search engines as FAQPage data. */
+export const PRICING_FAQS: { q: string; a: string }[] = [
+  {
+    q: "Is Octonote AI free?",
+    a: "Yes. The free plan has every feature, with up to 10 notes, 10 canvases, 10 projects and 10 notebooks in one workspace. No credit card needed.",
+  },
+  {
+    q: "How much is Pro?",
+    a: "$10 a month or $100 a year per workspace. Pro removes every limit: unlimited notes, canvases, projects, notebooks and workspaces.",
+  },
+  {
+    q: "Do students get Pro for free?",
+    a: "Yes. Sign up with your school email address (like .edu) and Pro is switched on for 12 months, with no card needed.",
+  },
+  {
+    q: "Can I cancel any time?",
+    a: "Yes. Cancel from Settings → Plan & billing and you keep Pro until the end of the period you paid for.",
+  },
+  {
+    q: "What happens to my notes if I go back to Free?",
+    a: "Nothing is deleted. Everything you made stays, and you can keep editing it; you just can't create more than the free limits allow.",
+  },
+];

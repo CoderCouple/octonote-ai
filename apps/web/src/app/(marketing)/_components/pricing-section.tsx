@@ -37,7 +37,9 @@ const EVERY_PLAN = [
   "Web, desktop and phone browsers",
 ];
 
-export function PricingSection() {
+/** `page`: the section is the whole /pricing page, so its title is the h1. */
+export function PricingSection({ page = false }: { page?: boolean }) {
+  const Title = page ? "h1" : "h2";
   const [interval, setInterval] = useState<BillingInterval>("year");
   // Phones show one plan at a time; desktop shows both side by side.
   const [plan, setPlan] = useState<"free" | "pro">("pro");
@@ -46,16 +48,19 @@ export function PricingSection() {
   return (
     <section
       id="pricing"
-      className="relative scroll-mt-16 border-t px-4 py-16 md:px-8 md:py-28"
+      className={cn(
+        "relative scroll-mt-16 px-4 md:px-8",
+        page ? "pt-28 pb-8 md:pt-40" : "border-t py-16 md:py-28",
+      )}
     >
       <div className="mx-auto max-w-5xl text-center">
         <p className="text-muted-foreground text-base font-medium md:text-lg">
           Pricing
         </p>
-        <h2 className="text-foreground-strong mt-3 text-4xl leading-[1.1] font-bold text-balance md:text-5xl lg:text-6xl">
+        <Title className="text-foreground-strong mt-3 text-4xl leading-[1.1] font-bold text-balance md:text-5xl lg:text-6xl">
           Start free. <br className="max-md:hidden" />
           Upgrade when you need more.
-        </h2>
+        </Title>
         <p className="text-muted-foreground mx-auto mt-5 max-w-2xl text-lg md:text-xl">
           Every feature is in the free plan. Pro removes the limits.
         </p>

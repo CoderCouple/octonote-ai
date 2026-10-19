@@ -131,6 +131,31 @@ export default function LandingPage() {
       </section>
 
       <FeatureSection
+        id="agents"
+        aura
+        className="border-y"
+        eyebrow="Claude Code & Codex"
+        title="Just ask Claude. It's all kept here."
+        body="Set up once, and your agent saves the notes, decisions and diagrams from every conversation to Octonote — then finds them again whenever you ask."
+        demo={<AgentsDemo />}
+        points={[
+          {
+            title: "Set up in a minute",
+            body: "Install the CLI, sign in, and one command teaches Claude Code (or Codex) to use Octonote.",
+          },
+          {
+            title: "Save as you work",
+            body: "Ask Claude to write it up: notes from markdown and real, editable diagrams, filed in your notebooks.",
+          },
+          {
+            title: "Recall it later",
+            body: "In any new session, Claude searches and reads your notes, with your permissions, so context is never lost.",
+          },
+        ]}
+        footer={<AgentSetup />}
+      />
+
+      <FeatureSection
         id="notes"
         eyebrow="Notes"
         title="Write like a doc. Explain like a textbook."
@@ -199,35 +224,10 @@ export default function LandingPage() {
       />
 
       <FeatureSection
-        id="agents"
-        aura
-        className="border-y"
-        eyebrow="Agents"
-        title="Your AI agent writes here too."
-        body="Claude Code, Codex and your scripts use the octonote CLI to write notes from markdown, draw canvases from mermaid and publish — with your permissions."
-        demo={<AgentsDemo />}
-        points={[
-          {
-            title: "Claude Code",
-            body: "One command adds Octonote to CLAUDE.md, plus an optional skill.",
-          },
-          {
-            title: "Codex",
-            body: "The same setup writes AGENTS.md — per project or for every project.",
-          },
-          {
-            title: "Cloud agents & CI",
-            body: "Use a token from Settings in GitHub Actions or cloud agents.",
-          },
-        ]}
-        footer={<AgentSetup />}
-      />
-
-      <FeatureSection
         id="mobile"
         eyebrow="Everywhere"
-        title="Native on iPhone and Android."
-        body="Real native apps with the same five tabs on both — Home, Notes, Canvases, Projects and Notebooks — and the same editor you use on the web."
+        title="Coming soon to iPhone and Android."
+        body="Native apps are on their way to the App Store and Google Play, with the same five tabs on both — Home, Notes, Canvases, Projects and Notebooks — and the same editor you use on the web."
         demo={<MobileDemo />}
         points={[
           {

@@ -1,4 +1,6 @@
+import { SUPPORT_EMAIL } from "@octonote/shared";
 import Link from "next/link";
+import { PROFILES } from "../_data/company";
 import { COMPARISONS } from "../_data/comparisons";
 import { USE_CASES } from "../_data/use-cases";
 import { Logo } from "./logo";
@@ -20,7 +22,7 @@ const COLUMNS: {
       { href: "/#agents", label: "Agents" },
       { href: "/#examples", label: "Examples" },
       { href: "/cli", label: "CLI" },
-      { href: "/#pricing", label: "Pricing" },
+      { href: "/pricing", label: "Pricing" },
     ],
   },
   {
@@ -40,11 +42,12 @@ const COLUMNS: {
     })),
   },
   {
-    title: "Account",
-    href: "/login",
+    title: "Company",
+    href: "/about",
     links: [
-      { href: "/login", label: "Log in" },
-      { href: "/signup", label: "Sign up" },
+      { href: "/about", label: "About" },
+      { href: `mailto:${SUPPORT_EMAIL}`, label: "Contact" },
+      ...PROFILES.map((p) => ({ href: p.url, label: p.label })),
       { href: "/privacy", label: "Privacy" },
       { href: "/terms", label: "Terms" },
     ],
