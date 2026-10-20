@@ -190,6 +190,18 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.3.0
         version: 1.4.0(@types/react@19.2.18)(react@19.3.0)
+      '@shikijs/core':
+        specifier: 4.5.0
+        version: 4.5.0
+      '@shikijs/engine-javascript':
+        specifier: 4.5.0
+        version: 4.5.0
+      '@shikijs/langs':
+        specifier: 4.5.0
+        version: 4.5.0
+      '@shikijs/themes':
+        specifier: 4.5.0
+        version: 4.5.0
       '@supabase/ssr':
         specifier: ^0.12.0
         version: 0.12.7(@supabase/supabase-js@2.117.3)
@@ -3058,6 +3070,10 @@ packages:
 
   '@shikijs/langs-precompiled@4.5.0':
     resolution: {integrity: sha512-l6x3sNA4qvSQPtFogjhVj9IjjYhQ6Z4zy+E2vP5/PteFYCtT7GR7xZIjUT8QQKgA7k6glMDQXI0265qmIkJXLg==}
+    engines: {node: '>=20'}
+
+  '@shikijs/langs@4.5.0':
+    resolution: {integrity: sha512-wwBTqwduXSz0X4v9Qa2EWeFaYJEw1clCncWjoRNQRbVDu3SPRTRWucnouYapKj3b8Q+sk/41Vbc4B5c8nuYzLA==}
     engines: {node: '>=20'}
 
   '@shikijs/primitive@4.5.0':
@@ -10975,6 +10991,10 @@ snapshots:
     dependencies:
       '@shikijs/types': 4.5.0
       oniguruma-to-es: 4.3.6
+
+  '@shikijs/langs@4.5.0':
+    dependencies:
+      '@shikijs/types': 4.5.0
 
   '@shikijs/primitive@4.5.0':
     dependencies:

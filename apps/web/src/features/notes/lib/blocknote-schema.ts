@@ -1,4 +1,3 @@
-import { codeBlockOptions } from "@blocknote/code-block";
 import {
   BlockNoteSchema,
   createCodeBlockSpec,
@@ -9,6 +8,7 @@ import { CanvasReferenceBlock } from "../blocks/canvas-reference-block";
 import { FigureBlock } from "../blocks/figure-block";
 import { MathBlock, MathInline } from "../blocks/math";
 import { MermaidBlock } from "../blocks/mermaid-block";
+import { octoCodeBlockOptions } from "./code-highlighter";
 
 /**
  * The one BlockNote schema for every surface that parses or renders a note
@@ -19,7 +19,7 @@ export const octoBlockNoteSchema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     // Syntax highlighting (Shiki, GitHub light/dark), with a language picker.
-    codeBlock: createCodeBlockSpec(codeBlockOptions),
+    codeBlock: createCodeBlockSpec(octoCodeBlockOptions),
     canvasReference: CanvasReferenceBlock(),
     figure: FigureBlock(),
     mathBlock: MathBlock(),
