@@ -1,6 +1,7 @@
 import "katex/dist/katex.min.css";
 import katex from "katex";
 import { Fragment, type ReactNode } from "react";
+import { highlightCode } from "../lib/highlight";
 
 /**
  * A published note's blocks as plain server-rendered HTML. It is what search
@@ -120,15 +121,28 @@ function renderBlock(b: Block, key: number): ReactNode {
           {children}
         </blockquote>
       );
-    case "codeBlock":
+    case "codeBlock": {
+      const raw = (asInline(b.content) ?? [])
+        .map((n) => (typeof n.text === "string" ? n.text : ""))
+        .join("");
+      const html = highlightCode(
+        raw,
+        typeof p.language === "string" ? p.language : undefined,
+      );
       return (
         <pre
           key={key}
-          className="bg-muted my-2 overflow-x-auto rounded-md p-4 font-mono text-sm"
+          className="bg-code-background text-code-foreground my-2 overflow-x-auto rounded-md p-4 font-mono text-sm leading-[1.6] break-words whitespace-pre-wrap"
         >
-          <code>{text}</code>
+          {html ? (
+            // highlight.js escapes the code; only its own spans are added.
+            <code className="hljs" dangerouslySetInnerHTML={{ __html: html }} />
+          ) : (
+            <code>{text}</code>
+          )}
         </pre>
       );
+    }
     case "mathBlock":
       return typeof p.latex === "string" && p.latex ? (
         <div

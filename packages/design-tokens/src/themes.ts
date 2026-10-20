@@ -63,6 +63,16 @@ export const colorTokenNames = [
   "window-close",
   "window-minimize",
   "window-zoom",
+  "code-background",
+  "code-foreground",
+  "code-keyword",
+  "code-string",
+  "code-comment",
+  "code-number",
+  "code-title",
+  "code-variable",
+  "code-attr",
+  "code-meta",
 ] as const;
 
 export type ColorToken = (typeof colorTokenNames)[number];
@@ -93,6 +103,23 @@ const terminalOnDark = {
   "terminal-muted": "#7D7A75",
   "terminal-command": "#0A0A0B",
   ...windowButtons,
+} satisfies Partial<Record<ColorToken, string>>;
+
+/**
+ * Code blocks: always a dark block with GitHub Dark syntax colours, in both
+ * themes — the editor's highlighter (Shiki) uses the same palette.
+ */
+const code = {
+  "code-background": "#161616",
+  "code-foreground": "#E6EDF3",
+  "code-keyword": "#FF7B72",
+  "code-string": "#A5D6FF",
+  "code-comment": "#8B949E",
+  "code-number": "#79C0FF",
+  "code-title": "#D2A8FF",
+  "code-variable": "#FFA657",
+  "code-attr": "#79C0FF",
+  "code-meta": "#7EE787",
 } satisfies Partial<Record<ColorToken, string>>;
 
 export const light: ThemeColors = {
@@ -143,6 +170,7 @@ export const light: ThemeColors = {
   "orb-icon": "rgba(255, 255, 255, 0.95)",
   // Code terminals on marketing pages: black on the light page.
   ...terminalOnLight,
+  ...code,
 };
 
 export const dark: ThemeColors = {
@@ -193,6 +221,7 @@ export const dark: ThemeColors = {
   "orb-icon": "rgba(255, 255, 255, 1)",
   // Code terminals on marketing pages: white on the dark page.
   ...terminalOnDark,
+  ...code,
 };
 
 export const themes: Record<ThemeName, ThemeColors> = { light, dark };

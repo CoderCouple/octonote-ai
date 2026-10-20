@@ -1,5 +1,7 @@
+import { codeBlockOptions } from "@blocknote/code-block";
 import {
   BlockNoteSchema,
+  createCodeBlockSpec,
   defaultBlockSpecs,
   defaultInlineContentSpecs,
 } from "@blocknote/core";
@@ -16,6 +18,8 @@ import { MermaidBlock } from "../blocks/mermaid-block";
 export const octoBlockNoteSchema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
+    // Syntax highlighting (Shiki, GitHub light/dark), with a language picker.
+    codeBlock: createCodeBlockSpec(codeBlockOptions),
     canvasReference: CanvasReferenceBlock(),
     figure: FigureBlock(),
     mathBlock: MathBlock(),

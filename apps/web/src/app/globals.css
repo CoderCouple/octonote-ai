@@ -155,6 +155,12 @@ body {
 .reader-typography .bn-container * {
   font-family: inherit !important;
 }
+/* …except code: code blocks and inline code stay monospace. */
+.reader-typography .bn-container code,
+.reader-typography .bn-container code *,
+.reader-typography .bn-container [data-content-type="codeBlock"] pre {
+  font-family: var(--font-mono) !important;
+}
 /* Centre the editor in the reading column (its 54px side padding holds the drag
  * handles; the title above uses the same padding so they line up), and let it
  * sit on whatever surface it's placed on. */
@@ -208,4 +214,26 @@ body {
   html:has(.published-note)::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Syntax highlighting in published notes' static HTML (see
+   features/public/lib/highlight.ts). Colours: code-* design tokens. */
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type, .hljs-doctag, .hljs-template-tag { color: var(--code-keyword); }
+.hljs-string, .hljs-regexp, .hljs-template-variable, .hljs-addition { color: var(--code-string); }
+.hljs-comment, .hljs-quote, .hljs-deletion { color: var(--code-comment); font-style: italic; }
+.hljs-number, .hljs-symbol, .hljs-attr, .hljs-attribute, .hljs-selector-attr, .hljs-variable.language_ { color: var(--code-number); }
+.hljs-title, .hljs-title.function_, .hljs-title.class_, .hljs-section { color: var(--code-title); }
+.hljs-variable, .hljs-params, .hljs-built_in { color: var(--code-variable); }
+.hljs-meta, .hljs-name, .hljs-selector-id, .hljs-selector-class { color: var(--code-meta); }
+
+/* Code blocks in the editor and read-only notes: monospace (the app font
+   otherwise wins) on the same dark block as the static HTML. */
+.bn-block-content[data-content-type="codeBlock"] {
+  background-color: var(--code-background);
+}
+.bn-block-content[data-content-type="codeBlock"] pre,
+.bn-block-content[data-content-type="codeBlock"] code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
