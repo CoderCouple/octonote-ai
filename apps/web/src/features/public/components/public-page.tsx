@@ -12,6 +12,7 @@ import { ScrollProgressBar } from "@/features/notes/published/scroll-progress-ba
 import { TypographyPicker } from "@/features/notes/typography/typography-picker";
 import { useNoteTypography } from "@/features/notes/typography/use-note-typography";
 import { SUPPORT_EMAIL } from "@octonote/shared";
+import { MadeWithCta } from "./made-with-cta";
 import { cn } from "@/lib/utils";
 import type { PublicByline, PublicNote, PublicView } from "../types";
 import {
@@ -172,7 +173,7 @@ function PublishedNote({
                 onLoaded={setLoaded}
               />
             </div>
-            <EndOfArticle author={author} notebook={notebook} />
+            <EndOfArticle author={author} notebook={notebook} slug={slug} />
           </article>
           <div aria-hidden className="hidden lg:block" />
         </div>
@@ -303,9 +304,11 @@ function CopyLinkButton() {
 function EndOfArticle({
   author,
   notebook,
+  slug,
 }: {
   author: PublicByline["author"];
   notebook: NotebookContext | null;
+  slug: string;
 }) {
   const reportHref = () =>
     `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Report a published page")}&body=${encodeURIComponent(
@@ -350,22 +353,7 @@ function EndOfArticle({
         </div>
       ) : null}
 
-      <div className="bg-muted flex flex-col gap-4 rounded-2xl p-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-col gap-1">
-          <span className="text-foreground-strong text-lg font-bold">
-            Notes and canvases, together.
-          </span>
-          <span className="text-muted-foreground text-sm">
-            This page was made with Octonote AI. Publish your own in one click.
-          </span>
-        </div>
-        <Link
-          href="/signup"
-          className="bg-primary text-primary-foreground flex h-11 shrink-0 items-center justify-center rounded-xl px-5 text-sm font-semibold"
-        >
-          Get started free
-        </Link>
-      </div>
+      <MadeWithCta slug={slug} />
 
       <footer className="text-muted-foreground flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-4 text-xs">
         <Link href="/" className="hover:text-foreground-strong">

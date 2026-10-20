@@ -1,4 +1,9 @@
 import "server-only";
+import { cookies } from "next/headers";
+import {
+  SIGNUP_REF_COOKIE,
+  SIGNUP_REF_HEADER,
+} from "@/features/public/lib/signup-ref";
 import { serverFetch } from "@/lib/api/server-fetch";
 import type {
   MeResponse,
@@ -7,8 +12,13 @@ import type {
   WorkspaceUpdate,
 } from "../types";
 
-export function getMeApi() {
-  return serverFetch<MeResponse>("/me");
+/** Also tells the API where a brand-new account came from (see signup-ref.ts). */
+export async function getMeApi() {
+  const ref = (await cookies()).get(SIGNUP_REF_COOKIE)?.value;
+  return serverFetch<MeResponse>(
+    "/me",
+    ref ? { headers: { [SIGNUP_REF_HEADER]: ref } } : {},
+  );
 }
 
 export function createWorkspaceApi(body: WorkspaceCreate) {

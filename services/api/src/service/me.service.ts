@@ -23,7 +23,12 @@ import { users } from "../db/schemas/users";
 import { resourceShares } from "../db/schemas/sharing";
 import { workspaceMembers, workspaces } from "../db/schemas/workspaces";
 import { toUser, type User } from "../model/user.model";
-import { toWorkspace, toWorkspaceMember, type Workspace, type WorkspaceMember } from "../model/workspace.model";
+import {
+  toWorkspace,
+  toWorkspaceMember,
+  type Workspace,
+  type WorkspaceMember,
+} from "../model/workspace.model";
 
 function slugify(input: string): string {
   return (
@@ -41,7 +46,10 @@ interface MeResult {
 }
 
 /** Whether the email's domain ends with a whitelisted suffix (student_email_suffixes). */
-async function isStudentEmail(db: Pick<Database, "select">, email: string): Promise<boolean> {
+async function isStudentEmail(
+  db: Pick<Database, "select">,
+  email: string,
+): Promise<boolean> {
   const candidates = emailDomainSuffixes(email);
   if (candidates.length === 0) return false;
   const hit = await db
@@ -57,6 +65,11 @@ async function isStudentEmail(db: Pick<Database, "select">, email: string): Prom
   return hit.length > 0;
 }
 
+/** "pub:my-page-x7q2"-style sign-up sources only; anything else is dropped. */
+export function cleanSignupRef(ref: string | null | undefined): string | null {
+  return ref && /^[a-z0-9_-]{1,80}(:[a-z0-9_-]{1,80})?$/.test(ref) ? ref : null;
+}
+
 /** The placeholder name a new account gets when its sign-in has no name. */
 export function emailLocalPart(email: string): string {
   return email.split("@")[0] ?? email;
@@ -69,7 +82,10 @@ export class MeService {
     @Optional() private readonly analytics: ProductAnalytics | null = null,
   ) {}
 
-  async sync(supabaseUser: SupabaseUser & { id: string }): Promise<MeResult> {
+  async sync(
+    supabaseUser: SupabaseUser & { id: string },
+    opts: { signupRef?: string | null } = {},
+  ): Promise<MeResult> {
     const email = supabaseUser.email;
     if (!email) throw BadRequest("Supabase user has no email.");
 
@@ -103,12 +119,26 @@ export class MeService {
       // A brand-new row has created_at == updated_at (an upsert bumps updated_at).
       isNew = userRow.createdAt.getTime() === userRow.updatedAt.getTime();
 
+      // Where a brand-new account came from (sent by the web app; see
+      // apps/web/src/features/public/lib/signup-ref.ts). First sign-in only.
+      const signupRef = cleanSignupRef(opts.signupRef);
+      if (isNew && signupRef && !userRow.signupRef) {
+        await tx
+          .update(users)
+          .set({ signupRef })
+          .where(eq(users.id, userRow.id));
+        userRow.signupRef = signupRef;
+      }
+
       // Students (.edu and friends) get Pro free for a year from their first
       // sign-in with that email. Set once; never extended.
       if (!userRow.studentProUntil && (await isStudentEmail(tx, email))) {
         const until = new Date();
         until.setMonth(until.getMonth() + STUDENT_PRO_MONTHS);
-        await tx.update(users).set({ studentProUntil: until }).where(eq(users.id, userRow.id));
+        await tx
+          .update(users)
+          .set({ studentProUntil: until })
+          .where(eq(users.id, userRow.id));
         userRow.studentProUntil = until;
       }
       student = Boolean(userRow.studentProUntil);
@@ -149,7 +179,11 @@ export class MeService {
         if (!workspace) throw BadRequest("Failed to bootstrap workspace.");
         const [membership] = await tx
           .insert(workspaceMembers)
-          .values({ workspaceId: workspace.id, userId: userRow.id, role: "OWNER" })
+          .values({
+            workspaceId: workspace.id,
+            userId: userRow.id,
+            role: "OWNER",
+          })
           .returning();
         if (!membership) throw BadRequest("Failed to seed owner membership.");
         memberships = [{ membership, workspace }];
@@ -172,7 +206,8 @@ export class MeService {
   /** Settings → Account: the name shown everywhere, including published bylines. */
   async updateName(userId: string, name: string): Promise<User> {
     const clean = name.trim().replace(/\s+/g, " ");
-    if (clean.length < 1 || clean.length > 80) throw BadRequest("Names are 1–80 characters.");
+    if (clean.length < 1 || clean.length > 80)
+      throw BadRequest("Names are 1–80 characters.");
     const [row] = await this.db
       .update(users)
       .set({ name: clean, updatedAt: new Date() })

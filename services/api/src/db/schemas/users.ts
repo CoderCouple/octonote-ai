@@ -12,8 +12,17 @@ export const users = pgTable("users", {
   avatarUrl: text("avatar_url"),
   /** Free Pro for students (.edu etc.): set on first sign-in, never extended. */
   studentProUntil: timestamp("student_pro_until", { withTimezone: true }),
+  /**
+   * Where the account came from, e.g. "pub:my-page-x7q2" (the end of a
+   * published page) or "pub-header". Set once, on the first sign-in.
+   */
+  signupRef: text("signup_ref"),
   /** Octonote staff: can open the admin pages (promo codes). Set by hand in SQL. */
   isAdmin: boolean("is_admin").default(false).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });

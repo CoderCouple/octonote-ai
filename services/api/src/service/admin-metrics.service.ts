@@ -6,7 +6,12 @@
  * `workspace_billing`, views from `resource_views`.
  */
 import { Inject, Injectable } from "@nestjs/common";
-import { discountedCents, PRO_PRICE, type AdminMetrics, type ItemKind } from "@octonote/shared";
+import {
+  discountedCents,
+  PRO_PRICE,
+  type AdminMetrics,
+  type ItemKind,
+} from "@octonote/shared";
 import { and, eq, inArray, isNotNull, sql, type SQL } from "drizzle-orm";
 import { PAID_STATUSES } from "../common/plan-limits.service";
 import { Database, DRIZZLE } from "../db/database.module";
@@ -19,7 +24,10 @@ const KINDS: ItemKind[] = ["note", "canvas", "project", "notebook"];
 /** Standalone, live items per kind (a project's own note and canvas belong to the project). */
 const ITEM_SOURCES: Record<ItemKind, { table: string; live: string }> = {
   note: { table: "pages", live: "deleted_at is null and project_id is null" },
-  canvas: { table: "canvases", live: "deleted_at is null and project_id is null" },
+  canvas: {
+    table: "canvases",
+    live: "deleted_at is null and project_id is null",
+  },
   project: { table: "projects", live: "archived_at is null" },
   notebook: { table: "notebooks", live: "true" },
 };
@@ -39,10 +47,21 @@ export class AdminMetricsService {
       this.codes(from),
       this.usage(from, today),
     ]);
-    return { days, generatedAt: now.toISOString(), growth, revenue, codes, usage };
+    return {
+      days,
+      generatedAt: now.toISOString(),
+      growth,
+      revenue,
+      codes,
+      usage,
+    };
   }
 
-  private async growth(days: number, from: string, today: string): Promise<AdminMetrics["growth"]> {
+  private async growth(
+    days: number,
+    from: string,
+    today: string,
+  ): Promise<AdminMetrics["growth"]> {
     const before = addDays(from, -days);
     const weekAgo = addDays(today, -6);
     const monthAgo = addDays(today, -29);
@@ -60,8 +79,17 @@ export class AdminMetricsService {
         (select count(distinct user_id)::int from activity_days where day >= ${from}::date and source = 'mobile') as mobile,
         (select count(distinct user_id)::int from activity_days where day >= ${from}::date and source = 'cli') as cli
     `);
-    const signups = await this.perDay(sql`select (created_at at time zone 'UTC')::date as day, count(*)::int as n from users where created_at >= ${from}::date group by 1`);
-    const active = await this.perDay(sql`select day, count(distinct user_id)::int as n from activity_days where day >= ${from}::date group by 1`);
+    const signups = await this.perDay(
+      sql`select (created_at at time zone 'UTC')::date as day, count(*)::int as n from users where created_at >= ${from}::date group by 1`,
+    );
+    const active = await this.perDay(
+      sql`select day, count(distinct user_id)::int as n from activity_days where day >= ${from}::date group by 1`,
+    );
+    const sources = await this.rows(sql`
+      select coalesce(signup_ref, 'direct') as ref, count(*)::int as n
+      from users where created_at >= ${from}::date
+      group by 1 order by 2 desc, 1 limit 15
+    `);
     const [cohort] = await this.rows(sql`
       select count(*)::int as cohort,
         count(*) filter (where exists (
@@ -78,14 +106,36 @@ export class AdminMetricsService {
       workspaces: num(totals?.workspaces),
       signups: num(totals?.signups),
       signupsBefore: num(totals?.signups_before),
-      active: { day: num(totals?.active_day), week: num(totals?.active_week), month: num(totals?.active_month) },
-      bySource: { web: num(totals?.web), mobile: num(totals?.mobile), cli: num(totals?.cli) },
-      series: dayRange(from, today).map((day) => ({ day, signups: signups.get(day) ?? 0, active: active.get(day) ?? 0 })),
-      weekOneReturn: { cohort: num(cohort?.cohort), returned: num(cohort?.returned) },
+      active: {
+        day: num(totals?.active_day),
+        week: num(totals?.active_week),
+        month: num(totals?.active_month),
+      },
+      bySource: {
+        web: num(totals?.web),
+        mobile: num(totals?.mobile),
+        cli: num(totals?.cli),
+      },
+      series: dayRange(from, today).map((day) => ({
+        day,
+        signups: signups.get(day) ?? 0,
+        active: active.get(day) ?? 0,
+      })),
+      weekOneReturn: {
+        cohort: num(cohort?.cohort),
+        returned: num(cohort?.returned),
+      },
+      signupSources: sources.map((r) => ({
+        ref: String(r.ref),
+        signups: num(r.n),
+      })),
     };
   }
 
-  private async revenue(from: string, today: string): Promise<AdminMetrics["revenue"]> {
+  private async revenue(
+    from: string,
+    today: string,
+  ): Promise<AdminMetrics["revenue"]> {
     const paying = await this.payingWorkspaces();
     const [events] = await this.rows(sql`
       select
@@ -94,9 +144,15 @@ export class AdminMetricsService {
         count(*) filter (where kind = 'payment_failed')::int as failed
       from billing_events where created_at >= ${from}::date
     `);
-    const started = await this.perDay(sql`select (created_at at time zone 'UTC')::date as day, count(*)::int as n from billing_events where kind = 'started' and created_at >= ${from}::date group by 1`);
-    const ended = await this.perDay(sql`select (created_at at time zone 'UTC')::date as day, count(*)::int as n from billing_events where kind = 'ended' and created_at >= ${from}::date group by 1`);
-    const [ws] = await this.rows(sql`select count(*)::int as n from workspaces`);
+    const started = await this.perDay(
+      sql`select (created_at at time zone 'UTC')::date as day, count(*)::int as n from billing_events where kind = 'started' and created_at >= ${from}::date group by 1`,
+    );
+    const ended = await this.perDay(
+      sql`select (created_at at time zone 'UTC')::date as day, count(*)::int as n from billing_events where kind = 'ended' and created_at >= ${from}::date group by 1`,
+    );
+    const [ws] = await this.rows(
+      sql`select count(*)::int as n from workspaces`,
+    );
     return {
       mrrCents: paying.reduce((sum, p) => sum + p.monthlyCents, 0),
       paying: paying.length,
@@ -108,7 +164,11 @@ export class AdminMetricsService {
       ended: num(events?.ended),
       paymentFailures: num(events?.failed),
       conversion: { workspaces: num(ws?.n), paying: paying.length },
-      series: dayRange(from, today).map((day) => ({ day, started: started.get(day) ?? 0, ended: ended.get(day) ?? 0 })),
+      series: dayRange(from, today).map((day) => ({
+        day,
+        started: started.get(day) ?? 0,
+        ended: ended.get(day) ?? 0,
+      })),
     };
   }
 
@@ -121,7 +181,9 @@ export class AdminMetricsService {
         (select count(distinct workspace_id)::int from promo_redemptions where kind = 'free_pro' and pro_until > now()) as free_active,
         (select count(*)::int from users where student_pro_until > now()) as students
     `);
-    const freeRedeemers = await this.rows(sql`select distinct workspace_id from promo_redemptions where kind = 'free_pro'`);
+    const freeRedeemers = await this.rows(
+      sql`select distinct workspace_id from promo_redemptions where kind = 'free_pro'`,
+    );
     const byAudience = await this.rows(sql`
       select c.audience, count(*)::int as n
       from promo_redemptions r join promo_codes c on c.id = r.promo_code_id
@@ -136,7 +198,12 @@ export class AdminMetricsService {
       limit 10
     `);
     const topIds = top.map((t) => String(t.id));
-    const codeRows = topIds.length ? await this.db.select().from(promoCodes).where(inArray(promoCodes.id, topIds)) : [];
+    const codeRows = topIds.length
+      ? await this.db
+          .select()
+          .from(promoCodes)
+          .where(inArray(promoCodes.id, topIds))
+      : [];
     const byId = new Map(codeRows.map((c) => [c.id, c]));
     return {
       redemptions: num(counts?.redemptions),
@@ -144,20 +211,40 @@ export class AdminMetricsService {
       studentsActive: num(counts?.students),
       freeToPaid: {
         redeemed: freeRedeemers.length,
-        nowPaying: freeRedeemers.filter((r) => payingIds.has(String(r.workspace_id))).length,
+        nowPaying: freeRedeemers.filter((r) =>
+          payingIds.has(String(r.workspace_id)),
+        ).length,
       },
-      discountMonthlyCents: paying.reduce((sum, p) => sum + (p.listMonthlyCents - p.monthlyCents), 0),
-      byAudience: byAudience.map((r) => ({ audience: String(r.audience), redemptions: num(r.n) })),
+      discountMonthlyCents: paying.reduce(
+        (sum, p) => sum + (p.listMonthlyCents - p.monthlyCents),
+        0,
+      ),
+      byAudience: byAudience.map((r) => ({
+        audience: String(r.audience),
+        redemptions: num(r.n),
+      })),
       top: top.flatMap((t) => {
         const c = byId.get(String(t.id));
         return c
-          ? [{ code: c.code, description: describeCode(c), audience: c.audience, enabled: c.enabled, uses: c.redemptionCount, usesInRange: num(t.in_range) }]
+          ? [
+              {
+                code: c.code,
+                description: describeCode(c),
+                audience: c.audience,
+                enabled: c.enabled,
+                uses: c.redemptionCount,
+                usesInRange: num(t.in_range),
+              },
+            ]
           : [];
       }),
     };
   }
 
-  private async usage(from: string, today: string): Promise<AdminMetrics["usage"]> {
+  private async usage(
+    from: string,
+    today: string,
+  ): Promise<AdminMetrics["usage"]> {
     const totals = {} as Record<ItemKind, number>;
     const created = {} as Record<ItemKind, number>;
     const perKind = {} as Record<ItemKind, Map<string, number>>;
@@ -213,13 +300,20 @@ export class AdminMetricsService {
    */
   private async payingWorkspaces() {
     const rows = await this.db
-      .select({ billing: workspaceBilling, code: promoCodes, redeemedAt: promoRedemptions.createdAt })
+      .select({
+        billing: workspaceBilling,
+        code: promoCodes,
+        redeemedAt: promoRedemptions.createdAt,
+      })
       .from(workspaceBilling)
       .leftJoin(
         promoRedemptions,
         and(
           eq(promoRedemptions.workspaceId, workspaceBilling.workspaceId),
-          eq(promoRedemptions.stripeSubscriptionId, workspaceBilling.stripeSubscriptionId),
+          eq(
+            promoRedemptions.stripeSubscriptionId,
+            workspaceBilling.stripeSubscriptionId,
+          ),
         ),
       )
       .leftJoin(promoCodes, eq(promoCodes.id, promoRedemptions.promoCodeId))
@@ -233,8 +327,12 @@ export class AdminMetricsService {
     return rows.map(({ billing, code, redeemedAt }) => {
       const interval = billing.interval === "year" ? "year" : "month";
       const list = PRO_PRICE[interval] * 100;
-      const paid = discountedCents(list, code && redeemedAt ? discountInForce(code, redeemedAt) : null);
-      const perMonth = (cents: number) => (interval === "year" ? Math.round(cents / 12) : cents);
+      const paid = discountedCents(
+        list,
+        code && redeemedAt ? discountInForce(code, redeemedAt) : null,
+      );
+      const perMonth = (cents: number) =>
+        interval === "year" ? Math.round(cents / 12) : cents;
       return {
         workspaceId: billing.workspaceId,
         interval,
@@ -249,7 +347,9 @@ export class AdminMetricsService {
   /** Runs a raw query; postgres-js returns an array, PGlite (tests) `{ rows }`. */
   private async rows(query: SQL): Promise<Row[]> {
     const res = (await this.db.execute(query)) as unknown;
-    return (Array.isArray(res) ? res : ((res as { rows?: Row[] }).rows ?? [])) as Row[];
+    return (
+      Array.isArray(res) ? res : ((res as { rows?: Row[] }).rows ?? [])
+    ) as Row[];
   }
 
   /** A `(day, n)` query as a map keyed by "YYYY-MM-DD". */

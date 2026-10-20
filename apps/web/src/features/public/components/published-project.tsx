@@ -13,6 +13,7 @@
  * invisible, so tldraw keeps its size and the reader keeps their place.
  */
 import { Link2 } from "lucide-react";
+import { MadeWithCta } from "./made-with-cta";
 import Link from "next/link";
 import {
   useCallback,
@@ -280,18 +281,7 @@ export function PublishedProject({
                     onOpenFigure={canvas ? openFigure : undefined}
                     onLoaded={setLoaded}
                   />
-                  <p className="text-muted-foreground mt-16 border-t pt-6 text-center text-xs">
-                    <Link href="/" className="hover:text-foreground-strong">
-                      Published with Octonote AI
-                    </Link>
-                    {" · "}
-                    <Link
-                      href="/signup"
-                      className="text-foreground-strong font-semibold"
-                    >
-                      Make your own
-                    </Link>
-                  </p>
+                  <MadeWithCta slug={slug} className="mt-16" />
                 </div>
               </div>
               {/* The heading minimap is the note pane's scrollbar. */}

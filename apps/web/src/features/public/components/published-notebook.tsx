@@ -25,6 +25,7 @@ import type {
   PublicNotebook,
   PublicNotebookItem,
 } from "../types";
+import { MadeWithCta } from "./made-with-cta";
 import { ReaderBar } from "./reader-bar";
 import { VoteButtons, VotesProvider } from "./votes";
 
@@ -221,23 +222,7 @@ export function PublishedNotebook({
           </ul>
         )}
 
-        <section className="bg-muted mt-16 flex flex-col gap-4 rounded-2xl p-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-foreground-strong text-lg font-bold">
-              Notes and canvases, together.
-            </span>
-            <span className="text-muted-foreground text-sm">
-              This notebook was made with Octonote AI. Publish your own in one
-              click.
-            </span>
-          </div>
-          <Link
-            href="/signup"
-            className="bg-primary text-primary-foreground flex h-11 shrink-0 items-center justify-center rounded-xl px-5 text-sm font-semibold"
-          >
-            Get started free
-          </Link>
-        </section>
+        <MadeWithCta slug={slug} className="mt-16" />
       </div>
       <ReaderBar sections={[]} title={title} />
     </VotesProvider>

@@ -24,6 +24,11 @@ export interface AdminMetrics {
     bySource: { web: number; mobile: number; cli: number };
     series: { day: string; signups: number; active: number }[];
     /**
+     * Sign-ups in range by where they came from: "pub:<slug>" (the end of a
+     * published page), "pub-header", … or "direct" (no source recorded).
+     */
+    signupSources: { ref: string; signups: number }[];
+    /**
      * People who signed up in range (and at least 7 days ago) and came back
      * on any of the 7 days after signing up.
      */
@@ -151,9 +156,19 @@ export interface AdminWorkspaceDetail {
   members: { userId: string; email: string; name: string; role: string }[];
   usage: Record<"page" | "canvas" | "project" | "notebook", number>;
   published: number;
-  codes: { code: string; description: string; proUntil: string | null; createdAt: string }[];
+  codes: {
+    code: string;
+    description: string;
+    proUntil: string | null;
+    createdAt: string;
+  }[];
   grants: AdminGrant[];
-  history: { kind: string; interval: string | null; amountCents: number | null; createdAt: string }[];
+  history: {
+    kind: string;
+    interval: string | null;
+    amountCents: number | null;
+    createdAt: string;
+  }[];
 }
 
 export interface StudentDomain {

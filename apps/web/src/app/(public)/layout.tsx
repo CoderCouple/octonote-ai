@@ -1,6 +1,7 @@
 import { Focus } from "lucide-react";
 import Link from "next/link";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { signupHref } from "@/features/public/lib/signup-ref";
 
 export default function PublicLayout({
   children,
@@ -25,7 +26,7 @@ export default function PublicLayout({
             className="flex min-w-0 flex-1 items-center justify-between gap-6 px-6"
           />
           <Link
-            href="/signup"
+            href={signupHref(undefined, "pub-header")}
             className="text-muted-foreground hover:text-foreground shrink-0 text-sm"
           >
             Make your own →

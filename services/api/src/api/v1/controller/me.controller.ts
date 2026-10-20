@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Patch, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Patch,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { z } from "zod";
 import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
@@ -13,7 +21,9 @@ import {
 } from "../response/me.response";
 
 // Defined before the class: decorator arguments run when the class is defined.
-const DeleteAccountSchema = z.object({ confirmEmail: z.string().min(3).max(320) });
+const DeleteAccountSchema = z.object({
+  confirmEmail: z.string().min(3).max(320),
+});
 const UpdateMeSchema = z.object({ name: z.string().min(1).max(80) });
 
 @Controller("me")
@@ -26,7 +36,10 @@ export class MeController {
 
   @Get()
   async getMe(@Req() req: AuthenticatedRequest): Promise<MeDto> {
-    const result = await this.me.sync(req.user);
+    const ref = req.headers["x-octonote-ref"];
+    const result = await this.me.sync(req.user, {
+      signupRef: typeof ref === "string" ? ref : null,
+    });
     return {
       user: userToDto(result.user),
       memberships: result.memberships.map((m) =>
@@ -47,11 +60,16 @@ export class MeController {
   /** Permanently delete the signed-in account. Body: the user's email, typed to confirm. */
   @Delete()
   async deleteMe(
-    @Body(new ZodValidationPipe(DeleteAccountSchema)) body: { confirmEmail: string },
+    @Body(new ZodValidationPipe(DeleteAccountSchema))
+    body: { confirmEmail: string },
     @Req() req: AuthenticatedRequest,
   ): Promise<{ deleted: true }> {
     requireWebSession(req, "Deleting your account");
-    await this.account.deleteAccount(req.user.id, req.user.email ?? "", body.confirmEmail);
+    await this.account.deleteAccount(
+      req.user.id,
+      req.user.email ?? "",
+      body.confirmEmail,
+    );
     return { deleted: true };
   }
 }
