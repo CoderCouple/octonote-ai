@@ -189,15 +189,21 @@ export async function ogCard(view: PublicView | null) {
   );
 }
 
-/** The card for a site page (home, /cli): headline, one line under it, the URL. */
+/**
+ * The card for a site page (home, /cli): the brand, a headline and one line
+ * on the left, and a picture of the product on the right — the app window
+ * (note + diagram side by side) or a terminal.
+ */
 export async function siteCard({
   title,
   subtitle,
   path,
+  visual = "app",
 }: {
   title: string;
   subtitle: string;
   path: string;
+  visual?: "app" | "terminal";
 }) {
   return new ImageResponse(
     <div
@@ -205,83 +211,345 @@ export async function siteCard({
         width: "100%",
         height: "100%",
         display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        padding: 72,
         background: light.background,
         color: light.foreground,
       }}
     >
-      <Brand />
-      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-        <div
-          style={{
-            fontSize: 76,
-            fontWeight: 800,
-            lineHeight: 1.05,
-            letterSpacing: -2.5,
-            color: light["foreground-strong"],
-          }}
-        >
-          {title}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          width: 560,
+          padding: "64px 0 60px 64px",
+        }}
+      >
+        <Brand />
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div
+            style={{
+              fontSize: 56,
+              fontWeight: 800,
+              lineHeight: 1.06,
+              letterSpacing: -2.5,
+              color: light["foreground-strong"],
+            }}
+          >
+            {title}
+          </div>
+          <div
+            style={{
+              fontSize: 27,
+              lineHeight: 1.4,
+              color: light["muted-foreground"],
+            }}
+          >
+            {subtitle}
+          </div>
         </div>
         <div
           style={{
-            fontSize: 32,
-            lineHeight: 1.4,
-            color: light["muted-foreground"],
+            display: "flex",
+            fontSize: 24,
+            fontWeight: 600,
+            color: light["foreground-strong"],
           }}
         >
-          {subtitle}
+          {`octonote.ai${path === "/" ? "" : path}`}
         </div>
       </div>
       <div
         style={{
           display: "flex",
-          borderTop: `2px solid ${light.border}`,
-          paddingTop: 28,
-          fontSize: 26,
-          color: light["muted-foreground"],
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingRight: 48,
         }}
       >
-        {`octonote.ai${path === "/" ? "" : path}`}
+        {visual === "terminal" ? <TerminalShot /> : <AppShot />}
       </div>
     </div>,
     { ...OG_SIZE, fonts: await fonts() },
   );
 }
 
+/** The Octonote AI mark (public/brand-logo-source.svg) and name. */
 function Brand() {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-      <div
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 12,
-          background: light["foreground-strong"],
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div
-          style={{
-            width: 16,
-            height: 16,
-            borderRadius: 8,
-            border: `3px solid ${light.background}`,
-          }}
+      <svg width="52" height="52" viewBox="0 0 120 120">
+        <rect
+          width="120"
+          height="120"
+          rx="26"
+          fill={light["foreground-strong"]}
         />
-      </div>
+        <g
+          fill="none"
+          stroke={light.background}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M40 32 H32 V40" />
+          <path d="M80 32 H88 V40" />
+          <path d="M40 88 H32 V80" />
+          <path d="M80 88 H88 V80" />
+          <circle cx="60" cy="60" r="14" />
+        </g>
+      </svg>
       <div
         style={{
           fontSize: 30,
-          fontWeight: 700,
+          fontWeight: 800,
+          letterSpacing: -0.5,
           color: light["foreground-strong"],
         }}
       >
         Octonote AI
+      </div>
+    </div>
+  );
+}
+
+/** A window's red / yellow / green buttons and its title. */
+function TitleBar({ title, dark }: { title: string; dark?: boolean }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        height: 52,
+        padding: "0 20px",
+        borderBottom: `2px solid ${dark ? light["terminal-border"] : light.border}`,
+      }}
+    >
+      {(["window-close", "window-minimize", "window-zoom"] as const).map(
+        (k) => (
+          <div
+            key={k}
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: 8,
+              background: light[k],
+            }}
+          />
+        ),
+      )}
+      <div
+        style={{
+          marginLeft: 12,
+          fontSize: 19,
+          color: dark ? light["terminal-muted"] : light["muted-foreground"],
+        }}
+      >
+        {title}
+      </div>
+    </div>
+  );
+}
+
+/** The app: a note and its diagram side by side, the way projects look. */
+function AppShot() {
+  const box = (label: string) => (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 150,
+        height: 46,
+        borderRadius: 10,
+        border: `2.5px solid ${light["foreground-strong"]}`,
+        background: light.card,
+        fontSize: 17,
+        fontWeight: 600,
+        color: light["foreground-strong"],
+      }}
+    >
+      {label}
+    </div>
+  );
+  const arrow = (
+    <div
+      style={{
+        display: "flex",
+        width: 2.5,
+        height: 26,
+        background: light["muted-foreground"],
+      }}
+    />
+  );
+  const line = (w: number) => (
+    <div
+      style={{
+        display: "flex",
+        width: `${w}%`,
+        height: 10,
+        borderRadius: 5,
+        background: light.muted,
+      }}
+    />
+  );
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: 556,
+        height: 440,
+        borderRadius: 22,
+        border: `2px solid ${light.border}`,
+        background: light.card,
+        boxShadow: "0 30px 60px rgba(0,0,0,0.12)",
+        overflow: "hidden",
+      }}
+    >
+      <TitleBar title="Octonote AI — Rate limiter" />
+      <div style={{ display: "flex", flex: 1 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+            width: 290,
+            padding: "26px 24px",
+            borderRight: `2px solid ${light.border}`,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 30,
+              fontWeight: 800,
+              color: light["foreground-strong"],
+            }}
+          >
+            Rate limiter
+          </div>
+          <div
+            style={{
+              fontSize: 17,
+              lineHeight: 1.45,
+              color: light["muted-foreground"],
+            }}
+          >
+            A token bucket per user: refill r tokens a second, up to a cap.
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignSelf: "flex-start",
+              padding: "8px 14px",
+              borderRadius: 8,
+              background: light.muted,
+              fontSize: 19,
+              fontStyle: "italic",
+              color: light["foreground-strong"],
+            }}
+          >
+            tokens = min(cap, t · r)
+          </div>
+          {line(92)}
+          {line(78)}
+          {line(85)}
+          {line(60)}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: 1,
+            gap: 0,
+            background: light["surface-subtle"],
+          }}
+        >
+          {box("Request")}
+          {arrow}
+          {box("Token bucket")}
+          {arrow}
+          {box("API or 429")}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A terminal running octonote: black, like the ones on the site. */
+function TerminalShot() {
+  const rows: [string, string][] = [
+    ["# Install", ""],
+    ["npm", " i -g https://octonote.ai/cli/octonote-cli.tgz"],
+    ["", ""],
+    ["# Sign in", ""],
+    ["octonote", " login"],
+    ["", ""],
+    ["# Set up Claude Code", ""],
+    ["octonote", " setup claude --skill"],
+    ["", ""],
+    ["# Create a note from markdown", ""],
+    ["octonote", ' note create "Standup" --file standup.md'],
+  ];
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: 556,
+        height: 420,
+        borderRadius: 22,
+        border: `2px solid ${light["terminal-border"]}`,
+        background: light.terminal,
+        boxShadow: "0 30px 60px rgba(0,0,0,0.18)",
+        overflow: "hidden",
+      }}
+    >
+      <TitleBar title="terminal" dark />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          padding: "26px 28px",
+          gap: 6,
+        }}
+      >
+        {rows.map(([a, b], i) =>
+          a.startsWith("#") ? (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                fontSize: 20,
+                color: light["terminal-muted"],
+              }}
+            >
+              {a}
+            </div>
+          ) : a ? (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                fontSize: 20,
+                whiteSpace: "nowrap",
+                color: light["terminal-foreground"],
+              }}
+            >
+              <span
+                style={{ fontWeight: 800, color: light["terminal-command"] }}
+              >
+                {a}
+              </span>
+              <span>{b.replace(/^ /, "\u00a0")}</span>
+            </div>
+          ) : (
+            <div key={i} style={{ display: "flex", height: 12 }} />
+          ),
+        )}
       </div>
     </div>
   );

@@ -40,14 +40,20 @@ export function CliHero({ version }: { version: string }) {
       </div>
       <div className="mx-auto mt-12 max-w-3xl md:mt-16">
         <TerminalWindow
-          code={`# Write a note from markdown
-octonote note create "Standup" --file standup.md --notebook "Work"
+          code={`# Install
+${INSTALL}
+
+# Sign in (opens your browser once)
+octonote login
+
+# Set up Claude Code (Codex: octonote setup codex)
+octonote setup claude --skill
+
+# Create a note from markdown
+octonote note create "Standup" --file standup.md
 
 # Draw a diagram from mermaid, and publish it
-octonote canvas create "Login flow" --from-mermaid flow.mmd --publish
-
-# Find anything in your workspace
-octonote search onboarding`}
+octonote canvas create "Login flow" --from-mermaid flow.mmd --publish`}
         />
       </div>
     </section>

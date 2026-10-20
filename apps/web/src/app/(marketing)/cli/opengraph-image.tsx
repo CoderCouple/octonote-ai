@@ -10,9 +10,10 @@ export const alt = "The octonote CLI for Claude Code and Codex";
 
 export default function Image() {
   return siteCard({
-    title: "Let your AI agents write into Octonote.",
+    title: "Command your notes.",
     subtitle:
-      "Notes from markdown, canvases from mermaid, published in one command.",
+      "Notes from markdown, diagrams from mermaid, published in one command — by you, Claude or Codex.",
     path: "/cli",
+    visual: "terminal",
   });
 }

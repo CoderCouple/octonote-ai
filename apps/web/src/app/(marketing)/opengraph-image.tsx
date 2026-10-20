@@ -7,13 +7,13 @@ import {
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 export const alt =
-  "Octonote AI — notes and canvas side by side, for you and your AI agents";
+  "Octonote AI — the AI workspace for humans and agents: notes and canvas side by side";
 
 export default function Image() {
   return siteCard({
-    title: "Notes and canvas side by side.",
+    title: "The AI workspace for Humans and Agents.",
     subtitle:
-      "Written by you, or by Claude Code and Codex. Publish any page in one click.",
+      "Notes and canvas side by side, written by you, Claude or Codex. Published as a beautiful page.",
     path: "/",
   });
 }
