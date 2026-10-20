@@ -1,6 +1,6 @@
 import { generateId } from "@octonote/shared";
 import { sql } from "drizzle-orm";
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, check, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { workspaces } from "./workspaces";
 
@@ -41,10 +41,24 @@ export const studentEmailSuffixes = pgTable("student_email_suffixes", {
   /** Free-text note, e.g. "UK universities". */
   label: text("label"),
   enabled: boolean("enabled").default(true).notNull(),
+  /** "hipo" for rows from the world university list (scripts/university-domains-sql.mjs), else "manual". */
+  source: text("source").default("manual").notNull(),
+  /** The school, when the ending is one school ("University of Oxford"). */
+  university: text("university"),
+  /** ISO 3166-1 alpha-2 ("GB"); null for endings that span countries, like "edu". */
+  countryCode: text("country_code"),
+  country: text("country"),
+  /** State or province, when the list has it ("British Columbia"). */
+  region: text("region"),
+  website: text("website"),
   /** Who added it, when added through the app; null for rows added in SQL. */
   createdByUserId: text("created_by_user_id").references(() => users.id, {
     onDelete: "set null",
   }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("student_email_suffixes_country_idx").on(t.countryCode),
+  check("student_email_suffixes_country_code_check", sql`${t.countryCode} ~ '^[A-Z]{2}$'`),
+  check("student_email_suffixes_source_check", sql`${t.source} in ('hipo', 'manual')`),
+]);

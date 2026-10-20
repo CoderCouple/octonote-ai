@@ -512,15 +512,53 @@ export const AdminCancelSchema = z.object({
 });
 export type AdminCancelInput = z.infer<typeof AdminCancelSchema>;
 
-/** An email ending for the student year, e.g. "edu", "ac.uk", "ox.ac.uk" (no leading dot). */
-export const StudentDomainCreateSchema = z.object({
-  suffix: z
+/** Optional text field: trimmed, and empty means "clear it" (null). */
+const optionalText = (max: number) =>
+  z
     .string()
     .trim()
-    .toLowerCase()
-    .transform((s) => s.replace(/^[.@]+/, ""))
-    .pipe(z.string().regex(/^[a-z0-9-]+(\.[a-z0-9-]+)*$/, "Like edu, ac.uk or ox.ac.uk").max(100)),
-  label: z.string().trim().max(100).optional(),
-});
+    .max(max)
+    .transform((s) => s || null)
+    .nullable()
+    .optional();
+
+/** What staff can set on a student email ending besides the ending itself. */
+const StudentDomainDetails = {
+  label: optionalText(100),
+  university: optionalText(200),
+  /** ISO 3166-1 alpha-2 ("GB"); the country name is filled in from it. */
+  countryCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .transform((s) => s || null)
+    .pipe(z.string().regex(/^[A-Z]{2}$/, "Two-letter country code, like GB").nullable())
+    .nullable()
+    .optional(),
+  region: optionalText(100),
+  website: z
+    .string()
+    .trim()
+    .transform((s) => s || null)
+    .pipe(z.string().url("A full address, like https://www.ox.ac.uk").max(300).nullable())
+    .nullable()
+    .optional(),
+};
+
+/** An email ending for the student year, e.g. "edu", "ac.uk", "ox.ac.uk" (no leading dot). */
+const StudentSuffix = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((s) => s.replace(/^[.@]+/, ""))
+  .pipe(z.string().regex(/^[a-z0-9-]+(\.[a-z0-9-]+)*$/, "Like edu, ac.uk or ox.ac.uk").max(100));
+
+export const StudentDomainCreateSchema = z.object({ suffix: StudentSuffix, ...StudentDomainDetails });
 export type StudentDomainCreate = z.infer<typeof StudentDomainCreateSchema>;
+
+/** Edit one ending: the ending itself, any of its details, or switch it on/off. */
+export const StudentDomainUpdateSchema = z
+  .object({ suffix: StudentSuffix.optional(), enabled: z.boolean().optional(), ...StudentDomainDetails })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), "Nothing to change.");
+export type StudentDomainUpdate = z.infer<typeof StudentDomainUpdateSchema>;
 export * from "./brand-marks";

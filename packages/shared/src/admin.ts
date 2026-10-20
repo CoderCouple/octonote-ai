@@ -174,11 +174,22 @@ export interface AdminWorkspaceDetail {
 export interface StudentDomain {
   id: string;
   suffix: string;
+  /** Admin's note. */
   label: string | null;
   enabled: boolean;
+  /** "hipo": from the world university list; "manual": added or edited by staff. */
+  source: "hipo" | "manual";
+  university: string | null;
+  /** ISO 3166-1 alpha-2, e.g. "GB"; null for endings that span countries ("edu"). */
+  countryCode: string | null;
+  country: string | null;
+  /** State or province. */
+  region: string | null;
+  website: string | null;
   /** Students currently on the free year from this ending. */
   activeStudents: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdminAuditEntry {

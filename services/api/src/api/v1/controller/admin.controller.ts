@@ -3,6 +3,7 @@ import {
   AdminCancelSchema,
   AdminGrantSchema,
   StudentDomainCreateSchema,
+  StudentDomainUpdateSchema,
   type AdminAuditEntry,
   type AdminCancelInput,
   type AdminGrantInput,
@@ -11,6 +12,7 @@ import {
   type AdminWorkspaceDetail,
   type StudentDomain,
   type StudentDomainCreate,
+  type StudentDomainUpdate,
 } from "@octonote/shared";
 import { z } from "zod";
 import { AdminGuard } from "../../../auth/admin.guard";
@@ -26,7 +28,6 @@ const AuditQuery = z.object({
   before: z.string().datetime().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
-const EnabledSchema = z.object({ enabled: z.boolean() });
 
 /** The admin portal: people, workspaces, grants, student domains, audit log. Staff only, web sessions only. */
 @Controller("admin")
@@ -90,17 +91,17 @@ export class AdminController {
   addStudentDomain(
     @Body(new ZodValidationPipe(StudentDomainCreateSchema)) body: StudentDomainCreate,
     @Req() req: AuthenticatedRequest,
-  ): Promise<StudentDomain[]> {
+  ): Promise<StudentDomain> {
     return this.admin.addStudentDomain(body, req.user.id);
   }
 
   @Patch("student-domains/:id")
-  setStudentDomainEnabled(
+  updateStudentDomain(
     @Param("id", IdParam) id: string,
-    @Body(new ZodValidationPipe(EnabledSchema)) body: { enabled: boolean },
+    @Body(new ZodValidationPipe(StudentDomainUpdateSchema)) body: StudentDomainUpdate,
     @Req() req: AuthenticatedRequest,
-  ): Promise<StudentDomain[]> {
-    return this.admin.setStudentDomainEnabled(id, body.enabled, req.user.id);
+  ): Promise<StudentDomain> {
+    return this.admin.updateStudentDomain(id, body, req.user.id);
   }
 
   @Get("audit")

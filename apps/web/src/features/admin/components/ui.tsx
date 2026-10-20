@@ -37,8 +37,13 @@ export function PageHeader({
   );
 }
 
-export function PageBody({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 lg:px-8">{children}</div>;
+/** `wide`: for pages built around a big table, which stretches to the window. */
+export function PageBody({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
+  return (
+    <div className={cn("mx-auto flex w-full flex-col gap-8 px-4 py-6 lg:px-8", wide ? "max-w-none" : "max-w-6xl")}>
+      {children}
+    </div>
+  );
 }
 
 export function Section({

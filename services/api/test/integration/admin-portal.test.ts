@@ -8,6 +8,8 @@
  */
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { StudentDomainCreateSchema, StudentDomainUpdateSchema } from "@octonote/shared";
+import { studentEmailSuffixes } from "../../src/db/schemas/billing";
 import { users } from "../../src/db/schemas/users";
 import { createHarness, statusOf, type Harness } from "./harness";
 
@@ -110,13 +112,87 @@ describe("student email endings", () => {
   it("can be added and switched off, and count current students", async () => {
     await h.db.update(users).set({ studentProUntil: new Date(Date.now() + 86_400_000) }).where(eq(users.id, alice.id));
     await h.db.update(users).set({ email: "alice@cs.ox.ac.uk" }).where(eq(users.id, alice.id));
-    let list = await h.admin.addStudentDomain({ suffix: "ac.uk", label: "UK universities" }, admin.id);
-    const uk = list.find((d) => d.suffix === "ac.uk")!;
-    expect(uk).toMatchObject({ enabled: true, activeStudents: 1, label: "UK universities" });
+    // Bodies go through the same validation as the API's (it trims, upper-cases codes).
+    const uk = await h.admin.addStudentDomain(
+      StudentDomainCreateSchema.parse({ suffix: ".AC.UK", label: "UK universities", countryCode: "gb" }),
+      admin.id,
+    );
+    expect(uk).toMatchObject({
+      enabled: true,
+      activeStudents: 1,
+      label: "UK universities",
+      source: "manual",
+      countryCode: "GB",
+      country: "United Kingdom",
+    });
     expect(await statusOf(h.admin.addStudentDomain({ suffix: "ac.uk" }, admin.id))).toBe(409);
-    list = await h.admin.setStudentDomainEnabled(uk.id, false, admin.id);
-    expect(list.find((d) => d.suffix === "ac.uk")!.enabled).toBe(false);
+    const off = await h.admin.updateStudentDomain(uk.id, { enabled: false }, admin.id);
+    expect(off.enabled).toBe(false);
+    expect((await h.admin.studentDomains()).find((d) => d.suffix === "ac.uk")!.enabled).toBe(false);
     expect(await actions()).toEqual(["student_domain.disable", "student_domain.add"]);
+  });
+
+  it("edits one row; editing a row from the university list makes it the admin's own", async () => {
+    await h.db.insert(studentEmailSuffixes).values({
+      suffix: "ox.ac.uk",
+      source: "hipo",
+      university: "Oxford",
+      countryCode: "GB",
+      country: "United Kingdom",
+    });
+    const [row] = (await h.admin.studentDomains()).filter((d) => d.suffix === "ox.ac.uk");
+    expect(row).toMatchObject({ source: "hipo", university: "Oxford" });
+
+    // Switching it off alone keeps it a list row.
+    expect(await h.admin.updateStudentDomain(row!.id, { enabled: false }, admin.id)).toMatchObject({ source: "hipo" });
+
+    const edited = await h.admin.updateStudentDomain(
+      row!.id,
+      StudentDomainUpdateSchema.parse({
+        university: "University of Oxford",
+        region: "England",
+        website: "https://www.ox.ac.uk",
+        label: " ",
+      }),
+      admin.id,
+    );
+    expect(edited).toMatchObject({
+      source: "manual",
+      university: "University of Oxford",
+      region: "England",
+      website: "https://www.ox.ac.uk",
+      label: null,
+      countryCode: "GB",
+      enabled: false,
+    });
+    const [entry] = await h.adminAudit.list(1);
+    expect(entry).toMatchObject({
+      action: "student_domain.update",
+      targetLabel: "ox.ac.uk",
+      details: { university: { from: "Oxford", to: "University of Oxford" }, region: { from: null, to: "England" } },
+    });
+
+    // Clearing the country clears its name too.
+    expect(await h.admin.updateStudentDomain(row!.id, StudentDomainUpdateSchema.parse({ countryCode: "" }), admin.id)).toMatchObject({
+      countryCode: null,
+      country: null,
+    });
+  });
+
+  it("renames an ending, but not onto one that's already on the list", async () => {
+    const a = await h.admin.addStudentDomain(StudentDomainCreateSchema.parse({ suffix: "mail.polimi.it" }), admin.id);
+    await h.admin.addStudentDomain(StudentDomainCreateSchema.parse({ suffix: "ox.ac.uk" }), admin.id);
+    const renamed = await h.admin.updateStudentDomain(a.id, StudentDomainUpdateSchema.parse({ suffix: ".POLIMI.IT" }), admin.id);
+    expect(renamed.suffix).toBe("polimi.it");
+    const [entry] = await h.adminAudit.list(1);
+    expect(entry).toMatchObject({ action: "student_domain.update", details: { suffix: { from: "mail.polimi.it", to: "polimi.it" } } });
+    expect(await statusOf(h.admin.updateStudentDomain(a.id, { suffix: "ox.ac.uk" }, admin.id))).toBe(409);
+  });
+
+  it("rejects a bad country code or website", () => {
+    expect(StudentDomainUpdateSchema.safeParse({ countryCode: "GBR" }).success).toBe(false);
+    expect(StudentDomainUpdateSchema.safeParse({ website: "ox.ac.uk" }).success).toBe(false);
+    expect(StudentDomainUpdateSchema.safeParse({}).success).toBe(false);
   });
 });
 

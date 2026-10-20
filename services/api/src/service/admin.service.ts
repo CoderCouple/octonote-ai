@@ -16,7 +16,9 @@ import type {
   AdminWorkspaceDetail,
   StudentDomain,
   StudentDomainCreate,
+  StudentDomainUpdate,
 } from "@octonote/shared";
+import { emailDomainSuffixes } from "@octonote/shared";
 import { and, desc, eq, gt, ilike, isNull, max, or, sql } from "drizzle-orm";
 import { SUPABASE_CLIENT } from "../auth/supabase.tokens";
 import { AdminAuditService } from "../common/admin-audit.service";
@@ -290,52 +292,100 @@ export class AdminService {
 
   async studentDomains(): Promise<StudentDomain[]> {
     const rows = await this.db.select().from(studentEmailSuffixes).orderBy(studentEmailSuffixes.suffix);
+    const counts = await this.studentCounts();
+    return rows.map((r) => toStudentDomain(r, counts));
+  }
+
+  /**
+   * Current students per email ending. Each student counts toward every ending
+   * of their domain (cs.ox.ac.uk → ox.ac.uk, ac.uk, uk): one pass over students.
+   */
+  private async studentCounts(): Promise<Map<string, number>> {
     const students = await this.db
       .select({ email: users.email })
       .from(users)
       .where(gt(users.studentProUntil, new Date()));
-    const domains = students.map((s) => s.email.split("@")[1]?.toLowerCase() ?? "");
-    return rows.map((r) => ({
-      id: r.id,
-      suffix: r.suffix,
-      label: r.label,
-      enabled: r.enabled,
-      activeStudents: domains.filter((d) => d === r.suffix || d.endsWith(`.${r.suffix}`)).length,
-      createdAt: r.createdAt.toISOString(),
-    }));
+    const counts = new Map<string, number>();
+    for (const s of students) {
+      for (const suffix of emailDomainSuffixes(s.email)) counts.set(suffix, (counts.get(suffix) ?? 0) + 1);
+    }
+    return counts;
   }
 
-  async addStudentDomain(input: StudentDomainCreate, adminUserId: string): Promise<StudentDomain[]> {
+  async addStudentDomain(input: StudentDomainCreate, adminUserId: string): Promise<StudentDomain> {
     const [existing] = await this.db
       .select({ id: studentEmailSuffixes.id })
       .from(studentEmailSuffixes)
       .where(eq(studentEmailSuffixes.suffix, input.suffix))
       .limit(1);
     if (existing) throw Conflict(`"${input.suffix}" is already on the list.`);
-    await this.db.insert(studentEmailSuffixes).values({ suffix: input.suffix, label: input.label ?? null, createdByUserId: adminUserId });
+    const details = studentDomainDetails(input);
+    const [row] = await this.db
+      .insert(studentEmailSuffixes)
+      .values({ suffix: input.suffix, ...details, source: "manual", createdByUserId: adminUserId })
+      .returning();
     await this.audit.record(adminUserId, {
       action: "student_domain.add",
       targetKind: "student_domain",
+      targetId: row!.id,
       targetLabel: input.suffix,
-      details: input.label ? { label: input.label } : undefined,
+      details: compact(details),
     });
-    return this.studentDomains();
+    return toStudentDomain(row!, await this.studentCounts());
   }
 
-  async setStudentDomainEnabled(id: string, enabled: boolean, adminUserId: string): Promise<StudentDomain[]> {
+  /**
+   * Edits one ending, including the ending itself. Changing anything but on/off
+   * on a row from the world university list makes it "manual", so re-running the
+   * import never overwrites staff's edit. Students already on the free year keep
+   * it whatever the ending becomes.
+   */
+  async updateStudentDomain(id: string, input: StudentDomainUpdate, adminUserId: string): Promise<StudentDomain> {
+    const [before] = await this.db.select().from(studentEmailSuffixes).where(eq(studentEmailSuffixes.id, id)).limit(1);
+    if (!before) throw NotFound("Email ending not found.");
+    const details = { suffix: input.suffix, ...studentDomainDetails(input) };
+    const changed = Object.fromEntries(
+      Object.entries(details).filter(([k, v]) => v !== undefined && v !== before[k as keyof typeof before]),
+    );
+    if (changed.suffix) {
+      const [taken] = await this.db
+        .select({ id: studentEmailSuffixes.id })
+        .from(studentEmailSuffixes)
+        .where(eq(studentEmailSuffixes.suffix, changed.suffix as string))
+        .limit(1);
+      if (taken) throw Conflict(`"${changed.suffix}" is already on the list.`);
+    }
+    const enabledChanged = input.enabled !== undefined && input.enabled !== before.enabled;
+    if (!enabledChanged && Object.keys(changed).length === 0) {
+      return toStudentDomain(before, await this.studentCounts());
+    }
     const [row] = await this.db
       .update(studentEmailSuffixes)
-      .set({ enabled, updatedAt: new Date() })
+      .set({
+        ...changed,
+        ...(enabledChanged && { enabled: input.enabled }),
+        ...(Object.keys(changed).length > 0 && { source: "manual" }),
+        updatedAt: new Date(),
+      })
       .where(eq(studentEmailSuffixes.id, id))
       .returning();
-    if (!row) throw NotFound("Email ending not found.");
-    await this.audit.record(adminUserId, {
-      action: enabled ? "student_domain.enable" : "student_domain.disable",
-      targetKind: "student_domain",
-      targetId: id,
-      targetLabel: row.suffix,
-    });
-    return this.studentDomains();
+    const target = { targetKind: "student_domain", targetId: id, targetLabel: before.suffix };
+    if (enabledChanged) {
+      await this.audit.record(adminUserId, {
+        action: input.enabled ? "student_domain.enable" : "student_domain.disable",
+        ...target,
+      });
+    }
+    if (Object.keys(changed).length > 0) {
+      await this.audit.record(adminUserId, {
+        action: "student_domain.update",
+        ...target,
+        details: Object.fromEntries(
+          Object.entries(changed).map(([k, v]) => [k, { from: before[k as keyof typeof before] ?? null, to: v }]),
+        ),
+      });
+    }
+    return toStudentDomain(row!, await this.studentCounts());
   }
 
   private async requireWorkspace(workspaceId: string) {
@@ -343,6 +393,54 @@ export class AdminService {
     if (!ws) throw NotFound("Workspace not found.");
     return ws;
   }
+}
+
+type StudentDomainRow = typeof studentEmailSuffixes.$inferSelect;
+
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+/** "GB" → "United Kingdom"; unknown codes keep the code. */
+function countryName(code: string): string {
+  try {
+    return regionNames.of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** The editable columns from a create/update body; undefined = not sent, null = clear. */
+function studentDomainDetails(input: Partial<StudentDomainCreate>) {
+  return {
+    label: input.label,
+    university: input.university,
+    countryCode: input.countryCode,
+    country: input.countryCode === undefined ? undefined : input.countryCode ? countryName(input.countryCode) : null,
+    region: input.region,
+    website: input.website,
+  };
+}
+
+function compact<T extends Record<string, unknown>>(o: T) {
+  const out = Object.fromEntries(Object.entries(o).filter(([, v]) => v != null));
+  return Object.keys(out).length ? out : undefined;
+}
+
+function toStudentDomain(r: StudentDomainRow, counts: Map<string, number>): StudentDomain {
+  return {
+    id: r.id,
+    suffix: r.suffix,
+    label: r.label,
+    enabled: r.enabled,
+    source: r.source === "hipo" ? "hipo" : "manual",
+    university: r.university,
+    countryCode: r.countryCode,
+    country: r.country,
+    region: r.region,
+    website: r.website,
+    activeStudents: counts.get(r.suffix) ?? 0,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+  };
 }
 
 function escapeLike(s: string): string {

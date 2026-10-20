@@ -9,6 +9,7 @@ import type {
   AdminWorkspaceDetail,
   StudentDomain,
   StudentDomainCreate,
+  StudentDomainUpdate,
 } from "@octonote/shared";
 import { clientApi } from "@/lib/api/client-fetch";
 
@@ -39,10 +40,11 @@ export const cancelSubscriptionNow = (workspaceId: string, body: AdminCancelInpu
 export const listStudentDomains = () => clientApi.get<StudentDomain[]>("/admin/student-domains");
 
 export const addStudentDomain = (body: StudentDomainCreate) =>
-  clientApi.post<StudentDomain[]>("/admin/student-domains", body);
+  clientApi.post<StudentDomain>("/admin/student-domains", body);
 
-export const setStudentDomainEnabled = (id: string, enabled: boolean) =>
-  clientApi.patch<StudentDomain[]>(`/admin/student-domains/${id}`, { enabled });
+/** Edit one ending (details and/or on/off); returns the updated row. */
+export const updateStudentDomain = (id: string, body: StudentDomainUpdate) =>
+  clientApi.patch<StudentDomain>(`/admin/student-domains/${id}`, body);
 
 export const listAdminAudit = (before?: string) =>
   clientApi.get<AdminAuditEntry[]>(`/admin/audit${before ? `?before=${encodeURIComponent(before)}` : ""}`);
