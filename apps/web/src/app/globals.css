@@ -230,6 +230,8 @@ body {
    otherwise wins) on the same dark block as the static HTML. */
 .bn-block-content[data-content-type="codeBlock"] {
   background-color: var(--code-background);
+  border-radius: 0.5rem;
+  margin-block: 0.5rem;
 }
 .bn-block-content[data-content-type="codeBlock"] pre,
 .bn-block-content[data-content-type="codeBlock"] code {
