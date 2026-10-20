@@ -45,6 +45,14 @@
   --orb-ripple: rgba(0, 0, 0, 0.18);
   --orb-grain: rgba(0, 0, 0, 0.5);
   --orb-icon: rgba(255, 255, 255, 0.95);
+  --terminal: #0A0A0B;
+  --terminal-border: #2A2A2E;
+  --terminal-foreground: #E8E8EA;
+  --terminal-muted: #8E8E95;
+  --terminal-command: #FFFFFF;
+  --terminal-close: #FF5F57;
+  --terminal-minimize: #FEBC2E;
+  --terminal-zoom: #28C840;
   --radius: 0.5rem;
   --font-family-sans: var(--font-inter), Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-family-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
@@ -99,6 +107,14 @@
   --orb-ripple: rgba(255, 255, 255, 0.22);
   --orb-grain: rgba(255, 255, 255, 0.6);
   --orb-icon: rgba(255, 255, 255, 1);
+  --terminal: #FFFFFF;
+  --terminal-border: #E3E2DE;
+  --terminal-foreground: #37352F;
+  --terminal-muted: #7D7A75;
+  --terminal-command: #0A0A0B;
+  --terminal-close: #FF5F57;
+  --terminal-minimize: #FEBC2E;
+  --terminal-zoom: #28C840;
   color-scheme: dark;
 }
 
@@ -146,6 +162,14 @@
   --color-orb-ripple: var(--orb-ripple);
   --color-orb-grain: var(--orb-grain);
   --color-orb-icon: var(--orb-icon);
+  --color-terminal: var(--terminal);
+  --color-terminal-border: var(--terminal-border);
+  --color-terminal-foreground: var(--terminal-foreground);
+  --color-terminal-muted: var(--terminal-muted);
+  --color-terminal-command: var(--terminal-command);
+  --color-terminal-close: var(--terminal-close);
+  --color-terminal-minimize: var(--terminal-minimize);
+  --color-terminal-zoom: var(--terminal-zoom);
   --font-sans: var(--font-family-sans);
   --font-serif: var(--font-family-serif);
   --font-mono: var(--font-family-mono);

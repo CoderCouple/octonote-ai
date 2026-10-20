@@ -7,6 +7,14 @@
 import { SUPPORT_EMAIL } from "@octonote/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  CliCta,
+  CliExamples,
+  CliFirstRun,
+  CliHero,
+  CliInstall,
+  CliUses,
+} from "./_components/cli-landing";
 import { CodeBlock } from "./_components/code-block";
 import { Toc } from "./_components/toc";
 import { INSTALL } from "./_data/install";
@@ -142,7 +150,6 @@ $ octonote guide`,
 ];
 
 const TOC = [
-  { id: "quick-start", label: "Quick start" },
   { id: "agents", label: "Use with agents" },
   { id: "claude-code", label: "Claude Code", sub: true },
   { id: "codex", label: "Codex", sub: true },
@@ -167,23 +174,37 @@ function usage(c: RefCommand) {
 
 export default function CliDocsPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-5 pt-28 pb-24 md:px-10">
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-14">
-        <article className="min-w-0">
-          <Hero />
-          <Agents />
-          <ReferenceSection />
-          <Content />
-          <Auth />
-          <Contract />
-          <Troubleshooting />
-        </article>
-        <aside className="hidden lg:block">
-          <div className="sticky top-24">
-            <Toc items={TOC} />
-          </div>
-        </aside>
+    <div className="mx-auto w-full max-w-6xl px-5 pt-28 pb-8 md:px-10 md:pt-36">
+      <CliHero version={reference.version} />
+      <CliUses />
+      <CliInstall />
+      <CliFirstRun />
+      <CliExamples />
+      <div id="docs" className="scroll-mt-24 border-t pt-16 md:pt-24">
+        <h2 className="text-foreground-strong text-3xl font-bold tracking-tight md:text-5xl">
+          Documentation
+        </h2>
+        <p className="text-muted-foreground mt-3 max-w-2xl text-lg">
+          Everything in v{reference.version}: agent setup, every command,
+          content formats, sign-in and what scripts can rely on.
+        </p>
+        <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-14">
+          <article className="min-w-0">
+            <Agents />
+            <ReferenceSection />
+            <Content />
+            <Auth />
+            <Contract />
+            <Troubleshooting />
+          </article>
+          <aside className="hidden lg:block">
+            <div className="sticky top-24">
+              <Toc items={TOC} />
+            </div>
+          </aside>
+        </div>
       </div>
+      <CliCta />
     </div>
   );
 }
@@ -244,62 +265,6 @@ const C = ({ children }: { children: React.ReactNode }) => (
     {children}
   </code>
 );
-
-function Hero() {
-  return (
-    <header className="pb-12">
-      <p className="text-muted-foreground text-2xs font-semibold tracking-[0.14em] uppercase">
-        Octonote CLI · v{reference.version}
-      </p>
-      <h1 className="text-foreground-strong mt-3 text-4xl leading-[1.05] font-extrabold tracking-tight md:text-5xl">
-        Let your AI agents write into Octonote
-      </h1>
-      <p className="text-muted-foreground mt-4 max-w-2xl text-lg leading-relaxed">
-        <C>octonote</C> is a command-line tool for Claude Code, Codex and your
-        scripts. Agents write notes from markdown, draw canvases from mermaid
-        flowcharts, organise them in notebooks, and publish — with your
-        permissions, through the same API as the app.
-      </p>
-      {/* One row per step, so the long install URL is never cut off. */}
-      <ol id="quick-start" className="mt-8 flex scroll-mt-24 flex-col gap-3">
-        {[
-          { step: "1", title: "Install", code: `${INSTALL} && octonote` },
-          { step: "2", title: "Sign in", code: "octonote login" },
-          {
-            step: "3",
-            title: "Teach your agent",
-            code: "octonote setup claude",
-          },
-        ].map((s) => (
-          <li
-            key={s.step}
-            className="grid min-w-0 items-center gap-2 md:grid-cols-[11rem_minmax(0,1fr)] md:gap-4"
-          >
-            <p className="text-foreground-strong flex items-center gap-2 text-sm font-semibold">
-              <span className="bg-foreground-strong text-background inline-grid size-5 place-items-center rounded-full text-2xs">
-                {s.step}
-              </span>
-              {s.title}
-            </p>
-            <CodeBlock code={s.code} />
-          </li>
-        ))}
-      </ol>
-      <P>
-        <span className="mt-4 block">
-          Then just ask:{" "}
-          <i>
-            “Write up the auth flow in my Architecture notebook, with a diagram,
-            and publish it.”
-          </i>{" "}
-          Running <C>octonote</C> on its own prints a getting-started screen
-          with all of this, so you never need this page in the terminal. No PATH
-          setup needed. Node 20+, on macOS, Linux and Windows.
-        </span>
-      </P>
-    </header>
-  );
-}
 
 function Agents() {
   return (

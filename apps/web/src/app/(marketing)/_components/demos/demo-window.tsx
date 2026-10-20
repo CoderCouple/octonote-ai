@@ -6,8 +6,11 @@ export function DemoWindow({
   children,
   className,
   bodyClassName,
+  terminal,
 }: {
   title: string;
+  /** A terminal window: macOS red / yellow / green buttons instead of grey. */
+  terminal?: boolean;
   children: React.ReactNode;
   className?: string;
   bodyClassName?: string;
@@ -22,11 +25,28 @@ export function DemoWindow({
     >
       <div className="flex h-11 items-center gap-2 border-b px-4">
         <span className="flex gap-1.5">
-          <span className="bg-border size-3 rounded-full" />
-          <span className="bg-border size-3 rounded-full" />
-          <span className="bg-border size-3 rounded-full" />
+          <span
+            className={cn(
+              "size-3 rounded-full",
+              terminal ? "bg-terminal-close" : "bg-border",
+            )}
+          />
+          <span
+            className={cn(
+              "size-3 rounded-full",
+              terminal ? "bg-terminal-minimize" : "bg-border",
+            )}
+          />
+          <span
+            className={cn(
+              "size-3 rounded-full",
+              terminal ? "bg-terminal-zoom" : "bg-border",
+            )}
+          />
         </span>
-        <span className="text-muted-foreground ml-3 truncate text-sm">{title}</span>
+        <span className="text-muted-foreground ml-3 truncate text-sm">
+          {title}
+        </span>
       </div>
       <div className={cn("relative", bodyClassName)}>{children}</div>
     </div>
@@ -34,12 +54,22 @@ export function DemoWindow({
 }
 
 /** Fade + rise into place when `show` turns true. */
-export function Reveal({ show, children, className }: { show: boolean; children: React.ReactNode; className?: string }) {
+export function Reveal({
+  show,
+  children,
+  className,
+}: {
+  show: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div
       className={cn(
         "ease-emphasized transition-all duration-500",
-        show ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-1.5 opacity-0",
+        show
+          ? "translate-y-0 opacity-100"
+          : "pointer-events-none translate-y-1.5 opacity-0",
         className,
       )}
     >

@@ -55,11 +55,45 @@ export const colorTokenNames = [
   "orb-ripple",
   "orb-grain",
   "orb-icon",
+  "terminal",
+  "terminal-border",
+  "terminal-foreground",
+  "terminal-muted",
+  "terminal-command",
+  "terminal-close",
+  "terminal-minimize",
+  "terminal-zoom",
 ] as const;
 
 export type ColorToken = (typeof colorTokenNames)[number];
 export type ThemeColors = Record<ColorToken, string>;
 export type ThemeName = "light" | "dark";
+
+/**
+ * Marketing terminals contrast with the page: black on light, white on dark.
+ * Monochrome like everything else; only the macOS window buttons have colour.
+ */
+const windowButtons = {
+  "terminal-close": "#FF5F57",
+  "terminal-minimize": "#FEBC2E",
+  "terminal-zoom": "#28C840",
+};
+const terminalOnLight = {
+  terminal: "#0A0A0B",
+  "terminal-border": "#2A2A2E",
+  "terminal-foreground": "#E8E8EA",
+  "terminal-muted": "#8E8E95",
+  "terminal-command": "#FFFFFF",
+  ...windowButtons,
+} satisfies Partial<Record<ColorToken, string>>;
+const terminalOnDark = {
+  terminal: "#FFFFFF",
+  "terminal-border": "#E3E2DE",
+  "terminal-foreground": "#37352F",
+  "terminal-muted": "#7D7A75",
+  "terminal-command": "#0A0A0B",
+  ...windowButtons,
+} satisfies Partial<Record<ColorToken, string>>;
 
 export const light: ThemeColors = {
   background: warm[0],
@@ -107,6 +141,8 @@ export const light: ThemeColors = {
   "orb-ripple": "rgba(0, 0, 0, 0.18)",
   "orb-grain": "rgba(0, 0, 0, 0.5)",
   "orb-icon": "rgba(255, 255, 255, 0.95)",
+  // Code terminals on marketing pages: black on the light page.
+  ...terminalOnLight,
 };
 
 export const dark: ThemeColors = {
@@ -155,6 +191,8 @@ export const dark: ThemeColors = {
   "orb-ripple": "rgba(255, 255, 255, 0.22)",
   "orb-grain": "rgba(255, 255, 255, 0.6)",
   "orb-icon": "rgba(255, 255, 255, 1)",
+  // Code terminals on marketing pages: white on the dark page.
+  ...terminalOnDark,
 };
 
 export const themes: Record<ThemeName, ThemeColors> = { light, dark };

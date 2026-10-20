@@ -38,10 +38,11 @@ export function AgentsDemo() {
   return (
     <div ref={ref}>
       <DemoWindow
+        terminal
         title={using ? "Claude Code — your project" : "Terminal — set up once"}
         bodyClassName="grid md:h-[560px] md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
       >
-        <div className="bg-muted/30 flex h-[360px] flex-col justify-end overflow-hidden border-b p-5 text-left font-mono text-[12px] leading-relaxed md:h-auto md:border-r md:border-b-0 md:p-6 md:text-[13px]">
+        <div className="bg-terminal text-terminal-foreground [&_.animate-pulse]:bg-terminal-foreground flex h-[360px] flex-col justify-end overflow-hidden border-b p-5 text-left font-mono text-[12px] leading-relaxed md:h-auto md:border-r md:border-b-0 md:p-6 md:text-[13px]">
           {using ? <Session step={step} /> : <Setup step={step} />}
         </div>
         <App step={step} />
@@ -86,8 +87,8 @@ function Session({ step }: { step: number }) {
         <Tool name="Write" arg="bug.mmd" note="flowchart TD" />
       </Reveal>
       {step >= 12 ? (
-        <p className="text-foreground break-all">
-          <span className="text-foreground-strong">⏺ Bash</span>(
+        <p className="text-terminal-foreground break-all">
+          <span className="text-terminal-command">⏺ Bash</span>(
           <Typed text={SAVE_CMD} active={step >= 12} done={step >= 14} />)
         </p>
       ) : null}
@@ -99,9 +100,10 @@ function Session({ step }: { step: number }) {
 
       {step >= RECALL_AT ? (
         <>
-          <p className="text-muted-foreground flex items-center gap-2 py-2 text-[11px] tracking-wide uppercase">
-            <span className="bg-border h-px flex-1" />a week later · new session
-            <span className="bg-border h-px flex-1" />
+          <p className="text-terminal-muted flex items-center gap-2 py-2 text-[11px] tracking-wide uppercase">
+            <span className="bg-terminal-border h-px flex-1" />a week later ·
+            new session
+            <span className="bg-terminal-border h-px flex-1" />
           </p>
           <Prompt text={ASK} active={step >= 17} done={step >= 18} />
           <Reveal show={step >= 18} className="mt-2">
@@ -131,8 +133,8 @@ function Cmd({
 }) {
   if (!active) return null;
   return (
-    <p className="text-foreground-strong break-all">
-      <span className="text-muted-foreground">$ </span>
+    <p className="text-terminal-command break-all">
+      <span className="text-terminal-muted">$ </span>
       <Typed text={text} active={active} done={done} />
     </p>
   );
@@ -140,9 +142,9 @@ function Cmd({
 
 function Out({ children, ok }: { children: React.ReactNode; ok?: boolean }) {
   return (
-    <p className="text-muted-foreground flex items-center gap-1.5">
+    <p className="text-terminal-muted flex items-center gap-1.5">
       {ok ? (
-        <Check className="text-foreground-strong size-3.5 shrink-0" />
+        <Check className="text-terminal-command size-3.5 shrink-0" />
       ) : null}
       {children}
     </p>
@@ -159,8 +161,8 @@ function Prompt({
   done: boolean;
 }) {
   return (
-    <p className="text-foreground-strong">
-      <span className="text-muted-foreground">&gt; </span>
+    <p className="text-terminal-command">
+      <span className="text-terminal-muted">&gt; </span>
       <Typed text={text} active={active} done={done} />
     </p>
   );
@@ -176,17 +178,17 @@ function Tool({
   note?: string;
 }) {
   return (
-    <p className="text-foreground">
-      <span className="text-foreground-strong">⏺ {name}</span>({arg})
-      {note ? <span className="text-muted-foreground"> · {note}</span> : null}
+    <p className="text-terminal-foreground">
+      <span className="text-terminal-command">⏺ {name}</span>({arg})
+      {note ? <span className="text-terminal-muted"> · {note}</span> : null}
     </p>
   );
 }
 
 function Reply({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-foreground font-sans text-[13px] md:text-sm">
-      <span className="text-foreground-strong">⏺ </span>
+    <p className="text-terminal-foreground font-sans text-[13px] md:text-sm">
+      <span className="text-terminal-command">⏺ </span>
       {children}
     </p>
   );

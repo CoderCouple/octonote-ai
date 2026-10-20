@@ -14,42 +14,25 @@ import { HeroStoryDemo } from "./_components/hero-story-demo";
 import { MeteorShower } from "./_components/meteor-shower";
 import { PricingSection } from "./_components/pricing-section";
 import { HomeStructuredData } from "./_components/structured-data";
-import { CodeBlock } from "./cli/_components/code-block";
+import { TerminalWindow } from "./cli/_components/terminal-window";
 import { INSTALL } from "./cli/_data/install";
 
-const SETUP = [
-  { step: "1", title: "Install", code: INSTALL },
-  { step: "2", title: "Sign in", code: "octonote login" },
-  {
-    step: "3",
-    title: "Teach your agent",
-    code: "octonote setup claude --skill",
-  },
-];
-
-/** The three setup commands, copyable, with a link to the full CLI docs. */
+/** The three setup commands in one copyable terminal, with a link to the CLI docs. */
 function AgentSetup() {
   return (
     <div className="text-left">
-      <ol className="flex flex-col gap-3">
-        {SETUP.map((s) => (
-          <li
-            key={s.step}
-            className="grid min-w-0 items-center gap-2 md:grid-cols-[11rem_minmax(0,1fr)] md:gap-4"
-          >
-            <p className="text-foreground-strong flex items-center gap-2 text-base font-semibold">
-              <span className="bg-foreground-strong text-background inline-grid size-6 place-items-center rounded-full text-xs">
-                {s.step}
-              </span>
-              {s.title}
-            </p>
-            <CodeBlock code={s.code} />
-          </li>
-        ))}
-      </ol>
+      <TerminalWindow
+        code={`# 1. Install
+${INSTALL}
+
+# 2. Sign in (opens your browser once)
+octonote login
+
+# 3. Teach Claude Code (Codex: octonote setup codex)
+octonote setup claude --skill`}
+      />
       <p className="text-muted-foreground mt-6 text-center text-lg">
-        Using Codex? Run{" "}
-        <code className="font-mono text-base">octonote setup codex</code>.{" "}
+        Then just ask Claude.{" "}
         <Link
           href="/cli"
           className="text-foreground-strong inline-flex items-center gap-1 underline underline-offset-4"

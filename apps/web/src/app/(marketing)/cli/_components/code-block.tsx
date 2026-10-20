@@ -4,7 +4,10 @@ import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-/** A command or file snippet with a copy button. `$ ` prefixes are shown but not copied. */
+/**
+ * A command or file snippet with a copy button, in the terminal colours
+ * (black on light pages, white on dark). `$ ` prefixes are shown but not copied.
+ */
 export function CodeBlock({
   code,
   label,
@@ -22,12 +25,12 @@ export function CodeBlock({
   return (
     <div
       className={cn(
-        "bg-muted/50 group relative overflow-hidden rounded-xl border",
+        "bg-terminal text-terminal-foreground border-terminal-border group relative overflow-hidden rounded-xl border",
         className,
       )}
     >
       {label ? (
-        <div className="text-muted-foreground border-b px-4 py-2 font-mono text-xs">
+        <div className="text-terminal-muted border-terminal-border border-b px-4 py-2 font-mono text-xs">
           {label}
         </div>
       ) : null}
@@ -44,7 +47,7 @@ export function CodeBlock({
           });
         }}
         className={cn(
-          "bg-background text-muted-foreground hover:text-foreground-strong absolute top-2 right-2 grid size-8 place-items-center rounded-md border transition-opacity",
+          "bg-terminal text-terminal-muted hover:text-terminal-command border-terminal-border absolute top-2 right-2 grid size-8 place-items-center rounded-md border transition-opacity",
           label ? "top-1" : "",
           "opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100",
         )}
