@@ -50,9 +50,9 @@
   --terminal-foreground: #E8E8EA;
   --terminal-muted: #8E8E95;
   --terminal-command: #FFFFFF;
-  --terminal-close: #FF5F57;
-  --terminal-minimize: #FEBC2E;
-  --terminal-zoom: #28C840;
+  --window-close: #FF5F57;
+  --window-minimize: #FEBC2E;
+  --window-zoom: #28C840;
   --radius: 0.5rem;
   --font-family-sans: var(--font-inter), Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-family-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
@@ -112,9 +112,9 @@
   --terminal-foreground: #37352F;
   --terminal-muted: #7D7A75;
   --terminal-command: #0A0A0B;
-  --terminal-close: #FF5F57;
-  --terminal-minimize: #FEBC2E;
-  --terminal-zoom: #28C840;
+  --window-close: #FF5F57;
+  --window-minimize: #FEBC2E;
+  --window-zoom: #28C840;
   color-scheme: dark;
 }
 
@@ -167,9 +167,9 @@
   --color-terminal-foreground: var(--terminal-foreground);
   --color-terminal-muted: var(--terminal-muted);
   --color-terminal-command: var(--terminal-command);
-  --color-terminal-close: var(--terminal-close);
-  --color-terminal-minimize: var(--terminal-minimize);
-  --color-terminal-zoom: var(--terminal-zoom);
+  --color-window-close: var(--window-close);
+  --color-window-minimize: var(--window-minimize);
+  --color-window-zoom: var(--window-zoom);
   --font-sans: var(--font-family-sans);
   --font-serif: var(--font-family-serif);
   --font-mono: var(--font-family-mono);

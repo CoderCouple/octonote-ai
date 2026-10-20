@@ -27,9 +27,9 @@ export function TerminalWindow({
   return (
     <div className="border-terminal-border bg-terminal text-terminal-foreground overflow-hidden rounded-2xl border text-left shadow-xl">
       <div className="border-terminal-border flex h-10 items-center gap-2 border-b px-4">
-        <span className="bg-terminal-close size-3 rounded-full" />
-        <span className="bg-terminal-minimize size-3 rounded-full" />
-        <span className="bg-terminal-zoom size-3 rounded-full" />
+        <span className="bg-window-close size-3 rounded-full" />
+        <span className="bg-window-minimize size-3 rounded-full" />
+        <span className="bg-window-zoom size-3 rounded-full" />
         <span className="text-terminal-muted ml-2 text-xs">{title}</span>
         <button
           type="button"

@@ -6,11 +6,8 @@ export function DemoWindow({
   children,
   className,
   bodyClassName,
-  terminal,
 }: {
   title: string;
-  /** A terminal window: macOS red / yellow / green buttons instead of grey. */
-  terminal?: boolean;
   children: React.ReactNode;
   className?: string;
   bodyClassName?: string;
@@ -25,24 +22,9 @@ export function DemoWindow({
     >
       <div className="flex h-11 items-center gap-2 border-b px-4">
         <span className="flex gap-1.5">
-          <span
-            className={cn(
-              "size-3 rounded-full",
-              terminal ? "bg-terminal-close" : "bg-border",
-            )}
-          />
-          <span
-            className={cn(
-              "size-3 rounded-full",
-              terminal ? "bg-terminal-minimize" : "bg-border",
-            )}
-          />
-          <span
-            className={cn(
-              "size-3 rounded-full",
-              terminal ? "bg-terminal-zoom" : "bg-border",
-            )}
-          />
+          <span className="bg-window-close size-3 rounded-full" />
+          <span className="bg-window-minimize size-3 rounded-full" />
+          <span className="bg-window-zoom size-3 rounded-full" />
         </span>
         <span className="text-muted-foreground ml-3 truncate text-sm">
           {title}

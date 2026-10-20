@@ -38,7 +38,6 @@ export function AgentsDemo() {
   return (
     <div ref={ref}>
       <DemoWindow
-        terminal
         title={using ? "Claude Code — your project" : "Terminal — set up once"}
         bodyClassName="grid md:h-[560px] md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
       >

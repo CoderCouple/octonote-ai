@@ -119,9 +119,9 @@ export function HeroStoryDemo() {
       {/* Window chrome: app header while editing, a browser bar once published */}
       <div className="relative flex h-12 items-center border-b px-4">
         <span className="flex gap-1.5">
-          <span className="bg-border size-3 rounded-full" />
-          <span className="bg-border size-3 rounded-full" />
-          <span className="bg-border size-3 rounded-full" />
+          <span className="bg-window-close size-3 rounded-full" />
+          <span className="bg-window-minimize size-3 rounded-full" />
+          <span className="bg-window-zoom size-3 rounded-full" />
         </span>
         {published ? (
           <div className="bg-muted text-muted-foreground absolute left-1/2 flex w-[min(60%,420px)] -translate-x-1/2 items-center gap-2 truncate rounded-md px-3 py-1 text-xs">

@@ -60,9 +60,9 @@ export const colorTokenNames = [
   "terminal-foreground",
   "terminal-muted",
   "terminal-command",
-  "terminal-close",
-  "terminal-minimize",
-  "terminal-zoom",
+  "window-close",
+  "window-minimize",
+  "window-zoom",
 ] as const;
 
 export type ColorToken = (typeof colorTokenNames)[number];
@@ -74,9 +74,9 @@ export type ThemeName = "light" | "dark";
  * Monochrome like everything else; only the macOS window buttons have colour.
  */
 const windowButtons = {
-  "terminal-close": "#FF5F57",
-  "terminal-minimize": "#FEBC2E",
-  "terminal-zoom": "#28C840",
+  "window-close": "#FF5F57",
+  "window-minimize": "#FEBC2E",
+  "window-zoom": "#28C840",
 };
 const terminalOnLight = {
   terminal: "#0A0A0B",
