@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { BookDemoButton } from "./book-demo";
 import { Logo } from "./logo";
 
 const NAV_LINKS = [
@@ -31,6 +32,11 @@ export function MarketingNav() {
         </div>
         <div className="flex items-center gap-1">
           <ThemeToggle />
+          <BookDemoButton
+            variant="ghost"
+            size="default"
+            className="hidden text-base lg:inline-flex"
+          />
           <Button
             asChild
             variant="ghost"

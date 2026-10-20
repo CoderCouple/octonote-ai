@@ -1,5 +1,6 @@
 import { SUPPORT_EMAIL } from "@octonote/shared";
 import Link from "next/link";
+import { DEMO_URL } from "@/lib/site";
 import { PROFILES } from "../_data/company";
 import { COMPARISONS } from "../_data/comparisons";
 import { USE_CASES } from "../_data/use-cases";
@@ -47,6 +48,7 @@ const COLUMNS: {
     href: "/about",
     links: [
       { href: "/about", label: "About" },
+      ...(DEMO_URL ? [{ href: DEMO_URL, label: "Book a demo" }] : []),
       { href: `mailto:${SUPPORT_EMAIL}`, label: "Contact" },
       ...PROFILES.map((p) => ({ href: p.url, label: p.label })),
       { href: "/privacy", label: "Privacy" },

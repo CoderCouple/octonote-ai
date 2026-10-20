@@ -2,6 +2,7 @@ import { ArrowRight, ArrowUpRight, Bot, User } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Aura } from "./_components/aura";
+import { BookDemoButton } from "./_components/book-demo";
 import { AgentsDemo } from "./_components/demos/agents-demo";
 import { CanvasDemo } from "./_components/demos/canvas-demo";
 import { MobileDemo } from "./_components/demos/mobile-demo";
@@ -98,11 +99,12 @@ export default function LandingPage() {
           </p>
           <div className="mt-8 flex flex-col items-center gap-2 sm:flex-row sm:gap-4 md:mt-10">
             <PrimaryCta />
+            <BookDemoButton className="h-14 px-7 text-lg" />
             <Button
               asChild
               size="lg"
               variant="ghost"
-              className="h-14 px-7 text-lg"
+              className="h-14 px-7 text-lg max-sm:hidden"
             >
               <Link href="#examples">See examples</Link>
             </Button>

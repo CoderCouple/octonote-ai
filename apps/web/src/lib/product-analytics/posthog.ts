@@ -108,7 +108,7 @@ export function setAnalyticsAllowed(userId: string, allowed: boolean): void {
   }
 }
 
-export type ClientEvent = "signup_clicked" | "upgrade_prompt_shown";
+export type ClientEvent = "signup_clicked" | "demo_clicked" | "upgrade_prompt_shown";
 
 /** A named event; never pass anything people wrote. */
 export function track(event: ClientEvent, properties: Record<string, string | number | boolean | null> = {}): void {

@@ -11,6 +11,7 @@ export function SiteAnalytics() {
       const link = (e.target as Element | null)?.closest?.("a[href]");
       const href = link?.getAttribute("href") ?? "";
       if (href.startsWith("/signup")) track("signup_clicked", { from: window.location.pathname });
+      else if (link?.hasAttribute("data-demo")) track("demo_clicked", { from: window.location.pathname });
     };
     document.addEventListener("click", onClick, { capture: true });
     return () => document.removeEventListener("click", onClick, { capture: true });
