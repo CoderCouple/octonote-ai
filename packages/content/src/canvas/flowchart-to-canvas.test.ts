@@ -33,6 +33,19 @@ describe("mermaid flowchart → canvas", () => {
     expect(arrows.find((a) => a.props.dash === "dashed")).toBeTruthy();
   });
 
+  it("makes a box taller when its label wraps, so the text stays inside", () => {
+    const geo = (src: string) =>
+      records(mermaidToCanvasDocument(src) as unknown as { store: Record<string, Rec> }).find(
+        (r) => r.id === "shape:node-A",
+      )!;
+    const short = geo("flowchart TD\n  A[API]");
+    const long = geo(
+      "flowchart TD\n  A[Services - notes, canvases, projects, notebooks, shares, public, votes, analytics, billing]",
+    );
+    expect(long.props.w).toBe(320);
+    expect(long.props.h).toBeGreaterThanOrEqual(short.props.h + 2 * 22);
+  });
+
   it("lays out left to right without overlapping boxes", () => {
     const nodes = records(snap).filter((r) => r.type === "geo" && r.props.dash !== "dashed");
     const x = (id: string) => nodes.find((n) => n.id === `shape:node-${id}`)!.x;

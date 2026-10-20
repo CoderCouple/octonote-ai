@@ -1,6 +1,14 @@
 "use client";
 
-import { Group, LayoutGrid, Shapes, Ungroup } from "lucide-react";
+import {
+  ArrowDownFromLine,
+  ArrowRightFromLine,
+  Group,
+  LayoutGrid,
+  Network,
+  Shapes,
+  Ungroup,
+} from "lucide-react";
 import type { Editor } from "tldraw";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -8,6 +16,12 @@ import { EditableTitle } from "@/components/editable-title";
 import { FocusHeader } from "@/components/focus-header";
 import { SaveIndicator, type SaveState } from "@/components/save-indicator";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Toggle } from "@/components/ui/toggle";
 import {
   Tooltip,
@@ -22,6 +36,7 @@ import {
 } from "@/features/sharing";
 import { updateCanvasClientApi } from "../api/canvases-client-api";
 import type { Canvas } from "../types";
+import type { RearrangeDirection } from "../lib/rearrange";
 import { OctoCanvas } from "./octo-canvas-dynamic";
 
 interface CanvasPaneProps {
@@ -64,6 +79,21 @@ export function CanvasPane({
       toast.message(
         "Select a figure to dissolve, or shapes inside one to lift them out.",
       );
+  }
+
+  async function rearrange(direction: RearrangeDirection) {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const { rearrangeShapes } = await import("../lib/rearrange");
+    const wholePage = editor.getSelectedShapeIds().length < 2;
+    if (!rearrangeShapes(editor, direction)) {
+      toast.message("Add a few shapes first, then rearrange them.");
+      return;
+    }
+    if (wholePage) editor.zoomToFit({ animation: { duration: 300 } });
+    toast.message("Rearranged", {
+      action: { label: "Undo", onClick: () => editor.undo() },
+    });
   }
 
   async function rename(next: string) {
@@ -156,6 +186,36 @@ export function CanvasPane({
                 Ungroup — dissolve a figure, or lift shapes out of it
               </TooltipContent>
             </Tooltip>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-8 p-0"
+                      aria-label="Rearrange"
+                    >
+                      <Network className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Rearrange — lay out the selected shapes (or the whole
+                  canvas) so arrows cross less
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => rearrange("vertical")}>
+                  <ArrowDownFromLine className="size-4" />
+                  Rearrange vertically
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => rearrange("horizontal")}>
+                  <ArrowRightFromLine className="size-4" />
+                  Rearrange horizontally
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         ) : null}
         <SaveIndicator state={saveState} />

@@ -43,11 +43,20 @@ interface Box {
   h: number;
 }
 
-/** A label's box: roughly 8.5px per character at the "s" size, one row per line. */
+const CHAR_W = 8.5;
+const PAD_X = 48;
+
+/**
+ * A label's box: roughly 8.5px per character at the "s" size. Wide labels are
+ * capped at 320px and wrap, so the box grows a row for every wrapped line.
+ */
 function sizeFor(node: FlowNode): { w: number; h: number } {
   const lines = node.label.split("\n");
   const longest = Math.max(...lines.map((l) => l.length), 1);
-  const base = { w: Math.min(320, Math.max(120, longest * 8.5 + 48)), h: 56 + (lines.length - 1) * 22 };
+  const w = Math.min(320, Math.max(120, longest * CHAR_W + PAD_X));
+  const perRow = Math.max(1, Math.floor((w - PAD_X) / CHAR_W));
+  const rows = lines.reduce((n, l) => n + Math.max(1, Math.ceil(l.length / perRow)), 0);
+  const base = { w, h: 56 + (rows - 1) * 22 };
   const g = GEO[node.shape];
   if (node.shape === "circle") {
     const d = Math.max(base.w, base.h + 24);

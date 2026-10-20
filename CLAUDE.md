@@ -50,7 +50,7 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 **IN SCOPE:**
 - Notes editor (BlockNote) — standard blocks (paragraph, heading, list, todo, code, quote, divider, image) + custom blocks: `canvas-reference`, **`mathBlock` + inline `math` (KaTeX) and `mermaid` diagrams** (added 2026-10-09, user decision; Mermaid ported from OctoFocus with `securityLevel: "strict"`). Pasted markdown with `$…$`, `$$…$$`, ```math or ```mermaid is converted by `features/notes/lib/markdown-import.ts`.
 - `canvas-reference` block — references a canvas page in the workspace. Renders a thumbnail (PNG snapshot stored on the canvas record) + canvas title. Clicking opens the canvas page. **Reference only, not inline rendering.** No tldraw instance inside the note.
-- Canvas (tldraw) — default toolset
+- Canvas (tldraw) — default toolset, plus **Rearrange** (added 2026-10-20, user decision): a header menu that lays out the selection (or the whole canvas) vertically or horizontally with dagre, keeping surrounding boxes around their contents; one undo step (`features/canvas/lib/rearrange.ts`).
 - Standalone notes, standalone canvases, projects (1 note + 1 canvas), notebooks
 - Sharing + publishing (Google Docs model above)
 - **View analytics for published pages** (added 2026-10-09, user decision): anonymous hourly views + daily unique visitors (`resource_views`; uniques via Plausible-style daily-rotating salt hash of account id or IP+UA, salt and hashes deleted daily), bots/link previews and the item's own owners/editors skipped, nothing about the visitor stored; owners + editors see a chart in the list's Analytics panel. No visitor tracking on published pages (PostHog never loads there — see Tracking below).
