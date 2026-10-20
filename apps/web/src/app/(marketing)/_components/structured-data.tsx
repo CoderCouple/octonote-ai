@@ -3,6 +3,7 @@ import { JsonLd } from "@/components/json-ld";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { FOUNDERS, PROFILES } from "../_data/company";
 import { FAQS, PRICING_FAQS } from "../_data/faqs";
+import { STUDENT_FAQS } from "../_data/students";
 
 /**
  * schema.org data for the marketing pages: who we are, the site, the product
@@ -82,7 +83,7 @@ function faqPage(faqs: { q: string; a: string }[]) {
     mainEntity: faqs.map((f) => ({
       "@type": "Question",
       name: f.q,
-      acceptedAnswer: { "@type": "Answer", text: f.a },
+      acceptedAnswer: { "@type": "Answer", text: f.a.replace(/`/g, "") },
     })),
   };
 }
@@ -137,6 +138,21 @@ export function AboutStructuredData() {
             mainEntity: { "@id": ORGANIZATION_ID },
           },
           organization,
+        ],
+      }}
+    />
+  );
+}
+
+export function StudentsStructuredData() {
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@graph": [
+          breadcrumbs("Students", "/students"),
+          application,
+          faqPage(STUDENT_FAQS),
         ],
       }}
     />

@@ -23,6 +23,7 @@ const COLUMNS: {
       { href: "/#examples", label: "Examples" },
       { href: "/cli", label: "CLI" },
       { href: "/pricing", label: "Pricing" },
+      { href: "/students", label: "Students" },
     ],
   },
   {
