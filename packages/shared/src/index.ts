@@ -661,3 +661,10 @@ export const CrmFollowupUpdateSchema = z
   .object({ done: z.boolean().optional(), dueOn: IsoDay.optional(), note: z.string().trim().min(1).max(500).optional() })
   .refine((v) => Object.values(v).some((x) => x !== undefined), "Nothing to change.");
 export type CrmFollowupUpdate = z.infer<typeof CrmFollowupUpdateSchema>;
+
+/** Send an email from Admin → Inbox. */
+export const CrmEmailSchema = z.object({
+  subject: z.string().trim().min(1, "Add a subject.").max(200),
+  body: z.string().trim().min(1, "Write the message.").max(20_000),
+});
+export type CrmEmailInput = z.infer<typeof CrmEmailSchema>;

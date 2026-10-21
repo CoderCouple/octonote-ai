@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import {
+  CrmEmailSchema,
   CrmFollowupCreateSchema,
   CrmFollowupUpdateSchema,
   CrmLogSchema,
   CrmStatusSchema,
+  type CrmEmailInput,
   type CrmFollowupCreate,
   type CrmFollowupUpdate,
   type CrmLogInput,
@@ -58,6 +60,16 @@ export class AdminCrmController {
     @Req() req: AuthenticatedRequest,
   ): Promise<CrmPersonDetail> {
     return this.crm.log(id, body, req.user.id);
+  }
+
+  /** Send an email from hello@octonote.ai as the signed-in staff member. */
+  @Post("people/:id/email")
+  sendEmail(
+    @Param("id", IdParam) id: string,
+    @Body(new ZodValidationPipe(CrmEmailSchema)) body: CrmEmailInput,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<CrmPersonDetail> {
+    return this.crm.sendEmail(id, body, req.user.id);
   }
 
   @Delete("entries/:id")

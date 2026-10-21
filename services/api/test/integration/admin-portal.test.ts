@@ -202,7 +202,7 @@ describe("audit log and sign-in", () => {
     const first = await h.adminAudit.list(2);
     expect(first.map((e) => e.action)).toEqual(["test.2", "test.1"]);
     expect(first[0]!.actorEmail).toBe("staff@octonote.ai");
-    const next = await h.adminAudit.list(2, first[1]!.createdAt);
+    const next = await h.adminAudit.list(2, first[1]!.cursor);
     expect(next.map((e) => e.action)).toEqual(["test.0"]);
   });
 

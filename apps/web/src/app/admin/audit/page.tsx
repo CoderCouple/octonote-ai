@@ -111,7 +111,7 @@ export default function AdminAuditPage() {
         </Table>
       </div>
       {more ? (
-        <Button variant="outline" className="w-fit" disabled={loading} onClick={() => load(rows?.at(-1)?.createdAt)}>
+        <Button variant="outline" className="w-fit" disabled={loading} onClick={() => load(rows?.at(-1)?.cursor)}>
           {loading ? <Loader2 className="size-4 animate-spin" /> : null}
           Show older
         </Button>

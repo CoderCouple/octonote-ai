@@ -3,10 +3,13 @@
 /**
  * Admin → Inbox, the right pane: one person's status, follow-ups and timeline
  * (what we know + conversations logged by staff), and a box to log a new one.
- * Layer 1 of the CRM: emails come in the next layers.
+ * Emails go out from hello@octonote.ai as the signed-in staff member, with a
+ * copy to the team inbox; replies arrive in that inbox for now.
  */
 import {
   CRM_KIND_LABELS,
+  CRM_TEMPLATES,
+  fillCrmTemplate,
   CRM_LOG_KINDS,
   CRM_STATUS_LABELS,
   CRM_STATUSES,
@@ -15,7 +18,7 @@ import {
   type CrmStatus,
   type CrmTimelineItem,
 } from "@octonote/shared";
-import { ArrowLeft, Check, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Send, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -24,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { addCrmFollowup, deleteCrmEntry, logCrmEntry, setCrmStatus, updateCrmFollowup } from "../api";
+import { addCrmFollowup, deleteCrmEntry, logCrmEntry, sendCrmEmail, setCrmStatus, updateCrmFollowup } from "../api";
 import { PlanBadge } from "./plan-badge";
 import { errorText, fmtDate } from "./ui";
 
@@ -69,6 +72,8 @@ export function CrmPerson({
   /** Phones: back to the list. */
   onBack: () => void;
 }) {
+  const [mode, setMode] = useState<"email" | "log">("email");
+  const [subject, setSubject] = useState("");
   const [kind, setKind] = useState<CrmLogKind>("linkedin");
   const [body, setBody] = useState("");
   const [on, setOn] = useState(dayFromToday(0));
@@ -80,6 +85,7 @@ export function CrmPerson({
 
   useEffect(() => {
     setBody("");
+    setSubject("");
     setFNote("");
     endRef.current?.scrollIntoView({ block: "end" });
   }, [person.user.id]);
@@ -96,6 +102,31 @@ export function CrmPerson({
     } finally {
       setBusy(null);
     }
+  }
+
+  const first = (name: string) => name.split(/\s+/)[0] ?? name;
+  const meName = first(staff.find((s) => s.id === meId)?.name ?? "");
+
+  function applyTemplate(id: string) {
+    const t = CRM_TEMPLATES.find((x) => x.id === id);
+    if (!t) return;
+    setSubject(fillCrmTemplate(t.subject, first(person.user.name), meName));
+    setBody(fillCrmTemplate(t.body, first(person.user.name), meName));
+  }
+
+  async function send(remind: boolean) {
+    const ok = await run("send", () => sendCrmEmail(person.user.id, { subject, body }), `Sent to ${person.user.email}.`);
+    if (!ok) return;
+    const sentSubject = subject;
+    setSubject("");
+    setBody("");
+    if (remind) {
+      await run("follow", () =>
+        addCrmFollowup(person.user.id, { dueOn: dayFromToday(3), note: `Follow up on “${sentSubject.slice(0, 80)}”` }),
+        "Follow-up added for 3 days from now.",
+      );
+    }
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }
 
   async function addLog(remind: boolean) {
@@ -288,50 +319,105 @@ export function CrmPerson({
         className="flex flex-col gap-2 border-t px-4 py-3 md:px-5"
         onSubmit={(e) => {
           e.preventDefault();
-          void addLog(false);
+          void (mode === "email" ? send(false) : addLog(false));
         }}
       >
-        <div role="group" aria-label="What kind" className="flex flex-wrap gap-1.5">
-          {CRM_LOG_KINDS.map((k) => (
-            <Button
-              key={k}
-              type="button"
-              size="sm"
-              variant={kind === k ? "default" : "outline"}
-              className="h-7 rounded-full px-3 text-xs"
-              aria-pressed={kind === k}
-              onClick={() => setKind(k)}
-            >
-              {CRM_KIND_LABELS[k]}
-            </Button>
-          ))}
-          <span className="text-muted-foreground ml-auto self-center text-xs">Email comes in the next update</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="tablist" aria-label="Reply as" className="bg-muted flex gap-0.5 rounded-lg p-0.5">
+            {(["email", "log"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                onClick={() => setMode(m)}
+                className={cn(
+                  "rounded-md px-3 py-1 text-xs transition-colors",
+                  mode === m ? "bg-background text-foreground-strong font-semibold shadow-xs" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {m === "email" ? "Email" : "Log a conversation"}
+              </button>
+            ))}
+          </div>
+          {mode === "email" ? (
+            <div role="group" aria-label="Templates" className="flex flex-wrap gap-1.5">
+              {CRM_TEMPLATES.map((t) => (
+                <Button key={t.id} type="button" size="sm" variant="outline" className="h-7 rounded-full px-3 text-xs" onClick={() => applyTemplate(t.id)}>
+                  {t.label}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <div role="group" aria-label="What kind" className="flex flex-wrap gap-1.5">
+              {CRM_LOG_KINDS.map((k) => (
+                <Button
+                  key={k}
+                  type="button"
+                  size="sm"
+                  variant={kind === k ? "default" : "outline"}
+                  className="h-7 rounded-full px-3 text-xs"
+                  aria-pressed={kind === k}
+                  onClick={() => setKind(k)}
+                >
+                  {CRM_KIND_LABELS[k]}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
+        {mode === "email" ? (
+          <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" aria-label="Subject" className="h-8" />
+        ) : null}
         <Textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          rows={3}
-          aria-label="What was said"
-          placeholder={kind === "note" ? "A note about this person…" : `What was said on ${CRM_KIND_LABELS[kind]}…`}
+          rows={mode === "email" ? 6 : 3}
+          aria-label={mode === "email" ? "Message" : "What was said"}
+          placeholder={
+            mode === "email"
+              ? `Write to ${first(person.user.name)}… or pick a template`
+              : kind === "note"
+                ? "A note about this person…"
+                : `What was said on ${CRM_KIND_LABELS[kind]}…`
+          }
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && body.trim()) {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && body.trim() && (mode === "log" || subject.trim())) {
               e.preventDefault();
-              void addLog(false);
+              void (mode === "email" ? send(false) : addLog(false));
             }
           }}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <label className="text-muted-foreground flex items-center gap-2 text-xs">
-            When
-            <Input type="date" value={on} max={dayFromToday(0)} onChange={(e) => setOn(e.target.value)} className="h-8 w-36" />
-          </label>
+          {mode === "email" ? (
+            <span className="text-muted-foreground text-xs">
+              From {meName || "you"} at hello@octonote.ai to {person.user.email} · a copy goes to hello@
+            </span>
+          ) : (
+            <label className="text-muted-foreground flex items-center gap-2 text-xs">
+              When
+              <Input type="date" value={on} max={dayFromToday(0)} onChange={(e) => setOn(e.target.value)} className="h-8 w-36" />
+            </label>
+          )}
           <div className="ml-auto flex gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={!body.trim() || busy !== null} onClick={() => addLog(true)}>
-              Add + remind me in 3 days
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!body.trim() || (mode === "email" && !subject.trim()) || busy !== null}
+              onClick={() => (mode === "email" ? send(true) : addLog(true))}
+            >
+              {mode === "email" ? "Send + remind me in 3 days" : "Add + remind me in 3 days"}
             </Button>
-            <Button type="submit" size="sm" disabled={!body.trim() || busy !== null}>
-              {busy === "log" ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-              Add to timeline
+            <Button type="submit" size="sm" disabled={!body.trim() || (mode === "email" && !subject.trim()) || busy !== null}>
+              {busy === "log" || busy === "send" ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : mode === "email" ? (
+                <Send className="size-3.5" />
+              ) : (
+                <Check className="size-3.5" />
+              )}
+              {mode === "email" ? "Send" : "Add to timeline"}
             </Button>
           </div>
         </div>

@@ -12,6 +12,7 @@ import {
   CRM_STATUSES,
   PARTNER_KIND_LABELS,
   type AdminPlan,
+  type CrmEmailInput,
   type CrmEntryKind,
   type CrmFollowup,
   type CrmFollowupCreate,
@@ -25,7 +26,8 @@ import {
 } from "@octonote/shared";
 import { and, asc, eq, sql, type SQL } from "drizzle-orm";
 import { AdminAuditService } from "../common/admin-audit.service";
-import { BadRequest, NotFound } from "../common/error/error-factory";
+import { CRM_MAILER, renderCrmEmail, type CrmMailer } from "../common/crm-mailer";
+import { BadRequest, NotFound, ServerError } from "../common/error/error-factory";
 import { PlanLimitsService } from "../common/plan-limits.service";
 import { Database, DRIZZLE } from "../db/database.module";
 import { crmContacts, crmEntries, crmFollowups } from "../db/schemas/crm";
@@ -50,6 +52,7 @@ export class AdminCrmService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly planLimits: PlanLimitsService,
     private readonly audit: AdminAuditService,
+    @Inject(CRM_MAILER) private readonly mailer: CrmMailer,
   ) {}
 
   /** Everyone who signed up (not staff), newest first, with what the Inbox list needs. */
@@ -59,6 +62,7 @@ export class AdminCrmService {
         p.name as partner_name, p.kind as partner_kind,
         coalesce(c.status, 'new') as status,
         e.kind as last_kind, e.subject as last_subject, e.body as last_body, e.occurred_at as last_at,
+        exists (select 1 from crm_entries x where x.user_id = u.id and x.kind = 'email_out') as emailed,
         f.id as f_id, f.due_on::text as f_due, f.note as f_note, f.assigned_to_user_id as f_to, a.name as f_to_name
       from users u
       left join crm_contacts c on c.user_id = u.id
@@ -99,6 +103,7 @@ export class AdminCrmService {
           }
         : null,
       contacted: Boolean(r.last_kind),
+      emailed: Boolean(r.emailed),
     }));
   }
 
@@ -172,6 +177,49 @@ export class AdminCrmService {
       occurredAt: input.occurredAt ? new Date(input.occurredAt) : new Date(),
     });
     await this.markContacted(userId);
+    return this.person(userId);
+  }
+
+  /**
+   * Sends an email as the staff member ("Sunil from Octonote <hello@…>"), with
+   * a hidden copy to the team inbox, and keeps it in the timeline. Replies go
+   * to the team address. Nothing is saved if Resend refuses it.
+   */
+  async sendEmail(userId: string, input: CrmEmailInput, adminUserId: string): Promise<CrmPersonDetail> {
+    const person = await this.requireUser(userId);
+    const sender = await this.requireUser(adminUserId);
+    const senderFirst = sender.name.split(/\s+/)[0] || "The Octonote team";
+    const copy = this.mailer.bcc && this.mailer.bcc.toLowerCase() !== person.email.toLowerCase() ? [this.mailer.bcc] : [];
+    let sent: { id: string };
+    try {
+      sent = await this.mailer.send({
+        from: `${senderFirst} from Octonote <${this.mailer.fromAddress}>`,
+        to: person.email,
+        bcc: copy,
+        replyTo: this.mailer.fromAddress,
+        subject: input.subject,
+        text: input.body,
+        html: renderCrmEmail(input.body),
+      });
+    } catch (err) {
+      throw ServerError(`The email wasn't sent: ${err instanceof Error ? err.message : "Resend refused it."}`);
+    }
+    await this.db.insert(crmEntries).values({
+      userId,
+      kind: "email_out",
+      subject: input.subject,
+      body: input.body,
+      actorUserId: adminUserId,
+      providerEmailId: sent.id,
+    });
+    await this.markContacted(userId);
+    await this.audit.record(adminUserId, {
+      action: "crm.email.send",
+      targetKind: "user",
+      targetId: userId,
+      targetLabel: person.email,
+      details: { subject: input.subject, copyTo: copy[0] ?? null },
+    });
     return this.person(userId);
   }
 

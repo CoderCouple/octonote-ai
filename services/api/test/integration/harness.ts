@@ -10,6 +10,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { buildIdFromUuid } from "@octonote/shared";
 import { ChangeEventsService } from "../../src/common/change-events.service";
+import type { CrmMail, CrmMailer } from "../../src/common/crm-mailer";
 import type { EmailService, ShareEmailInput } from "../../src/common/email.service";
 import { PermissionsService } from "../../src/common/permissions.service";
 import { PlanLimitsService } from "../../src/common/plan-limits.service";
@@ -67,6 +68,22 @@ export class FakeEmail {
       throw new Error("smtp down");
     }
     this.sent.push(input);
+  }
+}
+
+/** Records emails staff send from Admin → Inbox instead of sending them. */
+export class FakeCrmMailer implements CrmMailer {
+  readonly fromAddress = "hello@octonote.ai";
+  readonly bcc: string | null = "hello@octonote.ai";
+  sent: CrmMail[] = [];
+  failNext = false;
+  async send(mail: CrmMail) {
+    if (this.failNext) {
+      this.failNext = false;
+      throw new Error("resend down");
+    }
+    this.sent.push(mail);
+    return { id: `re_${this.sent.length}` };
   }
 }
 
@@ -319,11 +336,12 @@ export async function createHarness() {
 
   const activity = new ActivityService(db);
   const adminMetrics = new AdminMetricsService(db);
-  const crm = new AdminCrmService(db, planLimits, adminAudit);
+  const crmMailer = new FakeCrmMailer();
+  const crm = new AdminCrmService(db, planLimits, adminAudit, crmMailer);
   const admin = new AdminService(db, supabase as never, planLimits, services.billing, adminAudit);
   const noteMarkdown = new NoteMarkdownService(services.pages);
   const canvasDiagrams = new CanvasDiagramService(services.canvases);
-  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminAudit, admin, partners, crm, productAnalytics, posthog, ...services };
+  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminAudit, admin, partners, crm, crmMailer, productAnalytics, posthog, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

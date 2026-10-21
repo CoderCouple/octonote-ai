@@ -11,6 +11,7 @@ import type {
   StudentDomainCreate,
   StudentDomainUpdate,
   CreatorDashboard,
+  CrmEmailInput,
   CrmFollowupCreate,
   CrmFollowupUpdate,
   CrmLogInput,
@@ -92,6 +93,10 @@ export const setCrmStatus = (id: string, status: CrmStatus) =>
 
 export const logCrmEntry = (id: string, body: CrmLogInput) =>
   clientApi.post<CrmPersonDetail>(`/admin/crm/people/${id}/entries`, body);
+
+/** Sends from hello@octonote.ai as you, with a copy to the team inbox. */
+export const sendCrmEmail = (id: string, body: CrmEmailInput) =>
+  clientApi.post<CrmPersonDetail>(`/admin/crm/people/${id}/email`, body);
 
 export const deleteCrmEntry = (entryId: string) => clientApi.delete<CrmPersonDetail>(`/admin/crm/entries/${entryId}`);
 

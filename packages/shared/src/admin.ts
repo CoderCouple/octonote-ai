@@ -201,6 +201,8 @@ export interface AdminAuditEntry {
   targetLabel: string | null;
   details: Record<string, unknown> | null;
   createdAt: string;
+  /** Pass as `before` to load older entries (microsecond time, so paging skips nothing). */
+  cursor: string;
 }
 
 // --- Partners: creators and influencers ---------------------------------------
@@ -327,6 +329,42 @@ export const CRM_KIND_LABELS: Record<CrmEntryKind, string> = {
   email_in: "Reply",
 };
 
+/**
+ * Email templates for Admin → Inbox. {first} is the person's first name,
+ * {me} the sender's. Staff edit the text before sending.
+ */
+export const CRM_TEMPLATES: { id: string; label: string; subject: string; body: string }[] = [
+  {
+    id: "welcome",
+    label: "Welcome",
+    subject: "Welcome to Octonote, {first}",
+    body: "Hi {first},\n\nI'm {me}, one of the founders of Octonote. Thanks for signing up!\n\nWhat are you hoping to use it for? I read every reply, and I'm happy to help you get set up.\n\n{me}\nCo-founder, Octonote AI\nhttps://octonote.ai",
+  },
+  {
+    id: "checkin",
+    label: "How's it going?",
+    subject: "How's Octonote going?",
+    body: "Hi {first},\n\nHow's Octonote going so far? Is there anything that got in the way, or something you expected it to do that it didn't?\n\nJust reply, I read every message.\n\n{me}\nCo-founder, Octonote AI",
+  },
+  {
+    id: "call",
+    label: "15-min call",
+    subject: "15 minutes to show me how you use Octonote?",
+    body: "Hi {first},\n\nWould you have 15 minutes this week to show me how you use Octonote? It would help us a lot, and I can show you a few things you might not have found yet.\n\n{me}\nCo-founder, Octonote AI",
+  },
+  {
+    id: "pro-ending",
+    label: "Free Pro ends soon",
+    subject: "Your free Pro ends soon",
+    body: "Hi {first},\n\nA quick heads-up: your free Pro ends soon. Everything you made stays either way. If you'd like to keep Pro, it's $10 a month or $100 a year in Settings, Plan & billing.\n\n{me}\nCo-founder, Octonote AI",
+  },
+];
+
+/** Fills {first} and {me} in a template's subject or body. */
+export function fillCrmTemplate(text: string, first: string, me: string): string {
+  return text.replace(/\{first\}/g, first).replace(/\{me\}/g, me);
+}
+
 export interface CrmFollowup {
   id: string;
   /** YYYY-MM-DD */
@@ -349,6 +387,8 @@ export interface CrmPersonRow {
   nextFollowup: CrmFollowup | null;
   /** Nothing logged, sent or received yet. */
   contacted: boolean;
+  /** We've emailed them from the Inbox at least once. */
+  emailed: boolean;
 }
 
 /** An item in a person's timeline: something logged or sent, or an event we know about. */

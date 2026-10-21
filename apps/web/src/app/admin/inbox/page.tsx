@@ -3,8 +3,8 @@
 /**
  * Admin → Inbox: the follow-ups CRM. A list of everyone who signed up
  * (folders, status chips, search) beside the open person's follow-ups and
- * timeline. Phones show one pane at a time. Layer 1: logging and follow-ups;
- * sending and receiving email come next.
+ * timeline, where staff email people, log conversations and set follow-ups.
+ * Phones show one pane at a time.
  */
 import { CRM_STATUS_LABELS, CRM_STATUSES, type CrmPersonDetail, type CrmPersonRow, type CrmStatus } from "@octonote/shared";
 import { Loader2 } from "lucide-react";
@@ -18,10 +18,11 @@ import { errorText } from "@/features/admin/components/ui";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-type Folder = "attention" | "new" | "all";
+type Folder = "attention" | "new" | "sent" | "all";
 const FOLDERS: { id: Folder; label: string }[] = [
   { id: "attention", label: "Needs attention" },
   { id: "new", label: "Not contacted" },
+  { id: "sent", label: "Sent" },
   { id: "all", label: "Everyone" },
 ];
 
@@ -30,7 +31,7 @@ const needsAttention = (r: CrmPersonRow) =>
   r.status === "replied" || (r.nextFollowup !== null && r.nextFollowup.dueOn <= dayFromToday(0));
 
 const inFolder = (r: CrmPersonRow, f: Folder) =>
-  f === "all" ? true : f === "new" ? !r.contacted : needsAttention(r);
+  f === "all" ? true : f === "new" ? !r.contacted : f === "sent" ? r.emailed : needsAttention(r);
 
 const shortWhen = (iso: string) => {
   const d = new Date(iso);
@@ -109,7 +110,7 @@ function Inbox() {
       >
         <div className="flex flex-col gap-2.5 border-b px-4 pt-3 pb-3">
           <h1 className="text-foreground-strong text-base font-semibold">Inbox</h1>
-          <div role="tablist" aria-label="Folders" className="bg-muted flex gap-1 rounded-lg p-1">
+          <div role="tablist" aria-label="Folders" className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1">
             {FOLDERS.map((f) => {
               const n = (rows ?? []).filter((r) => inFolder(r, f.id)).length;
               const on = folder === f.id;

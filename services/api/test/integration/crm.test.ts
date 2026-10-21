@@ -7,7 +7,7 @@
  *   - Follow-ups: open first, done later, assignable to staff only.
  *   - Logged entries can be deleted (audited); emails can't.
  */
-import { CrmFollowupCreateSchema, CrmLogSchema, PartnerCreateSchema } from "@octonote/shared";
+import { CRM_TEMPLATES, CrmEmailSchema, CrmFollowupCreateSchema, CrmLogSchema, fillCrmTemplate, PartnerCreateSchema } from "@octonote/shared";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { crmEntries } from "../../src/db/schemas/crm";
@@ -134,5 +134,57 @@ describe("deleting", () => {
 
   it("refuses a logged time in the future", () => {
     expect(CrmLogSchema.safeParse({ kind: "call", body: "x", occurredAt: "2099-01-01T00:00:00Z" }).success).toBe(false);
+  });
+});
+
+describe("sending email (layer 2)", () => {
+  const email = (subject: string, body: string) =>
+    h.crm.sendEmail(maya.id, CrmEmailSchema.parse({ subject, body }), admin.id);
+
+  it("sends as the staff member from the team address, with a copy to hello@, and keeps it in the timeline", async () => {
+    await h.db.update(users).set({ name: "Sunil Tiwari" }).where(eq(users.id, admin.id));
+    const d = await email("Welcome to Octonote, Maya", "Hi Maya,\n\nThanks for signing up! See https://octonote.ai/cli.\n\nSunil");
+    expect(h.crmMailer.sent).toEqual([
+      expect.objectContaining({
+        from: "Sunil from Octonote <hello@octonote.ai>",
+        to: "maya@example.com",
+        bcc: ["hello@octonote.ai"],
+        replyTo: "hello@octonote.ai",
+        subject: "Welcome to Octonote, Maya",
+      }),
+    ]);
+    const html = h.crmMailer.sent[0]!.html;
+    expect(html).toContain('<a href="https://octonote.ai/cli">https://octonote.ai/cli</a>');
+    expect(html).toContain("<p");
+
+    const sentEntry = d.timeline.find((t) => t.type === "entry");
+    expect(sentEntry).toMatchObject({ kind: "email_out", subject: "Welcome to Octonote, Maya", by: { id: admin.id } });
+    expect(d.status).toBe("contacted");
+    const [row] = (await h.crm.people()).filter((r) => r.user.id === maya.id);
+    expect(row).toMatchObject({ emailed: true, last: { kind: "email_out", title: "Welcome to Octonote, Maya" } });
+    expect((await h.adminAudit.list(1))[0]).toMatchObject({
+      action: "crm.email.send",
+      targetLabel: "maya@example.com",
+      details: { subject: "Welcome to Octonote, Maya", copyTo: "hello@octonote.ai" },
+    });
+  });
+
+  it("escapes what staff write, so it can't become HTML", async () => {
+    await email("Hi", "<script>alert(1)</script> & <b>bold</b>");
+    expect(h.crmMailer.sent[0]!.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt; &amp; &lt;b&gt;bold&lt;/b&gt;");
+  });
+
+  it("saves nothing when Resend refuses the email", async () => {
+    h.crmMailer.failNext = true;
+    expect(await statusOf(email("Hi", "Hello"))).toBe(500);
+    const d = await h.crm.person(maya.id);
+    expect(d.timeline.filter((t) => t.type === "entry")).toHaveLength(0);
+    expect(d.status).toBe("new");
+  });
+
+  it("fills templates with both first names", () => {
+    const t = CRM_TEMPLATES.find((x) => x.id === "welcome")!;
+    expect(fillCrmTemplate(t.subject, "Maya", "Sunil")).toBe("Welcome to Octonote, Maya");
+    expect(fillCrmTemplate(t.body, "Maya", "Sunil")).toMatch(/^Hi Maya,[\s\S]*I'm Sunil/);
   });
 });
