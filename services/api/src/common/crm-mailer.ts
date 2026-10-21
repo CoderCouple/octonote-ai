@@ -12,6 +12,8 @@
  *                      (r-<id>@reply.octonote.ai) so replies land on the right
  *                      person. Unset: replies go to the team address.
  *   RESEND_WEBHOOK_SECRET — signs Resend's `email.received` webhook.
+ *   RESEND_RECEIVING_API_KEY — a full-access key for reading and forwarding
+ *                      received email; RESEND_API_KEY can stay sending-only.
  */
 import { Logger } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
@@ -73,6 +75,8 @@ export function addressOf(from: string | undefined): string {
 export class ResendCrmMailer implements CrmMailer {
   private readonly logger = new Logger("CrmMailer");
   private readonly client: Resend | null;
+  /** Reads and forwards received email (needs a full-access key). */
+  private readonly inbox: Resend | null;
   readonly fromAddress: string;
   readonly bcc: string | null;
   readonly replyDomain: string | null;
@@ -80,6 +84,7 @@ export class ResendCrmMailer implements CrmMailer {
 
   constructor(env: NodeJS.ProcessEnv = process.env) {
     this.client = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
+    this.inbox = env.RESEND_RECEIVING_API_KEY ? new Resend(env.RESEND_RECEIVING_API_KEY) : this.client;
     this.fromAddress = addressOf(env.RESEND_FROM);
     this.bcc = env.CRM_BCC === "" ? null : (env.CRM_BCC ?? "hello@octonote.ai");
     this.replyDomain = env.CRM_REPLY_DOMAIN?.trim().toLowerCase() || null;
@@ -87,9 +92,9 @@ export class ResendCrmMailer implements CrmMailer {
   }
 
   verifyInbound(rawBody: string, headers: { id?: string; timestamp?: string; signature?: string }): InboundEvent {
-    if (!this.client || !this.webhookSecret) throw new Error("Receiving isn't set up (RESEND_WEBHOOK_SECRET).");
+    if (!this.inbox || !this.webhookSecret) throw new Error("Receiving isn't set up (RESEND_WEBHOOK_SECRET).");
     if (!headers.id || !headers.timestamp || !headers.signature) throw new Error("Missing signature headers.");
-    const event = this.client.webhooks.verify({
+    const event = this.inbox.webhooks.verify({
       payload: rawBody,
       headers: { id: headers.id, timestamp: headers.timestamp, signature: headers.signature },
       webhookSecret: this.webhookSecret,
@@ -103,8 +108,8 @@ export class ResendCrmMailer implements CrmMailer {
   }
 
   async getReceived(emailId: string): Promise<ReceivedMail> {
-    if (!this.client) throw new Error("RESEND_API_KEY missing.");
-    const { data, error } = await this.client.emails.receiving.get(emailId);
+    if (!this.inbox) throw new Error("RESEND_RECEIVING_API_KEY missing.");
+    const { data, error } = await this.inbox.emails.receiving.get(emailId);
     if (error || !data) throw new Error(error?.message ?? "Resend returned no email.");
     return {
       from: data.from,
@@ -117,8 +122,8 @@ export class ResendCrmMailer implements CrmMailer {
   }
 
   async forwardToTeam(emailId: string): Promise<void> {
-    if (!this.client || !this.bcc) return;
-    const { error } = await this.client.emails.receiving.forward({
+    if (!this.inbox || !this.bcc) return;
+    const { error } = await this.inbox.emails.receiving.forward({
       emailId,
       to: this.bcc,
       from: `Octonote Inbox <${this.fromAddress}>`,
