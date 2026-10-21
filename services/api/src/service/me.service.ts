@@ -15,6 +15,7 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { emailDomainSuffixes, STUDENT_PRO_MONTHS } from "@octonote/shared";
+import { attributeToPartner, partnerForRef } from "../common/partner-attribution";
 import { BadRequest } from "../common/error/error-factory";
 import { ProductAnalytics } from "../common/product-analytics.service";
 import { Database, DRIZZLE } from "../db/database.module";
@@ -128,6 +129,9 @@ export class MeService {
           .set({ signupRef })
           .where(eq(users.id, userRow.id));
         userRow.signupRef = signupRef;
+        // A creator's link (?ref=priya) makes this person theirs.
+        const partner = await partnerForRef(tx, signupRef);
+        if (partner) await attributeToPartner(tx, userRow.id, partner.id, "link");
       }
 
       // Students (.edu and friends) get Pro free for a year from their first

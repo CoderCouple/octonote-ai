@@ -27,6 +27,7 @@ import { UsersRepository } from "../../src/db/repository/users.repository";
 import { CliTokensRepository } from "../../src/db/repository/cli-tokens.repository";
 import { CliTokensService } from "../../src/service/cli-tokens.service";
 import { NoteMarkdownService } from "../../src/service/note-markdown.service";
+import { PartnersService } from "../../src/service/partners.service";
 import { PromotionsService } from "../../src/service/promotions.service";
 import { ActivityService } from "../../src/common/activity.service";
 import { ProductAnalytics } from "../../src/common/product-analytics.service";
@@ -219,6 +220,8 @@ export async function createHarness() {
   const planLimits = new PlanLimitsService(db, true);
   const workspaces = new WorkspacesService(db, workspacesRepo, membersRepo, changeEvents, planLimits);
   const promotions = new PromotionsService(db, planLimits, workspaces, stripe as never, productAnalytics);
+  const adminAudit = new AdminAuditService(db);
+  const partners = new PartnersService(db, promotions, planLimits, adminAudit);
 
   const services = {
     cliTokens: new CliTokensService(new CliTokensRepository(db), new UsersRepository(db), productAnalytics),
@@ -284,6 +287,7 @@ export async function createHarness() {
       { webhookSecret: "whsec_test", prices: { month: "price_month", year: "price_year" } },
       promotions,
       productAnalytics,
+      partners,
     ),
     account: new AccountService(db, supabase as never),
     preferences: new PreferencesService(new UserPreferencesRepository(db), productAnalytics),
@@ -314,11 +318,10 @@ export async function createHarness() {
 
   const activity = new ActivityService(db);
   const adminMetrics = new AdminMetricsService(db);
-  const adminAudit = new AdminAuditService(db);
   const admin = new AdminService(db, supabase as never, planLimits, services.billing, adminAudit);
   const noteMarkdown = new NoteMarkdownService(services.pages);
   const canvasDiagrams = new CanvasDiagramService(services.canvases);
-  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminAudit, admin, productAnalytics, posthog, ...services };
+  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminAudit, admin, partners, productAnalytics, posthog, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

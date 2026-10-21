@@ -202,3 +202,62 @@ export interface AdminAuditEntry {
   details: Record<string, unknown> | null;
   createdAt: string;
 }
+
+// --- Partners: creators and influencers ---------------------------------------
+
+export interface PartnerStats {
+  /** People who joined through the partner's link or code. */
+  signups: number;
+  /** Of those, how many have made at least one note, canvas, project or notebook. */
+  activated: number;
+  /** Workspaces owned by those people that pay right now. */
+  paying: number;
+  /** What those people have paid in total. */
+  revenueCents: number;
+  /** The partner's share of that. */
+  earnedCents: number;
+  /** Earned and not yet paid out. */
+  owedCents: number;
+}
+
+export interface Partner {
+  id: string;
+  name: string;
+  code: string;
+  /** Their tracking link, e.g. https://octonote.ai/?ref=priya */
+  link: string;
+  email: string | null;
+  commissionPercent: number;
+  /** Months after a person's first payment that earn commission; null = always. */
+  commissionMonths: number | null;
+  /** The promo code their audience can use (same code), if any. */
+  promo: { id: string; description: string; redemptions: number; enabled: boolean } | null;
+  note: string | null;
+  enabled: boolean;
+  createdAt: string;
+  stats: PartnerStats;
+}
+
+export interface PartnerReferral {
+  user: { id: string; name: string; email: string };
+  via: "link" | "code";
+  joinedAt: string;
+  madeItems: number;
+  lastActive: string | null;
+  plan: AdminPlan;
+  paidCents: number;
+}
+
+export interface PartnerCommission {
+  id: string;
+  user: { id: string; name: string; email: string } | null;
+  amountPaidCents: number;
+  commissionCents: number;
+  paidAt: string;
+  paidOutAt: string | null;
+}
+
+export interface PartnerDetail extends Partner {
+  referrals: PartnerReferral[];
+  commissions: PartnerCommission[];
+}

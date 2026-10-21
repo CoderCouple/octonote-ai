@@ -4,6 +4,7 @@ import {
   cleanSignupRef,
   SIGNUP_REF_COOKIE,
   SIGNUP_REF_MAX_AGE,
+  shouldReplaceRef,
 } from "@/features/public/lib/signup-ref";
 import { SITE_HOST } from "@/lib/site";
 import { updateSession } from "./lib/supabase/middleware";
@@ -49,13 +50,14 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = await updateSession(request);
-  // Remember where a sign-up came from (e.g. the end of a published page).
-  if (path === "/signup" || path === "/login") {
+  // Remember where a sign-up came from: a creator's link (?ref=priya) on any
+  // page, or the sign-up buttons on published pages. A creator's ref stays.
+  if (request.nextUrl.searchParams.has("ref")) {
     const ref = cleanSignupRef(
       request.nextUrl.searchParams.get("ref"),
       request.nextUrl.searchParams.get("from"),
     );
-    if (ref) {
+    if (ref && shouldReplaceRef(request.cookies.get(SIGNUP_REF_COOKIE)?.value)) {
       response.cookies.set(SIGNUP_REF_COOKIE, ref, {
         maxAge: SIGNUP_REF_MAX_AGE,
         path: "/",

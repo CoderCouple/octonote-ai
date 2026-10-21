@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, ArrowLeft, GraduationCap, LayoutDashboard, ScrollText, Ticket, Users } from "lucide-react";
+import { Activity, ArrowLeft, GraduationCap, Handshake, LayoutDashboard, ScrollText, Ticket, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/users", label: "People", icon: Users },
+  { href: "/admin/partners", label: "Creators", icon: Handshake },
   { href: "/admin/codes", label: "Promo codes", icon: Ticket },
   { href: "/admin/students", label: "Student emails", icon: GraduationCap },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },

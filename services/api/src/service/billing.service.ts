@@ -28,6 +28,7 @@ import { workspaceBilling } from "../db/schemas/billing";
 import { billingEvents } from "../db/schemas/tracking";
 import { users } from "../db/schemas/users";
 import { appUrl } from "./lib/resource-url";
+import { PartnersService } from "./partners.service";
 import { PromotionsService } from "./promotions.service";
 import { WorkspacesService } from "./workspaces.service";
 
@@ -55,6 +56,7 @@ export class BillingService {
     @Inject(BILLING_CONFIG) private readonly config: BillingConfig,
     private readonly promotions: PromotionsService,
     @Optional() private readonly analytics: ProductAnalytics | null = null,
+    @Optional() private readonly partners: PartnersService | null = null,
   ) {}
 
   async summary(workspaceId: string, actorUserId: string): Promise<BillingSummary> {
@@ -167,6 +169,23 @@ export class BillingService {
       case "customer.subscription.deleted":
         await this.syncSubscription(event.data.object);
         break;
+      case "invoice.paid": {
+        // A creator who brought this workspace's owner earns their share.
+        const invoice = event.data.object;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+        const workspaceId = customerId ? await this.workspaceForCustomer(customerId) : undefined;
+        if (workspaceId && invoice.id && this.partners) {
+          const paidAt = invoice.status_transitions?.paid_at ?? invoice.created;
+          await this.partners.recordInvoicePaid({
+            workspaceId,
+            invoiceId: invoice.id,
+            amountPaidCents: invoice.amount_paid,
+            currency: invoice.currency ?? "usd",
+            paidAt: new Date(paidAt * 1000),
+          });
+        }
+        break;
+      }
       case "invoice.payment_failed": {
         const invoice = event.data.object;
         const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;

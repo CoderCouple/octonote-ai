@@ -1,9 +1,10 @@
 /**
- * Where a sign-up came from. Links into /signup or /login carry
- * `?ref=<source>&from=<page slug>`; the middleware keeps them in a
- * first-party cookie, and the first /me call after sign-up sends it to the
- * API, which stores it on the new account (users.signup_ref) for the admin
- * dashboard. Nothing about the visitor is stored before they sign up.
+ * Where a sign-up came from. Any page can carry `?ref=<source>` (a
+ * creator's link: octonote.ai/?ref=priya), and links into /signup or /login
+ * from published pages carry `?ref=pub&from=<page slug>`. The middleware keeps
+ * it in a first-party cookie, and the first /me call after sign-up sends it to
+ * the API, which stores it on the new account (users.signup_ref) and credits
+ * the creator. Nothing about the visitor is stored before they sign up.
  */
 export const SIGNUP_REF_COOKIE = "octo_ref";
 export const SIGNUP_REF_HEADER = "x-octonote-ref";
@@ -30,4 +31,16 @@ export function cleanSignupRef(
   if (!r) return null;
   const f = part(from);
   return f ? `${r}:${f}` : r;
+}
+
+/** Our own sources ("pub", "pub-header"); anything else is a creator's code. */
+const isOwnSource = (ref: string) => ref === "pub" || ref.startsWith("pub:") || ref.startsWith("pub-");
+
+/**
+ * Whether a new ref may replace the one already remembered: only when none
+ * is remembered or it's one of ours. A creator's ref is never replaced, so
+ * the person who sent the visitor keeps the credit, not a button clicked later.
+ */
+export function shouldReplaceRef(existing: string | null | undefined): boolean {
+  return !existing || isOwnSource(existing);
 }

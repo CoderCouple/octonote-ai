@@ -22,6 +22,7 @@ import {
 import { and, desc, eq, gt, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { BadRequest, Conflict, NotFound } from "../common/error/error-factory";
+import { attributeToPartner, partnerForPromoCode } from "../common/partner-attribution";
 import { PlanLimitsService } from "../common/plan-limits.service";
 import { ProductAnalytics } from "../common/product-analytics.service";
 import { Database, DRIZZLE } from "../db/database.module";
@@ -107,6 +108,9 @@ export class PromotionsService {
         .update(promoCodes)
         .set({ redemptionCount: sql`${promoCodes.redemptionCount} + 1`, updatedAt: new Date() })
         .where(eq(promoCodes.id, checked.id));
+      // A creator's code makes this person theirs, unless someone brought them first.
+      const partner = await partnerForPromoCode(tx as unknown as Database, checked.id);
+      if (partner) await attributeToPartner(tx as unknown as Database, actorUserId, partner.id, "code");
       return {
         audience: checked.audience,
         result: { kind: "free_pro", code: checked.code, description: describeCode(checked), proUntil: proUntil.toISOString() } as const,
@@ -132,6 +136,10 @@ export class PromotionsService {
           .update(promoCodes)
           .set({ redemptionCount: sql`${promoCodes.redemptionCount} + 1`, updatedAt: new Date() })
           .where(eq(promoCodes.id, promoCodeId));
+      }
+      if (inserted.length && userId) {
+        const partner = await partnerForPromoCode(tx as unknown as Database, promoCodeId);
+        if (partner) await attributeToPartner(tx as unknown as Database, userId, partner.id, "code");
       }
       return inserted.length ? code : null;
     });

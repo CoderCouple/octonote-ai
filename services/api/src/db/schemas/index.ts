@@ -15,3 +15,4 @@ export * from "./votes";
 export * from "./cli-tokens";
 export * from "./promotions";
 export * from "./tracking";
+export * from "./partners";

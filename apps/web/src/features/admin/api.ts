@@ -10,6 +10,10 @@ import type {
   StudentDomain,
   StudentDomainCreate,
   StudentDomainUpdate,
+  Partner,
+  PartnerCreate,
+  PartnerDetail,
+  PartnerUpdate,
 } from "@octonote/shared";
 import { clientApi } from "@/lib/api/client-fetch";
 
@@ -48,3 +52,19 @@ export const updateStudentDomain = (id: string, body: StudentDomainUpdate) =>
 
 export const listAdminAudit = (before?: string) =>
   clientApi.get<AdminAuditEntry[]>(`/admin/audit${before ? `?before=${encodeURIComponent(before)}` : ""}`);
+
+// --- Partners (creators and influencers) ---------------------------------------
+
+export const listPartners = () => clientApi.get<Partner[]>("/admin/partners");
+
+export const suggestPartnerCode = (name: string) =>
+  clientApi.get<{ code: string }>(`/admin/partners/suggest-code?name=${encodeURIComponent(name)}`);
+
+export const createPartner = (body: PartnerCreate) => clientApi.post<PartnerDetail>("/admin/partners", body);
+
+export const getPartner = (id: string) => clientApi.get<PartnerDetail>(`/admin/partners/${id}`);
+
+export const updatePartner = (id: string, body: PartnerUpdate) =>
+  clientApi.patch<PartnerDetail>(`/admin/partners/${id}`, body);
+
+export const markPartnerPaidOut = (id: string) => clientApi.post<PartnerDetail>(`/admin/partners/${id}/payout`);

@@ -494,6 +494,69 @@ export const PromoCodeCreateSchema = z
     if (v.duration === "repeating" && !v.durationMonths) fail("durationMonths is required when duration is repeating");
   });
 export type PromoCodeCreate = z.infer<typeof PromoCodeCreateSchema>;
+
+// --- Partners (creators and influencers) ---------------------------------------
+
+/** The audience offer that can come with a partner's code (same code). */
+export const PartnerDiscountSchema = z
+  .discriminatedUnion("kind", [
+    z.object({ kind: z.literal("free_pro"), freeMonths: z.number().int().min(1).max(36) }),
+    z.object({
+      kind: z.literal("percent_off"),
+      percentOff: z.number().int().min(1).max(100),
+      duration: z.enum(["once", "repeating", "forever"]),
+      durationMonths: z.number().int().min(1).max(36).optional(),
+    }),
+  ])
+  .refine(
+    (v) => v.kind !== "percent_off" || v.duration !== "repeating" || v.durationMonths,
+    "durationMonths is required when duration is repeating",
+  );
+export type PartnerDiscount = z.infer<typeof PartnerDiscountSchema>;
+
+const PartnerFields = {
+  name: z.string().trim().min(1).max(100),
+  email: z
+    .string()
+    .trim()
+    .transform((e) => e.toLowerCase() || null)
+    .pipe(z.string().email().nullable())
+    .nullable()
+    .optional(),
+  commissionPercent: z.number().int().min(0).max(100),
+  /** null = for as long as the person pays. */
+  commissionMonths: z.number().int().min(1).max(60).nullable(),
+  note: z
+    .string()
+    .trim()
+    .max(500)
+    .transform((s) => s || null)
+    .nullable()
+    .optional(),
+};
+
+/** Add a partner. Leave `code` out to have one made from the name (PRIYA, PRIYA2…). */
+export const PartnerCreateSchema = z.object({
+  ...PartnerFields,
+  commissionPercent: PartnerFields.commissionPercent.default(30),
+  commissionMonths: PartnerFields.commissionMonths.default(12),
+  code: PromoCodeText.optional(),
+  discount: PartnerDiscountSchema.optional(),
+});
+export type PartnerCreate = z.infer<typeof PartnerCreateSchema>;
+
+/** Edit a partner. The code can't change: it's already in their posts. */
+export const PartnerUpdateSchema = z
+  .object({
+    name: PartnerFields.name.optional(),
+    email: PartnerFields.email,
+    commissionPercent: PartnerFields.commissionPercent.optional(),
+    commissionMonths: PartnerFields.commissionMonths.optional(),
+    note: PartnerFields.note,
+    enabled: z.boolean().optional(),
+  })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), "Nothing to change.");
+export type PartnerUpdate = z.infer<typeof PartnerUpdateSchema>;
 export * from "./admin";
 
 // --- Admin portal inputs -------------------------------------------------------
