@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export * from "./ids";
 import { ID_PREFIXES, type IdPrefix } from "./ids";
-import { PARTNER_KINDS } from "./admin";
+import { CRM_LOG_KINDS, CRM_STATUSES, PARTNER_KINDS } from "./admin";
 
 // =============================================================================
 // ID validators
@@ -629,3 +629,35 @@ export const StudentDomainUpdateSchema = z
   .refine((v) => Object.values(v).some((x) => x !== undefined), "Nothing to change.");
 export type StudentDomainUpdate = z.infer<typeof StudentDomainUpdateSchema>;
 export * from "./brand-marks";
+
+
+// --- Follow-ups CRM (admin) ------------------------------------------------------
+
+export const CrmStatusSchema = z.object({ status: z.enum(CRM_STATUSES) });
+
+/** Log a conversation by hand: a LinkedIn message, a call, a note… */
+export const CrmLogSchema = z.object({
+  kind: z.enum(CRM_LOG_KINDS),
+  body: z.string().trim().min(1, "Write what was said.").max(10_000),
+  /** When it happened; defaults to now. Not in the future. */
+  occurredAt: z
+    .string()
+    .datetime()
+    .refine((d) => new Date(d).getTime() <= Date.now() + 60_000, "That's in the future.")
+    .optional(),
+});
+export type CrmLogInput = z.infer<typeof CrmLogSchema>;
+
+const IsoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A date like 2026-10-24");
+
+export const CrmFollowupCreateSchema = z.object({
+  dueOn: IsoDay,
+  note: z.string().trim().min(1, "Say what to do.").max(500),
+  assignedToUserId: z.string().min(1).max(64).nullable().optional(),
+});
+export type CrmFollowupCreate = z.infer<typeof CrmFollowupCreateSchema>;
+
+export const CrmFollowupUpdateSchema = z
+  .object({ done: z.boolean().optional(), dueOn: IsoDay.optional(), note: z.string().trim().min(1).max(500).optional() })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), "Nothing to change.");
+export type CrmFollowupUpdate = z.infer<typeof CrmFollowupUpdateSchema>;

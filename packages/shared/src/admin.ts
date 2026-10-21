@@ -299,3 +299,83 @@ export interface CreatorDashboard {
   /** Sign-ups per week (Monday, UTC) for the last 12 weeks, oldest first. */
   weekly: { week: string; signups: number }[];
 }
+
+// --- Follow-ups CRM (Admin → Inbox) --------------------------------------------
+
+export const CRM_STATUSES = ["new", "contacted", "replied", "using", "paying", "not_interested"] as const;
+export type CrmStatus = (typeof CRM_STATUSES)[number];
+export const CRM_STATUS_LABELS: Record<CrmStatus, string> = {
+  new: "New",
+  contacted: "Contacted",
+  replied: "Replied",
+  using: "Using it",
+  paying: "Paying",
+  not_interested: "Not interested",
+};
+
+/** What staff can log by hand. Emails (sent and received) come in later layers. */
+export const CRM_LOG_KINDS = ["note", "linkedin", "call", "whatsapp", "meeting"] as const;
+export type CrmLogKind = (typeof CRM_LOG_KINDS)[number];
+export type CrmEntryKind = CrmLogKind | "email_out" | "email_in";
+export const CRM_KIND_LABELS: Record<CrmEntryKind, string> = {
+  note: "Note",
+  linkedin: "LinkedIn",
+  call: "Call",
+  whatsapp: "WhatsApp",
+  meeting: "Meeting",
+  email_out: "Email",
+  email_in: "Reply",
+};
+
+export interface CrmFollowup {
+  id: string;
+  /** YYYY-MM-DD */
+  dueOn: string;
+  note: string;
+  assignedTo: { id: string; name: string } | null;
+  doneAt: string | null;
+}
+
+/** One row of the Inbox list. */
+export interface CrmPersonRow {
+  user: { id: string; name: string; email: string };
+  joinedAt: string;
+  /** Where they came from, in words: "Priya (creator)", "Published page", "Direct". */
+  source: string;
+  status: CrmStatus;
+  /** The latest thing in their timeline, for the preview. */
+  last: { kind: CrmEntryKind | "event"; title: string; preview: string; at: string } | null;
+  /** The earliest open follow-up. */
+  nextFollowup: CrmFollowup | null;
+  /** Nothing logged, sent or received yet. */
+  contacted: boolean;
+}
+
+/** An item in a person's timeline: something logged or sent, or an event we know about. */
+export type CrmTimelineItem =
+  | {
+      type: "entry";
+      id: string;
+      kind: CrmEntryKind;
+      subject: string | null;
+      body: string;
+      by: { id: string; name: string } | null;
+      at: string;
+    }
+  | { type: "event"; title: string; at: string };
+
+export interface CrmPersonDetail {
+  user: { id: string; name: string; email: string; avatarUrl: string | null };
+  joinedAt: string;
+  source: string;
+  status: CrmStatus;
+  plan: AdminPlan;
+  made: { notes: number; canvases: number; projects: number; notebooks: number };
+  /** Days active out of the last 30, and the last active day (YYYY-MM-DD). */
+  activeDays: number;
+  lastActive: string | null;
+  /** Oldest first. */
+  timeline: CrmTimelineItem[];
+  /** Open ones first (by due date), then done ones. */
+  followups: CrmFollowup[];
+}

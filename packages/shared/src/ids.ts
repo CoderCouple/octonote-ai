@@ -26,6 +26,8 @@ export const ID_PREFIXES = {
   adminAudit: "adm",
   partner: "prt",
   partnerCommission: "pcm",
+  crmEntry: "crm",
+  crmFollowup: "fup",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

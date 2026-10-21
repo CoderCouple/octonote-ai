@@ -16,11 +16,13 @@ import { NoteMarkdownController } from "../api/v1/controller/note-markdown.contr
 import { NoteMarkdownService } from "../service/note-markdown.service";
 import { AdminController } from "../api/v1/controller/admin.controller";
 import { AdminMetricsController } from "../api/v1/controller/admin-metrics.controller";
+import { AdminCrmController } from "../api/v1/controller/admin-crm.controller";
 import { AdminPartnersController } from "../api/v1/controller/admin-partners.controller";
 import { AdminPromoController } from "../api/v1/controller/admin-promo.controller";
 import { AdminGuard } from "../auth/admin.guard";
 import { AdminService } from "../service/admin.service";
 import { AdminMetricsService } from "../service/admin-metrics.service";
+import { AdminCrmService } from "../service/admin-crm.service";
 import { PartnersService } from "../service/partners.service";
 import { PromotionsService } from "../service/promotions.service";
 import { CanvasDiagramService } from "../service/canvas-diagram.service";
@@ -59,6 +61,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     NoteMarkdownController,
     AdminPromoController,
     AdminPartnersController,
+    AdminCrmController,
     AdminMetricsController,
     AdminController,
   ],
@@ -79,6 +82,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     CanvasDiagramService,
     PromotionsService,
     PartnersService,
+    AdminCrmService,
     AdminMetricsService,
     AdminService,
     AdminGuard,

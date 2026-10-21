@@ -11,6 +11,12 @@ import type {
   StudentDomainCreate,
   StudentDomainUpdate,
   CreatorDashboard,
+  CrmFollowupCreate,
+  CrmFollowupUpdate,
+  CrmLogInput,
+  CrmPersonDetail,
+  CrmPersonRow,
+  CrmStatus,
   Partner,
   PartnerCreate,
   PartnerDetail,
@@ -72,3 +78,25 @@ export const updatePartner = (id: string, body: PartnerUpdate) =>
 export const getCreatorView = (id: string) => clientApi.get<CreatorDashboard>(`/admin/partners/${id}/creator-view`);
 
 export const markPartnerPaidOut = (id: string) => clientApi.post<PartnerDetail>(`/admin/partners/${id}/payout`);
+
+// --- Follow-ups CRM (Admin → Inbox) ---------------------------------------------
+
+export const listCrmPeople = () => clientApi.get<CrmPersonRow[]>("/admin/crm/people");
+
+export const listCrmStaff = () => clientApi.get<{ id: string; name: string; email: string }[]>("/admin/crm/staff");
+
+export const getCrmPerson = (id: string) => clientApi.get<CrmPersonDetail>(`/admin/crm/people/${id}`);
+
+export const setCrmStatus = (id: string, status: CrmStatus) =>
+  clientApi.patch<CrmPersonDetail>(`/admin/crm/people/${id}`, { status });
+
+export const logCrmEntry = (id: string, body: CrmLogInput) =>
+  clientApi.post<CrmPersonDetail>(`/admin/crm/people/${id}/entries`, body);
+
+export const deleteCrmEntry = (entryId: string) => clientApi.delete<CrmPersonDetail>(`/admin/crm/entries/${entryId}`);
+
+export const addCrmFollowup = (id: string, body: CrmFollowupCreate) =>
+  clientApi.post<CrmPersonDetail>(`/admin/crm/people/${id}/followups`, body);
+
+export const updateCrmFollowup = (followupId: string, body: CrmFollowupUpdate) =>
+  clientApi.patch<CrmPersonDetail>(`/admin/crm/followups/${followupId}`, body);
