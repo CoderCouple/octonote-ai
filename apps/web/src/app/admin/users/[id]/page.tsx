@@ -8,6 +8,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { getAdminUser } from "@/features/admin/api";
+import { CrmPanel } from "@/features/admin/components/crm-panel";
 import { PlanBadge } from "@/features/admin/components/plan-badge";
 import { errorText, fmtDate, PageBody, PageHeader, Panel, Stat, StatGrid } from "@/features/admin/components/ui";
 
@@ -50,6 +51,7 @@ export default function AdminUserPage() {
               sub={`${u.cliTokens} CLI token${u.cliTokens === 1 ? "" : "s"}`}
             />
           </StatGrid>
+          {u.isAdmin ? null : <CrmPanel userId={u.id} />}
           <Panel title="Workspaces">
             <ul className="divide-y">
               {u.memberships.map((m) => (

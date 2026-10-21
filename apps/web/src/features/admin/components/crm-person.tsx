@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { addCrmFollowup, deleteCrmEntry, logCrmEntry, sendCrmEmail, setCrmOwner, setCrmStatus, updateCrmFollowup } from "../api";
+import { ActivityStrip } from "./crm-charts";
 import { PlanBadge } from "./plan-badge";
 import { errorText, fmtDate } from "./ui";
 
@@ -219,9 +220,8 @@ export function CrmPerson({
         <span>
           Made <strong className="text-foreground-strong font-semibold">{made || "nothing yet"}</strong>
         </span>
-        <span>
-          Active <strong className="text-foreground-strong font-semibold">{person.activeDays} of the last 30 days</strong>
-          {person.lastActive ? ` · last ${fmtDate(person.lastActive)}` : ""}
+        <span className="flex items-center gap-2">
+          Last 30 days <ActivityStrip activity={person.activity} />
         </span>
       </div>
 
@@ -244,6 +244,9 @@ export function CrmPerson({
                 <span className={cn("min-w-0 flex-1", f.doneAt ? "text-muted-foreground line-through" : "text-foreground-strong")}>
                   {f.note}
                 </span>
+                {f.doneAt ? null : (
+                  <Snooze onSnooze={(days) => run(`s-${f.id}`, () => updateCrmFollowup(f.id, { dueOn: dayFromToday(days) }), `Snoozed to ${dueLabel(dayFromToday(days)).toLowerCase()}.`)} />
+                )}
                 <span
                   className={cn(
                     "shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium",
@@ -497,5 +500,23 @@ function TimelineItem({ item, onDelete }: { item: CrmTimelineItem; onDelete?: ()
         <p className="text-foreground text-sm leading-relaxed whitespace-pre-line">{item.body}</p>
       </div>
     </li>
+  );
+}
+
+/** Push a follow-up to tomorrow, in 3 days or next week. */
+export function Snooze({ onSnooze }: { onSnooze: (days: number) => void }) {
+  return (
+    <Select value="" onValueChange={(v) => onSnooze(Number(v))}>
+      <SelectTrigger size="sm" className="text-muted-foreground h-6 w-auto gap-1 border-none px-1.5 text-[11px] shadow-none" aria-label="Snooze">
+        <SelectValue placeholder="Snooze" />
+      </SelectTrigger>
+      <SelectContent align="end">
+        {QUICK_DATES.map(([label, days]) => (
+          <SelectItem key={label} value={String(days)}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

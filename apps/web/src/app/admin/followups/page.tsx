@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getCrmOverview, listCrmStaff, updateCrmFollowup } from "@/features/admin/api";
 import { OutreachChart, PipelineChart } from "@/features/admin/components/crm-charts";
-import { dueLabel } from "@/features/admin/components/crm-person";
+import { dayFromToday, dueLabel, Snooze } from "@/features/admin/components/crm-person";
 import { errorText, fmtDate, PageBody, PageHeader } from "@/features/admin/components/ui";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -47,6 +47,16 @@ export default function AdminFollowupsPage() {
     try {
       await updateCrmFollowup(followupId, { done: true });
       toast.success("Done.");
+      void load();
+    } catch (err) {
+      toast.error(errorText(err));
+    }
+  }
+
+  async function snooze(followupId: string, days: number) {
+    try {
+      await updateCrmFollowup(followupId, { dueOn: dayFromToday(days) });
+      toast.success(`Snoozed to ${dueLabel(dayFromToday(days)).toLowerCase()}.`);
       void load();
     } catch (err) {
       toast.error(errorText(err));
@@ -125,14 +135,11 @@ export default function AdminFollowupsPage() {
 
           <ListSection title="Due today and late" empty="Nothing due. Nice work.">
             {data.due.map((d) => (
-              <Row key={d.followup.id} href={inbox(d.person.id)}>
+              <Row key={d.followup.id} href={inbox(d.person.id)} label={`Open ${d.person.name} in the Inbox`}>
                 <button
                   type="button"
                   aria-label={`Mark "${d.followup.note}" done`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    void done(d.followup.id);
-                  }}
+                  onClick={() => void done(d.followup.id)}
                   className="hover:bg-muted grid size-6 shrink-0 place-items-center rounded border"
                 >
                   <Check className="text-muted-foreground size-3.5" />
@@ -144,6 +151,9 @@ export default function AdminFollowupsPage() {
                     {d.followup.assignedTo ? ` · ${d.followup.assignedTo.name.split(" ")[0]}` : ""}
                   </p>
                 </div>
+                <span className="relative z-10 shrink-0">
+                  <Snooze onSnooze={(days) => snooze(d.followup.id, days)} />
+                </span>
                 <DueTag dueOn={d.followup.dueOn} />
               </Row>
             ))}
@@ -151,7 +161,7 @@ export default function AdminFollowupsPage() {
 
           <ListSection title="Replied, waiting on us" empty="No replies waiting.">
             {data.waitingOnUs.map((w) => (
-              <Row key={w.person.id} href={inbox(w.person.id)}>
+              <Row key={w.person.id} href={inbox(w.person.id)} label={`Answer ${w.person.name} in the Inbox`}>
                 <div className="min-w-0 flex-1">
                   <p className="text-foreground-strong truncate text-sm font-medium">
                     {w.person.name} <span className="text-muted-foreground font-normal">replied {fmtDate(w.at)}</span>
@@ -167,7 +177,7 @@ export default function AdminFollowupsPage() {
 
           <ListSection title="Not contacted yet" note="Signed up in the last 30 days, nothing in their timeline" empty="Everyone's been contacted.">
             {data.notContacted.map((n) => (
-              <Row key={n.person.id} href={inbox(n.person.id)}>
+              <Row key={n.person.id} href={inbox(n.person.id)} label={`Say hello to ${n.person.name} in the Inbox`}>
                 <div className="min-w-0 flex-1">
                   <p className="text-foreground-strong truncate text-sm font-medium">{n.person.name}</p>
                   <p className="text-muted-foreground truncate text-xs">
@@ -181,7 +191,7 @@ export default function AdminFollowupsPage() {
 
           <ListSection title="Coming up" note="The next 7 days" empty="Nothing planned this week.">
             {data.comingUp.map((c) => (
-              <Row key={c.followup.id} href={inbox(c.person.id)}>
+              <Row key={c.followup.id} href={inbox(c.person.id)} label={`Open ${c.person.name} in the Inbox`}>
                 <div className="min-w-0 flex-1">
                   <p className="text-foreground-strong truncate text-sm">
                     <span className="font-medium">{c.person.name}</span> · {c.followup.note}
@@ -223,11 +233,16 @@ function ListSection({ title, note, empty, children }: { title: string; note?: s
   );
 }
 
-function Row({ href, children }: { href: string; children: React.ReactNode }) {
+/**
+ * A list row that opens the person in the Inbox. The link covers the row;
+ * buttons in it (done, snooze) sit above the link, never inside it.
+ */
+function Row({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="hover:bg-muted/50 flex items-center gap-3 border-b px-4 py-3 last:border-b-0">
+    <div className="hover:bg-muted/50 relative flex items-center gap-3 border-b px-4 py-3 last:border-b-0 [&_button]:relative [&_button]:z-10">
+      <Link href={href} aria-label={label} className="absolute inset-0" />
       {children}
-    </Link>
+    </div>
   );
 }
 

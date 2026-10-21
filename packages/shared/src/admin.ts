@@ -421,6 +421,8 @@ export interface CrmPersonDetail {
   /** Days active out of the last 30, and the last active day (YYYY-MM-DD). */
   activeDays: number;
   lastActive: string | null;
+  /** The last 30 days (UTC), oldest first, and where they used Octonote each day. */
+  activity: { day: string; sources: ("web" | "mobile" | "cli")[] }[];
   /** Oldest first. */
   timeline: CrmTimelineItem[];
   /** Open ones first (by due date), then done ones. */

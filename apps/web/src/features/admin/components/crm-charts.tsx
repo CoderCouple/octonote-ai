@@ -180,3 +180,44 @@ export function PipelineChart({ pipeline }: { pipeline: CrmOverview["pipeline"] 
     </div>
   );
 }
+
+const SOURCE_NAMES: Record<string, string> = { web: "web", mobile: "phone", cli: "CLI" };
+
+/** The last 30 days as small columns: filled on days they used Octonote, with where in the hover note. */
+export function ActivityStrip({ activity, className }: { activity: { day: string; sources: string[] }[]; className?: string }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const active = activity.filter((a) => a.sources.length > 0).length;
+  const h = hover === null ? null : activity[hover];
+  const label = (a: { day: string; sources: string[] }) =>
+    `${new Date(`${a.day}T12:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" })}: ${
+      a.sources.length ? `used Octonote on ${a.sources.map((s) => SOURCE_NAMES[s] ?? s).join(" and ")}` : "not active"
+    }`;
+  return (
+    <span className={cn("inline-flex items-center gap-2", className)}>
+      <span
+        role="img"
+        aria-label={`Active on ${active} of the last 30 days`}
+        className="flex h-5 items-end gap-[2px]"
+        onMouseLeave={() => setHover(null)}
+      >
+        {activity.map((a, i) => (
+          <span
+            key={a.day}
+            onMouseEnter={() => setHover(i)}
+            className="flex h-full w-[4px] items-end"
+            title={label(a)}
+          >
+            <span
+              className="w-full rounded-t-[2px]"
+              style={{
+                height: a.sources.length ? `${40 + a.sources.length * 20}%` : "2px",
+                background: a.sources.length ? (hover === i ? "var(--foreground)" : STRONG) : GRID,
+              }}
+            />
+          </span>
+        ))}
+      </span>
+      <span className="text-muted-foreground text-xs tabular-nums">{h ? label(h) : `${active} of 30 days`}</span>
+    </span>
+  );
+}

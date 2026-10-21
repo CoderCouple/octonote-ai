@@ -166,6 +166,7 @@ export class AdminCrmService {
       },
       activeDays: Number(f.active_days),
       lastActive: (f.last_active as string | null) ?? null,
+      activity: await this.activity(userId),
       timeline: await this.timeline(u, f),
       followups: await this.followupsOf(userId),
     };
@@ -589,6 +590,25 @@ export class AdminCrmService {
       });
     }
     return items.sort((a, b) => a.at.localeCompare(b.at));
+  }
+
+  /** The last 30 days, oldest first, with where they used Octonote each day. */
+  private async activity(userId: string): Promise<CrmPersonDetail["activity"]> {
+    const rows = await this.rows(sql`
+      select day::text as day, array_agg(source order by source) as sources
+      from activity_days
+      where user_id = ${userId} and day >= (now() at time zone 'UTC')::date - 29
+      group by day
+    `);
+    const byDay = new Map(rows.map((r) => [String(r.day), r.sources as ("web" | "mobile" | "cli")[]]));
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(today);
+      d.setUTCDate(d.getUTCDate() - (29 - i));
+      const day = d.toISOString().slice(0, 10);
+      return { day, sources: byDay.get(day) ?? [] };
+    });
   }
 
   private async followupsOf(userId: string): Promise<CrmFollowup[]> {

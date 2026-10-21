@@ -333,3 +333,14 @@ describe("owners and the overview (layer 4)", () => {
     expect(o.replyRate30d).toBeNull();
   });
 });
+
+describe("activity (layer 5)", () => {
+  it("lists the last 30 days with where they used Octonote", async () => {
+    await h.activity.record(maya.id, "web");
+    await h.activity.record(maya.id, "cli");
+    const d = await h.crm.person(maya.id);
+    expect(d.activity).toHaveLength(30);
+    expect(d.activity.at(-1)).toEqual({ day: new Date().toISOString().slice(0, 10), sources: ["cli", "web"] });
+    expect(d.activity.slice(0, 29).every((a) => a.sources.length === 0)).toBe(true);
+  });
+});
