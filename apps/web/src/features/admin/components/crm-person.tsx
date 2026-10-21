@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { addCrmFollowup, deleteCrmEntry, logCrmEntry, sendCrmEmail, setCrmStatus, updateCrmFollowup } from "../api";
+import { addCrmFollowup, deleteCrmEntry, logCrmEntry, sendCrmEmail, setCrmOwner, setCrmStatus, updateCrmFollowup } from "../api";
 import { PlanBadge } from "./plan-badge";
 import { errorText, fmtDate } from "./ui";
 
@@ -51,6 +51,8 @@ export function dueLabel(dueOn: string) {
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+const NOBODY = "nobody";
 
 const QUICK_DATES: [string, number][] = [
   ["Tomorrow", 1],
@@ -184,6 +186,22 @@ export function CrmPerson({
               {CRM_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
                   {CRM_STATUS_LABELS[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={person.owner?.id ?? NOBODY}
+            onValueChange={(v) => run("owner", () => setCrmOwner(person.user.id, v === NOBODY ? null : v))}
+          >
+            <SelectTrigger className="h-8 w-36" aria-label="Looked after by">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NOBODY}>No owner</SelectItem>
+              {staff.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name.split(" ")[0]}
                 </SelectItem>
               ))}
             </SelectContent>

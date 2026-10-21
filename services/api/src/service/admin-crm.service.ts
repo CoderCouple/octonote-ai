@@ -12,12 +12,14 @@ import {
   CRM_STATUSES,
   PARTNER_KIND_LABELS,
   type AdminPlan,
+  type CrmContactUpdate,
   type CrmEmailInput,
   type CrmEntryKind,
   type CrmFollowup,
   type CrmFollowupCreate,
   type CrmFollowupUpdate,
   type CrmLogInput,
+  type CrmOverview,
   type CrmPersonDetail,
   type CrmPersonRow,
   type CrmStatus,
@@ -72,13 +74,14 @@ export class AdminCrmService {
     const rows = await this.rows(sql`
       select u.id, u.name, u.email, u.created_at, u.signup_ref,
         p.name as partner_name, p.kind as partner_kind,
-        coalesce(c.status, 'new') as status, c.last_seen_at,
+        coalesce(c.status, 'new') as status, c.last_seen_at, c.owner_user_id, o.name as owner_name,
         (select max(occurred_at) from crm_entries y where y.user_id = u.id and y.kind = 'email_in') as last_in,
         e.kind as last_kind, e.subject as last_subject, e.body as last_body, e.occurred_at as last_at,
         exists (select 1 from crm_entries x where x.user_id = u.id and x.kind = 'email_out') as emailed,
         f.id as f_id, f.due_on::text as f_due, f.note as f_note, f.assigned_to_user_id as f_to, a.name as f_to_name
       from users u
       left join crm_contacts c on c.user_id = u.id
+      left join users o on o.id = c.owner_user_id
       left join partner_referrals r on r.user_id = u.id
       left join partners p on p.id = r.partner_id
       left join lateral (
@@ -118,6 +121,7 @@ export class AdminCrmService {
       contacted: Boolean(r.last_kind),
       emailed: Boolean(r.emailed),
       needsReply: r.last_kind === "email_in",
+      owner: r.owner_user_id ? { id: String(r.owner_user_id), name: String(r.owner_name) } : null,
       unread: Boolean(r.last_in) && (!r.last_seen_at || new Date(r.last_in as string) > new Date(r.last_seen_at as string)),
     }));
   }
@@ -137,6 +141,8 @@ export class AdminCrmService {
         (select m.workspace_id from workspace_members m where m.user_id = ${userId} and m.role = 'OWNER'
           order by m.created_at limit 1) as workspace_id,
         (select coalesce(c.status, 'new') from (select 1) x left join crm_contacts c on c.user_id = ${userId}) as status,
+        (select o.id from crm_contacts c join users o on o.id = c.owner_user_id where c.user_id = ${userId}) as owner_id,
+        (select o.name from crm_contacts c join users o on o.id = c.owner_user_id where c.user_id = ${userId}) as owner_name,
         (select p.name from partner_referrals r join partners p on p.id = r.partner_id where r.user_id = ${userId}) as partner_name,
         (select p.kind from partner_referrals r join partners p on p.id = r.partner_id where r.user_id = ${userId}) as partner_kind
     `);
@@ -150,6 +156,7 @@ export class AdminCrmService {
       joinedAt: u.createdAt.toISOString(),
       source: sourceOf(u.signupRef, f.partner_name as string | null, f.partner_kind as string | null),
       status: f.status as CrmStatus,
+      owner: f.owner_id ? { id: String(f.owner_id), name: String(f.owner_name) } : null,
       plan,
       made: {
         notes: Number(f.notes),
@@ -162,6 +169,30 @@ export class AdminCrmService {
       timeline: await this.timeline(u, f),
       followups: await this.followupsOf(userId),
     };
+  }
+
+  /** Status and/or owner; each change is audited. Owners must be staff. */
+  async updateContact(userId: string, input: CrmContactUpdate, adminUserId: string): Promise<CrmPersonDetail> {
+    if (input.status !== undefined) await this.setStatus(userId, input.status, adminUserId);
+    if (input.ownerUserId !== undefined) {
+      const person = await this.requireUser(userId);
+      if (input.ownerUserId) await this.requireStaff(input.ownerUserId, "Only staff can look after people.");
+      const [before] = await this.db.select().from(crmContacts).where(eq(crmContacts.userId, userId)).limit(1);
+      if ((before?.ownerUserId ?? null) !== input.ownerUserId) {
+        await this.db
+          .insert(crmContacts)
+          .values({ userId, ownerUserId: input.ownerUserId })
+          .onConflictDoUpdate({ target: crmContacts.userId, set: { ownerUserId: input.ownerUserId, updatedAt: new Date() } });
+        await this.audit.record(adminUserId, {
+          action: "crm.owner",
+          targetKind: "user",
+          targetId: userId,
+          targetLabel: person.email,
+          details: { from: before?.ownerUserId ?? null, to: input.ownerUserId },
+        });
+      }
+    }
+    return this.person(userId);
   }
 
   async setStatus(userId: string, status: CrmStatus, adminUserId: string): Promise<CrmPersonDetail> {
@@ -375,6 +406,123 @@ export class AdminCrmService {
       .orderBy(asc(users.name));
   }
 
+  // --- Overview -----------------------------------------------------------------
+
+  /**
+   * Admin → Follow-ups. With an owner: their people, the follow-ups assigned
+   * to them, and what they sent. Days are UTC.
+   */
+  async overview(ownerId: string | null, weeks = 8): Promise<CrmOverview> {
+    const mine = (alias: string) =>
+      ownerId ? sql`and exists (select 1 from crm_contacts oc where oc.user_id = ${sql.raw(alias)}.id and oc.owner_user_id = ${ownerId})` : sql``;
+
+    const pipelineRows = await this.rows(sql`
+      select coalesce(c.status, 'new') as status, count(*)::int as n
+      from users u left join crm_contacts c on c.user_id = u.id
+      where u.is_admin = false ${mine("u")}
+      group by 1
+    `);
+    const byStatus = new Map(pipelineRows.map((r) => [String(r.status), Number(r.n)]));
+
+    // Sent = emails and logged messages (not notes) by staff; replies = emails received.
+    const weekRows = await this.rows(sql`
+      select to_char(date_trunc('week', e.occurred_at at time zone 'UTC'), 'YYYY-MM-DD') as week,
+        count(*) filter (where e.kind in ('email_out', 'linkedin', 'call', 'whatsapp', 'meeting')
+          ${ownerId ? sql`and e.actor_user_id = ${ownerId}` : sql``})::int as sent,
+        count(*) filter (where e.kind = 'email_in' ${mine("u")})::int as replies
+      from crm_entries e join users u on u.id = e.user_id
+      where e.occurred_at >= date_trunc('week', now() at time zone 'UTC') - make_interval(weeks => ${weeks - 1})
+      group by 1
+    `);
+    const wk = new Map(weekRows.map((r) => [String(r.week), r]));
+    const monday = new Date();
+    monday.setUTCHours(0, 0, 0, 0);
+    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+    const weekly = Array.from({ length: weeks }, (_, i) => {
+      const d = new Date(monday);
+      d.setUTCDate(d.getUTCDate() - 7 * (weeks - 1 - i));
+      const week = d.toISOString().slice(0, 10);
+      const r = wk.get(week);
+      return { week, sent: Number(r?.sent ?? 0), replies: Number(r?.replies ?? 0) };
+    });
+
+    const [rate] = await this.rows(sql`
+      select
+        count(*) filter (where e.kind = 'email_out' ${ownerId ? sql`and e.actor_user_id = ${ownerId}` : sql``})::int as sent,
+        count(*) filter (where e.kind = 'email_in' ${mine("u")})::int as replies
+      from crm_entries e join users u on u.id = e.user_id
+      where e.occurred_at >= now() - interval '30 days'
+    `);
+    const sent30 = Number(rate?.sent ?? 0);
+
+    const assigned = ownerId ? sql`and f.assigned_to_user_id = ${ownerId}` : sql``;
+    const followupRows = await this.rows(sql`
+      select f.id, f.due_on::text as due_on, f.note, f.assigned_to_user_id, a.name as a_name,
+        u.id as uid, u.name as uname, u.email as uemail, coalesce(c.status, 'new') as status,
+        (f.due_on <= (now() at time zone 'UTC')::date) as is_due
+      from crm_followups f
+      join users u on u.id = f.user_id
+      left join users a on a.id = f.assigned_to_user_id
+      left join crm_contacts c on c.user_id = u.id
+      where f.done_at is null ${assigned}
+        and f.due_on <= (now() at time zone 'UTC')::date + 7
+      order by f.due_on, f.created_at
+    `);
+    const fup = (r: Row) => ({
+      id: String(r.id),
+      dueOn: String(r.due_on),
+      note: String(r.note),
+      assignedTo: r.assigned_to_user_id ? { id: String(r.assigned_to_user_id), name: String(r.a_name) } : null,
+      doneAt: null,
+    });
+    const who = (r: Row) => ({ id: String(r.uid), name: String(r.uname), email: String(r.uemail) });
+    const due = followupRows.filter((r) => r.is_due).map((r) => ({ followup: fup(r), person: who(r), status: r.status as CrmStatus }));
+    const comingUp = followupRows.filter((r) => !r.is_due).map((r) => ({ followup: fup(r), person: who(r) }));
+
+    const waitingRows = await this.rows(sql`
+      select u.id as uid, u.name as uname, u.email as uemail, e.occurred_at, e.subject, e.body
+      from users u
+      join lateral (
+        select kind, subject, body, occurred_at from crm_entries
+        where user_id = u.id order by occurred_at desc, created_at desc limit 1
+      ) e on true
+      where e.kind = 'email_in' and u.is_admin = false ${mine("u")}
+      order by e.occurred_at
+    `);
+    const waitingOnUs = waitingRows.map((r) => ({
+      person: who(r),
+      at: new Date(r.occurred_at as string).toISOString(),
+      subject: (r.subject as string | null) ?? null,
+      preview: preview(String(r.body ?? "")),
+    }));
+
+    const freshRows = await this.rows(sql`
+      select u.id as uid, u.name as uname, u.email as uemail, u.created_at, u.signup_ref, p.name as partner_name, p.kind as partner_kind
+      from users u
+      left join partner_referrals r on r.user_id = u.id
+      left join partners p on p.id = r.partner_id
+      where u.is_admin = false and u.created_at >= now() - interval '30 days'
+        and not exists (select 1 from crm_entries e where e.user_id = u.id) ${mine("u")}
+      order by u.created_at desc
+    `);
+    const notContacted = freshRows.map((r) => ({
+      person: who(r),
+      joinedAt: new Date(r.created_at as string).toISOString(),
+      source: sourceOf(r.signup_ref as string | null, r.partner_name as string | null, r.partner_kind as string | null),
+    }));
+
+    return {
+      pipeline: CRM_STATUSES.map((status) => ({ status, count: byStatus.get(status) ?? 0 })),
+      weekly,
+      replyRate30d: sent30 ? Number(rate?.replies ?? 0) / sent30 : null,
+      counts: { due: due.length, waitingOnUs: waitingOnUs.length, notContacted: notContacted.length, comingUp: comingUp.length },
+      due,
+      waitingOnUs,
+      notContacted,
+      comingUp,
+    };
+  }
+
   // --- Helpers -----------------------------------------------------------------
 
   private async timeline(u: typeof users.$inferSelect, f: Row): Promise<CrmTimelineItem[]> {
@@ -478,13 +626,13 @@ export class AdminCrmService {
     return u;
   }
 
-  private async requireStaff(id: string) {
+  private async requireStaff(id: string, message = "Follow-ups can only be assigned to staff.") {
     const [u] = await this.db
       .select({ id: users.id })
       .from(users)
       .where(and(eq(users.id, id), eq(users.isAdmin, true)))
       .limit(1);
-    if (!u) throw BadRequest("Follow-ups can only be assigned to staff.");
+    if (!u) throw BadRequest(message);
   }
 
   private async plan(workspaceId: string): Promise<AdminPlan> {

@@ -1,17 +1,18 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import {
   CrmEmailSchema,
   CrmFollowupCreateSchema,
   CrmFollowupUpdateSchema,
   CrmLogSchema,
-  CrmStatusSchema,
+  CrmContactUpdateSchema,
   type CrmEmailInput,
   type CrmFollowupCreate,
   type CrmFollowupUpdate,
   type CrmLogInput,
   type CrmPersonDetail,
   type CrmPersonRow,
-  type CrmStatus,
+  type CrmContactUpdate,
+  type CrmOverview,
 } from "@octonote/shared";
 import { z } from "zod";
 import { AdminGuard } from "../../../auth/admin.guard";
@@ -21,6 +22,10 @@ import { ZodValidationPipe } from "../../../common/zod-validation.pipe";
 import { AdminCrmService } from "../../../service/admin-crm.service";
 
 const IdParam = new ZodValidationPipe(z.string().min(1).max(64));
+const OverviewQuery = z.object({
+  owner: z.string().min(1).max(64).optional(),
+  weeks: z.coerce.number().int().min(4).max(26).default(8),
+});
 
 /** Admin → Inbox: the follow-ups CRM. Staff only, web sessions only. */
 @Controller("admin/crm")
@@ -50,13 +55,20 @@ export class AdminCrmController {
     return { ok: true };
   }
 
+  /** Status and/or owner. */
   @Patch("people/:id")
-  setStatus(
+  update(
     @Param("id", IdParam) id: string,
-    @Body(new ZodValidationPipe(CrmStatusSchema)) body: { status: CrmStatus },
+    @Body(new ZodValidationPipe(CrmContactUpdateSchema)) body: CrmContactUpdate,
     @Req() req: AuthenticatedRequest,
   ): Promise<CrmPersonDetail> {
-    return this.crm.setStatus(id, body.status, req.user.id);
+    return this.crm.updateContact(id, body, req.user.id);
+  }
+
+  /** Admin → Follow-ups: pipeline, outreach per week and the day's lists, for everyone or one owner. */
+  @Get("overview")
+  overview(@Query(new ZodValidationPipe(OverviewQuery)) q: { owner?: string; weeks: number }): Promise<CrmOverview> {
+    return this.crm.overview(q.owner ?? null, q.weeks);
   }
 
   /** Log a LinkedIn message, a call, a note… */

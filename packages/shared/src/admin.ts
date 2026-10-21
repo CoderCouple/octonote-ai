@@ -393,6 +393,8 @@ export interface CrmPersonRow {
   needsReply: boolean;
   /** A reply came in after staff last opened this person. */
   unread: boolean;
+  /** The staff member who looks after this person. */
+  owner: { id: string; name: string } | null;
 }
 
 /** An item in a person's timeline: something logged or sent, or an event we know about. */
@@ -413,6 +415,7 @@ export interface CrmPersonDetail {
   joinedAt: string;
   source: string;
   status: CrmStatus;
+  owner: { id: string; name: string } | null;
   plan: AdminPlan;
   made: { notes: number; canvases: number; projects: number; notebooks: number };
   /** Days active out of the last 30, and the last active day (YYYY-MM-DD). */
@@ -422,4 +425,23 @@ export interface CrmPersonDetail {
   timeline: CrmTimelineItem[];
   /** Open ones first (by due date), then done ones. */
   followups: CrmFollowup[];
+}
+
+/** Admin → Follow-ups: the CRM at a glance, for everyone or one owner. */
+export interface CrmOverview {
+  /** People by status (everyone who signed up, or one owner's people). */
+  pipeline: { status: CrmStatus; count: number }[];
+  /** Per week (Monday, UTC), oldest first: what staff sent (emails + logged messages) and replies received. */
+  weekly: { week: string; sent: number; replies: number }[];
+  /** Replies ÷ emails sent in the last 30 days, 0–1; null when nothing was sent. */
+  replyRate30d: number | null;
+  counts: { due: number; waitingOnUs: number; notContacted: number; comingUp: number };
+  /** Open follow-ups due today or earlier, oldest first. */
+  due: { followup: CrmFollowup; person: { id: string; name: string; email: string }; status: CrmStatus }[];
+  /** People whose reply is the latest thing: our turn. */
+  waitingOnUs: { person: { id: string; name: string; email: string }; at: string; subject: string | null; preview: string }[];
+  /** Signed up in the last 30 days, nothing logged or sent yet. */
+  notContacted: { person: { id: string; name: string; email: string }; joinedAt: string; source: string }[];
+  /** Open follow-ups due in the next 7 days. */
+  comingUp: { followup: CrmFollowup; person: { id: string; name: string; email: string } }[];
 }

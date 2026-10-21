@@ -15,6 +15,7 @@ import type {
   CrmFollowupCreate,
   CrmFollowupUpdate,
   CrmLogInput,
+  CrmOverview,
   CrmPersonDetail,
   CrmPersonRow,
   CrmStatus,
@@ -90,6 +91,14 @@ export const getCrmPerson = (id: string) => clientApi.get<CrmPersonDetail>(`/adm
 
 export const setCrmStatus = (id: string, status: CrmStatus) =>
   clientApi.patch<CrmPersonDetail>(`/admin/crm/people/${id}`, { status });
+
+/** null = nobody looks after them. */
+export const setCrmOwner = (id: string, ownerUserId: string | null) =>
+  clientApi.patch<CrmPersonDetail>(`/admin/crm/people/${id}`, { ownerUserId });
+
+/** Admin → Follow-ups, for everyone or one staff member. */
+export const getCrmOverview = (owner?: string | null, weeks = 8) =>
+  clientApi.get<CrmOverview>(`/admin/crm/overview?weeks=${weeks}${owner ? `&owner=${encodeURIComponent(owner)}` : ""}`);
 
 export const logCrmEntry = (id: string, body: CrmLogInput) =>
   clientApi.post<CrmPersonDetail>(`/admin/crm/people/${id}/entries`, body);

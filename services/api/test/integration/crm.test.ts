@@ -273,3 +273,63 @@ describe("replies (layer 3)", () => {
     expect(trimQuotedReply("Great\n> quoted line")).toBe("Great");
   });
 });
+
+describe("owners and the overview (layer 4)", () => {
+  async function staffMember(email: string) {
+    const s = await h.signIn(email);
+    await h.db.update(users).set({ isAdmin: true }).where(eq(users.id, s.id));
+    return s;
+  }
+
+  it("assigns an owner (staff only), shows it, and audits it", async () => {
+    const payal = await staffMember("payal@octonote.ai");
+    const d = await h.crm.updateContact(maya.id, { ownerUserId: payal.id }, admin.id);
+    expect(d.owner).toMatchObject({ id: payal.id });
+    expect((await h.crm.people()).find((r) => r.user.id === maya.id)!.owner).toMatchObject({ id: payal.id });
+    expect((await h.adminAudit.list(1))[0]).toMatchObject({ action: "crm.owner", details: { from: null, to: payal.id } });
+    expect(await statusOf(h.crm.updateContact(maya.id, { ownerUserId: maya.id }, admin.id))).toBe(400);
+    expect((await h.crm.updateContact(maya.id, { ownerUserId: null, status: "using" }, admin.id))).toMatchObject({ owner: null, status: "using" });
+  });
+
+  it("counts the pipeline, outreach and replies per week, and the day's lists", async () => {
+    const tom = await h.signIn("tom@example.com");
+    await h.signIn("ana@example.com"); // never contacted
+    await h.crm.sendEmail(maya.id, CrmEmailSchema.parse({ subject: "Hi", body: "Hello" }), admin.id);
+    await log(tom.id, "linkedin", "Said hi");
+    await log(tom.id, "note", "Notes don't count as outreach");
+    h.crmMailer.received.r1 = { from: "maya@example.com", to: ["hello@octonote.ai"], subject: "Re: Hi", text: "Thanks!", html: null, receivedAt: "" };
+    await h.crm.receive(JSON.stringify({ type: "email.received", data: { email_id: "r1", from: "maya@example.com", to: [] } }), { signature: "valid" });
+    const today = new Date().toISOString().slice(0, 10);
+    await h.crm.addFollowup(tom.id, CrmFollowupCreateSchema.parse({ dueOn: today, note: "Ask about the CLI" }), admin.id);
+    const later = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    await h.crm.addFollowup(tom.id, CrmFollowupCreateSchema.parse({ dueOn: later, note: "Check in" }), admin.id);
+
+    const o = await h.crm.overview(null, 8);
+    expect(Object.fromEntries(o.pipeline.map((p) => [p.status, p.count]))).toMatchObject({ new: 1, contacted: 1, replied: 1 });
+    expect(o.weekly).toHaveLength(8);
+    expect(o.weekly.at(-1)).toMatchObject({ sent: 2, replies: 1 });
+    expect(o.replyRate30d).toBe(1);
+    expect(o.counts).toEqual({ due: 1, waitingOnUs: 1, notContacted: 1, comingUp: 1 });
+    expect(o.due[0]).toMatchObject({ person: { email: "tom@example.com" }, followup: { note: "Ask about the CLI" } });
+    expect(o.waitingOnUs[0]).toMatchObject({ person: { email: "maya@example.com" }, preview: "Thanks!" });
+    expect(o.notContacted[0]!.person.email).toBe("ana@example.com");
+    expect(o.comingUp[0]!.followup.note).toBe("Check in");
+  });
+
+  it("narrows everything to one owner", async () => {
+    const payal = await staffMember("payal@octonote.ai");
+    const tom = await h.signIn("tom@example.com");
+    await h.crm.updateContact(tom.id, { ownerUserId: payal.id }, admin.id);
+    await h.crm.log(tom.id, CrmLogSchema.parse({ kind: "call", body: "Called" }), payal.id);
+    await h.crm.sendEmail(maya.id, CrmEmailSchema.parse({ subject: "Hi", body: "Hello" }), admin.id);
+    const today = new Date().toISOString().slice(0, 10);
+    await h.crm.addFollowup(tom.id, CrmFollowupCreateSchema.parse({ dueOn: today, note: "Payal's", assignedToUserId: payal.id }), admin.id);
+    await h.crm.addFollowup(maya.id, CrmFollowupCreateSchema.parse({ dueOn: today, note: "Sunil's" }), admin.id);
+
+    const o = await h.crm.overview(payal.id, 8);
+    expect(o.pipeline.reduce((n, p) => n + p.count, 0)).toBe(1);
+    expect(o.weekly.at(-1)!.sent).toBe(1);
+    expect(o.due.map((d) => d.followup.note)).toEqual(["Payal's"]);
+    expect(o.replyRate30d).toBeNull();
+  });
+});

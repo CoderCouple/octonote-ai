@@ -59,6 +59,7 @@ function Inbox() {
   const [folder, setFolder] = useState<Folder>("attention");
   const [status, setStatus] = useState<CrmStatus | null>(null);
   const [q, setQ] = useState("");
+  const [owner, setOwner] = useState<string>("all");
 
   const reload = useCallback(() => listCrmPeople().then(setRows).catch((err) => toast.error(errorText(err))), []);
 
@@ -88,7 +89,11 @@ function Inbox() {
 
   const open = (id: string | null) => router.replace(id ? `/admin/inbox?p=${id}` : "/admin/inbox", { scroll: false });
 
-  const inView = useMemo(() => (rows ?? []).filter((r) => inFolder(r, folder)), [rows, folder]);
+  const mine = useCallback(
+    (r: CrmPersonRow) => owner === "all" || (owner === "none" ? !r.owner : r.owner?.id === owner),
+    [owner],
+  );
+  const inView = useMemo(() => (rows ?? []).filter((r) => mine(r) && inFolder(r, folder)), [rows, folder, mine]);
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return inView
@@ -116,7 +121,7 @@ function Inbox() {
           <h1 className="text-foreground-strong text-base font-semibold">Inbox</h1>
           <div role="tablist" aria-label="Folders" className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1">
             {FOLDERS.map((f) => {
-              const n = (rows ?? []).filter((r) => inFolder(r, f.id)).length;
+              const n = (rows ?? []).filter((r) => mine(r) && inFolder(r, f.id)).length;
               const on = folder === f.id;
               return (
                 <button
@@ -146,14 +151,30 @@ function Inbox() {
               );
             })}
           </div>
-          <Input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Type to search…"
-            aria-label="Search people"
-            className="h-8"
-          />
+          <div className="flex gap-2">
+            <Input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Type to search…"
+              aria-label="Search people"
+              className="h-8 min-w-0 flex-1"
+            />
+            <select
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              aria-label="Looked after by"
+              className="bg-background h-8 rounded-md border px-2 text-xs"
+            >
+              <option value="all">Everyone</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.id === meId ? "Mine" : s.name.split(" ")[0]}
+                </option>
+              ))}
+              <option value="none">No owner</option>
+            </select>
+          </div>
           <div role="group" aria-label="Status" className="flex gap-1.5 overflow-x-auto pb-0.5">
             {[null, ...CRM_STATUSES].map((s) => {
               const n = s ? inView.filter((r) => r.status === s).length : inView.length;

@@ -633,7 +633,11 @@ export * from "./brand-marks";
 
 // --- Follow-ups CRM (admin) ------------------------------------------------------
 
-export const CrmStatusSchema = z.object({ status: z.enum(CRM_STATUSES) });
+/** Change a person's status and/or owner (null = nobody). */
+export const CrmContactUpdateSchema = z
+  .object({ status: z.enum(CRM_STATUSES).optional(), ownerUserId: z.string().min(1).max(64).nullable().optional() })
+  .refine((v) => v.status !== undefined || v.ownerUserId !== undefined, "Nothing to change.");
+export type CrmContactUpdate = z.infer<typeof CrmContactUpdateSchema>;
 
 /** Log a conversation by hand: a LinkedIn message, a call, a note… */
 export const CrmLogSchema = z.object({
