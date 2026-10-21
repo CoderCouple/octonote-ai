@@ -10,7 +10,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { buildIdFromUuid } from "@octonote/shared";
 import { ChangeEventsService } from "../../src/common/change-events.service";
-import type { CrmMail, CrmMailer } from "../../src/common/crm-mailer";
+import type { CrmMail, CrmMailer, InboundEvent, ReceivedMail } from "../../src/common/crm-mailer";
 import type { EmailService, ShareEmailInput } from "../../src/common/email.service";
 import { PermissionsService } from "../../src/common/permissions.service";
 import { PlanLimitsService } from "../../src/common/plan-limits.service";
@@ -71,11 +71,18 @@ export class FakeEmail {
   }
 }
 
-/** Records emails staff send from Admin → Inbox instead of sending them. */
+/**
+ * Stands in for Resend in Admin → Inbox: records what would be sent and
+ * forwarded, and plays back received emails. A webhook "signature" of
+ * "valid" passes; anything else is refused.
+ */
 export class FakeCrmMailer implements CrmMailer {
   readonly fromAddress = "hello@octonote.ai";
   readonly bcc: string | null = "hello@octonote.ai";
+  replyDomain: string | null = "reply.octonote.ai";
   sent: CrmMail[] = [];
+  forwarded: string[] = [];
+  received: Record<string, ReceivedMail> = {};
   failNext = false;
   async send(mail: CrmMail) {
     if (this.failNext) {
@@ -84,6 +91,19 @@ export class FakeCrmMailer implements CrmMailer {
     }
     this.sent.push(mail);
     return { id: `re_${this.sent.length}` };
+  }
+  verifyInbound(rawBody: string, headers: { id?: string; timestamp?: string; signature?: string }): InboundEvent {
+    if (headers.signature !== "valid") throw new Error("bad signature");
+    const e = JSON.parse(rawBody) as { type: string; data: { email_id: string; from: string; to: string[] } };
+    return { type: e.type, emailId: e.data.email_id, from: e.data.from, to: e.data.to };
+  }
+  async getReceived(emailId: string): Promise<ReceivedMail> {
+    const r = this.received[emailId];
+    if (!r) throw new Error("not found");
+    return r;
+  }
+  async forwardToTeam(emailId: string) {
+    this.forwarded.push(emailId);
   }
 }
 

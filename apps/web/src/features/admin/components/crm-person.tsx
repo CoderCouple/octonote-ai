@@ -4,7 +4,8 @@
  * Admin → Inbox, the right pane: one person's status, follow-ups and timeline
  * (what we know + conversations logged by staff), and a box to log a new one.
  * Emails go out from hello@octonote.ai as the signed-in staff member, with a
- * copy to the team inbox; replies arrive in that inbox for now.
+ * copy to the team inbox; replies come back into the timeline (and a copy to
+ * the team inbox) once reply.octonote.ai is set up.
  */
 import {
   CRM_KIND_LABELS,
@@ -391,7 +392,7 @@ export function CrmPerson({
         <div className="flex flex-wrap items-center gap-2">
           {mode === "email" ? (
             <span className="text-muted-foreground text-xs">
-              From {meName || "you"} at hello@octonote.ai to {person.user.email} · a copy goes to hello@
+              From {meName || "you"} at hello@octonote.ai to {person.user.email} · copies of this and the reply go to hello@
             </span>
           ) : (
             <label className="text-muted-foreground flex items-center gap-2 text-xs">

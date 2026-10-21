@@ -98,6 +98,9 @@ export const logCrmEntry = (id: string, body: CrmLogInput) =>
 export const sendCrmEmail = (id: string, body: CrmEmailInput) =>
   clientApi.post<CrmPersonDetail>(`/admin/crm/people/${id}/email`, body);
 
+/** Opened in the Inbox: their replies so far are read. */
+export const markCrmSeen = (id: string) => clientApi.post<{ ok: true }>(`/admin/crm/people/${id}/seen`);
+
 export const deleteCrmEntry = (entryId: string) => clientApi.delete<CrmPersonDetail>(`/admin/crm/entries/${entryId}`);
 
 export const addCrmFollowup = (id: string, body: CrmFollowupCreate) =>

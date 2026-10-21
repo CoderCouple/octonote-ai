@@ -7,7 +7,7 @@
  * Status moves on its own in one case: logging the first conversation with
  * someone still "new" makes them "contacted". The rest staff set by hand.
  */
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import {
   CRM_STATUSES,
   PARTNER_KIND_LABELS,
@@ -24,10 +24,20 @@ import {
   type CrmTimelineItem,
   type PartnerKind,
 } from "@octonote/shared";
+import { generateId } from "@octonote/shared";
 import { and, asc, eq, sql, type SQL } from "drizzle-orm";
 import { AdminAuditService } from "../common/admin-audit.service";
-import { CRM_MAILER, renderCrmEmail, type CrmMailer } from "../common/crm-mailer";
-import { BadRequest, NotFound, ServerError } from "../common/error/error-factory";
+import {
+  CRM_MAILER,
+  emailOf,
+  entryIdFromAddresses,
+  htmlToText,
+  renderCrmEmail,
+  replyAddressFor,
+  trimQuotedReply,
+  type CrmMailer,
+} from "../common/crm-mailer";
+import { BadRequest, NotFound, ServerError, Unauthorized } from "../common/error/error-factory";
 import { PlanLimitsService } from "../common/plan-limits.service";
 import { Database, DRIZZLE } from "../db/database.module";
 import { crmContacts, crmEntries, crmFollowups } from "../db/schemas/crm";
@@ -48,6 +58,8 @@ const preview = (text: string) => text.replace(/\s+/g, " ").trim().slice(0, 160)
 
 @Injectable()
 export class AdminCrmService {
+  private readonly logger = new Logger(AdminCrmService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly planLimits: PlanLimitsService,
@@ -60,7 +72,8 @@ export class AdminCrmService {
     const rows = await this.rows(sql`
       select u.id, u.name, u.email, u.created_at, u.signup_ref,
         p.name as partner_name, p.kind as partner_kind,
-        coalesce(c.status, 'new') as status,
+        coalesce(c.status, 'new') as status, c.last_seen_at,
+        (select max(occurred_at) from crm_entries y where y.user_id = u.id and y.kind = 'email_in') as last_in,
         e.kind as last_kind, e.subject as last_subject, e.body as last_body, e.occurred_at as last_at,
         exists (select 1 from crm_entries x where x.user_id = u.id and x.kind = 'email_out') as emailed,
         f.id as f_id, f.due_on::text as f_due, f.note as f_note, f.assigned_to_user_id as f_to, a.name as f_to_name
@@ -104,6 +117,8 @@ export class AdminCrmService {
         : null,
       contacted: Boolean(r.last_kind),
       emailed: Boolean(r.emailed),
+      needsReply: r.last_kind === "email_in",
+      unread: Boolean(r.last_in) && (!r.last_seen_at || new Date(r.last_in as string) > new Date(r.last_seen_at as string)),
     }));
   }
 
@@ -190,13 +205,15 @@ export class AdminCrmService {
     const sender = await this.requireUser(adminUserId);
     const senderFirst = sender.name.split(/\s+/)[0] || "The Octonote team";
     const copy = this.mailer.bcc && this.mailer.bcc.toLowerCase() !== person.email.toLowerCase() ? [this.mailer.bcc] : [];
+    // The entry's id is decided now, so the email can carry its own reply address.
+    const entryId = generateId("crm");
     let sent: { id: string };
     try {
       sent = await this.mailer.send({
         from: `${senderFirst} from Octonote <${this.mailer.fromAddress}>`,
         to: person.email,
         bcc: copy,
-        replyTo: this.mailer.fromAddress,
+        replyTo: replyAddressFor(entryId, this.mailer.replyDomain) ?? this.mailer.fromAddress,
         subject: input.subject,
         text: input.body,
         html: renderCrmEmail(input.body),
@@ -205,6 +222,7 @@ export class AdminCrmService {
       throw ServerError(`The email wasn't sent: ${err instanceof Error ? err.message : "Resend refused it."}`);
     }
     await this.db.insert(crmEntries).values({
+      id: entryId,
       userId,
       kind: "email_out",
       subject: input.subject,
@@ -221,6 +239,86 @@ export class AdminCrmService {
       details: { subject: input.subject, copyTo: copy[0] ?? null },
     });
     return this.person(userId);
+  }
+
+  /**
+   * Resend's `email.received` webhook. A reply to one of our emails lands on
+   * that person (by its reply address, else by the sender's email), trimmed of
+   * the quoted older message; they become "replied" if they were new or
+   * contacted. Every received email is also forwarded to the team inbox.
+   * Retries count once. A forged webhook is refused.
+   */
+  async receive(rawBody: string, headers: { id?: string; timestamp?: string; signature?: string }): Promise<void> {
+    let event;
+    try {
+      event = this.mailer.verifyInbound(rawBody, headers);
+    } catch {
+      throw Unauthorized("Not a valid Resend webhook.");
+    }
+    if (event.type !== "email.received" || !event.emailId) return;
+    const [seen] = await this.db
+      .select({ id: crmEntries.id })
+      .from(crmEntries)
+      .where(eq(crmEntries.providerEmailId, event.emailId))
+      .limit(1);
+    if (seen) return;
+
+    const mail = await this.mailer.getReceived(event.emailId);
+    const replyToEntryId = entryIdFromAddresses([...mail.to, ...event.to], this.mailer.replyDomain);
+    let userId: string | null = null;
+    if (replyToEntryId) {
+      const [ours] = await this.db
+        .select({ userId: crmEntries.userId })
+        .from(crmEntries)
+        .where(and(eq(crmEntries.id, replyToEntryId), eq(crmEntries.kind, "email_out")))
+        .limit(1);
+      userId = ours?.userId ?? null;
+    }
+    if (!userId) {
+      const [byEmail] = await this.db
+        .select({ id: users.id })
+        .from(users)
+        .where(sql`lower(${users.email}) = ${emailOf(mail.from)}`)
+        .limit(1);
+      userId = byEmail?.id ?? null;
+    }
+    if (!userId) {
+      this.logger.log(`A reply from ${emailOf(mail.from)} matched nobody; it was only forwarded.`);
+      await this.forward(event.emailId);
+      return;
+    }
+
+    const body = trimQuotedReply(mail.text ?? htmlToText(mail.html ?? ""));
+    await this.db
+      .insert(crmEntries)
+      .values({
+        userId,
+        kind: "email_in",
+        subject: mail.subject || null,
+        body,
+        providerEmailId: event.emailId,
+        replyToEntryId: replyToEntryId && userId ? replyToEntryId : null,
+        occurredAt: mail.receivedAt ? new Date(mail.receivedAt) : new Date(),
+      })
+      .onConflictDoNothing();
+    const [c] = await this.db.select().from(crmContacts).where(eq(crmContacts.userId, userId)).limit(1);
+    if (!c || c.status === "new" || c.status === "contacted") await this.upsertStatus(userId, "replied");
+    // After it's saved, so a retry never sends the team inbox a second copy.
+    await this.forward(event.emailId);
+  }
+
+  /** The team inbox gets a copy of every received email; failing to forward never loses the reply. */
+  private async forward(emailId: string) {
+    await this.mailer.forwardToTeam(emailId).catch((err) => this.logger.warn(`Forward failed: ${String(err)}`));
+  }
+
+  /** Staff opened this person: their replies so far are read. */
+  async markSeen(userId: string): Promise<void> {
+    await this.requireUser(userId);
+    await this.db
+      .insert(crmContacts)
+      .values({ userId, lastSeenAt: new Date() })
+      .onConflictDoUpdate({ target: crmContacts.userId, set: { lastSeenAt: new Date() } });
   }
 
   /** Removes something logged by hand (never an email: those are a record of what was sent). */

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import {
   CrmEmailSchema,
   CrmFollowupCreateSchema,
@@ -41,6 +41,13 @@ export class AdminCrmController {
   @Get("people/:id")
   person(@Param("id", IdParam) id: string): Promise<CrmPersonDetail> {
     return this.crm.person(id);
+  }
+
+  /** The person was opened in the Inbox: their replies so far are read. */
+  @Post("people/:id/seen")
+  async seen(@Param("id", IdParam) id: string): Promise<{ ok: true }> {
+    await this.crm.markSeen(id);
+    return { ok: true };
   }
 
   @Patch("people/:id")
@@ -92,5 +99,32 @@ export class AdminCrmController {
     @Body(new ZodValidationPipe(CrmFollowupUpdateSchema)) body: CrmFollowupUpdate,
   ): Promise<CrmPersonDetail> {
     return this.crm.updateFollowup(id, body);
+  }
+}
+
+/**
+ * Resend → us: an email arrived at reply.octonote.ai. No user auth: Resend's
+ * signature over the raw body (svix-* headers) is the auth.
+ */
+@Controller("crm")
+export class CrmInboundController {
+  constructor(private readonly crm: AdminCrmService) {}
+
+  @Post("inbound")
+  @HttpCode(200)
+  async inbound(
+    // `rawBody` is filled because main.ts creates the app with { rawBody: true }.
+    @Req() req: { rawBody?: Buffer; headers: Record<string, string | string[] | undefined> },
+  ): Promise<{ ok: true }> {
+    const h = (name: string) => {
+      const v = req.headers[name];
+      return Array.isArray(v) ? v[0] : v;
+    };
+    await this.crm.receive(req.rawBody?.toString("utf8") ?? "", {
+      id: h("svix-id"),
+      timestamp: h("svix-timestamp"),
+      signature: h("svix-signature"),
+    });
+    return { ok: true };
   }
 }

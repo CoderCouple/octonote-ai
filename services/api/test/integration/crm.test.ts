@@ -10,6 +10,7 @@
 import { CRM_TEMPLATES, CrmEmailSchema, CrmFollowupCreateSchema, CrmLogSchema, fillCrmTemplate, PartnerCreateSchema } from "@octonote/shared";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { trimQuotedReply } from "../../src/common/crm-mailer";
 import { crmEntries } from "../../src/db/schemas/crm";
 import { users } from "../../src/db/schemas/users";
 import { createHarness, statusOf, type Harness } from "./harness";
@@ -149,7 +150,7 @@ describe("sending email (layer 2)", () => {
         from: "Sunil from Octonote <hello@octonote.ai>",
         to: "maya@example.com",
         bcc: ["hello@octonote.ai"],
-        replyTo: "hello@octonote.ai",
+        replyTo: expect.stringMatching(/^r-[0-9a-f-]{36}@reply\.octonote\.ai$/),
         subject: "Welcome to Octonote, Maya",
       }),
     ]);
@@ -186,5 +187,89 @@ describe("sending email (layer 2)", () => {
     const t = CRM_TEMPLATES.find((x) => x.id === "welcome")!;
     expect(fillCrmTemplate(t.subject, "Maya", "Sunil")).toBe("Welcome to Octonote, Maya");
     expect(fillCrmTemplate(t.body, "Maya", "Sunil")).toMatch(/^Hi Maya,[\s\S]*I'm Sunil/);
+  });
+});
+
+describe("replies (layer 3)", () => {
+  const inbound = (emailId: string, to: string[], from = "Maya <maya@example.com>", signature = "valid") =>
+    h.crm.receive(JSON.stringify({ type: "email.received", data: { email_id: emailId, from, to } }), {
+      id: "msg_1",
+      timestamp: "1",
+      signature,
+    });
+
+  async function sendOne() {
+    await h.crm.sendEmail(maya.id, CrmEmailSchema.parse({ subject: "Welcome", body: "Hi Maya" }), admin.id);
+    return h.crmMailer.sent.at(-1)!.replyTo;
+  }
+
+  it("gives each email its own reply address on the reply subdomain", async () => {
+    const replyTo = await sendOne();
+    expect(replyTo).toMatch(/^r-[0-9a-f-]{36}@reply\.octonote\.ai$/);
+    const sent = (await h.crm.person(maya.id)).timeline.find((t) => t.type === "entry");
+    expect(sent!.type === "entry" && replyTo.includes(sent!.id.replace("crm_", ""))).toBe(true);
+  });
+
+  it("puts a reply on the right person, trimmed, marks it replied and unread, and forwards a copy", async () => {
+    const replyTo = await sendOne();
+    h.crmMailer.received.e1 = {
+      from: "Maya Chen <maya.personal@gmail.com>", // a different account: matched by the reply address
+      to: [replyTo],
+      subject: "Re: Welcome",
+      text: "Thanks! Is there PDF export?\n\nOn Tue, Oct 21, 2026 at 10:05 AM Sunil from Octonote <hello@octonote.ai> wrote:\n> Hi Maya\n",
+      html: null,
+      receivedAt: "", // no time from Resend: the moment it arrives
+    };
+    await inbound("e1", [replyTo], "Maya Chen <maya.personal@gmail.com>");
+    await inbound("e1", [replyTo], "Maya Chen <maya.personal@gmail.com>"); // Resend retry
+
+    const d = await h.crm.person(maya.id);
+    const replies = d.timeline.filter((t) => t.type === "entry" && t.kind === "email_in");
+    expect(replies).toEqual([expect.objectContaining({ subject: "Re: Welcome", body: "Thanks! Is there PDF export?" })]);
+    expect(d.status).toBe("replied");
+    expect(h.crmMailer.forwarded).toEqual(["e1"]);
+
+    let [row] = (await h.crm.people()).filter((r) => r.user.id === maya.id);
+    expect(row).toMatchObject({ needsReply: true, unread: true });
+    await h.crm.markSeen(maya.id);
+    [row] = (await h.crm.people()).filter((r) => r.user.id === maya.id);
+    expect(row).toMatchObject({ needsReply: true, unread: false });
+
+    // Our answer makes it our-turn no more.
+    await h.crm.sendEmail(maya.id, CrmEmailSchema.parse({ subject: "Re: Welcome", body: "Yes, soon!" }), admin.id);
+    [row] = (await h.crm.people()).filter((r) => r.user.id === maya.id);
+    expect(row!.needsReply).toBe(false);
+  });
+
+  it("falls back to the sender's email, and keeps a paying customer's status", async () => {
+    await h.crm.setStatus(maya.id, "paying", admin.id);
+    h.crmMailer.received.e2 = {
+      from: "MAYA@example.com",
+      to: ["hello@octonote.ai"],
+      subject: "Question",
+      text: null,
+      html: "<p>Hello <b>team</b>,</p><p>Can I add a seat?</p><blockquote>old stuff</blockquote>",
+      receivedAt: "2026-10-23T09:00:00.000Z",
+    };
+    await inbound("e2", ["hello@octonote.ai"], "MAYA@example.com");
+    const d = await h.crm.person(maya.id);
+    expect(d.timeline.find((t) => t.type === "entry" && t.kind === "email_in")).toMatchObject({ body: "Hello team,\n\nCan I add a seat?" });
+    expect(d.status).toBe("paying");
+  });
+
+  it("only forwards a reply that matches nobody, and refuses a forged webhook", async () => {
+    h.crmMailer.received.e3 = { from: "stranger@example.com", to: ["r-00000000-0000-4000-8000-000000000000@reply.octonote.ai"], subject: "Hi", text: "Hello", html: null, receivedAt: "" };
+    await inbound("e3", ["r-00000000-0000-4000-8000-000000000000@reply.octonote.ai"], "stranger@example.com");
+    expect(h.crmMailer.forwarded).toEqual(["e3"]);
+    expect((await h.db.select().from(crmEntries)).filter((e) => e.kind === "email_in")).toHaveLength(0);
+
+    expect(await statusOf(inbound("e4", [], "x@example.com", "forged"))).toBe(401);
+  });
+
+  it("trims common quoted-reply formats but keeps a sentence that merely mentions 'On … wrote:'", () => {
+    expect(trimQuotedReply("Sure!\n\n-----Original Message-----\nFrom: x")).toBe("Sure!");
+    expect(trimQuotedReply("Yes\n\nFrom: Sunil <hello@octonote.ai>\nSent: Tuesday\nSubject: Hi")).toBe("Yes");
+    expect(trimQuotedReply("On the train I wrote: a poem.\nThanks")).toBe("On the train I wrote: a poem.\nThanks");
+    expect(trimQuotedReply("Great\n> quoted line")).toBe("Great");
   });
 });

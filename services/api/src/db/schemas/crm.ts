@@ -19,6 +19,8 @@ export const crmContacts = pgTable(
     /** new | contacted | replied | using | paying | not_interested */
     status: text("status").default("new").notNull(),
     ownerUserId: text("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+    /** When staff last opened this person in the Inbox: replies after it are unread. */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { getCrmPerson, listCrmPeople, listCrmStaff } from "@/features/admin/api";
+import { getCrmPerson, listCrmPeople, listCrmStaff, markCrmSeen } from "@/features/admin/api";
 import { CrmPerson, dayFromToday, dueLabel } from "@/features/admin/components/crm-person";
 import { errorText } from "@/features/admin/components/ui";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -26,9 +26,9 @@ const FOLDERS: { id: Folder; label: string }[] = [
   { id: "all", label: "Everyone" },
 ];
 
-/** A follow-up due today or earlier, or a reply waiting on us. */
+/** Their reply is waiting on us, or a follow-up is due today or earlier. */
 const needsAttention = (r: CrmPersonRow) =>
-  r.status === "replied" || (r.nextFollowup !== null && r.nextFollowup.dueOn <= dayFromToday(0));
+  r.needsReply || (r.nextFollowup !== null && r.nextFollowup.dueOn <= dayFromToday(0));
 
 const inFolder = (r: CrmPersonRow, f: Folder) =>
   f === "all" ? true : f === "new" ? !r.contacted : f === "sent" ? r.emailed : needsAttention(r);
@@ -80,6 +80,10 @@ function Inbox() {
   useEffect(() => {
     if (!openId) return setPerson(null);
     getCrmPerson(openId).then(setPerson).catch((err) => toast.error(errorText(err)));
+    // Opening someone reads their replies; refresh the list's unread dots.
+    markCrmSeen(openId)
+      .then(() => setRows((rs) => rs?.map((r) => (r.user.id === openId ? { ...r, unread: false } : r)) ?? rs))
+      .catch(() => {});
   }, [openId]);
 
   const open = (id: string | null) => router.replace(id ? `/admin/inbox?p=${id}` : "/admin/inbox", { scroll: false });
@@ -197,17 +201,27 @@ function Inbox() {
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-foreground-strong truncate text-sm font-medium">{r.user.name}</span>
+                    {r.unread ? <span aria-label="Unread reply" className="bg-foreground-strong size-2 shrink-0 rounded-full" /> : null}
+                    <span className={cn("text-foreground-strong truncate text-sm", r.unread ? "font-bold" : "font-medium")}>
+                      {r.user.name}
+                    </span>
                     <span className="text-muted-foreground ml-auto shrink-0 text-xs">{r.last ? shortWhen(r.last.at) : ""}</span>
                   </div>
                   <p className="text-muted-foreground truncate text-xs">{r.user.email}</p>
                   {r.last && r.last.kind !== "event" ? (
-                    <p className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-relaxed">{r.last.preview}</p>
+                    <p className={cn("mt-1 line-clamp-2 text-xs leading-relaxed", r.unread ? "text-foreground" : "text-muted-foreground")}>
+                      {r.last.kind === "email_in" ? "" : r.last.kind === "email_out" ? "You: " : ""}
+                      {r.last.title && (r.last.kind === "email_in" || r.last.kind === "email_out") ? `${r.last.title} · ` : ""}
+                      {r.last.preview}
+                    </p>
                   ) : null}
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <span className="bg-muted text-muted-foreground rounded px-1.5 py-px text-[11px] font-medium">
                       {CRM_STATUS_LABELS[r.status]}
                     </span>
+                    {r.needsReply ? (
+                      <span className="bg-foreground-strong text-background rounded px-1.5 py-px text-[11px] font-medium">Needs reply</span>
+                    ) : null}
                     {due ? (
                       <span
                         className={cn(

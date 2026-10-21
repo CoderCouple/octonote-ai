@@ -389,6 +389,10 @@ export interface CrmPersonRow {
   contacted: boolean;
   /** We've emailed them from the Inbox at least once. */
   emailed: boolean;
+  /** Their reply is the latest thing in the timeline: it's our turn. */
+  needsReply: boolean;
+  /** A reply came in after staff last opened this person. */
+  unread: boolean;
 }
 
 /** An item in a person's timeline: something logged or sent, or an event we know about. */
