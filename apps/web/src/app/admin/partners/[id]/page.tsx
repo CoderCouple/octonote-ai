@@ -5,8 +5,8 @@
  * brought, each payment and their share, and payouts. Switching them off
  * stops new sign-ups and new earnings; what they earned stays.
  */
-import { PARTNER_KIND_LABELS, type PartnerDetail } from "@octonote/shared";
-import { ArrowLeft, Copy, Loader2, Pencil } from "lucide-react";
+import { PARTNER_KIND_LABELS, type CreatorDashboard, type PartnerDetail } from "@octonote/shared";
+import { ArrowLeft, Copy, Eye, Loader2, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -23,22 +23,36 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getPartner, markPartnerPaidOut, updatePartner } from "@/features/admin/api";
+import { CreatorSection } from "@/app/(workspace)/workspace/settings/_components/creator-section";
+import { getCreatorView, getPartner, markPartnerPaidOut, updatePartner } from "@/features/admin/api";
 import { PartnerDialog } from "@/features/admin/components/partner-dialog";
 import { copyText, termsOf } from "@/features/admin/components/partner-format";
 import { PlanBadge } from "@/features/admin/components/plan-badge";
 import { errorText, fmtDate, fmtMoney, PageBody, PageHeader, Section } from "@/features/admin/components/ui";
+import { ViewsChart } from "@/features/analytics/components/views-chart";
 import { cn } from "@/lib/utils";
 
 export default function AdminPartnerPage() {
   const { id } = useParams<{ id: string }>();
-  const [p, setP] = useState<PartnerDetail | null>(null);
+  const [p, setPartner] = useState<PartnerDetail | null>(null);
+  // What the creator sees: the weekly chart here, and the "See as creator" preview.
+  const [view, setView] = useState<CreatorDashboard | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const setP = (next: PartnerDetail) => {
+    setPartner(next);
+    getCreatorView(next.id).then(setView).catch(() => setView(null));
+  };
   const [editing, setEditing] = useState(false);
   const [confirmPayout, setConfirmPayout] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    getPartner(id).then(setP).catch((err) => toast.error(errorText(err)));
+    getPartner(id)
+      .then((d) => {
+        setPartner(d);
+        return getCreatorView(id).then(setView);
+      })
+      .catch((err) => toast.error(errorText(err)));
   }, [id]);
 
   if (!p) {
@@ -86,6 +100,10 @@ export default function AdminPartnerPage() {
             <Switch checked={p.enabled} onCheckedChange={toggle} aria-label="Creator on" />
             {p.enabled ? "On" : "Off"}
           </label>
+          <Button variant="outline" onClick={() => setPreviewing(true)} disabled={!view}>
+            <Eye className="size-3.5" />
+            See as creator
+          </Button>
           <Button variant="outline" onClick={() => setEditing(true)}>
             <Pencil className="size-3.5" />
             Edit
@@ -122,6 +140,18 @@ export default function AdminPartnerPage() {
       </div>
 
       {p.note ? <p className="text-muted-foreground text-sm">{p.note}</p> : null}
+
+      {view ? (
+        <Section title="Sign-ups per week" description="The last 12 weeks. The creator sees this chart too.">
+          <div className="bg-card rounded-lg border p-4">
+            <ViewsChart
+              buckets={view.weekly.map((w) => ({ start: `${w.week}T12:00:00Z`, value: w.signups }))}
+              noun={["sign-up", "sign-ups"]}
+              unit="week"
+            />
+          </div>
+        </Section>
+      ) : null}
 
       <Section title="People they brought" description="Joined through their link or used their code. The first creator who brought someone keeps them.">
         <div className="bg-card overflow-x-auto rounded-lg border">
@@ -212,6 +242,20 @@ export default function AdminPartnerPage() {
           </Table>
         </div>
       </Section>
+
+      <Dialog open={previewing} onOpenChange={setPreviewing}>
+        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>What {p.name} sees</DialogTitle>
+            <DialogDescription>
+              {p.email
+                ? `Settings → Creator program, when ${p.email} signs in to Octonote.`
+                : "Add their email (the one they sign in with) so they can see this in Settings → Creator program."}
+            </DialogDescription>
+          </DialogHeader>
+          {view ? <CreatorSection creator={view} /> : null}
+        </DialogContent>
+      </Dialog>
 
       <PartnerDialog open={editing} onOpenChange={setEditing} partner={p} onSaved={setP} />
 

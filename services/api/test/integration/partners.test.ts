@@ -225,6 +225,9 @@ describe("types and the creator's own page", () => {
     expect(JSON.stringify(d)).not.toContain("reader1@example.com");
     expect(JSON.stringify(d)).not.toContain("usr_");
 
+    // Staff's preview is exactly what she sees.
+    expect(await h.partners.creatorView((await h.partners.list())[0]!.id)).toEqual(d);
+
     // Someone who isn't a creator has no page.
     expect(await h.partners.creatorDashboard(admin.id)).toBeNull();
   });

@@ -269,14 +269,22 @@ export class PartnersService {
       .where(eq(users.id, userId))
       .orderBy(desc(partners.enabled), desc(partners.createdAt))
       .limit(1);
-    if (!row) return null;
-    const p = await this.toPartner(row.partner, (await this.stats(row.partner.id)).get(row.partner.id));
+    return row ? this.dashboardFor(row.partner) : null;
+  }
+
+  /** Admin → "See as creator": exactly what this creator sees in Settings. */
+  async creatorView(id: string): Promise<CreatorDashboard> {
+    return this.dashboardFor(await this.require(id));
+  }
+
+  private async dashboardFor(partner: PartnerRow): Promise<CreatorDashboard> {
+    const p = await this.toPartner(partner, (await this.stats(partner.id)).get(partner.id));
 
     // Sign-ups per week for the last 12 weeks (weeks start on Monday, UTC).
     const weeks = await this.rows(sql`
       select to_char(date_trunc('week', u.created_at at time zone 'UTC'), 'YYYY-MM-DD') as week, count(*)::int as n
       from partner_referrals r join users u on u.id = r.user_id
-      where r.partner_id = ${row.partner.id} and u.created_at >= date_trunc('week', now() at time zone 'UTC') - interval '11 weeks'
+      where r.partner_id = ${partner.id} and u.created_at >= date_trunc('week', now() at time zone 'UTC') - interval '11 weeks'
       group by 1
     `);
     const byWeek = new Map(weeks.map((w) => [String(w.week), Number(w.n)]));

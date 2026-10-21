@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from
 import {
   PartnerCreateSchema,
   PartnerUpdateSchema,
+  type CreatorDashboard,
   type Partner,
   type PartnerCreate,
   type PartnerDetail,
@@ -45,6 +46,12 @@ export class AdminPartnersController {
   @Get(":id")
   detail(@Param("id", IdParam) id: string): Promise<PartnerDetail> {
     return this.partners.detail(id);
+  }
+
+  /** What the creator sees in Settings → Creator program, for a preview. */
+  @Get(":id/creator-view")
+  creatorView(@Param("id", IdParam) id: string): Promise<CreatorDashboard> {
+    return this.partners.creatorView(id);
   }
 
   @Patch(":id")

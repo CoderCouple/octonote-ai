@@ -10,6 +10,7 @@ import type {
   StudentDomain,
   StudentDomainCreate,
   StudentDomainUpdate,
+  CreatorDashboard,
   Partner,
   PartnerCreate,
   PartnerDetail,
@@ -66,5 +67,8 @@ export const getPartner = (id: string) => clientApi.get<PartnerDetail>(`/admin/p
 
 export const updatePartner = (id: string, body: PartnerUpdate) =>
   clientApi.patch<PartnerDetail>(`/admin/partners/${id}`, body);
+
+/** Exactly what the creator sees in Settings → Creator program. */
+export const getCreatorView = (id: string) => clientApi.get<CreatorDashboard>(`/admin/partners/${id}/creator-view`);
 
 export const markPartnerPaidOut = (id: string) => clientApi.post<PartnerDetail>(`/admin/partners/${id}/payout`);
