@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export * from "./ids";
 import { ID_PREFIXES, type IdPrefix } from "./ids";
+import { PARTNER_KINDS } from "./admin";
 
 // =============================================================================
 // ID validators
@@ -516,6 +517,7 @@ export type PartnerDiscount = z.infer<typeof PartnerDiscountSchema>;
 
 const PartnerFields = {
   name: z.string().trim().min(1).max(100),
+  kind: z.enum(PARTNER_KINDS),
   email: z
     .string()
     .trim()
@@ -538,6 +540,7 @@ const PartnerFields = {
 /** Add a partner. Leave `code` out to have one made from the name (PRIYA, PRIYA2…). */
 export const PartnerCreateSchema = z.object({
   ...PartnerFields,
+  kind: PartnerFields.kind.default("creator"),
   commissionPercent: PartnerFields.commissionPercent.default(30),
   commissionMonths: PartnerFields.commissionMonths.default(12),
   code: PromoCodeText.optional(),
@@ -549,6 +552,7 @@ export type PartnerCreate = z.infer<typeof PartnerCreateSchema>;
 export const PartnerUpdateSchema = z
   .object({
     name: PartnerFields.name.optional(),
+    kind: PartnerFields.kind.optional(),
     email: PartnerFields.email,
     commissionPercent: PartnerFields.commissionPercent.optional(),
     commissionMonths: PartnerFields.commissionMonths.optional(),

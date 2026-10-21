@@ -5,7 +5,7 @@
  * brought, each payment and their share, and payouts. Switching them off
  * stops new sign-ups and new earnings; what they earned stays.
  */
-import type { PartnerDetail } from "@octonote/shared";
+import { PARTNER_KIND_LABELS, type PartnerDetail } from "@octonote/shared";
 import { ArrowLeft, Copy, Loader2, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -81,6 +81,7 @@ export default function AdminPartnerPage() {
       </Link>
       <PageHeader title={p.name} description={[p.email, termsOf(p)].filter(Boolean).join(" · ")}>
         <div className="flex items-center gap-3">
+          <Badge variant="secondary">{PARTNER_KIND_LABELS[p.kind]}</Badge>
           <label className="text-muted-foreground flex items-center gap-2 text-sm">
             <Switch checked={p.enabled} onCheckedChange={toggle} aria-label="Creator on" />
             {p.enabled ? "On" : "Off"}

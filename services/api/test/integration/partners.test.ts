@@ -188,3 +188,44 @@ describe("earnings", () => {
     expect(d.commissions.map((c) => c.commissionCents)).toEqual([0]);
   });
 });
+
+describe("types and the creator's own page", () => {
+  it("records what kind of partner someone is", async () => {
+    expect((await create({ name: "Priya" })).kind).toBe("creator");
+    const f = await create({ name: "Rahul", kind: "founder" });
+    expect(f.kind).toBe("founder");
+    expect((await h.partners.update(f.id, { kind: "influencer" }, admin.id)).kind).toBe("influencer");
+    expect(PartnerCreateSchema.safeParse({ name: "X", kind: "celebrity" }).success).toBe(false);
+  });
+
+  it("shows a creator their own link and numbers, matched by email, counts only", async () => {
+    const priya = await h.signIn("Priya@Example.com");
+    await create({ name: "Priya Bagde", email: "priya@example.com", discount: { kind: "free_pro", freeMonths: 1 } });
+    const a = await signUpWithRef(1, "priya");
+    await signUpWithRef(2, "priya");
+    await h.pages.create(a.workspaceId, { title: "Hello" }, a.id);
+    await paidInvoice(a.workspaceId, "in_c", 10000, new Date());
+
+    const d = await h.partners.creatorDashboard(priya.id);
+    expect(d).toMatchObject({
+      name: "Priya Bagde",
+      code: "PRIYA",
+      link: expect.stringMatching(/\?ref=priya$/),
+      offer: "Pro free for 1 month",
+      signups: 2,
+      activated: 1,
+      paying: 1,
+      earnedCents: 3000,
+      paidOutCents: 0,
+      owedCents: 3000,
+    });
+    expect(d!.weekly).toHaveLength(12);
+    expect(d!.weekly.at(-1)!.signups).toBe(2);
+    // Never who the people are.
+    expect(JSON.stringify(d)).not.toContain("reader1@example.com");
+    expect(JSON.stringify(d)).not.toContain("usr_");
+
+    // Someone who isn't a creator has no page.
+    expect(await h.partners.creatorDashboard(admin.id)).toBeNull();
+  });
+});

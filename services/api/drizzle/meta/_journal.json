@@ -120,6 +120,13 @@
       "when": 1792612150432,
       "tag": "0016_partners",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792613074739,
+      "tag": "0017_partner_kind",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
+import type { CreatorDashboard } from "@octonote/shared";
 import { z } from "zod";
 import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
@@ -14,6 +15,7 @@ import { requireWebSession } from "../../../common/require-web-session";
 import { ZodValidationPipe } from "../../../common/zod-validation.pipe";
 import { AccountService } from "../../../service/account.service";
 import { MeService } from "../../../service/me.service";
+import { PartnersService } from "../../../service/partners.service";
 import {
   membershipPairToDto,
   userToDto,
@@ -32,7 +34,14 @@ export class MeController {
   constructor(
     private readonly me: MeService,
     private readonly account: AccountService,
+    private readonly partners: PartnersService,
   ) {}
+
+  /** Settings → Creator program: your link, code and numbers, if you're one of our creators. */
+  @Get("creator")
+  async creator(@Req() req: AuthenticatedRequest): Promise<{ creator: CreatorDashboard | null }> {
+    return { creator: await this.partners.creatorDashboard(req.user.id) };
+  }
 
   @Get()
   async getMe(@Req() req: AuthenticatedRequest): Promise<MeDto> {

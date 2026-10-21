@@ -205,6 +205,18 @@ export interface AdminAuditEntry {
 
 // --- Partners: creators and influencers ---------------------------------------
 
+/** What kind of partner someone is, for reporting and filters. */
+export const PARTNER_KINDS = ["creator", "influencer", "educator", "founder", "affiliate", "community"] as const;
+export type PartnerKind = (typeof PARTNER_KINDS)[number];
+export const PARTNER_KIND_LABELS: Record<PartnerKind, string> = {
+  creator: "Creator",
+  influencer: "Influencer",
+  educator: "Educator",
+  founder: "Founder",
+  affiliate: "Affiliate",
+  community: "Community",
+};
+
 export interface PartnerStats {
   /** People who joined through the partner's link or code. */
   signups: number;
@@ -223,6 +235,7 @@ export interface PartnerStats {
 export interface Partner {
   id: string;
   name: string;
+  kind: PartnerKind;
   code: string;
   /** Their tracking link, e.g. https://octonote.ai/?ref=priya */
   link: string;
@@ -260,4 +273,29 @@ export interface PartnerCommission {
 export interface PartnerDetail extends Partner {
   referrals: PartnerReferral[];
   commissions: PartnerCommission[];
+}
+
+/**
+ * A creator's own view (Settings → Creator program): their link, code and
+ * numbers. Counts only — never who the people are.
+ */
+export interface CreatorDashboard {
+  name: string;
+  kind: PartnerKind;
+  code: string;
+  link: string;
+  /** Their audience's offer, e.g. "Pro free for 1 month". */
+  offer: string | null;
+  commissionPercent: number;
+  commissionMonths: number | null;
+  /** Off: their link and code no longer count new people. */
+  enabled: boolean;
+  signups: number;
+  activated: number;
+  paying: number;
+  earnedCents: number;
+  paidOutCents: number;
+  owedCents: number;
+  /** Sign-ups per week (Monday, UTC) for the last 12 weeks, oldest first. */
+  weekly: { week: string; signups: number }[];
 }

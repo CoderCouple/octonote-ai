@@ -17,7 +17,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type {
   AdminPlan,
+  CreatorDashboard,
   Partner,
+  PartnerKind,
   PartnerCreate,
   PartnerDetail,
   PartnerStats,
@@ -121,6 +123,7 @@ export class PartnersService {
       .insert(partners)
       .values({
         name: input.name,
+        kind: input.kind,
         code,
         email: input.email ?? null,
         commissionPercent: input.commissionPercent,
@@ -252,6 +255,60 @@ export class PartnersService {
     return this.detail(id);
   }
 
+  // --- The creator's own view ---------------------------------------------------
+
+  /**
+   * Settings → Creator program: the partner whose email is this person's, or
+   * null. Counts only — never who the people they brought are.
+   */
+  async creatorDashboard(userId: string): Promise<CreatorDashboard | null> {
+    const [row] = await this.db
+      .select({ partner: partners })
+      .from(users)
+      .innerJoin(partners, eq(partners.email, sql`lower(${users.email})`))
+      .where(eq(users.id, userId))
+      .orderBy(desc(partners.enabled), desc(partners.createdAt))
+      .limit(1);
+    if (!row) return null;
+    const p = await this.toPartner(row.partner, (await this.stats(row.partner.id)).get(row.partner.id));
+
+    // Sign-ups per week for the last 12 weeks (weeks start on Monday, UTC).
+    const weeks = await this.rows(sql`
+      select to_char(date_trunc('week', u.created_at at time zone 'UTC'), 'YYYY-MM-DD') as week, count(*)::int as n
+      from partner_referrals r join users u on u.id = r.user_id
+      where r.partner_id = ${row.partner.id} and u.created_at >= date_trunc('week', now() at time zone 'UTC') - interval '11 weeks'
+      group by 1
+    `);
+    const byWeek = new Map(weeks.map((w) => [String(w.week), Number(w.n)]));
+    const monday = new Date();
+    monday.setUTCHours(0, 0, 0, 0);
+    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+    const weekly = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(monday);
+      d.setUTCDate(d.getUTCDate() - 7 * (11 - i));
+      const week = d.toISOString().slice(0, 10);
+      return { week, signups: byWeek.get(week) ?? 0 };
+    });
+
+    return {
+      name: p.name,
+      kind: p.kind,
+      code: p.code,
+      link: p.link,
+      offer: p.promo?.enabled ? p.promo.description : null,
+      commissionPercent: p.commissionPercent,
+      commissionMonths: p.commissionMonths,
+      enabled: p.enabled,
+      signups: p.stats.signups,
+      activated: p.stats.activated,
+      paying: p.stats.paying,
+      earnedCents: p.stats.earnedCents,
+      paidOutCents: p.stats.earnedCents - p.stats.owedCents,
+      owedCents: p.stats.owedCents,
+      weekly,
+    };
+  }
+
   // --- From the Stripe webhook -------------------------------------------------
 
   /**
@@ -322,6 +379,7 @@ export class PartnersService {
     return {
       id: r.id,
       name: r.name,
+      kind: r.kind as PartnerKind,
       code: r.code,
       link: `${appUrl()}/?ref=${r.code.toLowerCase()}`,
       email: r.email,

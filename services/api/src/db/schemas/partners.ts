@@ -6,7 +6,9 @@ import { users } from "./users";
 import { workspaces } from "./workspaces";
 
 /**
- * Creators and influencers who bring people to Octonote. Each has one unique
+ * Creators and influencers who bring people to Octonote. They see their own
+ * numbers (counts only) in Settings → Creator program, matched by `email` to
+ * their Octonote account. Each has one unique
  * code (PRIYA): their link is octonote.ai/?ref=priya, and the same code can be
  * a promo code for their audience (`promo_code_id`). They earn
  * `commission_percent` of what the people they brought pay, for
@@ -20,6 +22,8 @@ export const partners = pgTable(
       .primaryKey()
       .$defaultFn(() => generateId("prt")),
     name: text("name").notNull(),
+    /** creator | influencer | educator | founder | affiliate | community — for reporting. */
+    kind: text("kind").default("creator").notNull(),
     /** Upper-case, same shape as promo codes; the link uses it lower-cased. */
     code: text("code").notNull().unique(),
     /** Where to send reports; lower-case. */
@@ -38,6 +42,10 @@ export const partners = pgTable(
   (t) => [
     check("partners_code_upper", sql`${t.code} = upper(${t.code}) and ${t.code} ~ '^[A-Z0-9][A-Z0-9_-]{2,39}$'`),
     check("partners_commission_percent", sql`${t.commissionPercent} between 0 and 100`),
+    check(
+      "partners_kind",
+      sql`${t.kind} in ('creator', 'influencer', 'educator', 'founder', 'affiliate', 'community')`,
+    ),
     check("partners_commission_months", sql`${t.commissionMonths} is null or ${t.commissionMonths} between 1 and 60`),
     check("partners_email_lower", sql`${t.email} is null or ${t.email} = lower(${t.email})`),
   ],

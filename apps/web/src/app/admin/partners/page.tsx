@@ -6,14 +6,15 @@
  * audience's promo code), and this page shows who they brought, who pays, and
  * what they've earned.
  */
-import type { Partner } from "@octonote/shared";
+import { PARTNER_KIND_LABELS, PARTNER_KINDS, type Partner, type PartnerKind } from "@octonote/shared";
 import { Copy, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listPartners } from "@/features/admin/api";
 import { PartnerDialog } from "@/features/admin/components/partner-dialog";
@@ -25,12 +26,14 @@ export default function AdminPartnersPage() {
   const router = useRouter();
   const [rows, setRows] = useState<Partner[] | null>(null);
   const [adding, setAdding] = useState(false);
+  const [kind, setKind] = useState<PartnerKind | "all">("all");
+  const shown = useMemo(() => (rows ?? []).filter((p) => kind === "all" || p.kind === kind), [rows, kind]);
 
   useEffect(() => {
     listPartners().then(setRows).catch((err) => toast.error(errorText(err)));
   }, []);
 
-  const total = (k: keyof Partner["stats"]) => (rows ?? []).reduce((n, p) => n + p.stats[k], 0);
+  const total = (k: keyof Partner["stats"]) => shown.reduce((n, p) => n + p.stats[k], 0);
 
   return (
     <PageBody wide>
@@ -50,6 +53,20 @@ export default function AdminPartnersPage() {
         </div>
       ) : (
         <>
+          <Select value={kind} onValueChange={(v) => setKind(v as PartnerKind | "all")}>
+            <SelectTrigger className="w-48" aria-label="Type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              {PARTNER_KINDS.map((k) => (
+                <SelectItem key={k} value={k}>
+                  {PARTNER_KIND_LABELS[k]} ({(rows ?? []).filter((p) => p.kind === k).length})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="grid gap-3 sm:grid-cols-4">
             <Stat label="Sign-ups from creators" value={total("signups").toLocaleString()} />
             <Stat label="Made something" value={total("activated").toLocaleString()} />
@@ -62,6 +79,7 @@ export default function AdminPartnersPage() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="pl-4">Creator</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Code</TableHead>
                   <TableHead>Their share</TableHead>
                   <TableHead>Audience offer</TableHead>
@@ -73,14 +91,14 @@ export default function AdminPartnersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.length === 0 ? (
+                {shown.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-muted-foreground py-10 text-center">
-                      No creators yet. Add one to get their link and code.
+                    <TableCell colSpan={10} className="text-muted-foreground py-10 text-center">
+                      {rows.length === 0 ? "No creators yet. Add one to get their link and code." : "No creators of this type."}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((p) => (
+                  shown.map((p) => (
                     <TableRow
                       key={p.id}
                       className={cn("cursor-pointer", !p.enabled && "opacity-60")}
@@ -92,6 +110,9 @@ export default function AdminPartnersPage() {
                         </Link>
                         {!p.enabled ? <Badge variant="outline" className="ml-2">Off</Badge> : null}
                         {p.email ? <p className="text-muted-foreground text-xs">{p.email}</p> : null}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{PARTNER_KIND_LABELS[p.kind]}</Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">

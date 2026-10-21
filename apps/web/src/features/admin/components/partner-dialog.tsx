@@ -1,12 +1,21 @@
 "use client";
 
 /**
- * Add a creator, or edit one. Adding suggests a unique code from the name
+ * Add a creator, or edit one. Their email is the one they sign in to Octonote
+ * with: it's how they see their own numbers in Settings → Creator program.
+ * Adding suggests a unique code from the name
  * (PRIYA, or PRIYA2 if taken) and can create their audience offer — a promo
  * code with the same name. The code can't change after that: it's already in
  * their posts.
  */
-import type { PartnerCreate, PartnerDetail, PartnerDiscount } from "@octonote/shared";
+import {
+  PARTNER_KIND_LABELS,
+  PARTNER_KINDS,
+  type PartnerCreate,
+  type PartnerDetail,
+  type PartnerDiscount,
+  type PartnerKind,
+} from "@octonote/shared";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -51,11 +60,12 @@ export function PartnerDialog({
   onSaved: (partner: PartnerDetail) => void;
 }) {
   const [name, setName] = useState("");
+  const [kind, setKind] = useState<PartnerKind>("creator");
   const [code, setCode] = useState("");
   const [email, setEmail] = useState("");
   const [percent, setPercent] = useState("30");
   const [months, setMonths] = useState("12");
-  const [offer, setOffer] = useState("free1");
+  const [offer, setOffer] = useState("free3");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   // Once staff type a code themselves, stop replacing it with suggestions.
@@ -65,11 +75,12 @@ export function PartnerDialog({
     if (!open) return;
     codeTouched.current = false;
     setName(partner?.name ?? "");
+    setKind(partner?.kind ?? "creator");
     setCode(partner?.code ?? "");
     setEmail(partner?.email ?? "");
     setPercent(String(partner?.commissionPercent ?? 30));
     setMonths(partner ? (partner.commissionMonths === null ? FOREVER : String(partner.commissionMonths)) : "12");
-    setOffer("free1");
+    setOffer("free3");
     setNote(partner?.note ?? "");
   }, [open, partner]);
 
@@ -91,6 +102,7 @@ export function PartnerDialog({
     setBusy(true);
     const common = {
       name: name.trim(),
+      kind,
       email: email.trim(),
       commissionPercent: Number(percent),
       commissionMonths: months === FOREVER ? null : Number(months),
@@ -130,9 +142,24 @@ export function PartnerDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5 sm:col-span-2">
+            <div className="grid gap-1.5">
               <Label htmlFor="pt-name">Name</Label>
               <Input id="pt-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Priya Bagde" autoFocus />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="pt-kind">Type</Label>
+              <Select value={kind} onValueChange={(v) => setKind(v as PartnerKind)}>
+                <SelectTrigger id="pt-kind" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PARTNER_KINDS.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {PARTNER_KIND_LABELS[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {partner ? null : (
               <div className="grid gap-1.5">
@@ -153,7 +180,7 @@ export function PartnerDialog({
               </div>
             )}
             <div className={partner ? "grid gap-1.5 sm:col-span-2" : "grid gap-1.5"}>
-              <Label htmlFor="pt-email">Email (for reports)</Label>
+              <Label htmlFor="pt-email">Email (their Octonote sign-in)</Label>
               <Input id="pt-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="priya@example.com" />
             </div>
             <div className="grid gap-1.5">

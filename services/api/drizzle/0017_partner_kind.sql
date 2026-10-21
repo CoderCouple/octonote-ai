@@ -1,0 +1,2 @@
+ALTER TABLE "partners" ADD COLUMN "kind" text DEFAULT 'creator' NOT NULL;--> statement-breakpoint
+ALTER TABLE "partners" ADD CONSTRAINT "partners_kind" CHECK ("partners"."kind" in ('creator', 'influencer', 'educator', 'founder', 'affiliate', 'community'));

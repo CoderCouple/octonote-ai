@@ -7,6 +7,7 @@ import {
   Bell,
   Building2,
   CreditCard,
+  Handshake,
   Info,
   Check,
   Copy,
@@ -58,6 +59,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { BillingSection } from "./billing-section";
 import { CliSection } from "./cli-section";
+import { CreatorSection } from "./creator-section";
 import { CopyButton, Row, SectionShell } from "./settings-ui";
 import { clientApi } from "@/lib/api/client-fetch";
 import {
@@ -69,7 +71,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { SUPPORT_EMAIL, supportMailto } from "@octonote/shared";
+import { SUPPORT_EMAIL, supportMailto, type CreatorDashboard } from "@octonote/shared";
 
 type Role = "OWNER" | "ADMIN" | "MEMBER";
 
@@ -97,6 +99,7 @@ const SECTIONS = [
   { id: "memberships", label: "Memberships", icon: Layers },
   { id: "billing", label: "Plan & billing", icon: CreditCard },
   { id: "cli", label: "CLI & agents", icon: Terminal },
+  { id: "creator", label: "Creator program", icon: Handshake },
   { id: "about", label: "About", icon: Info },
   { id: "danger", label: "Danger zone", icon: AlertTriangle },
   { id: "delete-account", label: "Delete account", icon: Trash2 },
@@ -110,6 +113,14 @@ export function SettingsPanel({
   activeWorkspaceId,
 }: SettingsPanelProps) {
   const [activeSection, setActiveSection] = useState<string>("account");
+  // Only our creators get the Creator program section.
+  const [creator, setCreator] = useState<CreatorDashboard | null>(null);
+  useEffect(() => {
+    clientApi
+      .get<{ creator: CreatorDashboard | null }>("/me/creator")
+      .then((r) => setCreator(r.creator))
+      .catch(() => setCreator(null));
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -126,7 +137,8 @@ export function SettingsPanel({
       if (el) observer.observe(el);
     });
     return () => observer.disconnect();
-  }, []);
+    // Again once the Creator program section appears.
+  }, [creator]);
 
   const isOwner = viewerRole === "OWNER";
 
@@ -140,6 +152,7 @@ export function SettingsPanel({
           <nav className="flex flex-col gap-0.5">
             {SECTIONS.map((s) => {
               if (s.id === "danger" && !isOwner) return null;
+              if (s.id === "creator" && !creator) return null;
               const Icon = s.icon;
               const active = activeSection === s.id;
               return (
@@ -187,6 +200,7 @@ export function SettingsPanel({
         />
         <BillingSection workspaceId={workspace.id} />
         <CliSection />
+        {creator ? <CreatorSection creator={creator} /> : null}
         <AboutSection user={user} workspace={workspace} />
         {isOwner ? (
           <DangerSection
