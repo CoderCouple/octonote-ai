@@ -105,5 +105,6 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
       }),
     },
   ],
+  exports: [PartnersService],
 })
 export class FeaturesModule {}
