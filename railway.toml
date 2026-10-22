@@ -1,6 +1,9 @@
-# The API service. Railway builds it from GitHub on every push to main (only
-# when a file below changed), runs the database migrations, then switches
-# traffic to the new version once /health answers.
+# NOT READ BY RAILWAY. Railway deprecated railway.toml (config as code) in
+# favour of .railway/railway.ts; this service never used it. The settings
+# below are set on the service itself (Railway → api → Settings, 2026-10-22):
+# Dockerfile build (Dockerfile path set), watch paths, pre-deploy migrations,
+# /health check, restart on failure (3). Keep this file in step with the
+# dashboard as a record until we move to .railway/railway.ts.
 
 [build]
 builder = "DOCKERFILE"
