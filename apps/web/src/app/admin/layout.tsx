@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { ShieldCheck } from "lucide-react";
-import { AdminNav } from "@/features/admin/components/admin-nav";
+import { AdminShell } from "@/features/admin/components/admin-nav";
 import { mainHostFor } from "@/features/admin/portal-url";
 import { getMeApi } from "@/features/workspaces/api/workspaces-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -51,9 +51,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="bg-background flex min-h-svh flex-col md:flex-row">
-      <AdminNav email={me.user.email} mainOrigin={mainOrigin} />
-      <main className="min-w-0 flex-1">{children}</main>
-    </div>
+    <AdminShell email={me.user.email} mainOrigin={mainOrigin}>
+      {children}
+    </AdminShell>
   );
 }

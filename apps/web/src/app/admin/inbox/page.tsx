@@ -112,7 +112,7 @@ function Inbox() {
   }
 
   return (
-    <div className="flex h-svh min-h-0">
+    <div className="flex h-[calc(100svh-3rem)] min-h-0">
       <section
         aria-label="People"
         className={cn("flex min-h-0 w-full flex-col border-r md:w-[350px] md:shrink-0", openId && "max-md:hidden")}
