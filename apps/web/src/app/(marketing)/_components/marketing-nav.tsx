@@ -5,7 +5,7 @@ import { BookDemoButton } from "./book-demo";
 import { Logo } from "./logo";
 
 const NAV_LINKS = [
-  { href: "/#notes", label: "Features" },
+  { href: "/#canvases", label: "Features" },
   { href: "/#agents", label: "Agents" },
   { href: "/#examples", label: "Examples" },
   { href: "/cli", label: "CLI" },

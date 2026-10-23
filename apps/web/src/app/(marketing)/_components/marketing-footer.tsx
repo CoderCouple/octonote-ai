@@ -19,7 +19,7 @@ const COLUMNS: {
     title: "Product",
     href: "/",
     links: [
-      { href: "/#notes", label: "Features" },
+      { href: "/#canvases", label: "Features" },
       { href: "/#agents", label: "Agents" },
       { href: "/#examples", label: "Examples" },
       { href: "/cli", label: "CLI" },

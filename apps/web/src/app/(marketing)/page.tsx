@@ -6,14 +6,13 @@ import { BookDemoButton } from "./_components/book-demo";
 import { AgentsDemo } from "./_components/demos/agents-demo";
 import { CanvasDemo } from "./_components/demos/canvas-demo";
 import { MobileDemo } from "./_components/demos/mobile-demo";
-import { NotesDemo } from "./_components/demos/notes-demo";
-import { ProjectDemo } from "./_components/demos/project-demo";
 import { ExamplesSection } from "./_components/examples-section";
 import { FAQSection } from "./_components/faq-section";
 import { FeatureSection } from "./_components/feature-section";
-import { HeroStoryDemo } from "./_components/hero-story-demo";
+import { HeroWriterDemo } from "./_components/hero-writer-demo";
 import { MeteorShower } from "./_components/meteor-shower";
 import { PricingSection } from "./_components/pricing-section";
+import { RotatingWord } from "./_components/rotating-word";
 import { HomeStructuredData } from "./_components/structured-data";
 import { TerminalWindow } from "./cli/_components/terminal-window";
 import { INSTALL } from "./cli/_data/install";
@@ -110,7 +109,7 @@ export default function LandingPage() {
             </Button>
           </div>
           <div className="mt-10 w-full md:mt-20">
-            <HeroStoryDemo />
+            <HeroWriterDemo />
           </div>
         </div>
       </section>
@@ -120,7 +119,13 @@ export default function LandingPage() {
         aura
         className="border-y"
         eyebrow="Claude Code & Codex"
-        title="Just ask Claude. It's all kept here."
+        title={
+          <>
+            Just ask{" "}
+            <RotatingWord words={["Claude", "Codex"]} />. It's
+            all kept here.
+          </>
+        }
         body="Set up once, and your agent saves the notes, decisions and diagrams from every conversation to Octonote — then finds them again whenever you ask."
         demo={<AgentsDemo />}
         points={[
@@ -138,28 +143,6 @@ export default function LandingPage() {
           },
         ]}
         footer={<AgentSetup />}
-      />
-
-      <FeatureSection
-        id="notes"
-        eyebrow="Notes"
-        title="Write like a doc. Explain like a textbook."
-        body="A block editor that speaks math and diagrams. Type an equation, sketch a flow in Mermaid, or drop in a figure from a canvas — all in one page."
-        demo={<NotesDemo />}
-        points={[
-          {
-            title: "Math that renders",
-            body: "Inline and display equations with KaTeX, typed as you'd write them.",
-          },
-          {
-            title: "Diagrams as text",
-            body: "Mermaid flowcharts, sequence diagrams and git graphs, rendered in place.",
-          },
-          {
-            title: "Paste markdown",
-            body: "Math, code and diagrams in pasted markdown convert automatically — and every note keeps a Markdown copy.",
-          },
-        ]}
       />
 
       <FeatureSection
@@ -181,29 +164,6 @@ export default function LandingPage() {
           {
             title: "Figures",
             body: "Name parts of a canvas, jump between them, and embed them in notes.",
-          },
-        ]}
-      />
-
-      <FeatureSection
-        id="projects"
-        className="border-t"
-        eyebrow="Projects"
-        title="One note. One canvas. Side by side."
-        body="A project pairs a note with a canvas. Group shapes into a figure, drag it into your writing, and it stays in sync as the drawing changes."
-        demo={<ProjectDemo />}
-        points={[
-          {
-            title: "Notes, Split or Canvas",
-            body: "Switch views in one click; the project remembers how you like it.",
-          },
-          {
-            title: "Figures you can drag",
-            body: "Group shapes into a figure and drag it by its title into the note.",
-          },
-          {
-            title: "Always in sync",
-            body: "Change the drawing and every embedded figure updates.",
           },
         ]}
       />
