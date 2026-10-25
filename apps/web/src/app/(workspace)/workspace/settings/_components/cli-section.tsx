@@ -31,8 +31,7 @@ interface CliToken {
   createdAt: string;
 }
 
-// Served from octonote.ai (scripts/pack-cli.mjs) until it is on the npm registry.
-const INSTALL = "npm i -g https://octonote.ai/cli/octonote-cli.tgz && octonote";
+const INSTALL = "npm i -g @octonote/cli && octonote";
 
 function when(iso: string | null) {
   if (!iso) return "Never";

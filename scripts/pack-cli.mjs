@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Builds @octonote/cli and puts its package on octonote.ai, so anyone can run
+// Builds @octonote/cli and puts its package on octonote.ai. The install line is
+// `npm i -g @octonote/cli` (on npm since 2026-10-24); this copy keeps the old
 //   npm i -g https://octonote.ai/cli/octonote-cli.tgz
-// without the npm registry. Writes, under apps/web/public/cli/:
+// working for anyone who still has it. Writes, under apps/web/public/cli/:
 //   octonote-cli-<version>.tgz   this version, never overwritten
-//   octonote-cli.tgz             the latest (what the install line uses)
+//   octonote-cli.tgz             the latest (what the old install line uses)
 //   latest.json                  { version, file, integrity }
 // Then commit and deploy the web app.
 import { execFileSync } from "node:child_process";

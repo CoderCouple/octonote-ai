@@ -483,7 +483,7 @@ function AppShot() {
 function TerminalShot() {
   const rows: [string, string][] = [
     ["# Install", ""],
-    ["npm", " i -g https://octonote.ai/cli/octonote-cli.tgz"],
+    ["npm", " i -g @octonote/cli"],
     ["", ""],
     ["# Sign in", ""],
     ["octonote", " login"],
