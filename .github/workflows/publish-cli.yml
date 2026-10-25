@@ -1,0 +1,77 @@
+# Publishes @octonote/cli to npm when a `cli-v<version>` tag is pushed:
+#   1. bump "version" in packages/cli/package.json and src/version.ts, commit, push
+#   2. git tag cli-v0.1.4 && git push origin cli-v0.1.4
+# npm trusts this workflow (Trusted Publishing, OIDC): no token, no 2FA prompt,
+# and the package gets a provenance statement. Then the backup tarball on
+# octonote.ai (apps/web/public/cli) is refreshed and pushed to main, which
+# redeploys the site.
+name: Publish CLI
+
+on:
+  push:
+    tags: ["cli-v*"]
+
+permissions:
+  contents: write # push the refreshed backup tarball to main
+  id-token: write # npm Trusted Publishing
+
+concurrency:
+  group: publish-cli
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      # Trusted Publishing needs npm 11.5.1 or newer: Node 24 ships it.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile --filter @octonote/cli...
+
+      - name: Tag, package.json and VERSION agree; version not on npm yet
+        working-directory: packages/cli
+        run: |
+          tag="${GITHUB_REF_NAME#cli-v}"
+          pkg="$(node -p 'require("./package.json").version')"
+          src="$(sed -n 's/.*VERSION = "\(.*\)".*/\1/p' src/version.ts)"
+          echo "tag=$tag package.json=$pkg src/version.ts=$src"
+          [ "$tag" = "$pkg" ] && [ "$pkg" = "$src" ] || { echo "::error::versions differ"; exit 1; }
+          if npm view "@octonote/cli@$pkg" version >/dev/null 2>&1; then
+            echo "::error::@octonote/cli@$pkg is already on npm"; exit 1
+          fi
+
+      - name: Build and test
+        run: |
+          pnpm --filter @octonote/cli build
+          pnpm --filter @octonote/cli test
+          # The build regenerates the /cli docs reference; it must already be committed.
+          git diff --exit-code -- "apps/web/src/app/(marketing)/cli/_data/reference.json" \
+            || { echo "::error::cli reference.json is stale: run pnpm --filter @octonote/cli build and commit it"; exit 1; }
+
+      - name: Publish to npm
+        working-directory: packages/cli
+        run: npm publish
+
+      # Packed from the tagged commit (main may have moved on), then committed onto main.
+      - name: Refresh the backup tarball on octonote.ai
+        run: |
+          node scripts/pack-cli.mjs
+          cp -R apps/web/public/cli "$RUNNER_TEMP/cli"
+          git checkout -- apps/web/public/cli && git clean -fdq -- apps/web/public/cli
+          git fetch origin main
+          git checkout -B main origin/main
+          cp -R "$RUNNER_TEMP/cli/." apps/web/public/cli/
+          git add apps/web/public/cli
+          if git diff --cached --quiet; then echo "backup already current"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "CLI: backup tarball for @octonote/cli ${GITHUB_REF_NAME#cli-v}"
+          git push origin main
