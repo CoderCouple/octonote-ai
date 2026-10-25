@@ -6,7 +6,7 @@ import { ArrowRight, Bot, Globe, Terminal, Workflow } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { INSTALL } from "../_data/install";
+import { INSTALL, INSTALL_BACKUP } from "../_data/install";
 import { CodeBlock } from "./code-block";
 import { TerminalWindow } from "./terminal-window";
 
@@ -155,6 +155,7 @@ export function CliInstall() {
                 note="No PATH setup needed: npm puts octonote next to node."
               >
                 <CodeBlock code={`$ ${INSTALL}`} />
+                <CodeBlock className="mt-3" label="npm registry blocked? Install from octonote.ai" code={`$ ${INSTALL_BACKUP}`} />
               </Step>
               <Step
                 n="03"

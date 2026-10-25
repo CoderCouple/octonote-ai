@@ -15,7 +15,7 @@ import { PricingSection } from "./_components/pricing-section";
 import { RotatingWord } from "./_components/rotating-word";
 import { HomeStructuredData } from "./_components/structured-data";
 import { TerminalWindow } from "./cli/_components/terminal-window";
-import { INSTALL } from "./cli/_data/install";
+import { INSTALL, INSTALL_BACKUP } from "./cli/_data/install";
 
 /** The three setup commands in one copyable terminal, with a link to the CLI docs. */
 function AgentSetup() {
@@ -39,6 +39,10 @@ octonote setup claude --skill`}
         >
           CLI docs <ArrowUpRight className="size-4" />
         </Link>
+      </p>
+      <p className="text-muted-foreground mt-2 text-center text-sm">
+        npm registry blocked? Install from octonote.ai instead:{" "}
+        <code className="text-foreground font-mono break-all">{INSTALL_BACKUP}</code>
       </p>
     </div>
   );
