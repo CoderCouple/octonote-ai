@@ -95,15 +95,22 @@ export function registerProject(program: Command) {
             ...(opts.description ? { description: opts.description } : {}),
             ...(notebookId ? { notebookId } : {}),
           });
-          await ctx.api.patch(`/projects/${p.id}`, {
-            settings: { defaultView: view },
-          });
-          if (noteMd?.trim() && p.noteId)
-            await ctx.api.put(`/pages/${p.noteId}/markdown`, {
-              markdown: noteMd,
+          try {
+            await ctx.api.patch(`/projects/${p.id}`, {
+              settings: { defaultView: view },
             });
-          if (mermaid?.trim() && p.canvasId)
-            await ctx.api.put(`/canvases/${p.canvasId}/mermaid`, { mermaid });
+            if (noteMd?.trim() && p.noteId)
+              await ctx.api.put(`/pages/${p.noteId}/markdown`, {
+                markdown: noteMd,
+              });
+            if (mermaid?.trim() && p.canvasId)
+              await ctx.api.put(`/canvases/${p.canvasId}/mermaid`, { mermaid });
+          } catch (err) {
+            // The server only checks the note and diagram once the project
+            // exists: remove it again rather than leave it half made.
+            await ctx.api.delete(`/projects/${p.id}`).catch(() => {});
+            throw err;
+          }
           const out = {
             ...item(ctx, "project", p),
             noteId: p.noteId,

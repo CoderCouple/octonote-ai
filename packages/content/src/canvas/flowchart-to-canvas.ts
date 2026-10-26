@@ -65,6 +65,30 @@ function sizeFor(node: FlowNode): { w: number; h: number } {
   return { w: Math.round(base.w * g.widen), h: Math.round(base.h * g.tall) };
 }
 
+/**
+ * Drops subgraphs that ended up with nothing inside (dagre lays an empty
+ * cluster out at NaN) and edges that touch one.
+ */
+function withoutEmptyGroups(chart: Flowchart): Flowchart {
+  const live = new Set(chart.nodes.map((n) => n.group).filter((g): g is string => g !== null));
+  // A parent with a live child is live too.
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const g of chart.groups) {
+      if (g.parent && live.has(g.id) && !live.has(g.parent)) {
+        live.add(g.parent);
+        grew = true;
+      }
+    }
+  }
+  const ids = new Set([...chart.nodes.map((n) => n.id), ...live]);
+  return {
+    ...chart,
+    groups: chart.groups.filter((g) => live.has(g.id)),
+    edges: chart.edges.filter((e) => ids.has(e.from) && ids.has(e.to)),
+  };
+}
+
 function layout(chart: Flowchart) {
   const g = new dagre.graphlib.Graph({ compound: true, multigraph: true });
   g.setGraph({ rankdir: chart.direction, nodesep: 56, ranksep: 84, marginx: 40, marginy: 40 });
@@ -73,12 +97,15 @@ function layout(chart: Flowchart) {
   for (const group of chart.groups) {
     if (group.parent) g.setParent(`group:${group.id}`, `group:${group.parent}`);
   }
+  const isNode = new Set(chart.nodes.map((n) => n.id));
   for (const node of chart.nodes) {
     const { w, h } = sizeFor(node);
     g.setNode(node.id, { width: w, height: h });
     if (node.group) g.setParent(node.id, `group:${node.group}`);
   }
   chart.edges.forEach((e, i) => {
+    // dagre can't route edges to a subgraph; those are drawn after layout.
+    if (!isNode.has(e.from) || !isNode.has(e.to)) return;
     // Edge labels need room between ranks.
     g.setEdge(e.from, e.to, { width: e.label ? e.label.length * 7 + 16 : 0, height: e.label ? 24 : 0 }, `e${i}`);
   });
@@ -88,17 +115,24 @@ function layout(chart: Flowchart) {
     const n = g.node(id) as { x: number; y: number; width: number; height: number };
     return { x: n.x - n.width / 2, y: n.y - n.height / 2, w: n.width, h: n.height };
   };
+  const group = (id: string): Box => {
+    const b = boxOf(`group:${id}`);
+    // Room for the title above the contents.
+    return { x: b.x - 16, y: b.y - 40, w: b.w + 32, h: b.h + 56 };
+  };
   return {
     node: (id: string) => boxOf(id),
-    group: (id: string) => {
-      const b = boxOf(`group:${id}`);
-      // Room for the title above the contents.
-      return { x: b.x - 16, y: b.y - 40, w: b.w + 32, h: b.h + 56 };
-    },
+    group,
+    /** An edge end: a node, or a whole subgraph. */
+    end: (id: string) =>
+      isNode.has(id)
+        ? { box: boxOf(id), shapeId: createShapeId(`node-${id}`) }
+        : { box: group(id), shapeId: createShapeId(`group-${id}`) },
   };
 }
 
-export function flowchartToCanvas(chart: Flowchart) {
+export function flowchartToCanvas(input: Flowchart) {
+  const chart = withoutEmptyGroups(input);
   const placed = layout(chart);
   const total = chart.groups.length + chart.nodes.length + chart.edges.length + 1;
   const indices = getIndices(total).slice(1);
@@ -187,7 +221,7 @@ export function flowchartToCanvas(chart: Flowchart) {
     );
   }
 
-  chart.edges.forEach((edge, i) => records.push(...arrowRecords(edge, i, placed.node, base)));
+  chart.edges.forEach((edge, i) => records.push(...arrowRecords(edge, i, placed.end, base)));
 
   // Putting the records in a real store runs tldraw's validators.
   const store = new Store({
@@ -201,11 +235,13 @@ export function flowchartToCanvas(chart: Flowchart) {
 function arrowRecords(
   edge: FlowEdge,
   i: number,
-  boxOf: (id: string) => Box,
+  endOf: (id: string) => { box: Box; shapeId: string },
   base: (id: string, type: string, box: { x: number; y: number }, props: Record<string, unknown>) => unknown,
 ) {
-  const from = boxOf(edge.from);
-  const to = boxOf(edge.to);
+  const start = endOf(edge.from);
+  const finish = endOf(edge.to);
+  const from = start.box;
+  const to = finish.box;
   const c1 = { x: from.x + from.w / 2, y: from.y + from.h / 2 };
   const c2 = { x: to.x + to.w / 2, y: to.y + to.h / 2 };
   const id = createShapeId(`edge-${i}`);
@@ -232,7 +268,7 @@ function arrowRecords(
     typeName: "binding",
     type: "arrow",
     fromId: id,
-    toId: createShapeId(`node-${terminal === "start" ? edge.from : edge.to}`),
+    toId: (terminal === "start" ? start : finish).shapeId,
     meta: {},
     props: { terminal, normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: "none" },
   }));

@@ -60,6 +60,44 @@ describe("mermaid flowchart → canvas", () => {
       }
   });
 
+  const draw = (src: string) =>
+    records(mermaidToCanvasDocument(src) as unknown as { store: Record<string, Rec> });
+
+  it("puts a node first declared outside into the subgraph that mentions it", () => {
+    const all = draw(`flowchart LR
+      subgraph S [Task]
+        A[One] --> B[Two]
+      end
+      B --> C[Three]
+      subgraph H [Later]
+        C --> A
+      end`);
+    const box = (id: string) => all.find((r) => r.id === id)!;
+    const [h, c] = [box("shape:group-H"), box("shape:node-C")];
+    expect(c.x).toBeGreaterThanOrEqual(h.x);
+    expect(c.x + c.props.w).toBeLessThanOrEqual(h.x + h.props.w);
+  });
+
+  it("skips a subgraph left empty instead of failing", () => {
+    const all = draw(`flowchart LR
+      A[One] --> B[Two]
+      subgraph H [Nothing new]
+      end`);
+    expect(all.find((r) => r.id === "shape:group-H")).toBeUndefined();
+    expect(all.filter((r) => r.type === "geo")).toHaveLength(2);
+  });
+
+  it("binds an edge that points at a subgraph to the subgraph's box", () => {
+    const all = draw(`flowchart LR
+      subgraph S [Task]
+        A[One] --> B[Two]
+      end
+      X[Out] --> S`);
+    const bindings = all.filter((r) => r.typeName === "binding");
+    expect(bindings.some((b) => b.toId === "shape:group-S")).toBe(true);
+    expect(all.filter((r) => r.typeName === "shape").every((s) => Number.isFinite(s.x) && Number.isFinite(s.y))).toBe(true);
+  });
+
   it("uses the same tldraw version as the web app (else canvases may not open)", () => {
     const pkg = (dir: string) => JSON.parse(readFileSync(join(realpathSync(dir), "package.json"), "utf8"));
     const here = pkg(join(__dirname, "../../node_modules/@tldraw/tlschema")).version;

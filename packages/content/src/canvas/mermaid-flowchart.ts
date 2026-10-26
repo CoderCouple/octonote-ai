@@ -30,7 +30,7 @@ export interface FlowNode {
   id: string;
   label: string;
   shape: NodeShape;
-  /** Innermost subgraph the node was declared in. */
+  /** Innermost subgraph the node was first declared or mentioned in. */
   group: string | null;
 }
 
@@ -99,6 +99,8 @@ export function parseMermaidFlowchart(source: string): Flowchart {
   const node = (id: string, label: string | null, shape: NodeShape | null) => {
     const existing = nodes.get(id);
     if (existing) {
+      // A top-level node mentioned inside a subgraph joins it (as in Mermaid).
+      if (existing.group === null && stack.length) existing.group = stack.at(-1)!;
       if (label !== null) existing.label = label;
       if (shape !== null) existing.shape = shape;
       return existing;
