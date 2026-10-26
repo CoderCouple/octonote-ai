@@ -1,0 +1,145 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Octonote AI",
+  "description": "Docs for Octonote AI, the workspace for humans and agents: notes and canvases side by side, written by you, Claude Code or Codex.",
+  "colors": {
+    "primary": "#191919",
+    "light": "#F5F5F4",
+    "dark": "#191919"
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://octonote.ai"
+  },
+  "favicon": "/favicon.svg",
+  "navbar": {
+    "links": [
+      {
+        "label": "Examples",
+        "href": "https://octonote.ai/#examples"
+      },
+      {
+        "label": "Pricing",
+        "href": "https://octonote.ai/pricing"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get started",
+      "href": "https://octonote.ai/signup"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "index",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Write",
+            "pages": [
+              "guides/notes",
+              "guides/canvases",
+              "guides/projects",
+              "guides/notebooks",
+              "guides/home-and-search"
+            ]
+          },
+          {
+            "group": "Share",
+            "pages": [
+              "guides/sharing",
+              "guides/publishing",
+              "guides/analytics"
+            ]
+          },
+          {
+            "group": "Account",
+            "pages": [
+              "guides/plans",
+              "guides/students",
+              "guides/settings"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Agents & CLI",
+        "groups": [
+          {
+            "group": "Agents",
+            "pages": [
+              "agents/overview",
+              "agents/claude-code",
+              "agents/codex",
+              "agents/cloud-and-ci",
+              "agents/writing-content",
+              "agents/agent-guide"
+            ]
+          },
+          {
+            "group": "CLI",
+            "pages": [
+              "cli/install",
+              "cli/authentication",
+              "cli/output-and-errors",
+              "cli/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI reference",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "cli/reference/overview",
+              "cli/reference/account",
+              "cli/reference/notes",
+              "cli/reference/canvases",
+              "cli/reference/projects",
+              "cli/reference/notebooks",
+              "cli/reference/organise",
+              "cli/reference/sharing",
+              "cli/reference/agents"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "links": [
+      {
+        "header": "Octonote",
+        "items": [
+          {
+            "label": "Home",
+            "href": "https://octonote.ai"
+          },
+          {
+            "label": "CLI",
+            "href": "https://octonote.ai/cli"
+          },
+          {
+            "label": "Students",
+            "href": "https://octonote.ai/students"
+          },
+          {
+            "label": "Contact",
+            "href": "mailto:hello@octonote.ai"
+          }
+        ]
+      }
+    ]
+  }
+}

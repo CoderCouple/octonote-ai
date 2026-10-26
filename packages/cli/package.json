@@ -20,12 +20,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/gen-reference.mjs",
+    "build": "tsc -p tsconfig.json && node scripts/gen-reference.mjs && node scripts/gen-docs.mjs",
     "dev": "tsx src/index.ts",
     "lint": "echo \"lint pending\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "check:reference": "node scripts/gen-reference.mjs --check"
+    "check:reference": "node scripts/gen-reference.mjs --check && node scripts/gen-docs.mjs --check"
   },
   "dependencies": {
     "commander": "^12.1.0"

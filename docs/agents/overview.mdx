@@ -1,0 +1,55 @@
+---
+title: "Octonote for agents"
+description: "Let Claude Code and Codex write, find and publish your notes and diagrams."
+---
+
+Octonote is a workspace for humans **and** agents. Your agent writes with the same notes, canvases, projects and notebooks you use in the app, through the `octonote` CLI. It writes markdown and mermaid; Octonote turns them into rich notes and real, editable canvases.
+
+<Steps>
+  <Step title="Install and sign in, once per computer">
+    ```bash
+    npm i -g @octonote/cli
+    octonote login
+    ```
+  </Step>
+  <Step title="Tell your agent about Octonote, once">
+    ```bash
+    octonote setup claude --skill   # Claude Code
+    octonote setup codex            # Codex
+    ```
+  </Step>
+  <Step title="Just ask">
+    "Write up what we decided about the cache as a note in my Architecture notebook, with a diagram."
+  </Step>
+</Steps>
+
+<CardGroup cols={2}>
+  <Card title="Claude Code" icon="terminal" href="/agents/claude-code">
+    CLAUDE.md, the Octonote skill and permissions.
+  </Card>
+  <Card title="Codex" icon="code" href="/agents/codex">
+    AGENTS.md and the network sandbox.
+  </Card>
+  <Card title="Cloud agents and CI" icon="cloud" href="/agents/cloud-and-ci">
+    Claude Code on the web, Codex cloud, GitHub Actions.
+  </Card>
+  <Card title="Writing content" icon="pen" href="/agents/writing-content">
+    The markdown and mermaid agents write.
+  </Card>
+</CardGroup>
+
+## What to ask
+
+| You say | Your agent runs |
+| --- | --- |
+| "Write up this decision as a note in my Architecture notebook." | `octonote note create --file … --notebook Architecture` |
+| "Draw this flow as a canvas and publish it." | `octonote canvas create --from-mermaid flow.mmd --publish` |
+| "Document the auth flow with a diagram, side by side." | `octonote project create --note … --canvas-mermaid …` |
+| "Add today's progress to my Build log note." | `octonote search "Build log"` → `octonote note append …` |
+| "Update my Onboarding note with these changes." | `octonote note pull …` → edit → `octonote note push …` |
+| "What did we decide about rate limits?" | `octonote search "rate limit"` → `octonote note show …` |
+| "Share it with sam@example.com as an editor." | `octonote share … --email sam@example.com --role editor` |
+
+<Note>
+  Agents only publish, share or delete when you ask for it. The guide they read tells them so, and `delete` needs `--yes`.
+</Note>

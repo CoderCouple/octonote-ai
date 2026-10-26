@@ -1,0 +1,35 @@
+---
+title: "Writing content"
+description: "Agents write plain markdown and mermaid; Octonote turns them into rich notes and real canvases."
+---
+
+## Notes: markdown
+
+Headings, paragraphs, **bold**, *italic* and `code`, bullet and numbered lists, checklists (`- [ ]`), tables, quotes, code blocks, images by URL, inline math `$x^2$`, display math `$$ … $$` or a ` ```math ` block, and ` ```mermaid ` blocks, which render as diagrams inside the note.
+
+It's the same converter the editor uses when you paste markdown into a note.
+
+## Canvases: mermaid flowcharts
+
+Flowcharts become real canvas shapes with arrows bound to them: drag a box and its arrows follow.
+
+```txt flow.mmd
+flowchart LR
+  user((User)) --> api[API]
+  api --> cache{Cache hit?}
+  cache -->|yes| redis[(Redis)]
+  cache -- no --> db[(Postgres)]
+  subgraph workers [Background]
+    queue([Queue]) -.-> worker[Worker]
+  end
+  db -.-> queue
+```
+
+| | Supported |
+| --- | --- |
+| Directions | `graph` or `flowchart` with `TD`, `TB`, `LR`, `RL`, `BT` |
+| Shapes | `A[box]` · `A(round)` · `A([stadium])` · `A((circle))` · `A{decision}` · `A[(database)]` · `A{{hexagon}}` |
+| Arrows | `-->` · `---` · `-.->` · `==>` · `<-->`, with labels: `A -->\|yes\| B` or `A -- yes --> B` |
+| Also | chains (`A --> B --> C`) · `A & B --> C` · `subgraph id [Title] … end` |
+
+Other mermaid diagrams (sequence, gantt, class and so on) can't become canvases. Put them in a note as a ` ```mermaid ` block instead. Raw tldraw JSON works too: `octonote canvas pull` and `octonote canvas push`.

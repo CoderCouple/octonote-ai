@@ -1,0 +1,46 @@
+---
+title: "Troubleshooting"
+description: "Fixes for the problems people hit most."
+---
+
+<AccordionGroup>
+  <Accordion title="octonote: command not found">
+    npm's global folder isn't on your PATH (rare: npm and nvm normally set this up). Add this to `~/.zshrc` or `~/.bashrc`, then open a new terminal:
+
+    ```bash
+    export PATH="$(npm prefix -g)/bin:$PATH"
+    ```
+
+    With nvm, install the CLI again after switching Node versions.
+  </Accordion>
+  <Accordion title="You're not signed in">
+    Run `octonote login`, or set `OCTONOTE_TOKEN` for agents and CI.
+  </Accordion>
+  <Accordion title="The Authorize page says “One more step”">
+    Your browser blocked the page from reaching the CLI. Copy the token and paste it into the terminal where `octonote login` is waiting.
+  </Accordion>
+  <Accordion title="NETWORK errors inside Codex">
+    Codex's sandbox blocks the network by default. See [Codex](/agents/codex#allow-network-access).
+  </Accordion>
+  <Accordion title="Claude asks permission every time">
+    Allow `Bash(octonote:*)` in `.claude/settings.json`. See [Claude Code](/agents/claude-code#skip-the-permission-prompt).
+  </Accordion>
+  <Accordion title="MERMAID_INVALID">
+    Only flowcharts become canvases, and the error names the line. Put other diagram types in a note as a ` ```mermaid ` block.
+  </Accordion>
+  <Accordion title="PLAN_LIMIT">
+    The workspace already has 10 of that kind on the Free plan. Upgrade in **Settings → Plan & billing**, or delete something. See [Plans](/guides/plans).
+  </Accordion>
+  <Accordion title="npm install fails or the registry is blocked">
+    Install the same package from our site instead:
+
+    ```bash
+    npm i -g https://octonote.ai/cli/octonote-cli.tgz
+    ```
+  </Accordion>
+  <Accordion title="A token stopped working">
+    It was revoked or expired. Run `octonote login` again, or create a new one in **Settings → CLI & agents**.
+  </Accordion>
+</AccordionGroup>
+
+Still stuck? Email [hello@octonote.ai](mailto:hello@octonote.ai) with the command you ran and its output.

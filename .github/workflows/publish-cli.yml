@@ -52,9 +52,9 @@ jobs:
         run: |
           pnpm --filter @octonote/cli build
           pnpm --filter @octonote/cli test
-          # The build regenerates the /cli docs reference; it must already be committed.
-          git diff --exit-code -- "apps/web/src/app/(marketing)/cli/_data/reference.json" \
-            || { echo "::error::cli reference.json is stale: run pnpm --filter @octonote/cli build and commit it"; exit 1; }
+          # The build regenerates the /cli reference and the docs.octonote.ai CLI pages; both must already be committed.
+          git diff --exit-code -- "apps/web/src/app/(marketing)/cli/_data/reference.json" docs/cli/reference docs/agents/agent-guide.mdx \
+            || { echo "::error::CLI docs are stale: run pnpm --filter @octonote/cli build and commit the changes"; exit 1; }
 
       - name: Publish to npm
         working-directory: packages/cli

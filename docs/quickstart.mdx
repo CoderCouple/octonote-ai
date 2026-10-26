@@ -1,0 +1,36 @@
+---
+title: "Quickstart"
+description: "Your first note, canvas and published page in five minutes."
+---
+
+<Steps>
+  <Step title="Sign up">
+    Go to [octonote.ai](https://octonote.ai/signup) and continue with Google, Apple, or your email (we send a 6-digit code). Octonote creates your workspace.
+  </Step>
+  <Step title="Write a note">
+    Open **Notes** and create one. Type `/` for blocks: headings, lists, code, an **Equation**, a **Mermaid diagram** and more. Everything saves as you type. See [Notes](/guides/notes).
+  </Step>
+  <Step title="Draw on a canvas">
+    Open **Canvases** and create one. Turn on **Auto-shape** and rough pencil strokes snap into clean boxes, circles and arrows. See [Canvases](/guides/canvases).
+  </Step>
+  <Step title="Put them side by side">
+    A **project** is one note and one canvas together. Group shapes into a **figure** and drag it into the note. See [Projects](/guides/projects).
+  </Step>
+  <Step title="Publish it">
+    Click **Share**, turn on **Publish to web**, and copy the public link. Anyone can read it, no account needed. See [Publishing](/guides/publishing).
+  </Step>
+</Steps>
+
+## Let your agent do the first draft
+
+If you use Claude Code or Codex, connect them once and ask them to write for you:
+
+```bash
+npm i -g @octonote/cli
+octonote login
+octonote setup claude --skill   # or: octonote setup codex
+```
+
+> Explain how our auth flow works, with an architecture diagram, and publish it.
+
+See [Octonote for agents](/agents/overview).

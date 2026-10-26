@@ -1,0 +1,22 @@
+---
+title: "Codex"
+description: "Teach Codex to save and find your work in Octonote."
+---
+
+Install the CLI and sign in first ([Install the CLI](/cli/install)). Then:
+
+```bash
+octonote setup codex            # this project's AGENTS.md
+octonote setup codex --global   # every project (~/.codex/AGENTS.md)
+```
+
+`setup` adds a short Octonote section to `AGENTS.md` ([see exactly what](/agents/agent-guide)).
+
+## Allow network access
+
+Codex runs commands in a sandbox that blocks the network by default, so `octonote` would fail with `NETWORK`. Allow it, or approve the command when Codex asks:
+
+```toml ~/.codex/config.toml
+[sandbox_workspace_write]
+network_access = true
+```

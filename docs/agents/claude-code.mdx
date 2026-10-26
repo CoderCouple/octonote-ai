@@ -1,0 +1,38 @@
+---
+title: "Claude Code"
+description: "Teach Claude Code to save and find your work in Octonote."
+---
+
+Install the CLI and sign in first ([Install the CLI](/cli/install)). Then:
+
+```bash
+octonote setup claude            # this project's CLAUDE.md
+octonote setup claude --global   # every project (~/.claude/CLAUDE.md)
+octonote setup claude --skill    # also install the Octonote skill
+```
+
+`setup` adds a short Octonote section to `CLAUDE.md` ([see exactly what](/agents/agent-guide)). The skill loads the full guide whenever Octonote comes up, so Claude knows every command without you explaining it.
+
+## Skip the permission prompt
+
+To stop Claude asking each time it runs a command, allow `octonote` in `.claude/settings.json` (this project) or `~/.claude/settings.json` (everywhere):
+
+```json .claude/settings.json
+{ "permissions": { "allow": ["Bash(octonote:*)"] } }
+```
+
+## Try it
+
+> Save what we figured out about the cache bug to my Research notebook, with a diagram.
+
+Claude writes the note as markdown and the diagram as a mermaid flowchart, then runs:
+
+```bash
+octonote project create "Cache bug: stale reads" --note bug.md --canvas-mermaid bug.mmd --notebook Research
+```
+
+A week later, in a new session:
+
+> What did we decide about rate limits?
+
+Claude searches your notes (`octonote search`), reads the right one (`octonote note show`) and answers from it.

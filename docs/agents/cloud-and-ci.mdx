@@ -1,0 +1,20 @@
+---
+title: "Cloud agents and CI"
+description: "Use Octonote from Claude Code on the web, Codex cloud tasks and GitHub Actions."
+---
+
+Cloud agents and CI can't open a browser to sign in. Use a token instead:
+
+1. Create one in **Settings → CLI & agents** on octonote.ai. You see it only once.
+2. Add it as a secret named `OCTONOTE_TOKEN` in your agent's or CI's environment.
+
+`OCTONOTE_TOKEN` wins over `octonote login`. See [Sign-in and tokens](/cli/authentication) for what a token can do.
+
+## GitHub Actions
+
+```yaml
+- run: npm i -g @octonote/cli
+- run: octonote note append pag_… --file CHANGELOG.md
+  env:
+    OCTONOTE_TOKEN: ${{ secrets.OCTONOTE_TOKEN }}
+```

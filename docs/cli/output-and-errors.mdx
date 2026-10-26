@@ -1,0 +1,22 @@
+---
+title: "Output and errors"
+description: "What scripts and agents can rely on: JSON output, errors and exit codes."
+---
+
+- **JSON when piped.** Results go to stdout as JSON when the output is piped (force it with `--json`; `--pretty` forces human output). Progress messages go to stderr.
+- **Never prompts.** Content comes from `--file`, `--stdin` or `-` as the path.
+- **Links in every result.** Each result has `id`, `url` (the app link) and, once published, `publicUrl`.
+- **Ids carry their kind:** `pag_` note, `cnv_` canvas, `prj_` project, `ntb_` notebook. Notebooks can also be named by their exact name.
+
+## Errors
+
+Errors print `{"error":{"code","message","hint"}}` and exit with a non-zero code. Branch on `code`.
+
+| Exit | Code | Meaning |
+| --- | --- | --- |
+| 2 | `USAGE` | A wrong flag or argument. |
+| 3 | `NOT_LOGGED_IN` · `UNAUTHORIZED` | Sign in, or use a fresh `OCTONOTE_TOKEN`. |
+| 4 | `NOT_FOUND` · `FORBIDDEN` | Wrong id, deleted, or not shared with you. |
+| 5 | `PLAN_LIMIT` | The workspace hit a Free plan limit. |
+| 6 | `NETWORK` · `SERVER_ERROR` | Connection problem. Safe reads retry automatically. |
+| 1 | `MERMAID_INVALID` · `WEB_SESSION_REQUIRED` · … | Other errors, with a hint. |

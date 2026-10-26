@@ -1,0 +1,23 @@
+---
+title: "Sign-in and tokens"
+description: "How the CLI signs in, and how agents and CI use a token instead."
+---
+
+`octonote login` opens octonote.ai in your browser. Click **Authorize** and the page hands a token to the CLI waiting on your computer. If your browser blocks that, the page shows the token so you can paste it into the terminal.
+
+Agents and CI that can't open a browser use a token from **Settings → CLI & agents**, set as `OCTONOTE_TOKEN`.
+
+## What a token can do
+
+- Anything you can do in the app, except create more tokens or delete your account.
+- Tokens are stored hashed, so you see each one only once. Revoke any of them in **Settings → CLI & agents**, or with `octonote token revoke`.
+- `octonote logout` revokes this computer's token. Sign-in is kept in `~/.octonote/config.json`, readable only by you.
+
+## Environment variables
+
+| Variable | What it does |
+| --- | --- |
+| `OCTONOTE_TOKEN` | A token from Settings. Wins over `octonote login`. |
+| `OCTONOTE_WORKSPACE` | Workspace id to use (default: the one you own). |
+| `OCTONOTE_API_URL` / `OCTONOTE_WEB_URL` | Point at another Octonote (default: octonote.ai). |
+| `OCTONOTE_CONFIG_DIR` | Where sign-in is kept (default: `~/.octonote`). |

@@ -1,0 +1,66 @@
+---
+title: "Install the CLI"
+description: "Get the octonote command on macOS, Linux or Windows."
+---
+
+The `octonote` CLI lets you, and agents like Claude Code and Codex, create, read, edit, publish and share your notes, canvases, projects and notebooks from a terminal. It needs **Node.js 20 or newer**.
+
+<Steps>
+  <Step title="Get Node.js">
+    <Tabs>
+      <Tab title="macOS">
+        ```bash
+        brew install node
+        ```
+        Or the installer from [nodejs.org](https://nodejs.org).
+      </Tab>
+      <Tab title="Windows">
+        ```powershell
+        winget install OpenJS.NodeJS.LTS
+        ```
+        Or the installer from [nodejs.org](https://nodejs.org).
+      </Tab>
+      <Tab title="Linux">
+        Use your distribution's package manager, [nvm](https://github.com/nvm-sh/nvm), or the binaries from [nodejs.org](https://nodejs.org).
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Install the CLI">
+    ```bash
+    npm i -g @octonote/cli
+    ```
+    No PATH setup needed: npm puts `octonote` next to `node`. Run `octonote` on its own to see how to get started.
+
+    <Accordion title="npm registry blocked? Install from octonote.ai">
+      The same package, served from our site:
+
+      ```bash
+      npm i -g https://octonote.ai/cli/octonote-cli.tgz
+      ```
+    </Accordion>
+  </Step>
+  <Step title="Sign in">
+    ```bash
+    octonote login
+    ```
+    This opens octonote.ai in your browser. Click **Authorize** and you're done. See [Sign-in and tokens](/cli/authentication) for agents and CI.
+  </Step>
+</Steps>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Use it with Claude Code" icon="terminal" href="/agents/claude-code">
+    One command teaches Claude to save and find your notes.
+  </Card>
+  <Card title="Command reference" icon="book" href="/cli/reference/overview">
+    Every command and option.
+  </Card>
+</CardGroup>
+
+## Update or remove
+
+```bash
+npm i -g @octonote/cli@latest   # update
+npm rm -g @octonote/cli          # remove
+```
