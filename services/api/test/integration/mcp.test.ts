@@ -157,6 +157,7 @@ describe("mcp server", () => {
     const { tools } = await client.listTools();
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
     expect((byName.create_note!._meta as { ui?: { resourceUri?: string } }).ui?.resourceUri).toBe("ui://octonote/preview");
+    expect((byName.create_note!._meta as Record<string, unknown>)["ui/resourceUri"]).toBe("ui://octonote/preview");
     expect(byName.search!._meta?.ui).toBeUndefined();
 
     const { resources } = await client.listResources();
@@ -165,6 +166,7 @@ describe("mcp server", () => {
     const page = read.contents[0] as { text: string; mimeType: string; _meta?: { ui?: { csp?: { resourceDomains?: string[] } } } };
     expect(page.mimeType).toBe("text/html;profile=mcp-app");
     expect(page.text).toContain("ui/initialize");
+    expect(page.text).toContain("appInfo"); // the ext-apps schema requires appInfo, not clientInfo
     expect(page._meta?.ui?.csp?.resourceDomains).toContain("https://cdn.jsdelivr.net");
 
     const r = (await client.callTool({

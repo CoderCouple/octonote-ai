@@ -38,7 +38,9 @@ function previewUiMeta() {
 }
 
 /** Tools whose result renders as the inline card in MCP Apps hosts. */
-const CARD = { ui: { resourceUri: PREVIEW_URI }, "openai/outputTemplate": PREVIEW_URI } as const;
+// Both forms of the card link, as the official ext-apps helper sets them: hosts
+// read either `_meta.ui.resourceUri` or the older flat `ui/resourceUri` key.
+const CARD = { ui: { resourceUri: PREVIEW_URI }, "ui/resourceUri": PREVIEW_URI, "openai/outputTemplate": PREVIEW_URI } as const;
 
 const id = z.string().describe("Octonote id: pag_… note, cnv_… canvas, prj_… project, ntb_… notebook");
 const notebook = z.string().optional().describe("Put it in this notebook (id or exact name)");

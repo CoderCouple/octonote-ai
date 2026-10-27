@@ -206,8 +206,8 @@ export function previewHtml(): string {
   });
 
   request("ui/initialize", {
+    appInfo: { name: "octonote-preview", version: "1.0.0" },
     appCapabilities: { availableDisplayModes: ["inline"] },
-    clientInfo: { name: "octonote-preview", version: "1.0.0" },
     protocolVersion: "2026-01-26"
   }).then(function (res) {
     theme(res && res.hostContext);
