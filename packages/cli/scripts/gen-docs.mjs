@@ -66,9 +66,10 @@ octonote list --notebook "Architecture"`,
     title: "Find & organise",
     blurb:
       "Works on any item. The id says what it is: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook.",
-    match: (n) => ["list", "search", "open", "move", "delete"].includes(n),
+    match: (n) => ["list", "search", "open", "rename", "move", "delete"].includes(n),
     example: `octonote list --kind canvas
 octonote search onboarding
+octonote rename cnv_… "Login flow v2"
 octonote move pag_… --notebook "Archive"
 octonote delete cnv_… --yes`,
   },

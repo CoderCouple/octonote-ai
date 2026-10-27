@@ -42,7 +42,7 @@ export function registerProject(program: Command) {
     )
     .option(
       "--canvas-mermaid <path>",
-      "mermaid flowchart file to draw on the project's canvas",
+      "mermaid flowchart or class diagram file to draw on the project's canvas",
     )
     .option(
       "--view <view>",

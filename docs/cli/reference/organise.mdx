@@ -8,6 +8,7 @@ description: "Works on any item. The id says what it is: pag_ note, cnv_ canvas,
 ```bash
 octonote list --kind canvas
 octonote search onboarding
+octonote rename cnv_… "Login flow v2"
 octonote move pag_… --notebook "Archive"
 octonote delete cnv_… --yes
 ```
@@ -62,6 +63,19 @@ octonote move <id> [options]
 | <code>&lt;id&gt;</code> | note, canvas or project id (required) |
 | <code>-n, --notebook &lt;notebook&gt;</code> | target notebook (id or exact name) |
 | <code>--out</code> | take it out of its notebook |
+
+## rename
+
+Rename a note, canvas, project or notebook
+
+```bash
+octonote rename <id> <name>
+```
+
+| Argument or option | What it does |
+| --- | --- |
+| <code>&lt;id&gt;</code> | any Octonote id (required) |
+| <code>&lt;name&gt;</code> | new name (required) |
 
 ## delete
 

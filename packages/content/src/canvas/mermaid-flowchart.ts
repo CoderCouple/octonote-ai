@@ -9,10 +9,13 @@
  *   edges   -->  ---  -.->  ==>  --o  --x  <-->, chains (A --> B --> C),
  *           labels (A -->|yes| B, A -- yes --> B), & (A & B --> C)
  *   subgraph id [title] … end  (drawn as a dashed group)
- *   ignored: %% comments, classDef, class, style, linkStyle, click
+ *   click A href "https://…"  (the box links there; http(s) only)
+ *   ignored: %% comments, classDef, class, style, linkStyle, click callbacks
  * Other diagram types (sequence, gantt, …) are rejected with a clear error:
  * those stay mermaid blocks in a note.
  */
+
+import { parseLinkLine } from "./mermaid-links";
 
 export type Direction = "TB" | "BT" | "LR" | "RL";
 export type NodeShape =
@@ -32,6 +35,10 @@ export interface FlowNode {
   shape: NodeShape;
   /** Innermost subgraph the node was first declared or mentioned in. */
   group: string | null;
+  /** From a `click` line: where the box links to. */
+  url?: string;
+  /** A class-diagram box: text reads top-left, like UML. */
+  kind?: "class";
 }
 
 export interface FlowEdge {
@@ -43,6 +50,9 @@ export interface FlowEdge {
   /** Arrowheads at each end. */
   start: boolean;
   end: boolean;
+  /** tldraw arrowhead names when not a plain arrow (class diagrams: triangle, diamond). */
+  startHead?: string;
+  endHead?: string;
 }
 
 export interface FlowGroup {
@@ -95,6 +105,7 @@ export function parseMermaidFlowchart(source: string): Flowchart {
   const edges: FlowEdge[] = [];
   const groups: FlowGroup[] = [];
   const stack: string[] = [];
+  const links = new Map<string, string>();
 
   const node = (id: string, label: string | null, shape: NodeShape | null) => {
     const existing = nodes.get(id);
@@ -127,11 +138,16 @@ export function parseMermaidFlowchart(source: string): Flowchart {
         if (!header) {
           const kind = line.split(/\s+/)[0];
           throw new MermaidParseError(
-            `Only flowcharts ("graph TD" / "flowchart LR") can become canvases; "${kind}" diagrams stay as mermaid blocks in a note.`,
+            `Only flowcharts ("graph TD" / "flowchart LR") and class diagrams can become canvases; "${kind}" diagrams stay as mermaid blocks in a note.`,
             lineNo,
           );
         }
         direction = normalizeDirection(header[2]);
+        continue;
+      }
+      if (/^click\b/.test(line)) {
+        const link = parseLinkLine(line);
+        if (link) links.set(link.id, link.url);
         continue;
       }
       if (IGNORED_RE.test(line)) continue;
@@ -156,6 +172,10 @@ export function parseMermaidFlowchart(source: string): Flowchart {
   if (stack.length) throw new MermaidParseError(`subgraph "${stack.at(-1)}" is missing its "end"`);
   // A group id that's also used as a node would draw twice: keep it as a group.
   for (const g of groups) nodes.delete(g.id);
+  for (const [id, url] of links) {
+    const n = nodes.get(id);
+    if (n) n.url = url;
+  }
   if (nodes.size === 0) throw new MermaidParseError("The flowchart has no nodes.");
   return { direction, nodes: [...nodes.values()], edges, groups };
 }

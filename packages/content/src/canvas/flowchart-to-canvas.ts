@@ -161,6 +161,7 @@ export function flowchartToCanvas(input: Flowchart) {
     dash?: string;
     align?: string;
     verticalAlign?: string;
+    url?: string;
   }) => ({
     geo: opts.geo,
     w: opts.box.w,
@@ -175,7 +176,7 @@ export function flowchartToCanvas(input: Flowchart) {
     align: opts.align ?? "middle",
     verticalAlign: opts.verticalAlign ?? "middle",
     growY: 0,
-    url: "",
+    url: opts.url ?? "",
     scale: 1,
     flipX: false,
     flipY: false,
@@ -216,7 +217,9 @@ export function flowchartToCanvas(input: Flowchart) {
         box,
         label: node.label,
         color: node.shape === "database" ? "blue" : "black",
-        dash: node.shape === "subroutine" ? "solid" : "draw",
+        dash: node.shape === "subroutine" || node.kind === "class" ? "solid" : "draw",
+        url: node.url,
+        ...(node.kind === "class" ? { align: "start", verticalAlign: "start", fill: "solid" } : {}),
       })),
     );
   }
@@ -252,8 +255,8 @@ function arrowRecords(
     fill: "none",
     dash: edge.dashed ? "dashed" : "solid",
     size: edge.thick ? "m" : "s",
-    arrowheadStart: edge.start ? "arrow" : "none",
-    arrowheadEnd: edge.end ? "arrow" : "none",
+    arrowheadStart: edge.startHead ?? (edge.start ? "arrow" : "none"),
+    arrowheadEnd: edge.endHead ?? (edge.end ? "arrow" : "none"),
     font: FONT,
     start: { x: 0, y: 0 },
     end: { x: c2.x - c1.x, y: c2.y - c1.y },

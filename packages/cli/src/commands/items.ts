@@ -211,6 +211,23 @@ export function registerItems(program: Command) {
     );
 
   program
+    .command("rename")
+    .description("Rename a note, canvas, project or notebook")
+    .argument("<id>", "any Octonote id")
+    .argument("<name>", "new name")
+    .action(
+      action(async (ctx, ref: string, name: string) => {
+        const { kind, id } = parseRef(ref);
+        // Notes and canvases have a title; projects and notebooks a name.
+        const field = kind === "page" || kind === "canvas" ? "title" : "name";
+        const row = await ctx.api.patch<Row>(`/${ROUTE[kind]}/${id}`, {
+          [field]: name.slice(0, 120),
+        });
+        emit(item(ctx, kind, row), (i) => `Renamed ${describeItem(i)}`);
+      }),
+    );
+
+  program
     .command("delete")
     .alias("rm")
     .description(

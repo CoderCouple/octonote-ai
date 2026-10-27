@@ -43,18 +43,18 @@ export function registerCanvas(program: Command) {
   const canvas = program
     .command("canvas")
     .description(
-      "Canvases: draw them from mermaid flowcharts, or push tldraw JSON",
+      "Canvases: draw them from mermaid flowcharts or class diagrams, or push tldraw JSON",
     );
 
   canvas
     .command("create")
     .description(
-      "Create a canvas — drawn from a mermaid flowchart, from tldraw JSON, or empty",
+      "Create a canvas — drawn from a mermaid flowchart or class diagram, from tldraw JSON, or empty",
     )
     .argument("[title]", "title", "Untitled canvas")
     .option(
       "-m, --from-mermaid <path>",
-      'mermaid flowchart file ("-" for stdin) to draw as real shapes',
+      'mermaid flowchart or class diagram file ("-" for stdin) to draw as real shapes',
     )
     .option("-f, --file <path>", "tldraw snapshot JSON (from `canvas pull`)")
     .option(
@@ -107,11 +107,11 @@ export function registerCanvas(program: Command) {
 
   canvas
     .command("redraw")
-    .description("Replace a canvas with a drawing of a mermaid flowchart")
+    .description("Replace a canvas with a drawing of a mermaid flowchart or class diagram")
     .argument("<canvas>", "canvas id (cnv_…) or URL")
     .requiredOption(
       "-m, --from-mermaid <path>",
-      'mermaid flowchart file ("-" for stdin)',
+      'mermaid flowchart or class diagram file ("-" for stdin)',
     )
     .action(
       action(async (ctx, ref: string, opts: { fromMermaid: string }) => {

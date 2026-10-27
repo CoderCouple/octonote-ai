@@ -11,7 +11,7 @@ It's the same converter the editor uses when you paste markdown into a note.
 
 ## Canvases: mermaid flowcharts
 
-Flowcharts become real canvas shapes with arrows bound to them: drag a box and its arrows follow.
+Flowcharts and class diagrams become real canvas shapes with arrows bound to them: drag a box and its arrows follow.
 
 ```txt flow.mmd
 flowchart LR
@@ -31,5 +31,38 @@ flowchart LR
 | Shapes | `A[box]` · `A(round)` · `A([stadium])` · `A((circle))` · `A{decision}` · `A[(database)]` · `A{{hexagon}}` |
 | Arrows | `-->` · `---` · `-.->` · `==>` · `<-->`, with labels: `A -->\|yes\| B` or `A -- yes --> B` |
 | Also | chains (`A --> B --> C`) · `A & B --> C` · `subgraph id [Title] … end` |
+| Links | `click A href "https://…"` makes the box open that page |
 
-Other mermaid diagrams (sequence, gantt, class and so on) can't become canvases. Put them in a note as a ` ```mermaid ` block instead. Raw tldraw JSON works too: `octonote canvas pull` and `octonote canvas push`.
+## Canvases: class diagrams
+
+Each class becomes a box with its stereotype, name and members, and relations get UML arrowheads.
+
+```txt classes.mmd
+classDiagram
+  direction LR
+  class BenchmarkAdapter {
+    <<interface>>
+    +spec() BenchSpec
+  }
+  class Ledger
+  Ledger : +expected_rollouts(k) int
+  BenchmarkAdapter <|.. JobBench : implements
+  Scheduler o-- Ledger
+  Ledger "1" *-- "many" Entry
+  click Ledger href "https://github.com/org/repo/blob/main/core/ledger.py#L20"
+```
+
+| | Supported |
+| --- | --- |
+| Classes | `class A` · `class A { members }` · `A : member` · `class A["Label"]` · generics `A~T~` · `<<interface>>` |
+| Relations | `<\|--` inheritance · `*--` composition · `o--` aggregation · `-->` association · `..>` dependency · `..\|>` realization · `--` / `..` links, with `"1"` / `"*"` and `: label` |
+| Groups | `namespace N { … }` |
+| Links | `click A href "https://…"` or `link A "https://…"`: point each class at its file and line |
+
+## Clickable diagrams
+
+`click` lines work in both canvases and ` ```mermaid ` blocks in notes. Only `https://` and `http://` links are kept, and they open in a new tab. In a code walkthrough, link every class or component box to its definition on GitHub, pinned to a commit.
+
+## Other diagram types
+
+Other mermaid diagrams (sequence, state, ER, gantt and so on) can't become canvases. Put them in a note as a ` ```mermaid ` block instead. Raw tldraw JSON works too: `octonote canvas pull` and `octonote canvas push`.

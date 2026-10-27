@@ -66,7 +66,7 @@ export class CanvasesController {
     return canvasToDto(canvas, "owner");
   }
 
-  /** Redraw from a mermaid flowchart (replaces the canvas content). */
+  /** Redraw from a mermaid flowchart or class diagram (replaces the canvas content). */
   @Put("canvases/:id/mermaid")
   @UseGuards(SupabaseAuthGuard)
   async redraw(

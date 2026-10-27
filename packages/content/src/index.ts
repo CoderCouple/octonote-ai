@@ -11,3 +11,4 @@ export {
   MATH_LANGS,
 } from "./notes/markdown-to-blocks";
 export { toStandardBlocks } from "./notes/blocks-to-markdown";
+export { parseLinkLine, safeUrl } from "./canvas/mermaid-links";

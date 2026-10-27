@@ -5,6 +5,8 @@
  * markdown), rendered to SVG. Ported from OctoFocus with two changes:
  *  - securityLevel "strict": diagram text can't inject HTML or click
  *    handlers — published notes render untrusted authors' diagrams.
+ *    `click A href "https://…"` lines still work: we read them ourselves
+ *    (http(s) only) and make those boxes open the link in a new tab.
  *  - Mermaid (large) loads on demand, only for notes that have a diagram.
  * Editors toggle to the source, resize, and open fullscreen; readers get the
  * diagram and fullscreen only.
@@ -18,7 +20,8 @@ import {
   Minimize2,
   Workflow,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { parseLinkLine } from "@octonote/content";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 const MIN_HEIGHT = 160;
@@ -60,6 +63,25 @@ async function getMermaid(): Promise<MermaidApi> {
 }
 
 let renderSeq = 0;
+
+/** Box id → URL from the diagram's `click` / `link` lines (http(s) only). */
+function diagramLinks(code: string): Map<string, string> {
+  const links = new Map<string, string>();
+  for (const line of code.split("\n")) {
+    const link = parseLinkLine(line);
+    if (link) links.set(link.id, link.url);
+  }
+  return links;
+}
+
+/** Mermaid draws boxes as `…flowchart-<id>-<n>` (flowcharts) or `…classId-<id>-<n>` (classes). */
+const NODE_ID_RE = /(?:^|-)(?:flowchart|classId)-(.+)-\d+$/;
+
+function linkedNode(target: EventTarget | null, links: Map<string, string>) {
+  const el = (target as Element | null)?.closest?.("g.node[id]");
+  const id = el?.id.match(NODE_ID_RE)?.[1];
+  return id && links.has(id) ? links.get(id)! : null;
+}
 
 /**
  * Rendered SVGs by theme + source. BlockNote rebuilds a block's view whenever
@@ -162,6 +184,32 @@ function MermaidView({
   const h = live?.height ?? height;
   const w = live?.width ?? width;
   const body = useRef<HTMLDivElement>(null);
+  const diagram = useRef<HTMLDivElement>(null);
+  const links = useMemo(() => diagramLinks(code), [code]);
+
+  // Mark linked boxes so they look and behave like links.
+  useEffect(() => {
+    if (!links.size) return;
+    diagram.current?.querySelectorAll<SVGGElement>("g.node[id]").forEach((g) => {
+      const url = linkedNode(g, links);
+      if (!url) return;
+      g.style.cursor = "pointer";
+      // Mermaid already wraps href boxes in <a>; only bare boxes need to become links.
+      if (g.closest("a")) return;
+      g.setAttribute("role", "link");
+      g.setAttribute("tabindex", "0");
+      g.setAttribute("aria-label", `Open ${url}`);
+    });
+  }, [svg, links, fullscreen, view]);
+
+  const openLink = (e: React.MouseEvent | React.KeyboardEvent) => {
+    if ("key" in e && e.key !== "Enter") return;
+    const url = linkedNode(e.target, links);
+    if (!url) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
   /** Fixed height when resized or fullscreen; otherwise the diagram's natural size. */
   const fixed = fullscreen || h > 0;
 
@@ -286,6 +334,9 @@ function MermaidView({
             </pre>
           ) : svg ? (
             <div
+              ref={diagram}
+              onClick={links.size ? openLink : undefined}
+              onKeyDown={links.size ? openLink : undefined}
               className={
                 fixed
                   ? // Scale the whole diagram into the chosen box instead of cropping it.

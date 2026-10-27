@@ -15,7 +15,7 @@ description: "The exact text octonote setup adds to CLAUDE.md or AGENTS.md, and 
 The user keeps notes, diagrams (canvases), projects and notebooks in Octonote. Use the `octonote` CLI to read and write them — never ask the user to copy-paste.
 
 - Run `octonote guide` once per session before using it; `octonote <command> --help` for details.
-- Write notes as markdown files (mermaid, `$math$`, code and tables work); draw diagrams as mermaid flowcharts (`--from-mermaid`), which become real, editable canvases.
+- Write notes as markdown files (mermaid, `$math$`, code and tables work); draw diagrams as mermaid flowcharts or class diagrams (`--from-mermaid`), which become real, editable canvases.
 - Output is JSON when piped: read `id`, `url` and `publicUrl` from it, and always give the user the link.
 - Only publish, share or delete when the user asked to.
 ````
@@ -60,14 +60,21 @@ images (by URL), `$inline math$`, `$$display math$$`, and ```mermaid blocks
   octonote note rename <id> "New title"
 
 ## Draw a canvas (diagram)
-Write a mermaid **flowchart** and let Octonote lay it out as real shapes:
+Write a mermaid **flowchart** or **class diagram** and let Octonote lay it out
+as real shapes:
   octonote canvas create "Login flow" --from-mermaid flow.mmd [--publish]
   octonote canvas redraw <id> --from-mermaid flow.mmd
-Supported: `graph|flowchart TD|LR|BT|RL`; nodes A[box] A(round) A([stadium])
+Flowcharts: `graph|flowchart TD|LR|BT|RL`; nodes A[box] A(round) A([stadium])
 A((circle)) A{decision} A[(database)] A{{hexagon}}; edges --> --- -.-> ==> <-->
 with labels (A -->|yes| B or A -- yes --> B); chains; A & B --> C;
-`subgraph id [Title] … end`. Other diagram types (sequence, gantt…) can't be
-canvases — put them in a note as a ```mermaid block instead.
+`subgraph id [Title] … end`.
+Class diagrams: `classDiagram`; `class A { +field / +method() }`, `A : +member`,
+`<<interface>>`, generics A~T~, relations <|-- *-- o-- --> ..> ..|> -- with
+"1"/"*" cardinalities and `: label`, `namespace N { … }`.
+Links: `click A href "https://…"` makes a box open that page (canvases and
+note diagrams alike) — point code boxes at the file and line on GitHub.
+Other diagram types (sequence, state, ER, gantt…) can't be canvases — put
+them in a note as a ```mermaid block instead.
 Raw tldraw JSON also works: `canvas pull <id> -o c.json` / `canvas push c.json --id <id>`.
 
 ## Project = note + canvas
@@ -79,6 +86,7 @@ Raw tldraw JSON also works: `canvas pull <id> -o c.json` / `canvas push c.json -
   octonote list [--kind note|canvas|project|notebook] [--notebook "Name"]
   octonote search <words>                 # by title
   octonote notebook list | create "Name" | show "Name"
+  octonote rename <id> "New name"         # any note, canvas, project or notebook
   octonote move <id> --notebook "Name"    # or --out
   octonote delete <id> --yes
 

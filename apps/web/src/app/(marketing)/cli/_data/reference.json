@@ -1,5 +1,5 @@
 {
-  "version": "0.1.4",
+  "version": "0.1.5",
   "globalOptions": [
     {
       "flags": "--json",
@@ -260,7 +260,7 @@
     {
       "name": "canvas create",
       "aliases": [],
-      "description": "Create a canvas — drawn from a mermaid flowchart, from tldraw JSON, or empty",
+      "description": "Create a canvas — drawn from a mermaid flowchart or class diagram, from tldraw JSON, or empty",
       "arguments": [
         {
           "name": "title",
@@ -273,7 +273,7 @@
       "options": [
         {
           "flags": "-m, --from-mermaid <path>",
-          "description": "mermaid flowchart file (\"-\" for stdin) to draw as real shapes",
+          "description": "mermaid flowchart or class diagram file (\"-\" for stdin) to draw as real shapes",
           "required": false
         },
         {
@@ -296,7 +296,7 @@
     {
       "name": "canvas redraw",
       "aliases": [],
-      "description": "Replace a canvas with a drawing of a mermaid flowchart",
+      "description": "Replace a canvas with a drawing of a mermaid flowchart or class diagram",
       "arguments": [
         {
           "name": "canvas",
@@ -308,7 +308,7 @@
       "options": [
         {
           "flags": "-m, --from-mermaid <path>",
-          "description": "mermaid flowchart file (\"-\" for stdin)",
+          "description": "mermaid flowchart or class diagram file (\"-\" for stdin)",
           "required": true
         }
       ]
@@ -378,7 +378,7 @@
         },
         {
           "flags": "--canvas-mermaid <path>",
-          "description": "mermaid flowchart file to draw on the project's canvas",
+          "description": "mermaid flowchart or class diagram file to draw on the project's canvas",
           "required": false
         },
         {
@@ -522,6 +522,26 @@
       ]
     },
     {
+      "name": "rename",
+      "aliases": [],
+      "description": "Rename a note, canvas, project or notebook",
+      "arguments": [
+        {
+          "name": "id",
+          "description": "any Octonote id",
+          "required": true,
+          "variadic": false
+        },
+        {
+          "name": "name",
+          "description": "new name",
+          "required": true,
+          "variadic": false
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "delete",
       "aliases": [
         "rm"
@@ -641,6 +661,6 @@
       ]
     }
   ],
-  "guide": "# Octonote CLI — guide for agents\n\nOctonote holds the user's **notes** (markdown documents), **canvases** (diagrams),\n**projects** (one note + one canvas, side by side) and **notebooks** (folders).\nThe `octonote` CLI is how you read and write them on the user's behalf.\n\n## Rules\n- Output is JSON when piped (force with --json). Errors print\n  `{\"error\":{\"code\",\"message\",\"hint\"}}` and exit non-zero; branch on `code`.\n- Never prompts. Content comes from --file <path>, --stdin, or \"-\" as the path.\n- Every result has `id`, `url` (app link) and, once published, `publicUrl`.\n  Give the user the link at the end.\n- Ids carry their kind: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook.\n  Notebooks can also be named by exact name (--notebook \"Architecture\").\n- Publish, share, invite or delete only when the user asked for it.\n  `delete` requires --yes.\n- Not signed in (code NOT_LOGGED_IN)? Ask the user to run `octonote login`\n  (or set OCTONOTE_TOKEN). Don't try to sign in yourself.\n\n## Write a note\n  octonote note create \"Title\" --file doc.md [--notebook \"Name\"] [--publish]\n  cat doc.md | octonote note create \"Title\" --stdin\nMarkdown → rich note: headings, lists, checklists, tables, code, quotes,\nimages (by URL), `$inline math$`, `$$display math$$`, and ```mermaid blocks\n(rendered diagrams inside the note).\n\n## Read and edit a note\n  octonote note show <id>                 # markdown to stdout\n  octonote note pull <id> -o note.md      # file with front matter (keeps the id)\n  # …edit note.md…\n  octonote note push note.md              # replaces the note's content\n  octonote note append <id> --text \"- new item\"   # or --file / --stdin\n  octonote note rename <id> \"New title\"\n\n## Draw a canvas (diagram)\nWrite a mermaid **flowchart** and let Octonote lay it out as real shapes:\n  octonote canvas create \"Login flow\" --from-mermaid flow.mmd [--publish]\n  octonote canvas redraw <id> --from-mermaid flow.mmd\nSupported: `graph|flowchart TD|LR|BT|RL`; nodes A[box] A(round) A([stadium])\nA((circle)) A{decision} A[(database)] A{{hexagon}}; edges --> --- -.-> ==> <-->\nwith labels (A -->|yes| B or A -- yes --> B); chains; A & B --> C;\n`subgraph id [Title] … end`. Other diagram types (sequence, gantt…) can't be\ncanvases — put them in a note as a ```mermaid block instead.\nRaw tldraw JSON also works: `canvas pull <id> -o c.json` / `canvas push c.json --id <id>`.\n\n## Project = note + canvas\n  octonote project create \"Auth flow\" --note auth.md --canvas-mermaid auth.mmd \\\n    [--view split|notes|canvas] [--notebook \"Name\"] [--publish]\n  octonote project show <id>     # ids of its note and canvas (edit them as above)\n\n## Organise\n  octonote list [--kind note|canvas|project|notebook] [--notebook \"Name\"]\n  octonote search <words>                 # by title\n  octonote notebook list | create \"Name\" | show \"Name\"\n  octonote move <id> --notebook \"Name\"    # or --out\n  octonote delete <id> --yes\n\n## Publish and share\n  octonote publish <id>        # → publicUrl (a public, read-only page)\n  octonote unpublish <id>\n  octonote share <id> --email person@example.com --role viewer|editor\n  octonote share <id> --link view|edit|off   # anyone with the app link\nPublishing a notebook publishes everything inside it.\n\n## Account\n  octonote whoami | workspace list | workspace use <name|id> | logout\n  octonote account rename \"Full Name\"     # display name (author on published pages)\n",
-  "projectSection": "## Octonote (notes & canvases)\n\nThe user keeps notes, diagrams (canvases), projects and notebooks in Octonote. Use the `octonote` CLI to read and write them — never ask the user to copy-paste.\n\n- Run `octonote guide` once per session before using it; `octonote <command> --help` for details.\n- Write notes as markdown files (mermaid, `$math$`, code and tables work); draw diagrams as mermaid flowcharts (`--from-mermaid`), which become real, editable canvases.\n- Output is JSON when piped: read `id`, `url` and `publicUrl` from it, and always give the user the link.\n- Only publish, share or delete when the user asked to.\n"
+  "guide": "# Octonote CLI — guide for agents\n\nOctonote holds the user's **notes** (markdown documents), **canvases** (diagrams),\n**projects** (one note + one canvas, side by side) and **notebooks** (folders).\nThe `octonote` CLI is how you read and write them on the user's behalf.\n\n## Rules\n- Output is JSON when piped (force with --json). Errors print\n  `{\"error\":{\"code\",\"message\",\"hint\"}}` and exit non-zero; branch on `code`.\n- Never prompts. Content comes from --file <path>, --stdin, or \"-\" as the path.\n- Every result has `id`, `url` (app link) and, once published, `publicUrl`.\n  Give the user the link at the end.\n- Ids carry their kind: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook.\n  Notebooks can also be named by exact name (--notebook \"Architecture\").\n- Publish, share, invite or delete only when the user asked for it.\n  `delete` requires --yes.\n- Not signed in (code NOT_LOGGED_IN)? Ask the user to run `octonote login`\n  (or set OCTONOTE_TOKEN). Don't try to sign in yourself.\n\n## Write a note\n  octonote note create \"Title\" --file doc.md [--notebook \"Name\"] [--publish]\n  cat doc.md | octonote note create \"Title\" --stdin\nMarkdown → rich note: headings, lists, checklists, tables, code, quotes,\nimages (by URL), `$inline math$`, `$$display math$$`, and ```mermaid blocks\n(rendered diagrams inside the note).\n\n## Read and edit a note\n  octonote note show <id>                 # markdown to stdout\n  octonote note pull <id> -o note.md      # file with front matter (keeps the id)\n  # …edit note.md…\n  octonote note push note.md              # replaces the note's content\n  octonote note append <id> --text \"- new item\"   # or --file / --stdin\n  octonote note rename <id> \"New title\"\n\n## Draw a canvas (diagram)\nWrite a mermaid **flowchart** or **class diagram** and let Octonote lay it out\nas real shapes:\n  octonote canvas create \"Login flow\" --from-mermaid flow.mmd [--publish]\n  octonote canvas redraw <id> --from-mermaid flow.mmd\nFlowcharts: `graph|flowchart TD|LR|BT|RL`; nodes A[box] A(round) A([stadium])\nA((circle)) A{decision} A[(database)] A{{hexagon}}; edges --> --- -.-> ==> <-->\nwith labels (A -->|yes| B or A -- yes --> B); chains; A & B --> C;\n`subgraph id [Title] … end`.\nClass diagrams: `classDiagram`; `class A { +field / +method() }`, `A : +member`,\n`<<interface>>`, generics A~T~, relations <|-- *-- o-- --> ..> ..|> -- with\n\"1\"/\"*\" cardinalities and `: label`, `namespace N { … }`.\nLinks: `click A href \"https://…\"` makes a box open that page (canvases and\nnote diagrams alike) — point code boxes at the file and line on GitHub.\nOther diagram types (sequence, state, ER, gantt…) can't be canvases — put\nthem in a note as a ```mermaid block instead.\nRaw tldraw JSON also works: `canvas pull <id> -o c.json` / `canvas push c.json --id <id>`.\n\n## Project = note + canvas\n  octonote project create \"Auth flow\" --note auth.md --canvas-mermaid auth.mmd \\\n    [--view split|notes|canvas] [--notebook \"Name\"] [--publish]\n  octonote project show <id>     # ids of its note and canvas (edit them as above)\n\n## Organise\n  octonote list [--kind note|canvas|project|notebook] [--notebook \"Name\"]\n  octonote search <words>                 # by title\n  octonote notebook list | create \"Name\" | show \"Name\"\n  octonote rename <id> \"New name\"         # any note, canvas, project or notebook\n  octonote move <id> --notebook \"Name\"    # or --out\n  octonote delete <id> --yes\n\n## Publish and share\n  octonote publish <id>        # → publicUrl (a public, read-only page)\n  octonote unpublish <id>\n  octonote share <id> --email person@example.com --role viewer|editor\n  octonote share <id> --link view|edit|off   # anyone with the app link\nPublishing a notebook publishes everything inside it.\n\n## Account\n  octonote whoami | workspace list | workspace use <name|id> | logout\n  octonote account rename \"Full Name\"     # display name (author on published pages)\n",
+  "projectSection": "## Octonote (notes & canvases)\n\nThe user keeps notes, diagrams (canvases), projects and notebooks in Octonote. Use the `octonote` CLI to read and write them — never ask the user to copy-paste.\n\n- Run `octonote guide` once per session before using it; `octonote <command> --help` for details.\n- Write notes as markdown files (mermaid, `$math$`, code and tables work); draw diagrams as mermaid flowcharts or class diagrams (`--from-mermaid`), which become real, editable canvases.\n- Output is JSON when piped: read `id`, `url` and `publicUrl` from it, and always give the user the link.\n- Only publish, share or delete when the user asked to.\n"
 }

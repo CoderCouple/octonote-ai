@@ -1,5 +1,5 @@
 /**
- * Canvases from mermaid flowcharts — how the CLI and agents "draw". The
+ * Canvases from mermaid flowcharts and class diagrams — how the CLI and agents "draw". The
  * parsing and layout live in @octonote/content; this service adds
  * permissions and storage by going through CanvasesService, so every rule
  * (edit access, plan limits, audit) still applies.
@@ -15,7 +15,7 @@ import { CanvasesService } from "./canvases.service";
 export class CanvasDiagramService {
   constructor(private readonly canvases: CanvasesService) {}
 
-  /** A new canvas, optionally drawn from a flowchart. */
+  /** A new canvas, optionally drawn from a flowchart or class diagram. */
   async create(workspaceId: string, input: CanvasCreate, actorUserId: string): Promise<Canvas> {
     const { mermaid, ...rest } = input;
     // Parse before creating, so bad input doesn't leave an empty canvas behind.
@@ -24,7 +24,7 @@ export class CanvasDiagramService {
     return document ? this.canvases.update(canvas.id, { document }, actorUserId) : canvas;
   }
 
-  /** Redraw an existing canvas from a flowchart (replaces what's on it). */
+  /** Redraw an existing canvas from a diagram (replaces what's on it). */
   async replace(canvasId: string, mermaid: string, title: string | undefined, actorUserId: string) {
     return this.canvases.update(
       canvasId,

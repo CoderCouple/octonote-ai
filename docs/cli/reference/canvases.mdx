@@ -13,7 +13,7 @@ octonote canvas pull cnv_… -o board.json   # raw tldraw JSON
 
 ## canvas create
 
-Create a canvas — drawn from a mermaid flowchart, from tldraw JSON, or empty
+Create a canvas — drawn from a mermaid flowchart or class diagram, from tldraw JSON, or empty
 
 ```bash
 octonote canvas create [title] [options]
@@ -22,14 +22,14 @@ octonote canvas create [title] [options]
 | Argument or option | What it does |
 | --- | --- |
 | <code>&lt;title&gt;</code> | title (default: Untitled canvas) |
-| <code>-m, --from-mermaid &lt;path&gt;</code> | mermaid flowchart file ("-" for stdin) to draw as real shapes |
+| <code>-m, --from-mermaid &lt;path&gt;</code> | mermaid flowchart or class diagram file ("-" for stdin) to draw as real shapes |
 | <code>-f, --file &lt;path&gt;</code> | tldraw snapshot JSON (from `canvas pull`) |
 | <code>-n, --notebook &lt;notebook&gt;</code> | put it in a notebook (id or exact name) |
 | <code>--publish</code> | publish it to the web and print the public URL |
 
 ## canvas redraw
 
-Replace a canvas with a drawing of a mermaid flowchart
+Replace a canvas with a drawing of a mermaid flowchart or class diagram
 
 ```bash
 octonote canvas redraw <canvas> [options]
@@ -38,7 +38,7 @@ octonote canvas redraw <canvas> [options]
 | Argument or option | What it does |
 | --- | --- |
 | <code>&lt;canvas&gt;</code> | canvas id (cnv_…) or URL (required) |
-| <code>-m, --from-mermaid &lt;path&gt;</code> | mermaid flowchart file ("-" for stdin) (required) |
+| <code>-m, --from-mermaid &lt;path&gt;</code> | mermaid flowchart or class diagram file ("-" for stdin) (required) |
 
 ## canvas pull
 
