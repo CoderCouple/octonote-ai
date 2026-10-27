@@ -117,7 +117,7 @@ export class McpController {
       "search",
       {
         title: "Search Octonote",
-        description: "Find the user's notes, canvases, projects and notebooks by title. Returns ids to pass to fetch.",
+        description: "Find the user's notes, canvases, projects and notebooks by title. Returns each match's id, title and link.",
         inputSchema: { query: z.string().describe("Words from the title") },
         annotations: READ,
       },
@@ -184,7 +184,7 @@ export class McpController {
       {
         title: "Draw a canvas",
         description:
-          "Create a canvas drawn from a mermaid flowchart (graph/flowchart) or class diagram (classDiagram) as real, editable shapes. Other diagram types belong in a note as a ```mermaid block.",
+          "Create a canvas drawn from a mermaid flowchart (graph/flowchart) or class diagram (classDiagram) as real, editable shapes. Other mermaid diagram types are not supported on canvases; notes can contain them as ```mermaid blocks.",
         inputSchema: { title: z.string(), mermaid: z.string().optional(), notebook },
         annotations: WRITE,
       },
@@ -251,7 +251,7 @@ export class McpController {
       {
         title: "Publish to the web",
         description:
-          "Make an item a public, read-only web page and return its publicUrl. ONLY when the user asked to publish. Publishing a notebook publishes everything in it.",
+          "Make an item a public, read-only web page and return its publicUrl, or unpublish it. Publishing a notebook publishes everything in it.",
         inputSchema: { id, published: z.boolean().default(true).describe("false unpublishes") },
         annotations: OUTWARD,
       },
@@ -261,7 +261,7 @@ export class McpController {
       "share",
       {
         title: "Share with a person",
-        description: "Give a person access by email (they get an invite). ONLY when the user asked to share.",
+        description: "Give a person viewer or editor access by email; they receive an invitation email.",
         inputSchema: { id, email: z.string().email(), role: z.enum(["viewer", "editor"]).default("viewer") },
         annotations: OUTWARD,
       },
@@ -271,7 +271,7 @@ export class McpController {
       "set_link_access",
       {
         title: "Set link access",
-        description: "Let anyone with the link view or edit (or turn that off). ONLY when the user asked.",
+        description: "Set whether anyone with the link can view or edit an item, or turn link access off.",
         inputSchema: { id, access: z.enum(["off", "view", "edit"]) },
         annotations: OUTWARD,
       },
@@ -281,7 +281,7 @@ export class McpController {
       "delete",
       {
         title: "Delete",
-        description: "Delete a note, canvas, project or notebook (a notebook's items move to the top level). ONLY when the user asked to delete.",
+        description: "Delete a note, canvas, project or notebook. Deleting a notebook moves its items to the top level.",
         inputSchema: { id },
         annotations: OVERWRITE,
       },

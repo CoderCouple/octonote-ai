@@ -141,7 +141,7 @@ export class McpToolsService {
       const { canvas } = await this.canvases.getOne(id, userId);
       return {
         ...ref("canvas", id, canvas.title),
-        text: `Canvas "${canvas.title}". Canvases are drawings; open the link to see it. To change it, redraw it from a mermaid flowchart or class diagram with redraw_canvas.`,
+        text: `Canvas "${canvas.title}": a drawing of shapes and arrows, viewable at its link. Canvases can be redrawn from a mermaid flowchart or class diagram.`,
       };
     }
     if (kind === "project") {
