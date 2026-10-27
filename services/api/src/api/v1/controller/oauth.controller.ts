@@ -30,6 +30,13 @@ export class OAuthController {
     return json(reply, 200, this.oauth.authorizationServerMetadata(apiBase(req.headers)));
   }
 
+  /** Assistants show the server domain's favicon next to Octonote's tools in chats. */
+  @Get(["favicon.ico", "favicon.png", "apple-touch-icon.png"])
+  @SkipResponseInterceptor()
+  favicon(@Res() reply: FastifyReply) {
+    return reply.header("cache-control", "public, max-age=86400").redirect("https://octonote.ai/brand-logo-512.png", 302);
+  }
+
   /** OpenAI's plugin portal verifies domain ownership with a token served here. */
   @Get(".well-known/openai-apps-challenge")
   @SkipResponseInterceptor()

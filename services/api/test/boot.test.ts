@@ -25,6 +25,8 @@ NestFactory.create(AppModule, new FastifyAdapter({ bodyLimit: 10 * 1024 * 1024 }
     await fastify.ready();
     const form = await fastify.inject({ method: "POST", url: "/oauth/token", headers: { "content-type": "application/x-www-form-urlencoded" }, payload: "grant_type=nope" });
     if (!form.body.includes("unsupported_grant_type")) throw new Error("form body not parsed: " + form.body);
+    const icon = await fastify.inject({ method: "GET", url: "/favicon.ico" });
+    if (icon.statusCode !== 302 || !String(icon.headers.location).endsWith("brand-logo-512.png")) throw new Error("favicon: " + icon.statusCode);
     await app.close(); console.log("BOOT_OK"); process.exit(0);
   })
   .catch((e) => { console.error(e && e.message); process.exit(1); });
