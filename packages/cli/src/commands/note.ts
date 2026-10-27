@@ -8,6 +8,7 @@ import { emit } from "../core/output.js";
 import { parseRef } from "../core/refs.js";
 import { describeItem, item, setPublished } from "../core/resources.js";
 import { action } from "../core/run.js";
+import { colorEnabled, renderMarkdown } from "../core/terminal-markdown.js";
 
 interface Page {
   id: string;
@@ -97,7 +98,7 @@ export function registerNote(program: Command) {
         }>(`/pages/${id}/markdown`);
         emit(
           { ...item(ctx, "page", md), markdown: md.markdown },
-          (d) => d.markdown,
+          (d) => `${renderMarkdown(d.markdown)}\n\n${dimUrl(d.url)}`,
         );
       }),
     );
@@ -206,4 +207,9 @@ export function registerNote(program: Command) {
         emit(item(ctx, "page", page), (i) => `Renamed ${describeItem(i)}`);
       }),
     );
+}
+
+/** The note's link under the rendered text, dimmed in a colour terminal. */
+function dimUrl(url: string) {
+  return colorEnabled() ? `\u001b[2m${url}\u001b[22m` : url;
 }

@@ -7,6 +7,7 @@ import { ActivityService } from "../../../common/activity.service";
 import { apiBase } from "../../../common/api-base";
 import { SkipResponseInterceptor } from "../../../common/interceptor/skip-response-interceptor.decorator";
 import { McpToolsService, type Actor } from "../../../service/mcp-tools.service";
+import { PREVIEW_MIME, PREVIEW_URI, previewHtml } from "../../../mcp/preview-view";
 import { mcpResource, OAuthService } from "../../../service/oauth.service";
 import { VERSION_INFO } from "./mcp-version";
 
@@ -24,6 +25,20 @@ const READ = { readOnlyHint: true, destructiveHint: false, openWorldHint: false 
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
 const OVERWRITE = { readOnlyHint: false, destructiveHint: true, openWorldHint: false } as const;
 const OUTWARD = { readOnlyHint: false, destructiveHint: false, openWorldHint: true } as const;
+
+/** The card may load images from Supabase Storage (canvas snapshots) and scripts from jsdelivr (mermaid, KaTeX). */
+function previewUiMeta() {
+  const domains = ["https://cdn.jsdelivr.net"];
+  try {
+    if (process.env.SUPABASE_URL) domains.push(new URL(process.env.SUPABASE_URL).origin);
+  } catch {
+    /* no storage origin: snapshots just won't load */
+  }
+  return { ui: { csp: { resourceDomains: domains, connectDomains: [] }, prefersBorder: true } };
+}
+
+/** Tools whose result renders as the inline card in MCP Apps hosts. */
+const CARD = { ui: { resourceUri: PREVIEW_URI }, "openai/outputTemplate": PREVIEW_URI } as const;
 
 const id = z.string().describe("Octonote id: pag_… note, cnv_… canvas, prj_… project, ntb_… notebook");
 const notebook = z.string().optional().describe("Put it in this notebook (id or exact name)");
@@ -94,7 +109,13 @@ export class McpController {
     // this keeps argument types without them.
     const tool = <S extends z.ZodRawShape>(
       name: string,
-      config: { title: string; description: string; inputSchema: S; annotations: Record<string, boolean> },
+      config: {
+        title: string;
+        description: string;
+        inputSchema: S;
+        annotations: Record<string, boolean>;
+        _meta?: Record<string, unknown>;
+      },
       handler: (args: z.infer<z.ZodObject<S>>) => Promise<unknown>,
     ) =>
       (server.registerTool.bind(server) as unknown as (n: string, c: unknown, h: unknown) => void)(
@@ -103,6 +124,25 @@ export class McpController {
         handler,
       );
     const t = this.tools;
+    server.registerResource(
+      "octonote-preview",
+      PREVIEW_URI,
+      { title: "Octonote card", description: "Shows a note, canvas, project or notebook inline.", mimeType: PREVIEW_MIME, _meta: previewUiMeta() },
+      async () => ({ contents: [{ uri: PREVIEW_URI, mimeType: PREVIEW_MIME, text: previewHtml(), _meta: previewUiMeta() }] }),
+    );
+    /** Like run(), plus the item's card data in structuredContent (kept out of the model's context). */
+    const runCard = <R>(fn: () => Promise<R>, itemId: (r: R) => string) => async () => {
+      try {
+        const result = await fn();
+        const preview = await t.preview(actor.id, itemId(result)).catch(() => null);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+          ...(preview ? { structuredContent: { preview } } : {}),
+        };
+      } catch (err) {
+        return { isError: true, content: [{ type: "text" as const, text: errorText(err) }] };
+      }
+    };
     const run = (fn: () => Promise<unknown>) => async () => {
       try {
         const result = await fn();
@@ -133,12 +173,16 @@ export class McpController {
         description: "Read one item: a note's markdown, a project's note, a notebook's contents, or a canvas summary.",
         inputSchema: { id },
         annotations: READ,
+        _meta: CARD,
       },
       async ({ id }) =>
-        run(async () => {
-          const item = await t.fetch(actor.id, id);
-          return { id: item.id, title: item.title, text: item.text, url: item.url, metadata: { kind: item.kind } };
-        })(),
+        runCard(
+          async () => {
+            const item = await t.fetch(actor.id, id);
+            return { id: item.id, title: item.title, text: item.text, url: item.url, metadata: { kind: item.kind } };
+          },
+          (r) => r.id,
+        )(),
     );
     tool(
       "list_items",
@@ -161,8 +205,9 @@ export class McpController {
         description: "Create a note from markdown (math, mermaid, code and tables work). Returns its link.",
         inputSchema: { title: z.string(), markdown: z.string().optional(), notebook },
         annotations: WRITE,
+        _meta: CARD,
       },
-      async (args) => run(() => t.createNote(actor.id, args))(),
+      async (args) => runCard(() => t.createNote(actor.id, args), (r) => r.id)(),
     );
     tool(
       "update_note",
@@ -176,8 +221,9 @@ export class McpController {
           title: z.string().optional().describe("New title (replace mode only)"),
         },
         annotations: OVERWRITE,
+        _meta: CARD,
       },
-      async (args) => run(() => t.updateNote(actor.id, args))(),
+      async (args) => runCard(() => t.updateNote(actor.id, args), (r) => r.id)(),
     );
     tool(
       "create_canvas",
@@ -187,8 +233,9 @@ export class McpController {
           "Create a canvas drawn from a mermaid flowchart (graph/flowchart) or class diagram (classDiagram) as real, editable shapes. Other mermaid diagram types are not supported on canvases; notes can contain them as ```mermaid blocks.",
         inputSchema: { title: z.string(), mermaid: z.string().optional(), notebook },
         annotations: WRITE,
+        _meta: CARD,
       },
-      async (args) => run(() => t.createCanvas(actor.id, args))(),
+      async (args) => runCard(() => t.createCanvas(actor.id, args), (r) => r.id)(),
     );
     tool(
       "redraw_canvas",
@@ -197,8 +244,9 @@ export class McpController {
         description: "Replace a canvas's drawing with a mermaid flowchart or class diagram.",
         inputSchema: { id, mermaid: z.string(), title: z.string().optional() },
         annotations: OVERWRITE,
+        _meta: CARD,
       },
-      async (args) => run(() => t.redrawCanvas(actor.id, args))(),
+      async (args) => runCard(() => t.redrawCanvas(actor.id, args), (r) => r.id)(),
     );
     tool(
       "create_project",
@@ -213,16 +261,19 @@ export class McpController {
           notebook,
         },
         annotations: WRITE,
+        _meta: CARD,
       },
       async (a) =>
-        run(() =>
-          t.createProject(actor.id, {
-            title: a.title,
-            noteMarkdown: a.note_markdown,
-            canvasMermaid: a.canvas_mermaid,
-            view: a.view,
-            notebook: a.notebook,
-          }),
+        runCard(
+          () =>
+            t.createProject(actor.id, {
+              title: a.title,
+              noteMarkdown: a.note_markdown,
+              canvasMermaid: a.canvas_mermaid,
+              view: a.view,
+              notebook: a.notebook,
+            }),
+          (r) => r.id,
         )(),
     );
     tool(
@@ -254,8 +305,9 @@ export class McpController {
           "Make an item a public, read-only web page and return its publicUrl, or unpublish it. Publishing a notebook publishes everything in it.",
         inputSchema: { id, published: z.boolean().default(true).describe("false unpublishes") },
         annotations: OUTWARD,
+        _meta: CARD,
       },
-      async (args) => run(() => t.setPublished(actor.id, args))(),
+      async (args) => runCard(() => t.setPublished(actor.id, args), (r) => r.id)(),
     );
     tool(
       "share",

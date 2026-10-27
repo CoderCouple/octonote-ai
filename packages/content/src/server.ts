@@ -53,6 +53,20 @@ export async function noteDocumentToMarkdown(document: unknown): Promise<string>
   return (await serverEditor()).blocksToMarkdownLossy(toStandardBlocks(blocks) as never);
 }
 
+/**
+ * A note's stored document → HTML for previews (assistant app cards). Lossy
+ * like the markdown export: Octonote's own blocks become standard ones
+ * (a mermaid diagram becomes a code block with language "mermaid").
+ */
+export async function noteDocumentToHtml(document: unknown): Promise<string> {
+  const blocks =
+    document && typeof document === "object" && Array.isArray((document as NoteDocument).blocks)
+      ? (document as NoteDocument).blocks
+      : [];
+  if (blocks.length === 0) return "";
+  return (await serverEditor()).blocksToHTMLLossy(toStandardBlocks(blocks) as never);
+}
+
 export { MermaidParseError, parseMermaidFlowchart, type Flowchart } from "./canvas/mermaid-flowchart";
 export { flowchartToCanvas } from "./canvas/flowchart-to-canvas";
 

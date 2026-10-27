@@ -152,6 +152,34 @@ describe("mcp server", () => {
     await client.close();
   });
 
+  it("serves the inline card (MCP Apps) and fills it from tool results", async () => {
+    const client = await connect(await tokenFor(alice.id));
+    const { tools } = await client.listTools();
+    const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
+    expect((byName.create_note!._meta as { ui?: { resourceUri?: string } }).ui?.resourceUri).toBe("ui://octonote/preview");
+    expect(byName.search!._meta?.ui).toBeUndefined();
+
+    const { resources } = await client.listResources();
+    expect(resources.find((r) => r.uri === "ui://octonote/preview")?.mimeType).toBe("text/html;profile=mcp-app");
+    const read = await client.readResource({ uri: "ui://octonote/preview" });
+    const page = read.contents[0] as { text: string; mimeType: string; _meta?: { ui?: { csp?: { resourceDomains?: string[] } } } };
+    expect(page.mimeType).toBe("text/html;profile=mcp-app");
+    expect(page.text).toContain("ui/initialize");
+    expect(page._meta?.ui?.csp?.resourceDomains).toContain("https://cdn.jsdelivr.net");
+
+    const r = (await client.callTool({
+      name: "create_note",
+      arguments: { title: "Card test", markdown: "# Card test\n\n- [ ] first step\n\n```mermaid\ngraph LR\n  A-->B\n```" },
+    })) as { content: { text: string }[]; structuredContent?: { preview?: Record<string, unknown> } };
+    const preview = r.structuredContent!.preview!;
+    expect(preview).toMatchObject({ kind: "note", title: "Card test", publicUrl: null });
+    expect(String(preview.html)).toContain("first step");
+    expect(String(preview.html)).toContain("mermaid");
+    // The model gets the short JSON result, not the card's HTML.
+    expect(r.content[0]!.text).not.toContain("<h1");
+    await client.close();
+  });
+
   it("publishes only on request and returns the public link", async () => {
     const client = await connect(await tokenFor(alice.id));
     const note = (await call(client, "create_note", { title: "Launch post", markdown: "Hello" })).json;

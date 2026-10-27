@@ -6,6 +6,7 @@
  * with the integration harness.
  */
 import { Injectable } from "@nestjs/common";
+import { noteDocumentToHtml } from "@octonote/content/server";
 import { BadRequest, NotFound } from "../common/error/error-factory";
 import { WorkspaceMembersRepository } from "../db/repository/workspace-members.repository";
 import type { ResourceKind } from "../model/sharing.model";
@@ -37,6 +38,24 @@ export interface ItemRef {
 const KIND_BY_PREFIX: Record<string, ResourceKind> = { pag: "page", cnv: "canvas", prj: "project", ntb: "notebook" };
 const KIND_NAME: Record<ResourceKind, ItemRef["kind"]> = { page: "note", canvas: "canvas", project: "project", notebook: "notebook" };
 const VIEWS = { notes: "notes", canvas: "canvas", split: "split" } as const;
+
+/** What the inline card (MCP Apps view) shows for an item. Never sent to the model. */
+export interface ItemPreview {
+  kind: ItemRef["kind"];
+  id: string;
+  title: string;
+  url: string;
+  publicUrl: string | null;
+  /** A note's content (or a project's note) as HTML. */
+  html?: string;
+  /** A canvas's (or a project's canvas's) PNG snapshot. */
+  thumbnailUrl?: string | null;
+  /** A notebook's contents. */
+  items?: ItemRef[];
+}
+
+/** Notes past this size are cut in the card; the link opens the whole note. */
+const PREVIEW_HTML_MAX = 60_000;
 
 export function kindOf(id: string): ResourceKind {
   const kind = KIND_BY_PREFIX[id.slice(0, 3)];
@@ -165,6 +184,39 @@ export class McpToolsService {
       ...ref("notebook", id, c.notebook.name),
       text: `Notebook "${c.notebook.name}" holds ${lines.length} item(s):\n${lines.join("\n") || "(empty)"}`,
     };
+  }
+
+  /** Everything the inline card needs for one item, read with the person's own access. */
+  async preview(userId: string, id: string): Promise<ItemPreview> {
+    const kind = kindOf(id);
+    const publicUrl = await this.settings
+      .getPublishState(kind, id, userId)
+      .then((s) => (s.published ? s.publicUrl : null))
+      .catch(() => null);
+    const html = async (document: unknown) => {
+      const out = await noteDocumentToHtml(document);
+      return out.length > PREVIEW_HTML_MAX ? `${out.slice(0, PREVIEW_HTML_MAX)}<p>…</p>` : out;
+    };
+    if (kind === "page") {
+      const { page } = await this.pages.getOne(id, userId);
+      return { ...ref(kind, id, page.title), publicUrl, html: await html(page.document) };
+    }
+    if (kind === "canvas") {
+      const { canvas } = await this.canvases.getOne(id, userId);
+      return { ...ref(kind, id, canvas.title), publicUrl, thumbnailUrl: canvas.thumbnailUrl };
+    }
+    if (kind === "project") {
+      const p = await this.projects.getOne(id, userId);
+      const note = p.noteId ? (await this.pages.getOne(p.noteId, userId)).page : null;
+      const canvas = p.canvasId ? (await this.canvases.getOne(p.canvasId, userId)).canvas : null;
+      return {
+        ...ref(kind, id, p.project.name),
+        publicUrl,
+        html: note ? await html(note.document) : "",
+        thumbnailUrl: canvas?.thumbnailUrl ?? null,
+      };
+    }
+    return { ...ref(kind, id, (await this.notebooks.getContents(id, userId)).notebook.name), publicUrl, items: await this.list(userId, { notebook: id }) };
   }
 
   // --- Write -----------------------------------------------------------------
