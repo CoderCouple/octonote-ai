@@ -76,6 +76,31 @@ describe("markdown → note document", () => {
     expect(again.blocks.map((b) => b.type)).toEqual(doc.blocks.map((b) => b.type));
   });
 
+  it("keeps links whose text is code (BlockNote can't nest code in a link)", async () => {
+    const doc = await markdownToNoteDocument(
+      "See [`Ledger`](https://x.dev/a#L1), [the `run_task` fn](https://x.dev/b) and `list[str]` and ![`img`](https://x.dev/i.png).",
+    );
+    const content = (doc.blocks[0] as { content: Record<string, any>[] }).content;
+    const links = content.filter((c) => c.type === "link");
+    expect(links.map((l) => [l.href, l.content.map((t: { text: string }) => t.text).join("")])).toEqual([
+      ["https://x.dev/a#L1", "Ledger"],
+      ["https://x.dev/b", "the run_task fn"],
+    ]);
+    expect(content.some((c) => c.text === "list[str]" && c.styles?.code)).toBe(true);
+  });
+
+  it("reads snake_case and _private names as text, not emphasis", async () => {
+    const doc = await markdownToNoteDocument(
+      "Call _write_rollout, see [_fallback_x](https://x.dev/a_b#L1) at https://x.dev/c_d and keep _real italic_.",
+    );
+    const content = (doc.blocks[0] as { content: Record<string, any>[] }).content;
+    const flat = content.flatMap((c) => (c.type === "link" ? c.content.map((t: object) => ({ ...t, href: c.href })) : [c]));
+    expect(flat.find((c) => c.text?.includes("_write_rollout"))?.styles?.italic).toBeFalsy();
+    expect(content.find((c) => c.type === "link" && c.href === "https://x.dev/a_b#L1")!.content[0].text).toBe("_fallback_x");
+    expect(flat.some((c) => c.text?.includes("https://x.dev/c_d") || c.href === "https://x.dev/c_d")).toBe(true);
+    expect(flat.find((c) => c.text === "real italic")?.styles?.italic).toBe(true);
+  });
+
   it("handles an empty document", async () => {
     expect(await noteDocumentToMarkdown({})).toBe("");
     expect((await markdownToNoteDocument("")).blocks.length).toBeLessThanOrEqual(1);

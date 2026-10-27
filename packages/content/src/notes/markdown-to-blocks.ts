@@ -24,6 +24,8 @@ const INLINE_TOKEN_RE = /OCTOMATHINLINE(\d+)END/g;
 const INLINE_MATH_RE = /(^|[^\\$\w])\$(?![\s$])([^$\n]+?)(?<![\s\\])\$(?![\w$])/g;
 const DISPLAY_MATH_RE = /^[ \t]*\$\$([\s\S]*?)\$\$[ \t]*$/gm;
 const FENCE_RE = /^[ \t]*(```|~~~)/;
+/** A link label containing a code span: [`name`](…) or [the `name` fn](…). Images (![…]) excluded. */
+const LINK_WITH_CODE_RE = /(?<!!)\[([^\]\n]*`[^\]\n]*)\]\(/g;
 
 export const MATH_LANGS = new Set(["math", "latex", "tex", "katex"]);
 
@@ -91,6 +93,9 @@ function liftMath(markdown: string) {
 
   const prose = (text: string) =>
     text
+      // BlockNote's code style can't sit inside a link, so [`run_task`](url)
+      // came out as code with no link. Keep the link; drop the code style.
+      .replace(LINK_WITH_CODE_RE, (_, label: string) => `[${label.replace(/`/g, "")}](`)
       .replace(
         DISPLAY_MATH_RE,
         (_, latex: string) => `\n\n${BLOCK_TOKEN(display.push(latex.trim()) - 1)}\n\n`,
@@ -100,15 +105,31 @@ function liftMath(markdown: string) {
       .map((part, i) =>
         i % 2 === 1
           ? part
-          : part.replace(
-              INLINE_MATH_RE,
-              (_, pre: string, latex: string) => `${pre}${INLINE_TOKEN(inline.push(latex) - 1)}`,
+          : escapeIdentifierUnderscores(
+              part.replace(
+                INLINE_MATH_RE,
+                (_, pre: string, latex: string) => `${pre}${INLINE_TOKEN(inline.push(latex) - 1)}`,
+              ),
             ),
       )
       .join("");
 
   const processed = segments.map((s) => (s.code ? s.text : prose(s.text))).join("\n");
   return { processed, display, inline };
+}
+
+/**
+ * BlockNote's parser treats `_` inside a word as emphasis, so `_write_rollout`
+ * became italic "write" + "rollout" (CommonMark says an intraword `_` can't
+ * close emphasis). Escape every `_` in a word that has one between letters or
+ * digits; link targets, autolinks and URLs are left as they are.
+ */
+function escapeIdentifierUnderscores(text: string): string {
+  return text.replace(
+    /(\]\([^)\s]*\))|(<[^>\s]+>)|(\bhttps?:\/\/[^\s)]+)|((?<![\w\\])[\w]*_[\w]*)/g,
+    (whole, _target?: string, _angle?: string, _url?: string, word?: string) =>
+      word && /[A-Za-z0-9]_+[A-Za-z0-9]/.test(word) ? word.replace(/_/g, "\\_") : whole,
+  );
 }
 
 function textOf(content: unknown): string {
