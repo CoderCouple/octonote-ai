@@ -3,7 +3,9 @@
 // a password, and the login page shows "App reviewer? Sign in with a password"
 // while NEXT_PUBLIC_REVIEWER_LOGIN=true on Vercel.
 //
-//   pnpm reviewer:account
+//   pnpm reviewer:account                   create, or re-apply the saved password
+//   pnpm reviewer:account --new-password    generate a new password and apply it
+//   (or edit REVIEWER_PASSWORD in .env.hosted and run it again to use your own)
 //
 // Reads SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY and API_URL
 // from .env.hosted. Creates (or resets the password of) REVIEWER_EMAIL
@@ -29,7 +31,8 @@ if (missing.length) {
 }
 
 const email = env.REVIEWER_EMAIL || "review@octonote.ai";
-const password = env.REVIEWER_PASSWORD || randomBytes(18).toString("base64url");
+const fresh = process.argv.includes("--new-password");
+const password = (!fresh && env.REVIEWER_PASSWORD) || randomBytes(18).toString("base64url");
 const admin = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "content-type": "application/json" };
 
 function saveEnv(key, value) {
@@ -123,5 +126,5 @@ if (!notebooks.some((n) => n.name === "Getting started")) {
   console.log("Added sample content to the 'Getting started' notebook.");
 }
 
-console.log(`Reviewer account ready: ${email}`);
+console.log(`Reviewer account ready: ${email}${fresh ? " (new password set)" : ""}`);
 console.log("Password saved in .env.hosted as REVIEWER_PASSWORD (paste it into the directory forms; never commit it).");
