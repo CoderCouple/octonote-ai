@@ -177,7 +177,13 @@ export class OAuthService {
       if (!Array.isArray(uris) || !uris.length || !uris.every((u) => typeof u === "string" && isAllowedRedirect(u))) {
         throw new OAuthError("invalid_client", "The client metadata needs https (or localhost) redirect_uris.");
       }
-      if ((doc.token_endpoint_auth_method ?? "none") !== "none") {
+      // Public clients only. A document may prefer another method (ChatGPT's says
+      // private_key_jwt) yet list "none" as supported; our metadata only offers
+      // "none", so that's what it uses here.
+      const supported = Array.isArray(doc.token_endpoint_auth_methods_supported)
+        ? doc.token_endpoint_auth_methods_supported
+        : [doc.token_endpoint_auth_method ?? "none"];
+      if (!supported.includes("none")) {
         throw new OAuthError("invalid_client", "Only public clients are supported.");
       }
       return this.repo.upsertClient({

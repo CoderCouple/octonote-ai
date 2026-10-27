@@ -129,6 +129,22 @@ describe("client registration", () => {
     expect(await errorOf(h.oauth.resolveClient(other))).toBe("invalid_client");
   });
 
+  it("accepts a CIMD client that prefers private_key_jwt but supports none (ChatGPT)", async () => {
+    const id = "https://chatgpt.example/oauth/client.json";
+    fetchDoc.mockResolvedValue({
+      client_id: id,
+      client_name: "ChatGPT",
+      redirect_uris: ["https://chatgpt.example/connector_platform_oauth_redirect"],
+      token_endpoint_auth_method: "private_key_jwt",
+      token_endpoint_auth_methods_supported: ["none", "private_key_jwt"],
+    });
+    expect((await h.oauth.resolveClient(id)).name).toBe("ChatGPT");
+
+    const strict = "https://strict.example/client.json";
+    fetchDoc.mockResolvedValue({ client_id: strict, redirect_uris: [REDIRECT], token_endpoint_auth_method: "private_key_jwt" });
+    expect(await errorOf(h.oauth.resolveClient(strict))).toBe("invalid_client");
+  });
+
   it("never fetches private addresses", () => {
     for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "192.168.1.1", "169.254.169.254", "100.64.0.1", "::1", "fd00::1", "::ffff:127.0.0.1", "0.0.0.0"]) {
       expect(isPrivateAddress(ip)).toBe(true);
