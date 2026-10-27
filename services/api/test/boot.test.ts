@@ -14,9 +14,19 @@ const root = join(__dirname, "..");
 const BOOT = `
 require("reflect-metadata");
 const { NestFactory } = require("@nestjs/core");
+const { FastifyAdapter } = require("@nestjs/platform-fastify");
 const { AppModule } = require("./dist/modules/app.module");
-NestFactory.createApplicationContext(AppModule, { logger: ["error"], abortOnError: false })
-  .then(async (app) => { await app.close(); console.log("BOOT_OK"); process.exit(0); })
+// The real HTTP app, as main.ts builds it: adapter-level clashes (routes,
+// content-type parsers) only surface here, not in an application context.
+NestFactory.create(AppModule, new FastifyAdapter({ bodyLimit: 10 * 1024 * 1024 }), { rawBody: true, logger: ["error"], abortOnError: false })
+  .then(async (app) => {
+    await app.init();
+    const fastify = app.getHttpAdapter().getInstance();
+    await fastify.ready();
+    const form = await fastify.inject({ method: "POST", url: "/oauth/token", headers: { "content-type": "application/x-www-form-urlencoded" }, payload: "grant_type=nope" });
+    if (!form.body.includes("unsupported_grant_type")) throw new Error("form body not parsed: " + form.body);
+    await app.close(); console.log("BOOT_OK"); process.exit(0);
+  })
   .catch((e) => { console.error(e && e.message); process.exit(1); });
 `;
 

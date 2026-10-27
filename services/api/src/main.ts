@@ -21,14 +21,6 @@ async function bootstrap() {
   );
 
   // Comma-separated, e.g. "http://localhost:3000,http://192.168.1.20:3000" for phone testing.
-  // OAuth's token endpoint is form-encoded (RFC 6749); Fastify only parses JSON by default.
-  app
-    .getHttpAdapter()
-    .getInstance()
-    .addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_req, body, done) => {
-      done(null, Object.fromEntries(new URLSearchParams(body as string)));
-    });
-
   app.enableCors({
     origin: (process.env.WEB_ORIGIN ?? "http://localhost:3000").split(",").map((o) => o.trim()),
     credentials: true,
