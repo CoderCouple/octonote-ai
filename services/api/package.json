@@ -17,6 +17,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@nestjs/common": "^10.4.15",
     "@nestjs/core": "^10.4.15",
     "@nestjs/platform-fastify": "^10.4.15",
@@ -24,6 +25,7 @@
     "@octonote/shared": "workspace:*",
     "@supabase/supabase-js": "^2.47.10",
     "drizzle-orm": "^0.38.4",
+    "fastify": "4.28.1",
     "postgres": "^3.4.5",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.14.0",

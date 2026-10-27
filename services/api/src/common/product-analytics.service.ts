@@ -44,7 +44,8 @@ export type ProductEvent =
   | "subscription_ended"
   | "subscription_interval_changed"
   | "code_redeemed"
-  | "cli_connected";
+  | "cli_connected"
+  | "assistant_app_connected";
 
 const OPT_OUT_TTL_MS = 5 * 60_000;
 

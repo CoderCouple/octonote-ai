@@ -69,6 +69,10 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - Auto-save on debounce
 - Mobile parity for both surfaces (reference block included)
 
+## v2 (started 2026-10-27)
+
+- **Assistant apps — in progress (user decision 2026-10-27):** one remote MCP server in `services/api` (Streamable HTTP) with OAuth sign-in, exposing the CLI's commands as tools → a Claude.ai custom connector, a ChatGPT app (Apps SDK; in-chat preview card later) and Gemini CLI. Auth follows the MCP 2026-07-28 spec: Octonote is its own authorization server (PKCE, CIMD with DCR kept for older clients, RFC 9728 resource metadata, RFC 8707 audience binding). Publish/share/delete only on request, as in the CLI. Everything else in the deferred list below stays deferred until the user picks it.
+
 **EXPLICITLY DEFERRED to v2+ (do not add in v1 even if "it's small"):**
 - **Inline canvas block** (full tldraw rendered inside a note) — ships in v2 after we learn how users actually use the `canvas-reference` block. Do not add tldraw inside the BlockNote editor in v1.
 - Custom diagrams-as-code DSL beyond Mermaid
@@ -81,7 +85,6 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - Desktop app (the CLI moved into v1 on 2026-10-13)
 - Voice / transcription / meetings
 - AI agents
-- **Assistant apps (first in v2, user decision 2026-10-14):** one remote MCP server (e.g. `mcp.octonote.ai`, in `services/api`) with OAuth sign-in, exposing the CLI's commands as tools → a Claude connector, a ChatGPT app (Apps SDK, with an in-chat preview card) and Gemini CLI. Publish/share/delete only on request, as in the CLI.
 
 The prior version (`~/Desktop/octo-focus-ai`) failed because the MVP had three products' worth of features. The v1 list above has already grown once (notebooks, standalone items, sharing); it is now frozen. Resist "while we're at it."
 

@@ -12,6 +12,9 @@ import { FiguresService } from "../service/figures.service";
 import { VotesService } from "../service/votes.service";
 import { CanvasesController } from "../api/v1/controller/canvases.controller";
 import { CliTokensController } from "../api/v1/controller/cli-tokens.controller";
+import { OAuthController } from "../api/v1/controller/oauth.controller";
+import { McpController } from "../api/v1/controller/mcp.controller";
+import { McpToolsService } from "../service/mcp-tools.service";
 import { NoteMarkdownController } from "../api/v1/controller/note-markdown.controller";
 import { NoteMarkdownService } from "../service/note-markdown.service";
 import { AdminController } from "../api/v1/controller/admin.controller";
@@ -59,6 +62,8 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     BillingWebhookController,
     FiguresController,
     CliTokensController,
+    OAuthController,
+    McpController,
     NoteMarkdownController,
     AdminPromoController,
     AdminPartnersController,
@@ -82,6 +87,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     VotesService,
     NoteMarkdownService,
     CanvasDiagramService,
+    McpToolsService,
     PromotionsService,
     PartnersService,
     AdminCrmService,

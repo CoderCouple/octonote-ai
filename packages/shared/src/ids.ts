@@ -28,6 +28,10 @@ export const ID_PREFIXES = {
   partnerCommission: "pcm",
   crmEntry: "crm",
   crmFollowup: "fup",
+  oauthClient: "occ",
+  oauthRequest: "oar",
+  oauthGrant: "ocg",
+  oauthToken: "oat",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Database, DRIZZLE } from "../db/database.module";
 import { activityDays } from "../db/schemas/tracking";
 
-export type ActivitySource = "web" | "mobile" | "cli";
+export type ActivitySource = "web" | "mobile" | "cli" | "mcp";
 
 /** Header the web and mobile apps send so the API can tell them apart. */
 export const CLIENT_HEADER = "x-octonote-client";

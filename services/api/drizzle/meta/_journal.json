@@ -141,6 +141,20 @@
       "when": 1792617592297,
       "tag": "0019_crm_last_seen",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793063214641,
+      "tag": "0020_oauth",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793063680909,
+      "tag": "0021_activity_mcp",
+      "breakpoints": true
     }
   ]
 }

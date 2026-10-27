@@ -10,6 +10,7 @@ import { BILLING_ENFORCED, PlanLimitsService } from "../common/plan-limits.servi
 import { DatabaseModule } from "../db/database.module";
 import { CanvasesRepository } from "../db/repository/canvases.repository";
 import { CliTokensRepository } from "../db/repository/cli-tokens.repository";
+import { OAuthRepository } from "../db/repository/oauth.repository";
 import { ChangeEventsRepository } from "../db/repository/change-events.repository";
 import { NotebooksRepository } from "../db/repository/notebooks.repository";
 import { PagesRepository } from "../db/repository/pages.repository";
@@ -21,6 +22,7 @@ import { ViewsRepository } from "../db/repository/views.repository";
 import { WorkspaceMembersRepository } from "../db/repository/workspace-members.repository";
 import { WorkspacesRepository } from "../db/repository/workspaces.repository";
 import { CliTokensService } from "../service/cli-tokens.service";
+import { OAuthService } from "../service/oauth.service";
 import { NotebookPlacement } from "../service/lib/notebook-placement";
 import { WorkspacesService } from "../service/workspaces.service";
 
@@ -28,6 +30,7 @@ const providers = [
   CanvasesRepository,
   ChangeEventsRepository,
   CliTokensRepository,
+  OAuthRepository,
   NotebooksRepository,
   PagesRepository,
   ProjectsRepository,
@@ -40,6 +43,7 @@ const providers = [
   ChangeEventsService,
   // Verifies `ont_…` bearer tokens for the auth guards.
   CliTokensService,
+  OAuthService,
   EmailService,
   PermissionsService,
   PlanLimitsService,

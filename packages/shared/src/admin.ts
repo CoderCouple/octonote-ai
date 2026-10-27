@@ -123,7 +123,7 @@ export interface AdminWorkspaceRow {
 export interface AdminUserDetail extends AdminUserRow {
   studentProUntil: string | null;
   /** Apps used in the last 30 days. */
-  sources: ("web" | "mobile" | "cli")[];
+  sources: ("web" | "mobile" | "cli" | "mcp")[];
   activeDays30: number;
   cliTokens: number;
   memberships: AdminWorkspaceRow[];
@@ -422,7 +422,7 @@ export interface CrmPersonDetail {
   activeDays: number;
   lastActive: string | null;
   /** The last 30 days (UTC), oldest first, and where they used Octonote each day. */
-  activity: { day: string; sources: ("web" | "mobile" | "cli")[] }[];
+  activity: { day: string; sources: ("web" | "mobile" | "cli" | "mcp")[] }[];
   /** Oldest first. */
   timeline: CrmTimelineItem[];
   /** Open ones first (by due date), then done ones. */

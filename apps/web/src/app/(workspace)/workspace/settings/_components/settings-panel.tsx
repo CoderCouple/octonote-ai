@@ -10,6 +10,7 @@ import {
   Handshake,
   Info,
   Check,
+  Bot,
   Copy,
   Layers,
   Loader2,
@@ -59,6 +60,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { BillingSection } from "./billing-section";
 import { CliSection } from "./cli-section";
+import { ConnectedAppsSection } from "./connected-apps-section";
 import { CreatorSection } from "./creator-section";
 import { CopyButton, Row, SectionShell } from "./settings-ui";
 import { clientApi } from "@/lib/api/client-fetch";
@@ -99,6 +101,7 @@ const SECTIONS = [
   { id: "memberships", label: "Memberships", icon: Layers },
   { id: "billing", label: "Plan & billing", icon: CreditCard },
   { id: "cli", label: "CLI & agents", icon: Terminal },
+  { id: "connected-apps", label: "Connected apps", icon: Bot },
   { id: "creator", label: "Creator program", icon: Handshake },
   { id: "about", label: "About", icon: Info },
   { id: "danger", label: "Danger zone", icon: AlertTriangle },
@@ -200,6 +203,7 @@ export function SettingsPanel({
         />
         <BillingSection workspaceId={workspace.id} />
         <CliSection />
+        <ConnectedAppsSection />
         {creator ? <CreatorSection creator={creator} /> : null}
         <AboutSection user={user} workspace={workspace} />
         {isOwner ? (

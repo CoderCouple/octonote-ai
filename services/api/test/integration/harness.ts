@@ -27,6 +27,8 @@ import { WorkspacesRepository } from "../../src/db/repository/workspaces.reposit
 import { UsersRepository } from "../../src/db/repository/users.repository";
 import { CliTokensRepository } from "../../src/db/repository/cli-tokens.repository";
 import { CliTokensService } from "../../src/service/cli-tokens.service";
+import { OAuthRepository } from "../../src/db/repository/oauth.repository";
+import { OAuthService } from "../../src/service/oauth.service";
 import { NoteMarkdownService } from "../../src/service/note-markdown.service";
 import { AdminCrmService } from "../../src/service/admin-crm.service";
 import { PartnersService } from "../../src/service/partners.service";
@@ -263,6 +265,7 @@ export async function createHarness() {
 
   const services = {
     cliTokens: new CliTokensService(new CliTokensRepository(db), new UsersRepository(db), productAnalytics),
+    oauth: new OAuthService(new OAuthRepository(db), new UsersRepository(db), productAnalytics),
     permissions,
     workspaces,
     pages: new PagesService(pagesRepo, permissions, placement, workspaces, changeEvents, planLimits),

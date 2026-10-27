@@ -1,0 +1,2 @@
+ALTER TABLE "activity_days" DROP CONSTRAINT "activity_days_source";--> statement-breakpoint
+ALTER TABLE "activity_days" ADD CONSTRAINT "activity_days_source" CHECK ("activity_days"."source" in ('web', 'mobile', 'cli', 'mcp'));

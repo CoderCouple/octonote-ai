@@ -22,7 +22,7 @@ export const activityDays = pgTable(
   (table) => ({
     pk: primaryKey({ columns: [table.userId, table.day, table.source] }),
     dayIdx: index("activity_days_day_idx").on(table.day),
-    sourceCheck: check("activity_days_source", sql`${table.source} in ('web', 'mobile', 'cli')`),
+    sourceCheck: check("activity_days_source", sql`${table.source} in ('web', 'mobile', 'cli', 'mcp')`),
   }),
 );
 

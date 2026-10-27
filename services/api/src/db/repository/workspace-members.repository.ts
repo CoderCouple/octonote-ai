@@ -18,6 +18,15 @@ export class WorkspaceMembersRepository extends BaseRepository<typeof workspaceM
     super(db, workspaceMembers);
   }
 
+  /** Every workspace a person belongs to, oldest membership first. */
+  listForUser(userId: string) {
+    return this.db
+      .select()
+      .from(workspaceMembers)
+      .where(eq(workspaceMembers.userId, userId))
+      .orderBy(workspaceMembers.createdAt);
+  }
+
   async findOne(workspaceId: string, userId: string) {
     const rows = await this.db
       .select()
