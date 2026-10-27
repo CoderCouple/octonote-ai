@@ -16,7 +16,8 @@
     "cli:pack": "node scripts/pack-cli.mjs",
     "api-url:sync": "node scripts/api-url-sync.mjs",
     "deploy:api": "node scripts/deploy-api.mjs",
-    "reviewer:account": "node scripts/reviewer-account.mjs"
+    "reviewer:account": "node scripts/reviewer-account.mjs",
+    "openai:plugin": "node scripts/openai-plugin.mjs"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

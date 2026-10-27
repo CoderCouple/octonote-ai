@@ -1,0 +1,103 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "octonote",
+  "version": "1.0.0",
+  "description": "Notes and editable diagrams your assistant writes, keeps and publishes: rich notes with math and diagrams, canvases drawn from flowcharts and class diagrams, notebooks, and one-step publishing.",
+  "author": {
+    "name": "Octonote AI",
+    "email": "hello@octonote.ai",
+    "url": "https://octonote.ai"
+  },
+  "homepage": "https://octonote.ai/chatgpt",
+  "keywords": ["notes", "diagrams", "canvas", "whiteboard", "mermaid", "documentation", "notebook", "publishing", "productivity", "knowledge base"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Octonote",
+        "shortDescription": "Notes and diagrams you keep",
+        "longDescription": "Octonote turns your chats into things you keep. Ask ChatGPT to write a note, and it becomes a real document with headings, tables, code, LaTeX math and diagrams. Ask it to draw something, and you get an editable canvas: flowcharts and class diagrams become real shapes you can move and restyle, with boxes that can link to code on GitHub.\n\nWhat you can ask:\n- Save a write-up as a note, optionally in a notebook.\n- Draw a flowchart or class diagram as an editable canvas.\n- Pair a write-up with a diagram as a project.\n- Find a note you saved before and add to it.\n- Organise items into notebooks, rename or move them.\n- Publish a clean public page and get its link, or share an item with someone by email.\n\nPrivacy and control: ChatGPT acts as you and sees only what your account can see. Nothing is published, shared or deleted unless you ask. Disconnect any time in Octonote Settings → Connected apps.\n\nWho it is for: anyone who wants good answers to stop disappearing into chat history: engineers writing design docs and diagrams, students keeping study notes with math, and teams publishing explainers.\n\nLimitations: canvases are drawn from flowcharts and class diagrams; other diagram types appear inside notes. Free accounts hold 10 notes, 10 canvases, 10 projects and 10 notebooks; Pro is unlimited.",
+        "developerName": "Octonote AI",
+        "category": "Productivity",
+        "capabilities": [
+          "Write rich notes with math, tables and diagrams",
+          "Draw flowcharts and class diagrams as editable canvases",
+          "Link diagram boxes to code on GitHub",
+          "Pair a write-up and a diagram as a project",
+          "Find and update earlier notes",
+          "Organise items into notebooks",
+          "Publish a public page in one step",
+          "Share with people by email"
+        ],
+        "websiteURL": "https://octonote.ai",
+        "supportURL": "mailto:hello@octonote.ai",
+        "privacyPolicyURL": "https://octonote.ai/privacy",
+        "termsOfServiceURL": "https://octonote.ai/terms",
+        "defaultPrompt": [
+          "Save what we decided as a note with a checklist of next steps.",
+          "Draw our signup flow as a canvas.",
+          "Find my note about caching and add today's decision to it."
+        ],
+        "brandColor": "#191919",
+        "brandColorDark": "#F5F5F4",
+        "composerIcon": "./assets/composer-icon.png",
+        "logo": "./assets/logo.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Find content. The reviewer account has a Getting started notebook with a Welcome to Octonote note.",
+              "prompt": "Search my Octonote for welcome.",
+              "tools_triggered": "search",
+              "expected_behavior": "Returns Welcome to Octonote (note) with an octonote.ai link."
+            },
+            {
+              "description": "Read a note.",
+              "prompt": "Open my Welcome to Octonote note and summarise it.",
+              "tools_triggered": "search, fetch",
+              "expected_behavior": "A summary mentioning the checklist of things to try, the hit-rate formula and the cache flowchart."
+            },
+            {
+              "description": "Write a note.",
+              "prompt": "Create a note called Meeting notes with three action items as a checklist.",
+              "tools_triggered": "create_note",
+              "expected_behavior": "A new note named Meeting notes with a three-item checklist, returned with its octonote.ai link."
+            },
+            {
+              "description": "Draw a canvas from a flowchart.",
+              "prompt": "Draw a canvas of an order flow: cart, checkout, payment ok?, confirmation, or back to checkout.",
+              "tools_triggered": "create_canvas",
+              "expected_behavior": "A new canvas with five shapes (including a decision) and connecting arrows, returned with its link."
+            },
+            {
+              "description": "Organise items.",
+              "prompt": "Create a notebook called Ideas and move Meeting notes into it.",
+              "tools_triggered": "create_notebook, move",
+              "expected_behavior": "A notebook named Ideas exists and contains Meeting notes."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Unsupported canvas type. Sequence diagrams can't be drawn as canvases; expected result is a clear explanation (and an offer to put it in a note as a mermaid block), with no broken canvas created.",
+              "prompt": "Draw a sequence diagram of a login as a canvas."
+            },
+            {
+              "description": "No publishing without asking. The user asks only for a write-up; expected result is that a note is created and publish is not called.",
+              "prompt": "Write a short post about our product launch."
+            },
+            {
+              "description": "Unknown item. Expected result is a clear not-found error and no data from other accounts.",
+              "prompt": "Open the note with id pag_00000000-0000-0000-0000-000000000000."
+            }
+          ]
+        },
+        "demo_recording_url": "https://octonote.ai/media/octonote-assistant-demo.mp4",
+        "commerce": false,
+        "commerce_description": "Octonote does not sell products or process payments in ChatGPT. Paid plans are managed on octonote.ai."
+      },
+      "publication": {
+        "release_notes": "Initial release: notes from markdown (math, tables, mermaid), canvases from flowcharts and class diagrams with clickable boxes, projects, notebooks, search, publishing and sharing, with an inline Octonote card."
+      }
+    }
+  }
+}
