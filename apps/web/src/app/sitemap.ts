@@ -19,6 +19,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/students`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${SITE_URL}/about`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/cli`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE_URL}/claude`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE_URL}/chatgpt`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/use-cases`, changeFrequency: "monthly", priority: 0.7 },
     ...USE_CASES.map((u) => ({
       url: `${SITE_URL}/use-cases/${u.slug}`,

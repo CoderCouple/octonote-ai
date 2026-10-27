@@ -23,6 +23,8 @@ const COLUMNS: {
       { href: "/#agents", label: "Agents" },
       { href: "/#examples", label: "Examples" },
       { href: "/cli", label: "CLI" },
+      { href: "/claude", label: "For Claude" },
+      { href: "/chatgpt", label: "For ChatGPT" },
       { href: "/pricing", label: "Pricing" },
       { href: "/students", label: "Students" },
     ],
