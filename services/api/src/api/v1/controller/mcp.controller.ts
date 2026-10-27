@@ -82,6 +82,7 @@ export class McpController {
     }
 
     void this.activity.record(found.user.id, "mcp");
+    this.logCall(req.body, found.clientName);
     const actor: Actor = { id: found.user.id, email: found.user.email, name: found.user.name };
     const server = this.server(actor);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
@@ -98,6 +99,30 @@ export class McpController {
       if (!reply.raw.headersSent) {
         reply.raw.writeHead(500, { "content-type": "application/json" });
         reply.raw.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32603, message: "Internal error" }, id: null }));
+      }
+    }
+  }
+
+  /**
+   * Which MCP methods each client calls, and whether it says it renders MCP
+   * Apps cards — to see how hosts use the inline card. Method names, client
+   * name and capability flags only: never arguments, content or tokens.
+   */
+  private logCall(body: unknown, app: string) {
+    const msgs = (Array.isArray(body) ? body : [body]) as { method?: unknown; params?: Record<string, unknown> }[];
+    for (const m of msgs) {
+      if (typeof m?.method !== "string") continue;
+      if (m.method === "initialize") {
+        const caps = (m.params?.capabilities ?? {}) as { extensions?: Record<string, unknown> };
+        const client = (m.params?.clientInfo ?? {}) as { name?: string; version?: string };
+        const ui = caps.extensions?.["io.modelcontextprotocol/ui"];
+        this.logger.log(
+          `mcp initialize app=${app} client=${client.name ?? "?"}/${client.version ?? "?"} ui=${ui ? JSON.stringify(ui) : "none"} extensions=${Object.keys(caps.extensions ?? {}).join(",") || "none"}`,
+        );
+      } else {
+        const params = m.params as { name?: unknown; uri?: unknown } | undefined;
+        const target = typeof params?.name === "string" ? ` ${params.name}` : typeof params?.uri === "string" ? ` ${params.uri}` : "";
+        this.logger.log(`mcp ${m.method}${target} app=${app}`);
       }
     }
   }
