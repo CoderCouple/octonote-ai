@@ -1,13 +1,14 @@
 /**
  * Shared layout of /claude and /chatgpt: Octonote used from a chat assistant
- * through the MCP server. The chat is built, not a screenshot, and neutral —
- * it doesn't imitate either app's interface.
+ * through the MCP server. The demo video is a built animation with a neutral
+ * chat window — it doesn't imitate either app's interface.
  */
-import { ArrowUpRight, Check, ExternalLink, Focus, Sparkles, Wrench } from "lucide-react";
+import { ArrowUpRight, ExternalLink, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ASSISTANT_POINTS, ASSISTANT_PROMPTS, MCP_URL, PROOF, type Assistant } from "../_data/assistants";
 import { ClosingCta, Faqs, Points } from "./content-page";
 import { CopyField } from "./copy-field";
+import { DemoVideo } from "./demo-video";
 
 export function AssistantLanding({ assistant, faqs }: { assistant: Assistant; faqs: { q: string; a: string }[] }) {
   return (
@@ -27,7 +28,9 @@ export function AssistantLanding({ assistant, faqs }: { assistant: Assistant; fa
         </div>
       </header>
 
-      <ChatMock name={assistant.name} />
+      <div className="mx-auto mt-20 max-w-5xl">
+        <DemoVideo label={`Demo: asking ${assistant.name} to write a note, draw a canvas and publish it with Octonote`} />
+      </div>
 
       <Points title={`What ${assistant.name} can do in Octonote`} points={ASSISTANT_POINTS} />
 
@@ -78,93 +81,5 @@ export function AssistantLanding({ assistant, faqs }: { assistant: Assistant; fa
       <Faqs faqs={faqs} />
       <ClosingCta title={`Give ${assistant.name} somewhere to keep things.`} />
     </div>
-  );
-}
-
-/** A neutral chat: the ask, the tool call, and the project it made. */
-function ChatMock({ name }: { name: string }) {
-  return (
-    <div className="mx-auto mt-20 max-w-3xl">
-      <div className="bg-card rounded-2xl border p-4 shadow-sm md:p-6">
-        <div className="flex justify-end">
-          <p className="bg-muted text-foreground max-w-[85%] rounded-2xl rounded-br-md px-4 py-3 text-base">
-            Explain how sign-in works in this repo as a project, with a diagram.
-          </p>
-        </div>
-
-        <div className="mt-5 flex flex-col gap-3">
-          <span className="text-muted-foreground text-sm font-medium">{name}</span>
-          <div className="text-muted-foreground flex w-fit items-center gap-2 rounded-lg border px-3 py-1.5 text-sm">
-            <Wrench className="size-3.5" />
-            <span>
-              Octonote · <code className="font-mono">create_project</code>
-            </span>
-            <Check className="size-3.5" />
-          </div>
-          <p className="text-foreground text-base">
-            Done. I made <b>Sign-in flow</b>: a write-up of each step next to a diagram of the flow.
-          </p>
-
-          <div className="bg-background overflow-hidden rounded-xl border">
-            <div className="flex items-center gap-2 border-b px-4 py-2.5">
-              <span className="bg-primary text-primary-foreground grid size-6 place-items-center rounded-md">
-                <Focus className="size-3.5" strokeWidth={2.25} />
-              </span>
-              <span className="text-foreground-strong text-sm font-semibold">Sign-in flow</span>
-              <span className="text-muted-foreground ml-auto text-xs">Project · note + canvas</span>
-            </div>
-            <div className="grid sm:grid-cols-2">
-              <div className="space-y-2 border-b p-4 sm:border-r sm:border-b-0">
-                <p className="text-foreground-strong text-sm font-semibold">How sign-in works</p>
-                <div className="bg-muted h-2 w-11/12 rounded" />
-                <div className="bg-muted h-2 w-4/5 rounded" />
-                <div className="bg-muted h-2 w-9/12 rounded" />
-                <p className="text-foreground-strong pt-2 text-sm font-semibold">Sessions</p>
-                <div className="bg-muted h-2 w-10/12 rounded" />
-                <div className="bg-muted h-2 w-7/12 rounded" />
-              </div>
-              <MiniFlow />
-            </div>
-          </div>
-          <span className="text-muted-foreground flex items-center gap-1 text-sm">
-            octonote.ai/p/… <ArrowUpRight className="size-3.5" />
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** The canvas side of the card: a tiny flowchart in the design tokens' colours. */
-function MiniFlow() {
-  const box = "fill-[var(--color-background)] stroke-[var(--color-foreground-subtle)]";
-  const text = "fill-[var(--color-foreground-strong)] text-[10px]";
-  return (
-    <svg viewBox="0 0 260 150" className="h-40 w-full p-3" role="img" aria-label="A small flowchart: user, login, check password, dashboard or error">
-      <defs>
-        <marker id="mini-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M0 0 L8 4 L0 8 z" className="fill-[var(--color-foreground-subtle)]" />
-        </marker>
-      </defs>
-      <g className="stroke-[var(--color-foreground-subtle)]" strokeWidth="1.2" markerEnd="url(#mini-arrow)">
-        <line x1="58" y1="30" x2="92" y2="30" />
-        <line x1="148" y1="30" x2="178" y2="30" />
-        <line x1="205" y1="42" x2="205" y2="70" />
-        <line x1="190" y1="100" x2="150" y2="118" />
-        <line x1="220" y1="100" x2="222" y2="116" />
-      </g>
-      <rect x="8" y="16" width="50" height="28" rx="14" className={box} />
-      <text x="33" y="34" textAnchor="middle" className={text}>User</text>
-      <rect x="92" y="16" width="56" height="28" rx="6" className={box} />
-      <text x="120" y="34" textAnchor="middle" className={text}>Login</text>
-      <rect x="178" y="16" width="56" height="28" rx="6" className={box} />
-      <text x="206" y="34" textAnchor="middle" className={text}>API</text>
-      <path d="M205 70 L235 85 L205 100 L175 85 Z" className={box} />
-      <text x="205" y="88" textAnchor="middle" className={text}>OK?</text>
-      <rect x="92" y="114" width="60" height="26" rx="6" className={box} />
-      <text x="122" y="131" textAnchor="middle" className={text}>Dashboard</text>
-      <rect x="196" y="116" width="52" height="26" rx="6" className={box} />
-      <text x="222" y="133" textAnchor="middle" className={text}>Error</text>
-    </svg>
   );
 }
