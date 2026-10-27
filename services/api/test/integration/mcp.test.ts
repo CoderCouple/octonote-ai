@@ -101,9 +101,20 @@ describe("mcp server", () => {
     for (const name of ["search", "fetch", "list_items", "create_note", "update_note", "create_canvas", "redraw_canvas", "create_project", "create_notebook", "rename", "move", "publish", "share", "set_link_access", "delete"]) {
       expect(byName[name], name).toBeTruthy();
     }
+    // Every tool states all three hints and a title (directory reviews check them).
+    for (const t of tools) {
+      expect(t.annotations, t.name).toMatchObject({
+        title: expect.any(String),
+        readOnlyHint: expect.any(Boolean),
+        destructiveHint: expect.any(Boolean),
+        openWorldHint: expect.any(Boolean),
+      });
+    }
     expect(byName.search!.annotations?.readOnlyHint).toBe(true);
-    expect(byName.publish!.annotations?.destructiveHint).toBe(true);
+    expect(byName.publish!.annotations?.openWorldHint).toBe(true);
+    expect(byName.update_note!.annotations?.destructiveHint).toBe(true);
     expect(byName.delete!.annotations?.destructiveHint).toBe(true);
+    expect(byName.create_note!.annotations?.destructiveHint).toBe(false);
     await client.close();
   });
 

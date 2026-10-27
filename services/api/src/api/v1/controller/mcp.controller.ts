@@ -17,9 +17,13 @@ const INSTRUCTIONS = `Octonote holds the user's notes (markdown documents), canv
 - Always give the user the link (url, and publicUrl once published).
 - Publish, share, change link access or delete ONLY when the user explicitly asked for it.`;
 
-const READ = { readOnlyHint: true, openWorldHint: false } as const;
+// Every tool states all three hints (directory reviews check them):
+// read-only; creates/edits (additive); overwrites or deletes; reaches beyond
+// the workspace (public web, other people).
+const READ = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
-const ASK = { readOnlyHint: false, destructiveHint: true, openWorldHint: true } as const;
+const OVERWRITE = { readOnlyHint: false, destructiveHint: true, openWorldHint: false } as const;
+const OUTWARD = { readOnlyHint: false, destructiveHint: false, openWorldHint: true } as const;
 
 const id = z.string().describe("Octonote id: pag_… note, cnv_… canvas, prj_… project, ntb_… notebook");
 const notebook = z.string().optional().describe("Put it in this notebook (id or exact name)");
@@ -92,7 +96,12 @@ export class McpController {
       name: string,
       config: { title: string; description: string; inputSchema: S; annotations: Record<string, boolean> },
       handler: (args: z.infer<z.ZodObject<S>>) => Promise<unknown>,
-    ) => (server.registerTool.bind(server) as unknown as (n: string, c: unknown, h: unknown) => void)(name, config, handler);
+    ) =>
+      (server.registerTool.bind(server) as unknown as (n: string, c: unknown, h: unknown) => void)(
+        name,
+        { ...config, annotations: { title: config.title, ...config.annotations } },
+        handler,
+      );
     const t = this.tools;
     const run = (fn: () => Promise<unknown>) => async () => {
       try {
@@ -166,7 +175,7 @@ export class McpController {
           mode: z.enum(["replace", "append"]).default("replace"),
           title: z.string().optional().describe("New title (replace mode only)"),
         },
-        annotations: WRITE,
+        annotations: OVERWRITE,
       },
       async (args) => run(() => t.updateNote(actor.id, args))(),
     );
@@ -187,7 +196,7 @@ export class McpController {
         title: "Redraw a canvas",
         description: "Replace a canvas's drawing with a mermaid flowchart or class diagram.",
         inputSchema: { id, mermaid: z.string(), title: z.string().optional() },
-        annotations: WRITE,
+        annotations: OVERWRITE,
       },
       async (args) => run(() => t.redrawCanvas(actor.id, args))(),
     );
@@ -244,7 +253,7 @@ export class McpController {
         description:
           "Make an item a public, read-only web page and return its publicUrl. ONLY when the user asked to publish. Publishing a notebook publishes everything in it.",
         inputSchema: { id, published: z.boolean().default(true).describe("false unpublishes") },
-        annotations: ASK,
+        annotations: OUTWARD,
       },
       async (args) => run(() => t.setPublished(actor.id, args))(),
     );
@@ -254,7 +263,7 @@ export class McpController {
         title: "Share with a person",
         description: "Give a person access by email (they get an invite). ONLY when the user asked to share.",
         inputSchema: { id, email: z.string().email(), role: z.enum(["viewer", "editor"]).default("viewer") },
-        annotations: ASK,
+        annotations: OUTWARD,
       },
       async (args) => run(() => t.share(actor, args))(),
     );
@@ -264,7 +273,7 @@ export class McpController {
         title: "Set link access",
         description: "Let anyone with the link view or edit (or turn that off). ONLY when the user asked.",
         inputSchema: { id, access: z.enum(["off", "view", "edit"]) },
-        annotations: ASK,
+        annotations: OUTWARD,
       },
       async (args) => run(() => t.setLinkAccess(actor.id, args))(),
     );
@@ -274,7 +283,7 @@ export class McpController {
         title: "Delete",
         description: "Delete a note, canvas, project or notebook (a notebook's items move to the top level). ONLY when the user asked to delete.",
         inputSchema: { id },
-        annotations: { ...ASK, openWorldHint: false },
+        annotations: OVERWRITE,
       },
       async (args) => run(() => t.remove(actor.id, args))(),
     );

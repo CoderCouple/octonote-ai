@@ -15,7 +15,8 @@
     "mobile:env": "node scripts/mobile-env.mjs",
     "cli:pack": "node scripts/pack-cli.mjs",
     "api-url:sync": "node scripts/api-url-sync.mjs",
-    "deploy:api": "node scripts/deploy-api.mjs"
+    "deploy:api": "node scripts/deploy-api.mjs",
+    "reviewer:account": "node scripts/reviewer-account.mjs"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

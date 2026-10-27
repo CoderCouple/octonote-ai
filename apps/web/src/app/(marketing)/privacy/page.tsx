@@ -15,7 +15,7 @@ const link = "text-foreground underline-offset-4 hover:underline";
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Notice" lastUpdated="October 14, 2026">
+    <LegalLayout title="Privacy Notice" lastUpdated="October 27, 2026">
       <p>
         This notice explains what information Octonote AI (&quot;we&quot;,
         &quot;us&quot;) collects when you use our website, web app and mobile
@@ -165,6 +165,42 @@ export default function PrivacyPage() {
           <strong>Votes.</strong> Signed-in readers can upvote or downvote a
           published page. We store each vote with the account that cast it so
           it can be changed or removed; everyone sees only the totals.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="AI assistants and the CLI">
+        <p>
+          You can connect Octonote to AI assistants such as Claude, ChatGPT and
+          Gemini (through our MCP server at api.octonote.ai/mcp), or use it
+          from the <code>octonote</code> command-line tool with agents like
+          Claude Code and Codex. Nothing is connected unless you set it up.
+        </p>
+        <p>
+          <strong>What they can access.</strong> A connected assistant acts as
+          you: it can read, create and change the notes, canvases, projects and
+          notebooks your account can access, and publish, share or delete them
+          when you ask. It never gets your password, and it can&apos;t create
+          new tokens or delete your account.
+        </p>
+        <p>
+          <strong>What we store.</strong> For each connection we keep the
+          app&apos;s name, when you connected it and when it was last used, plus
+          hashed sign-in tokens (access tokens expire after an hour). We count
+          the days you use Octonote through an assistant, the same way we count
+          web, mobile and CLI use. We don&apos;t receive or store your
+          conversations with the assistant — only the requests it sends to
+          Octonote.
+        </p>
+        <p>
+          <strong>The assistant&apos;s side.</strong> What you send to Octonote
+          through an assistant also passes through that assistant&apos;s
+          provider (for example Anthropic or OpenAI) and is handled under their
+          privacy policy.
+        </p>
+        <p>
+          <strong>Disconnecting.</strong> See and disconnect apps any time in
+          Settings → Connected apps, and revoke CLI tokens in Settings → CLI
+          &amp; agents. Access ends immediately.
         </p>
       </LegalSection>
 

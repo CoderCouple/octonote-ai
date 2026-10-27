@@ -1,6 +1,7 @@
 import { AuthShell, LoginForm } from "@/features/auth";
 import { getEnabledProviders } from "@/features/auth/lib/enabled-providers";
 import { DevAutoLogin } from "@/features/auth/dev-auto-login";
+import { ReviewerLogin } from "@/features/auth/reviewer-login";
 
 export const metadata = {
   title: "Sign in · Octonote AI",
@@ -12,6 +13,7 @@ export default async function LoginPage() {
   return (
     <AuthShell>
       <LoginForm mode="login" providers={providers} />
+      <ReviewerLogin />
       <DevAutoLogin />
     </AuthShell>
   );

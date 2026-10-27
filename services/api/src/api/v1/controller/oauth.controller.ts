@@ -30,6 +30,15 @@ export class OAuthController {
     return json(reply, 200, this.oauth.authorizationServerMetadata(apiBase(req.headers)));
   }
 
+  /** OpenAI's plugin portal verifies domain ownership with a token served here. */
+  @Get(".well-known/openai-apps-challenge")
+  @SkipResponseInterceptor()
+  openaiChallenge(@Res() reply: FastifyReply) {
+    const token = process.env.OPENAI_APPS_CHALLENGE;
+    if (!token) return reply.status(404).send("Not found");
+    return reply.status(200).header("content-type", "text/plain; charset=utf-8").send(token);
+  }
+
   @Post("oauth/register")
   @SkipResponseInterceptor()
   async register(@Body() body: unknown, @Res() reply: FastifyReply) {
