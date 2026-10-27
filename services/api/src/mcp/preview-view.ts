@@ -39,6 +39,13 @@ export function previewHtml(): string {
   .btn.primary { background: var(--strong); color: var(--bg); border-color: var(--strong); }
   .body { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
   .note { max-height: 520px; overflow: auto; }
+  :root[data-mode="fullscreen"] .note { max-height: none; }
+  :root[data-mode="fullscreen"] .card { max-width: 980px; margin: 0 auto; }
+  .board { display: block; width: 100%; height: auto; max-height: 560px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  :root[data-mode="fullscreen"] .board { max-height: none; }
+  .board text { font: 15px Inter, ui-sans-serif, system-ui, sans-serif; fill: var(--strong); }
+  .board .alab { font-size: 13px; fill: var(--muted); }
+  .board .link { cursor: pointer; }
   .note h1 { font-size: 22px; margin: .4em 0 .3em; color: var(--strong); }
   .note h2 { font-size: 18px; margin: .9em 0 .3em; color: var(--strong); }
   .note h3 { font-size: 16px; margin: .8em 0 .2em; color: var(--strong); }
@@ -115,15 +122,105 @@ export function previewHtml(): string {
     var pub = p.publicUrl ? '<button class="btn" data-open="' + esc(p.publicUrl) + '">Public page</button>' : "";
     return '<div class="head"><span class="mark">' + MARK + '</span><div style="min-width:0"><div class="title">' + esc(p.title) +
       '</div><div class="kind">' + esc(KIND[p.kind] || p.kind) + (p.publicUrl ? " · Published" : "") + '</div></div>' +
-      '<div class="actions">' + pub + '<button class="btn primary" data-open="' + esc(p.url) + '">Open in Octonote</button></div></div>';
+      '<div class="actions">' + (canFullscreen ? '<button class="btn" data-mode-toggle>' + (mode === "fullscreen" ? "Collapse" : "Expand") + "</button>" : "") +
+      pub + '<button class="btn primary" data-open="' + esc(p.url) + '">Open in Octonote</button></div></div>';
   }
+  // tldraw colour names → strokes and soft fills (light/dark aware via CSS vars where it matters).
+  var COLORS = { black: "var(--strong)", grey: "#9b9a97", "light-violet": "#c8a2f0", violet: "#8f4cd6", blue: "#2f6fd6", "light-blue": "#4ba1f1",
+    yellow: "#f1ac4b", orange: "#e16919", green: "#099268", "light-green": "#4cb05e", "light-red": "#f87777", red: "#e03131", white: "#ffffff" };
+  function strokeOf(c) { return COLORS[c] || "var(--strong)"; }
+  function fillOf(sh) {
+    if (sh.kind === "note") return sh.color === "black" ? "#fef3c7" : "color-mix(in srgb, " + strokeOf(sh.color) + " 22%, var(--bg))";
+    if (sh.fill === "none") return "none";
+    if (sh.fill === "solid" || sh.fill === "fill") return "color-mix(in srgb, " + strokeOf(sh.color) + " 30%, var(--bg))";
+    return "color-mix(in srgb, " + strokeOf(sh.color) + " 10%, var(--bg))";
+  }
+  var FONT = { s: 15, m: 18, l: 22, xl: 30 };
+
+  /** Wrap a label into lines that fit roughly in the given width. */
+  function wrap(text, width, size) {
+    var max = Math.max(4, Math.floor(width / (size * 0.56)));
+    var out = [];
+    String(text).split("\\n").forEach(function (para) {
+      var line = "";
+      para.split(/\\s+/).forEach(function (w) {
+        if ((line + " " + w).trim().length > max && line) { out.push(line); line = w; } else line = (line + " " + w).trim();
+      });
+      out.push(line);
+    });
+    return out;
+  }
+  function textBlock(label, cx, cy, width, size, cls) {
+    if (!label) return "";
+    var lines = wrap(label, width, size), lh = size * 1.25, top = cy - (lines.length - 1) * lh / 2;
+    return '<text text-anchor="middle" dominant-baseline="middle"' + (cls ? ' class="' + cls + '"' : "") + ' style="font-size:' + size + 'px">' +
+      lines.map(function (l, i) { return '<tspan x="' + cx + '" y="' + (top + i * lh) + '">' + esc(l) + "</tspan>"; }).join("") + "</text>";
+  }
+  function geoPath(sh) {
+    var x = sh.x, y = sh.y, w = sh.w, h = sh.h, cx = x + w / 2, cy = y + h / 2;
+    switch (sh.geo) {
+      case "ellipse": case "oval": case "cloud":
+        return sh.geo === "oval" ? '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + Math.min(w, h) / 2 + '"/>'
+          : '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + w / 2 + '" ry="' + h / 2 + '"/>';
+      case "diamond": return '<polygon points="' + cx + "," + y + " " + (x + w) + "," + cy + " " + cx + "," + (y + h) + " " + x + "," + cy + '"/>';
+      case "triangle": return '<polygon points="' + cx + "," + y + " " + (x + w) + "," + (y + h) + " " + x + "," + (y + h) + '"/>';
+      case "hexagon": { var q = w / 4; return '<polygon points="' + (x + q) + "," + y + " " + (x + w - q) + "," + y + " " + (x + w) + "," + cy + " " + (x + w - q) + "," + (y + h) + " " + (x + q) + "," + (y + h) + " " + x + "," + cy + '"/>'; }
+      default: return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (sh.kind === "note" ? 4 : 8) + '"/>';
+    }
+  }
+  function drawOutline(o, title) {
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    function grow(x, y) { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); }
+    o.shapes.forEach(function (s) { grow(s.x, s.y - (s.kind === "frame" ? 24 : 0)); grow(s.x + s.w, s.y + s.h); });
+    o.arrows.forEach(function (a) { grow(a.x1, a.y1); grow(a.x2, a.y2); });
+    var pad = 24; minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+    var w = maxX - minX, h = maxY - minY;
+    var parts = ['<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>'];
+    o.shapes.forEach(function (sh) {
+      var size = FONT[sh.size] || 16, stroke = strokeOf(sh.color);
+      if (sh.kind === "text") { parts.push(textBlock(sh.label, sh.x + sh.w / 2, sh.y + sh.h / 2, Math.max(sh.w, 80), size)); return; }
+      if (sh.kind === "frame") {
+        parts.push('<rect x="' + sh.x + '" y="' + sh.y + '" width="' + sh.w + '" height="' + sh.h + '" rx="6" fill="none" stroke="var(--line)" stroke-width="1.5"/>');
+        if (sh.label) parts.push('<text x="' + sh.x + '" y="' + (sh.y - 8) + '" class="alab">' + esc(sh.label) + "</text>");
+        return;
+      }
+      var dash = sh.dash === "dashed" ? ' stroke-dasharray="8 6"' : sh.dash === "dotted" ? ' stroke-dasharray="2 5"' : "";
+      var link = sh.url && safeUrl(sh.url);
+      parts.push('<g' + (link ? ' class="link" data-open="' + esc(link) + '"' : "") + ' fill="' + fillOf(sh) + '" stroke="' + stroke + '" stroke-width="2"' + dash + ">" + geoPath(sh) + "</g>");
+      if (sh.geo !== "none") parts.push(textBlock(sh.label, sh.x + sh.w / 2, sh.y + sh.h / 2, sh.w - 16, size));
+    });
+    o.arrows.forEach(function (a) {
+      var stroke = strokeOf(a.color), mx = (a.x1 + a.x2) / 2, my = (a.y1 + a.y2) / 2;
+      var len = Math.hypot(a.x2 - a.x1, a.y2 - a.y1) || 1, nx = -(a.y2 - a.y1) / len, ny = (a.x2 - a.x1) / len;
+      var cx = mx + nx * a.bend * 2, cy = my + ny * a.bend * 2;
+      var d = a.bend ? "M" + a.x1 + " " + a.y1 + " Q" + cx + " " + cy + " " + a.x2 + " " + a.y2 : "M" + a.x1 + " " + a.y1 + " L" + a.x2 + " " + a.y2;
+      var dash = a.dash === "dashed" ? ' stroke-dasharray="8 6"' : a.dash === "dotted" ? ' stroke-dasharray="2 5"' : "";
+      parts.push('<path d="' + d + '" fill="none" stroke="' + stroke + '" stroke-width="2"' + dash +
+        (a.end !== "none" ? ' marker-end="url(#ah)"' : "") + (a.start !== "none" ? ' marker-start="url(#ah)"' : "") + "/>");
+      if (a.label) {
+        var lx = a.bend ? (mx + cx) / 2 : mx, ly = a.bend ? (my + cy) / 2 : my, lw = a.label.length * 7.5 + 12;
+        parts.push('<rect x="' + (lx - lw / 2) + '" y="' + (ly - 11) + '" width="' + lw + '" height="22" rx="4" fill="var(--bg)"/>');
+        parts.push(textBlock(a.label, lx, ly, lw, 13, "alab"));
+      }
+    });
+    return '<svg class="board" role="img" aria-label="Canvas: ' + esc(title) + '" viewBox="' + minX + " " + minY + " " + w + " " + h + '" preserveAspectRatio="xMidYMid meet" style="aspect-ratio:' + w + "/" + h + '">' + parts.join("") + "</svg>";
+  }
+
   function shot(p) {
+    if (p.outline && (p.outline.shapes.length || p.outline.arrows.length)) return drawOutline(p.outline, p.title);
     var src = p.thumbnailUrl && safeUrl(p.thumbnailUrl);
     return src ? '<img class="shot" alt="Canvas: ' + esc(p.title) + '" src="' + esc(src) + '" />'
                : '<div class="empty">Open the canvas to see the drawing.</div>';
   }
 
+  var last = null, mode = "inline", canFullscreen = false;
+  function setMode(m) {
+    if (!m || m === mode) return;
+    mode = m; document.documentElement.dataset.mode = m;
+    if (last) render(last);
+  }
   function render(p) {
+    last = p;
     var body = "";
     if (p.kind === "note") body = '<div class="note">' + (p.html ? sanitize(p.html) : '<p class="kind">This note is empty.</p>') + "</div>";
     else if (p.kind === "canvas") body = shot(p);
@@ -178,7 +275,12 @@ export function previewHtml(): string {
   }
   if (window.ResizeObserver) new ResizeObserver(resize).observe(document.documentElement);
 
-  function theme(ctx) { if (ctx && ctx.theme) document.documentElement.dataset.theme = ctx.theme; }
+  function theme(ctx) {
+    if (!ctx) return;
+    if (ctx.theme) document.documentElement.dataset.theme = ctx.theme;
+    if (Array.isArray(ctx.availableDisplayModes)) canFullscreen = ctx.availableDisplayModes.indexOf("fullscreen") !== -1;
+    if (ctx.displayMode) setMode(ctx.displayMode);
+  }
 
   function fromResult(result) {
     var p = result && result.structuredContent && result.structuredContent.preview;
@@ -188,7 +290,11 @@ export function previewHtml(): string {
 
   document.addEventListener("click", function (e) {
     var t = e.target.closest("[data-open]");
-    if (t) { e.preventDefault(); open(t.getAttribute("data-open")); }
+    if (t) { e.preventDefault(); open(t.getAttribute("data-open")); return; }
+    if (e.target.closest("[data-mode-toggle]")) {
+      var want = mode === "fullscreen" ? "inline" : "fullscreen";
+      request("ui/request-display-mode", { mode: want }).then(function (r) { setMode((r && r.mode) || want); }).catch(function () {});
+    }
   });
 
   window.addEventListener("message", function (e) {
@@ -207,10 +313,11 @@ export function previewHtml(): string {
 
   request("ui/initialize", {
     appInfo: { name: "octonote-preview", version: "1.0.0" },
-    appCapabilities: { availableDisplayModes: ["inline"] },
+    appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] },
     protocolVersion: "2026-01-26"
   }).then(function (res) {
     theme(res && res.hostContext);
+    if (last) render(last); // show Expand once we know the host allows it
     notify("ui/notifications/initialized", {});
     resize();
   }).catch(function () {});

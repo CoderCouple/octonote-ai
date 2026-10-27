@@ -12,6 +12,7 @@ import { WorkspaceMembersRepository } from "../db/repository/workspace-members.r
 import type { ResourceKind } from "../model/sharing.model";
 import { CanvasDiagramService } from "./canvas-diagram.service";
 import { CanvasesService } from "./canvases.service";
+import { canvasOutline, type CanvasOutline } from "./lib/canvas-outline";
 import { resourceUrl } from "./lib/resource-url";
 import { NotebooksService } from "./notebooks.service";
 import { NoteMarkdownService } from "./note-markdown.service";
@@ -50,6 +51,8 @@ export interface ItemPreview {
   html?: string;
   /** A canvas's (or a project's canvas's) PNG snapshot. */
   thumbnailUrl?: string | null;
+  /** The canvas drawn as vectors, so the card can show it without a snapshot. */
+  outline?: CanvasOutline | null;
   /** A notebook's contents. */
   items?: ItemRef[];
 }
@@ -203,7 +206,7 @@ export class McpToolsService {
     }
     if (kind === "canvas") {
       const { canvas } = await this.canvases.getOne(id, userId);
-      return { ...ref(kind, id, canvas.title), publicUrl, thumbnailUrl: canvas.thumbnailUrl };
+      return { ...ref(kind, id, canvas.title), publicUrl, thumbnailUrl: canvas.thumbnailUrl, outline: canvasOutline(canvas.document) };
     }
     if (kind === "project") {
       const p = await this.projects.getOne(id, userId);
@@ -214,6 +217,7 @@ export class McpToolsService {
         publicUrl,
         html: note ? await html(note.document) : "",
         thumbnailUrl: canvas?.thumbnailUrl ?? null,
+        outline: canvas ? canvasOutline(canvas.document) : null,
       };
     }
     return { ...ref(kind, id, (await this.notebooks.getContents(id, userId)).notebook.name), publicUrl, items: await this.list(userId, { notebook: id }) };

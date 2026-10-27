@@ -83,6 +83,16 @@ const call = async (client: Client, name: string, args: Record<string, unknown>)
   return { ...r, json: JSON.parse(r.content[0]!.text) };
 };
 
+describe("mcp card view", () => {
+  it("compiles in a browser (escapes inside the template string survive)", async () => {
+    const { previewHtml } = await import("../../src/mcp/preview-view");
+    const html = previewHtml();
+    const script = html.slice(html.indexOf("<script>") + 8, html.indexOf("</script>"));
+    // Parse only: throws a SyntaxError if an escape turned into a raw newline.
+    expect(() => new Function(script)).not.toThrow();
+  });
+});
+
 describe("mcp server", () => {
   it("requires a token and says where to sign in (RFC 9728)", async () => {
     const res = await fetch(`${base}/mcp`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
