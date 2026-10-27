@@ -12,8 +12,11 @@ export default async function LoginPage() {
   const providers = await getEnabledProviders();
   return (
     <AuthShell>
-      <LoginForm mode="login" providers={providers} />
-      <ReviewerLogin />
+      {/* One column: the reviewer link sits under the form, not beside it. */}
+      <div className="flex flex-col">
+        <LoginForm mode="login" providers={providers} />
+        <ReviewerLogin />
+      </div>
       <DevAutoLogin />
     </AuthShell>
   );

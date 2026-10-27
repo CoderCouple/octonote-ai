@@ -31,7 +31,7 @@ export function ReviewerLogin() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-muted-foreground hover:text-foreground mx-auto mt-6 block text-xs underline-offset-4 hover:underline"
+        className="text-muted-foreground hover:text-foreground mt-6 block text-left text-xs underline-offset-4 hover:underline"
       >
         App reviewer? Sign in with a password
       </button>
@@ -40,7 +40,7 @@ export function ReviewerLogin() {
 
   return (
     <form
-      className="mx-auto mt-6 flex w-full max-w-sm flex-col gap-2 rounded-xl border p-4"
+      className="mt-6 flex w-full max-w-sm flex-col gap-2 rounded-xl border p-4"
       onSubmit={(e) => {
         e.preventDefault();
         setBusy(true);
