@@ -199,9 +199,9 @@ describe("tldraw → octodraw", () => {
   });
 
   it("keeps label alignment, dashes and fills on geo shapes", () => {
-    expect(byId(items, "grouptitle")).toMatchObject({ align: "left", valign: "top", dashed: true, fill: "solid" });
+    expect(byId(items, "grouptitle")).toMatchObject({ align: "left", valign: "top", dashed: true, fill: "tint" });
     const semi = byId(items, "semi") as ShapeItem;
-    expect(semi).toMatchObject({ align: "right", valign: "bottom", fill: "tint" });
+    expect(semi).toMatchObject({ align: "right", valign: "bottom", fill: "none" });
     expect(semi.dashed).toBeUndefined();
     // tldraw's default fill is none; centred labels stay implicit.
     const box = byId(items, "box") as ShapeItem;

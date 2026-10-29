@@ -10,9 +10,11 @@
  * Mapping (lossy parts marked ~):
  *   geo     → shape (rectangle / ellipse / diamond; other geos → rectangle~),
  *             label as text, `url` as `link`, label align/verticalAlign →
- *             align/valign, dashed/dotted → dashed, fill none → "none",
- *             semi → "tint", solid/fill/pattern/lined-fill → "solid"
- *             (~pattern hatching). ~size and font are dropped.
+ *             align/valign, dashed/dotted → dashed. Fill follows how tldraw
+ *             paints it: none and semi (near-white) → "none", solid and
+ *             pattern (a pale tint of the color) → "tint", fill/lined-fill
+ *             (full color) → "solid" (~pattern hatching). ~size and font
+ *             are dropped.
  *   note    → sticky (tldraw's default "black" note is yellow, so no color).
  *   text    → text; size s/m/l/xl → octodraw's 14/20/32/48 presets × scale.
  *   frame   → a plain rectangle + its name as a small text above it (tldraw
@@ -202,9 +204,11 @@ function geoStyle(p: Obj): Pick<ShapeItem, "align" | "valign" | "dashed" | "fill
   if (dash === "dashed" || dash === "dotted") out.dashed = true;
   // tldraw's default fill is "none".
   const fill = str(p.fill) || "none";
-  if (fill === "none") out.fill = "none";
-  else if (fill === "semi") out.fill = "tint";
-  else if (fill === "solid" || fill === "fill" || fill === "pattern" || fill === "lined-fill") out.fill = "solid";
+  // tldraw paints "semi" near-white and "solid" as a pale tint of the color;
+  // only "fill" / "lined-fill" are full color.
+  if (fill === "none" || fill === "semi") out.fill = "none";
+  else if (fill === "solid" || fill === "pattern") out.fill = "tint";
+  else if (fill === "fill" || fill === "lined-fill") out.fill = "solid";
   return out;
 }
 
