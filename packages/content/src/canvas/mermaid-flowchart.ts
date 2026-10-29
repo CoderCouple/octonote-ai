@@ -262,7 +262,9 @@ function edgeStyle(
 }
 
 function readNode(text: string, lineNo: number) {
-  const idMatch = text.match(/^\s*([\w.:-]+)/);
+  // Ids may contain single hyphens (web-01) but never the start of an arrow
+  // (--, -., ->), so `A-->B` with no spaces still splits at the arrow.
+  const idMatch = text.match(/^\s*([\w.:]+(?:-(?![-.>])[\w.:]+)*)/);
   if (!idMatch) throw new MermaidParseError(`Expected a node id at "${text}"`, lineNo);
   const id = idMatch[1]!;
   let rest = text.slice(idMatch[0].length);

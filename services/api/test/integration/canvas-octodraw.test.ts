@@ -44,6 +44,17 @@ describe("writes", () => {
     await expect(h.canvases.update(c.id, { document: tldraw }, alice.id)).rejects.toThrow(/octodraw/);
     expect((await rowOf(c.id)).document).toEqual({ version: 1, items: [] });
   });
+
+  it("rejects items that aren't objects with a string id and type", async () => {
+    const c = await h.canvases.create(alice.workspaceId, { title: "Flow" }, alice.id);
+    for (const item of [null, 42, "a", [], {}, { id: 1, type: "shape" }, { id: "a" }, { id: "", type: "shape" }]) {
+      await expect(h.canvases.update(c.id, { document: { version: 1, items: [item] } }, alice.id)).rejects.toThrow(/Canvas item 0/);
+    }
+    expect((await rowOf(c.id)).document).toEqual({ version: 1, items: [] });
+    // Unknown types are fine (a newer editor may add some).
+    const doc = { version: 1, items: [{ id: "x", type: "future-thing", x: 0, y: 0, w: 1, h: 1 }] };
+    expect((await h.canvases.update(c.id, { document: doc }, alice.id)).document).toEqual(doc);
+  });
 });
 
 describe("assistant card outline", () => {

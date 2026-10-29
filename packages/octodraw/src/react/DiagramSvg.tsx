@@ -757,7 +757,7 @@ function IconPlaceholder({ name, x, y, size, color, theme }: { name: string; x: 
   const abbreviation = (name.split('-').at(-1) ?? name).slice(0, 3).toUpperCase();
   return (
     <g transform={`translate(${x}, ${y})`}>
-      <title>Unknown icon: {name}</title>
+      <title>{`Unknown icon: ${name}`}</title>
       <rect width={size} height={size} rx={size * 0.25} fill={theme.color.hover} stroke={theme.color.borderStrong} strokeWidth={1} />
       <text x={size / 2} y={size / 2 + size * 0.14} fontSize={size * (abbreviation.length > 2 ? 0.32 : 0.4)} fontWeight={700} textAnchor="middle" fill={color}>
         {abbreviation}

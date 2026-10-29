@@ -26,6 +26,18 @@ export function isAllowedThumbnailUrl(url: string, supabaseUrl: string | undefin
   return url.startsWith(`${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/`);
 }
 
+/**
+ * The minimum every stored item needs: the editor, published pages and the
+ * assistant card all read `item.id` / `item.type`, so a `null` or bare value
+ * in `items` would break the canvas for everyone who opens it. Unknown types
+ * are allowed (a newer editor may add some).
+ */
+function isCanvasItemShape(item: unknown): boolean {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+  const { id, type } = item as { id?: unknown; type?: unknown };
+  return typeof id === "string" && id.length > 0 && typeof type === "string" && type.length > 0;
+}
+
 @Injectable()
 export class CanvasesService {
   constructor(
@@ -98,8 +110,14 @@ export class CanvasesService {
     ) {
       throw BadRequest("Thumbnail must be uploaded to Octonote storage.");
     }
-    if (patch.document !== undefined && !isOctodrawDocument(patch.document)) {
-      throw BadRequest("Canvas document must be an octodraw document ({ version: 1, items }).");
+    if (patch.document !== undefined) {
+      if (!isOctodrawDocument(patch.document)) {
+        throw BadRequest("Canvas document must be an octodraw document ({ version: 1, items }).");
+      }
+      const bad = patch.document.items.findIndex((it) => !isCanvasItemShape(it));
+      if (bad !== -1) {
+        throw BadRequest(`Canvas item ${bad} must be an object with a string id and type.`);
+      }
     }
     const updated = await this.canvasesRepo.updateById(canvasId, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),

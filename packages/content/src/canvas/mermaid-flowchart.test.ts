@@ -65,3 +65,20 @@ describe("parseMermaidFlowchart", () => {
     expect(() => parseMermaidFlowchart("graph TD\nsubgraph x\n A")).toThrow(/missing its "end"/);
   });
 });
+
+describe("arrows written without spaces", () => {
+  it.each([
+    ["A-->B", false, null],
+    ["A-.->B", true, null],
+    ["A---B", false, null],
+    ["A-->|yes|B", false, "yes"],
+    ["web-01-->db-main", false, null],
+  ])("parses %s", (line, dashed, label) => {
+    const chart = parseMermaidFlowchart(`graph TD\n  ${line}`);
+    expect(chart.edges).toHaveLength(1);
+    const [from, to] = line.includes("web") ? ["web-01", "db-main"] : ["A", "B"];
+    expect(chart.edges[0]).toMatchObject({ from, to });
+    if (label) expect(chart.edges[0]!.label).toBe(label);
+    if (dashed) expect(JSON.stringify(chart.edges[0])).toMatch(/dot|dash/);
+  });
+});

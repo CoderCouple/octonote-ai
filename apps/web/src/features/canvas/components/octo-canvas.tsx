@@ -139,14 +139,20 @@ export function OctoCanvas({
     }, FIGURE_SYNC_DEBOUNCE_MS);
   }, [canvasId]);
 
+  // The document the API has. Compared against this (not the opened
+  // document), so undoing back to how the canvas opened is saved too.
+  const savedDoc = useRef(initial);
+
   // Every change (edits, undo, redo) is saved on a debounce.
   useEffect(() => {
-    if (readOnly || doc === initial) return;
+    if (readOnly || doc === savedDoc.current) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       onSaveStateRef.current?.("saving");
       try {
-        await updateCanvasClientApi(canvasId, { document: docRef.current });
+        const sending = docRef.current;
+        await updateCanvasClientApi(canvasId, { document: sending });
+        savedDoc.current = sending;
         onSaveStateRef.current?.("saved");
         scheduleThumbnail();
         scheduleFigureSync();
@@ -155,7 +161,7 @@ export function OctoCanvas({
         onSaveStateRef.current?.("error");
       }
     }, SAVE_DEBOUNCE_MS);
-  }, [doc, initial, readOnly, canvasId, scheduleThumbnail, scheduleFigureSync]);
+  }, [doc, readOnly, canvasId, scheduleThumbnail, scheduleFigureSync]);
 
   useEffect(() => {
     if (readOnly) return;
@@ -184,7 +190,7 @@ export function OctoCanvas({
       // Leaving with an edit still pending: save it now rather than drop it.
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
-        if (!readOnly && docRef.current !== initial)
+        if (!readOnly && docRef.current !== savedDoc.current)
           void updateCanvasClientApi(canvasId, { document: docRef.current }).catch(
             () => undefined,
           );
@@ -192,7 +198,7 @@ export function OctoCanvas({
       if (thumbTimer.current) clearTimeout(thumbTimer.current);
       if (figureTimer.current) clearTimeout(figureTimer.current);
     };
-  }, [canvasId, initial, readOnly]);
+  }, [canvasId, readOnly]);
 
   // Drag a figure across into the note next to it (project split view).
   useEffect(() => {
