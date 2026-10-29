@@ -20,17 +20,32 @@ const MD = "# Plan\n\nShip the **CLI**. Cost: $O(n)$.\n\n```mermaid\ngraph LR\n 
 
 describe("notes as markdown", () => {
   it("creates a note from markdown, with editor-ready blocks and contentMd", async () => {
-    const page = await h.noteMarkdown.create(alice.workspaceId, { title: "Plan", markdown: MD }, alice.id);
+    const page = await h.noteMarkdown.create(alice.workspaceId, { title: "Launch", markdown: MD }, alice.id);
     const blocks = (page.document as { blocks: { type: string; id: string }[] }).blocks;
     expect(blocks.map((b) => b.type)).toEqual(["heading", "paragraph", "mermaid"]);
     expect(blocks.every((b) => b.id)).toBe(true);
     expect(page.contentMd).toBe(MD);
 
     const read = await h.noteMarkdown.read(page.id, alice.id);
-    expect(read.title).toBe("Plan");
+    expect(read.title).toBe("Launch");
     expect(read.markdown).toContain("# Plan");
     expect(read.markdown).toContain("```mermaid");
     expect(read.markdown).toContain("`$O(n)$`");
+  });
+
+  it("drops a first heading that repeats the title (the note shows the title already)", async () => {
+    const page = await h.noteMarkdown.create(alice.workspaceId, { title: "Launch posts: drafts", markdown: "# Launch posts: drafts\n\nFour drafts.\n\n## Show HN\n\nText." }, alice.id);
+    const types = (page.document as { blocks: { type: string }[] }).blocks.map((b) => b.type);
+    expect(types).toEqual(["paragraph", "heading", "paragraph"]);
+    expect(page.contentMd).toBe("Four drafts.\n\n## Show HN\n\nText.");
+    // Case, emphasis and a trailing full stop don't matter; a different heading stays.
+    const replaced = await h.noteMarkdown.replace(page.id, "# **launch posts: drafts.**\n\nNew.", undefined, alice.id);
+    expect(replaced.contentMd).toBe("New.");
+    const kept = await h.noteMarkdown.replace(page.id, "# Overview\n\nNew.", undefined, alice.id);
+    expect(kept.contentMd).toBe("# Overview\n\nNew.");
+    // Renaming in the same call compares against the new title.
+    const renamed = await h.noteMarkdown.replace(page.id, "# Final\n\nDone.", "Final", alice.id);
+    expect(renamed.contentMd).toBe("Done.");
   });
 
   it("appends and replaces", async () => {

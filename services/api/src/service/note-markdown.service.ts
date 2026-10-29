@@ -11,6 +11,26 @@ import type { PageCreate } from "../api/v1/request/page.request";
 import type { Page } from "../model/page.model";
 import { PagesService } from "./pages.service";
 
+const normal = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[*_`~]/g, "")
+    .replace(/[\s.:!?]+$/u, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * The note shows its title above the body, so markdown that opens with the
+ * same title as a heading (as agents usually write it) would show it twice:
+ * drop that first heading. Any other first heading stays.
+ */
+export function dropTitleHeading(markdown: string, title: string | undefined): string {
+  if (!title?.trim()) return markdown;
+  const m = /^\s*#{1,2}[ \t]+(.+?)[ \t#]*(?:\r?\n|$)/.exec(markdown);
+  if (!m || normal(m[1]!) !== normal(title)) return markdown;
+  return markdown.slice(m[0].length).replace(/^\s*\n/, "");
+}
+
 @Injectable()
 export class NoteMarkdownService {
   constructor(
@@ -32,11 +52,16 @@ export class NoteMarkdownService {
   async create(workspaceId: string, input: PageCreate, actorUserId: string): Promise<Page> {
     const { markdown, ...rest } = input;
     const page = await this.pages.create(workspaceId, rest, actorUserId);
-    return markdown?.trim() ? this.replace(page.id, markdown, undefined, actorUserId) : page;
+    return markdown?.trim() ? this.write(page.id, dropTitleHeading(markdown, page.title), undefined, actorUserId) : page;
   }
 
   /** Replace the note's content (and optionally its title) with markdown. */
   async replace(pageId: string, markdown: string, title: string | undefined, actorUserId: string): Promise<Page> {
+    const shownTitle = title ?? (await this.pages.getOne(pageId, actorUserId)).page.title;
+    return this.write(pageId, dropTitleHeading(markdown, shownTitle), title, actorUserId);
+  }
+
+  private async write(pageId: string, markdown: string, title: string | undefined, actorUserId: string): Promise<Page> {
     const document = await markdownToNoteDocument(markdown);
     return this.pages.update(
       pageId,
