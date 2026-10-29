@@ -45,6 +45,11 @@ export interface DiagramSvgProps {
    * Undefined shows everything.
    */
   revealCount?: number;
+  /**
+   * During a draw-in: how long each new line takes to draw (ms), and the last
+   * line of the diagram, which draws slowly to finish the reveal.
+   */
+  drawPace?: { edgeMs: number; lastMs: number };
   /** Bumped when more icons become available, so memoized output re-renders. */
   iconEpoch?: number;
   /** Prefer Eraser's artwork ('eraser', default) or the open-source catalog ('open'). */
@@ -59,10 +64,12 @@ interface EdgeAnimation {
   key: string;
   kind: 'draw' | 'fade' | 'none';
   delay: number;
+  /** How long a 'draw' takes (ms). */
+  duration?: number;
 }
 
 /** Renders a laid-out view as SVG content (no outer <svg>, so callers control pan and zoom). */
-export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, settings, theme, drillable, onDrill, onToggleCollapse, onLink, onSelect, selected, emphasis, icons, hovered, animation = 'smooth', revealCount, iconSet = 'eraser', zoom = 1 }: DiagramSvgProps) {
+export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, settings, theme, drillable, onDrill, onToggleCollapse, onLink, onSelect, selected, emphasis, icons, hovered, animation = 'smooth', revealCount, drawPace, iconSet = 'eraser', zoom = 1 }: DiagramSvgProps) {
   // Paints come from the full layout so colors don't change as elements reveal.
   const { paints, fills } = useMemo(() => resolvePaints(theme, fullLayout.nodes, settings.colorMode), [theme, fullLayout.nodes, settings.colorMode]);
   const layout = useMemo(() => revealed(fullLayout, revealCount), [fullLayout, revealCount]);
@@ -96,8 +103,9 @@ export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, setting
     if (!animated) {
       edgeAnimations.set(edge, { key: base, kind: 'none', delay: 0 });
     } else if (!previous) {
-      const delay = Math.max(nodeDelay.get(edge.from) ?? 0, nodeDelay.get(edge.to) ?? 0) + EDGE_AFTER_NODES_MS;
-      edgeAnimations.set(edge, { key: `${base}@${signature}`, kind: 'draw', delay });
+      const delay = Math.max(nodeDelay.get(edge.from) ?? 0, nodeDelay.get(edge.to) ?? 0) + (drawPace ? 0 : EDGE_AFTER_NODES_MS);
+      const duration = drawPace ? (edge === fullLayout.edges.at(-1) ? drawPace.lastMs : drawPace.edgeMs) : EDGE_DRAW_MS;
+      edgeAnimations.set(edge, { key: `${base}@${signature}`, kind: 'draw', delay, duration });
     } else if (previous.signature !== signature) {
       // Re-routed: remount and fade in once the boxes have finished moving.
       edgeAnimations.set(edge, { key: `${base}@${signature}`, kind: 'fade', delay: theme.motion.normal });
@@ -600,14 +608,15 @@ function EdgePath({ edge, theme, anim, state = 'normal' }: { edge: LayoutEdge; t
   // would clash with the draw trick) fade in instead.
   const draws = anim.kind === 'draw' && !edge.dashed;
   const lineClass = draws ? 'od-draw' : anim.kind !== 'none' ? 'od-fade' : undefined;
-  const headDelay = anim.delay + (draws ? EDGE_DRAW_MS - 80 : 0);
+  const drawMs = anim.duration ?? EDGE_DRAW_MS;
+  const headDelay = anim.delay + (draws ? drawMs - Math.min(80, drawMs / 3) : 0);
   const headClass = anim.kind !== 'none' ? 'od-fade' : undefined;
   return (
     <g className={state === 'dim' ? 'od-dim' : undefined}>
       {state === 'current' && <path className="od-march" d={roundedPath(trimmed, 6)} fill="none" stroke={theme.color.accent} strokeWidth={width} strokeDasharray="8 7" strokeLinecap="round" />}
       <path
         className={lineClass}
-        style={animationStyle(anim.delay)}
+        style={draws && drawMs !== EDGE_DRAW_MS ? { ...animationStyle(anim.delay), animationDuration: `${drawMs}ms` } : animationStyle(anim.delay)}
         pathLength={draws ? 1 : undefined}
         d={roundedPath(trimmed, 6)}
         fill="none"
@@ -646,7 +655,7 @@ function EdgeLabel({ edge, theme, background, anim, dimmed }: { edge: LayoutEdge
   const label = edge.label!;
   const font = theme.text.edge;
   const color = lineColor(theme, edge.color) ?? theme.color.text;
-  const delay = anim.delay + (anim.kind === 'draw' ? EDGE_DRAW_MS / 2 : 0);
+  const delay = anim.delay + (anim.kind === 'draw' ? (anim.duration ?? EDGE_DRAW_MS) / 2 : 0);
   return (
     <g className={[anim.kind !== 'none' ? 'od-fade' : '', dimmed ? 'od-dim' : ''].join(' ').trim() || undefined} style={animationStyle(delay)}>
       <rect x={label.x} y={label.y} width={label.width} height={label.height} fill={background} />

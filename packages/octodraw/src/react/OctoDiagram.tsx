@@ -162,7 +162,10 @@ const EMBED_PAD = { x: 20, top: 20, crumbsTop: 48, bottom: 20 };
 const STREAM_LAYOUT_MS = 900;
 // Draw-in pacing: slow enough to follow each component appearing.
 const DRAW_IN_NODE_MS = 240;
-const DRAW_IN_EDGE_MS = 150;
+// Lines draw one after another (each finishes before the next starts), at
+// most ~6s in all; the last line draws slowly to close the reveal.
+const drawInEdgeMs = (lines: number) => Math.max(160, Math.min(380, Math.floor(6000 / Math.max(lines, 1))));
+const DRAW_IN_LAST_EDGE_MS = 900;
 const ZOOM_MAX = 4;
 
 export function OctoDiagram({
@@ -404,16 +407,21 @@ export function OctoDiagram({
   const drawCountsRef = useRef(drawCounts);
   drawCountsRef.current = drawCounts;
   const drawTimer = useRef(0);
+  const [drawPace, setDrawPace] = useState<{ edgeMs: number; lastMs: number }>();
   useEffect(() => {
     if (!drawIn || drawInStarted.current || drawCounts[0] === 0) return;
     drawInStarted.current = true;
     let count = 0;
+    const pace = { edgeMs: drawInEdgeMs(drawCountsRef.current[1]!), lastMs: DRAW_IN_LAST_EDGE_MS };
+    setDrawPace(pace);
     // Keyed on the box count, not the layout object, so re-layouts (fonts loading, a resize) don't cancel the reveal.
     const step = () => {
       const [boxes, lines] = drawCountsRef.current as [number, number];
       count += 1;
       setRevealCount(count >= boxes + lines ? undefined : count);
-      if (count < boxes + lines) drawTimer.current = window.setTimeout(step, count < boxes ? DRAW_IN_NODE_MS : DRAW_IN_EDGE_MS);
+      if (count < boxes + lines) drawTimer.current = window.setTimeout(step, count < boxes ? DRAW_IN_NODE_MS : pace.edgeMs);
+      // Done: later edits animate as usual once the last line has drawn.
+      else drawTimer.current = window.setTimeout(() => setDrawPace(undefined), pace.lastMs + 200);
     };
     drawTimer.current = window.setTimeout(step, DRAW_IN_NODE_MS);
     // Only re-runs when the number of boxes changes (or StrictMode's extra mount); start over then.
@@ -1061,7 +1069,7 @@ export function OctoDiagram({
           }}
         >
           {otherBody}
-          {layout && diagramType === 'flow' && <DiagramSvg layout={layout} settings={diagram.settings} theme={theme} drillable={drillable} onDrill={drillInto} onToggleCollapse={toggleCollapsed} onLink={onLinkClick ?? openExternalLink} onSelect={detailsPanel || onSelect ? select : undefined} selected={selected} emphasis={emphasis} icons={icons} hovered={hovered} animation={dragPlacement ? 'none' : animation} revealCount={revealCount} iconEpoch={iconEpoch} iconSet={iconSet} zoom={transform.k} />}
+          {layout && diagramType === 'flow' && <DiagramSvg layout={layout} settings={diagram.settings} theme={theme} drillable={drillable} onDrill={drillInto} onToggleCollapse={toggleCollapsed} onLink={onLinkClick ?? openExternalLink} onSelect={detailsPanel || onSelect ? select : undefined} selected={selected} emphasis={emphasis} icons={icons} hovered={hovered} animation={dragPlacement ? 'none' : animation} revealCount={revealCount} drawPace={drawPace} iconEpoch={iconEpoch} iconSet={iconSet} zoom={transform.k} />}
           {snapGuides?.x && <line x1={snapGuides.x.at} y1={snapGuides.x.from - 8} x2={snapGuides.x.at} y2={snapGuides.x.to + 8} stroke={theme.palette.pink.solid} strokeWidth={1 / transform.k} pointerEvents="none" />}
           {snapGuides?.y && <line x1={snapGuides.y.from - 8} y1={snapGuides.y.at} x2={snapGuides.y.to + 8} y2={snapGuides.y.at} stroke={theme.palette.pink.solid} strokeWidth={1 / transform.k} pointerEvents="none" />}
           {layout && diagramType === 'flow' && movable && selected && !dragPlacement && (() => {
