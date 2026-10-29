@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
 import { FocusHeader } from "@/components/focus-header";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { CommentAuthor } from "@octonote/octodraw";
 import { CanvasPane, type Canvas } from "@/features/canvas";
 import { NotesPane, type Page } from "@/features/notes";
 import {
@@ -35,6 +36,8 @@ interface ProjectSplitViewProps {
   /** `?view=` from the URL wins over the saved default (e.g. links from canvas-reference blocks). */
   initialView?: ProjectView;
   leading?: React.ReactNode;
+  /** The signed-in person (canvas comment author); null when signed out. */
+  user?: CommentAuthor | null;
 }
 
 export function ProjectSplitView({
@@ -44,6 +47,7 @@ export function ProjectSplitView({
   myRole,
   initialView,
   leading,
+  user,
 }: ProjectSplitViewProps) {
   const editable = can.edit(myRole);
   const [view, setView] = useState<ProjectView>(
@@ -154,7 +158,7 @@ export function ProjectSplitView({
           }
         >
           {canvas ? (
-            <CanvasPane canvas={canvas} myRole={myRole} showShare={false} />
+            <CanvasPane canvas={canvas} myRole={myRole} showShare={false} user={user} />
           ) : (
             <Missing label="This project's canvas was removed." />
           )}

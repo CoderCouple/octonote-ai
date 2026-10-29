@@ -7,6 +7,7 @@ import {
   Network,
   Shapes,
 } from "lucide-react";
+import type { CommentAuthor } from "@octonote/octodraw";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
@@ -43,6 +44,8 @@ interface CanvasPaneProps {
   showShare?: boolean;
   /** Rendered before the title (e.g. a back link on the focus route). */
   leading?: React.ReactNode;
+  /** The signed-in person (comment author); null when signed out. */
+  user?: CommentAuthor | null;
 }
 
 export function CanvasPane({
@@ -50,6 +53,7 @@ export function CanvasPane({
   myRole,
   showShare = true,
   leading,
+  user,
 }: CanvasPaneProps) {
   const editable = can.edit(myRole);
   const [autoShape, setAutoShape] = useState(false);
@@ -179,6 +183,7 @@ export function CanvasPane({
           readOnly={!editable}
           autoShape={autoShape}
           onSaveStateChange={setSaveState}
+          user={user}
           onEditor={(editor) => {
             editorRef.current = editor;
           }}

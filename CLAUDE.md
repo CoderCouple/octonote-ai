@@ -41,7 +41,7 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - Applies to notes, canvases, projects, notebooks.
 - **Published notes (built 2026-10-13):** byline (author display name + avatar, publish date, read time — never emails/ids), **upvote/downvote** (user decision 2026-10-13: in v1; `resource_votes`, one vote per signed-in reader, counts on both arrows, signed-out taps go to /login?next=), heading minimap pinned to the right window edge *as the scrollbar* (native scrollbar hidden on desktop), notebook minimap on the left edge only when read inside a published notebook, phone floating bar (votes · contents · share) that hides on scroll down. The minimap reads headings from the blocks BlockNote loaded (stored docs may lack block ids).
 - **Published canvases / projects / notebooks (built 2026-10-13):** on desktop the canvas and project title bar (title, byline, votes, copy link, project's Note/Split/Canvas switcher) renders *inside the site header* via `HeaderSlot` (a portal into `#pub-header-slot`). Canvas: figures minimap on the right + zoom controls; phones get a votes · Figures · fit · share bar. Project: opens on the author's `defaultView`; split = note pane (own heading minimap) + canvas pane (`CanvasStage`); phones get a Note | Canvas toggle; figures embedded in the note offer "See on canvas". **No notebook minimap on projects** (user decision). Notebook: header + kind filters + items as grid cards or list rows (reader's choice, remembered; grid on desktop / list on phones by default); the public API returns thumbnail, excerpt and reading time per item.
-- **Not in v1:** Commenter role (arrives with comments), comments, highlights, follows, password/expiring/max-use links.
+- **Not in v1:** Commenter role, note comments, highlights, follows, password/expiring/max-use links. (Canvas comments are v1 — see below.)
 
 ## v1 MVP scope — hard limit
 
@@ -50,7 +50,7 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 **IN SCOPE:**
 - Notes editor (BlockNote) — standard blocks (paragraph, heading, list, todo, code, quote, divider, image) + custom blocks: `canvas-reference`, **`mathBlock` + inline `math` (KaTeX) and `mermaid` diagrams** (added 2026-10-09, user decision; Mermaid ported from OctoFocus with `securityLevel: "strict"`). Pasted markdown with `$…$`, `$$…$$`, ```math or ```mermaid is converted by `features/notes/lib/markdown-import.ts`.
 - `canvas-reference` block — references a canvas page in the workspace. Renders a thumbnail (PNG snapshot stored on the canvas record) + canvas title. Clicking opens the canvas page. **Reference only, not inline rendering.** No tldraw instance inside the note.
-- Canvas (**octodraw**, `packages/octodraw` — replaced tldraw 2026-10-28, see below) — its own toolset, plus **Rearrange** (added 2026-10-20, user decision): a header menu that lays out the selection (or the whole canvas) vertically or horizontally with dagre, keeping surrounding boxes around their contents; one undo step (`features/canvas/lib/rearrange.ts`, works on octodraw items).
+- Canvas (**octodraw**, `packages/octodraw` — replaced tldraw 2026-10-28, see below) — its own toolset, **including comments, Export (PNG/SVG/PDF/copy), Present and Slides (all v1, user decision 2026-10-29)**, plus **Rearrange** (added 2026-10-20, user decision): a header menu that lays out the selection (or the whole canvas) vertically or horizontally with dagre, keeping surrounding boxes around their contents; one undo step (`features/canvas/lib/rearrange.ts`, works on octodraw items).
 - Standalone notes, standalone canvases, projects (1 note + 1 canvas), notebooks
 - Sharing + publishing (Google Docs model above)
 - **View analytics for published pages** (added 2026-10-09, user decision): anonymous hourly views + daily unique visitors (`resource_views`; uniques via Plausible-style daily-rotating salt hash of account id or IP+UA, salt and hashes deleted daily), bots/link previews and the item's own owners/editors skipped, nothing about the visitor stored; owners + editors see a chart in the list's Analytics panel. No visitor tracking on published pages (PostHog never loads there — see Tracking below).
@@ -78,8 +78,8 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - Custom diagrams-as-code DSL beyond Mermaid
 - AI diagram generation (Claude)
 - Multiplayer (Yjs / Hocuspocus) — single-user with auto-save is enough
-- Comments, highlights, follows, Commenter role (votes moved into v1 on 2026-10-13)
-- Export (PDF / PNG)
+- Note comments, highlights, follows, Commenter role (votes moved into v1 on 2026-10-13; canvas comments moved into v1 on 2026-10-29)
+- Export of notes (PDF / PNG) — canvas export is v1 (octodraw's Export menu)
 - Custom eraser-style DSL
 - Mind maps, flashcards, charts, live code, infographics — all the overload-triggers from the prior MVP
 - Desktop app (the CLI moved into v1 on 2026-10-13)

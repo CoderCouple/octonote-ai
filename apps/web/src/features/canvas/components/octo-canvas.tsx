@@ -5,6 +5,7 @@ import {
   useCanvasHistory,
   type CanvasChangeMeta,
   type CanvasDocument,
+  type CommentAuthor,
   type OctoCanvasHandle,
 } from "@octonote/octodraw";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -50,6 +51,8 @@ export interface OctoCanvasProps {
   onSaveStateChange?: (state: SaveState) => void;
   /** Hands the pane what its header buttons need (Rearrange). */
   onEditor?: (api: CanvasEditorApi) => void;
+  /** The signed-in person; comments are posted under their name. */
+  user?: CommentAuthor | null;
 }
 
 export function OctoCanvas({
@@ -60,6 +63,7 @@ export function OctoCanvas({
   autoShape = false,
   onSaveStateChange,
   onEditor,
+  user,
 }: OctoCanvasProps) {
   // The stored document is read once; after that the editor owns it.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -279,6 +283,7 @@ export function OctoCanvas({
         selection={selection}
         onSelectionChange={setSelection}
         readOnly={readOnly}
+        user={user ?? undefined}
         colorScheme={colorScheme}
         themes={CANVAS_THEMES}
         onUploadImage={readOnly ? undefined : onUploadImage}
