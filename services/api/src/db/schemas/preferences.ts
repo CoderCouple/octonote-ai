@@ -6,7 +6,7 @@ export const userPreferences = pgTable("user_preferences", {
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   /** Named preset; the client maps it to a font stack. */
-  notesFontFamily: text("notes_font_family").default("inter").notNull(),
+  notesFontFamily: text("notes_font_family").default("source-serif").notNull(),
   notesFontSize: text("notes_font_size").default("md").notNull(),
   notesLineHeight: text("notes_line_height").default("normal").notNull(),
   theme: text("theme").default("system").notNull(),

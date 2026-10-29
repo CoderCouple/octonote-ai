@@ -155,7 +155,7 @@ function PublishedNote({
               </p>
               <h1
                 className="text-foreground-strong mt-2 text-4xl leading-[1.05] font-bold tracking-tight md:mt-4 md:text-display"
-                style={{ fontFamily: "var(--font-reader-family)" }}
+                style={{ letterSpacing: "-0.025em" }}
               >
                 {note.title || "Untitled"}
               </h1>

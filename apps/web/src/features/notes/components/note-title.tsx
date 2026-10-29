@@ -56,9 +56,10 @@ export function NoteTitle({
     void onSave(clean);
   };
 
-  const style = { fontFamily: "var(--font-reader-family)" };
+  // Sans like the headings in the body (globals.css --prose-heading-family).
+  const style = { fontFamily: "var(--prose-heading-family, var(--font-family-sans))", letterSpacing: "-0.022em" };
   const cls =
-    "text-foreground-strong w-full resize-none overflow-hidden bg-transparent text-3xl leading-tight font-bold tracking-tight outline-none placeholder:text-foreground-subtle md:text-4xl";
+    "text-foreground-strong w-full resize-none overflow-hidden bg-transparent text-[2rem] leading-[1.15] font-bold outline-none placeholder:text-foreground-subtle md:text-[2.75rem]";
 
   if (!editable) {
     return (

@@ -38,7 +38,8 @@ interface TypographyStore extends NoteTypography {
 }
 
 const DEFAULTS: NoteTypography = {
-  family: "inter",
+  // A book face for reading (Medium/Substack style); Inter stays in the picker.
+  family: "source-serif",
   size: "md",
   lineHeight: "normal",
   width: "medium",

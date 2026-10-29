@@ -146,11 +146,35 @@ body {
 
 /* Reader typography: NotesPane / the published page set --font-reader-* inline
  * (from the typography picker) and tag their wrapper with .reader-typography.
- * Only the family cascades to every descendant so BlockNote's heading scale holds. */
-.reader-typography .bn-container {
+ * The look is editorial (Medium / Substack): a book face for the body at a
+ * comfortable measure, crisp sans headings on a calm scale, and a steady
+ * vertical rhythm. The same rules style the editor (BlockNote) and the
+ * published page's server-rendered copy (.static-note), so nothing jumps
+ * when the editor swaps in. */
+.reader-typography {
+  --prose-gap: 0.9em; /* between paragraphs and blocks */
+  --prose-item-gap: 0.3em; /* between list items */
+  --prose-heading-family: var(--font-family-sans);
+}
+.reader-typography .bn-container,
+.reader-typography .bn-container .bn-default-styles,
+.reader-typography .static-note {
   font-family: var(--font-reader-family) !important;
   font-size: var(--font-reader-size) !important;
   line-height: var(--font-reader-line-height) !important;
+  color: var(--foreground);
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+/* Phones read a little smaller (Medium: 20px desktop, 18px mobile). */
+@media (max-width: 640px) {
+  .reader-typography .bn-container,
+  .reader-typography .bn-container .bn-default-styles,
+  .reader-typography .static-note {
+    font-size: calc(var(--font-reader-size) - 2px) !important;
+  }
 }
 .reader-typography .bn-container * {
   font-family: inherit !important;
@@ -161,15 +185,145 @@ body {
 .reader-typography .bn-container [data-content-type="codeBlock"] pre {
   font-family: var(--font-mono) !important;
 }
+
+/* Rhythm. BlockNote pads every block 3px and sets line-height 1.5; take over. */
+.reader-typography .bn-block-outer {
+  line-height: inherit;
+}
+.reader-typography .bn-block-content {
+  padding-block: 0;
+}
+.reader-typography .bn-block-group > .bn-block-outer + .bn-block-outer,
+.reader-typography .static-note > * + * {
+  margin-top: var(--prose-gap);
+}
+/* List items sit closer together, and nested lists hug their parent. */
+.reader-typography .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type$="ListItem"]) + .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type$="ListItem"]),
+.reader-typography .bn-block-group .bn-block-group > .bn-block-outer:first-child,
+.reader-typography .static-note li + li,
+.reader-typography .static-note li > :is(ul, ol) {
+  margin-top: var(--prose-item-gap);
+}
+.reader-typography .bn-block-content[data-content-type$="ListItem"]::before,
+.reader-typography .static-note li::marker {
+  color: var(--foreground-subtle);
+}
+
+/* Headings: sans, tight, on a calm scale (2 / 1.55 / 1.25 of the body). */
+.reader-typography .bn-block-content[data-content-type="heading"] {
+  padding-top: 0;
+  --level: 2em;
+}
+.reader-typography .bn-block-content[data-content-type="heading"][data-level="2"] {
+  --level: 1.55em;
+}
+.reader-typography .bn-block-content[data-content-type="heading"][data-level="3"] {
+  --level: 1.25em;
+}
+.reader-typography .bn-container [data-content-type="heading"],
+.reader-typography .bn-container [data-content-type="heading"] *,
+.reader-typography .static-note :is(h2, h3, h4) {
+  font-family: var(--prose-heading-family) !important;
+  color: var(--foreground-strong);
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+}
+.reader-typography .static-note h2 { font-size: 2em; }
+.reader-typography .static-note h3 { font-size: 1.55em; }
+.reader-typography .static-note h4 { font-size: 1.25em; }
+/* Room above a heading (a new section), little below it. */
+.reader-typography .bn-block-group > .bn-block-outer + .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type="heading"]),
+.reader-typography .static-note > * + :is(h2, h3) {
+  margin-top: 1.9em;
+}
+.reader-typography .bn-block-group > .bn-block-outer + .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type="heading"][data-level="3"]),
+.reader-typography .static-note > * + h4 {
+  margin-top: 1.5em;
+}
+.reader-typography .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type="heading"]) + .bn-block-outer,
+.reader-typography .static-note :is(h2, h3, h4) + * {
+  margin-top: 0.5em;
+}
+
+/* Inline text. */
+.reader-typography .bn-inline-content strong,
+.reader-typography .static-note strong {
+  font-weight: 700;
+  color: var(--foreground-strong);
+}
+.reader-typography .bn-inline-content a,
+.reader-typography .static-note a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  text-decoration-color: var(--foreground-subtle);
+}
+.reader-typography .bn-inline-content a:hover,
+.reader-typography .static-note a:hover {
+  text-decoration-color: currentColor;
+}
+.reader-typography .bn-inline-content code,
+.reader-typography .static-note :not(pre) > code {
+  font-size: 0.84em;
+  padding: 0.12em 0.36em;
+  border-radius: 0.3em;
+  background: var(--muted);
+  color: var(--foreground-strong);
+}
+
+/* Quotes: the body face in italic, full colour, a firm rule on the left. */
+.reader-typography [data-content-type="quote"] blockquote,
+.reader-typography .static-note blockquote {
+  color: var(--foreground);
+  border-left: 3px solid var(--foreground-strong);
+  padding-left: 1.1em;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Blocks that need air: code, images, figures, tables, dividers. */
+.reader-typography .bn-block-group > .bn-block-outer + .bn-block-outer:has(> .bn-block > .bn-block-content:is([data-content-type="codeBlock"], [data-content-type="image"], [data-content-type="table"], [data-content-type="figure"], [data-content-type="canvasReference"], [data-content-type="mermaid"])),
+.reader-typography .bn-block-outer:has(> .bn-block > .bn-block-content:is([data-content-type="codeBlock"], [data-content-type="image"], [data-content-type="table"], [data-content-type="figure"], [data-content-type="canvasReference"], [data-content-type="mermaid"])) + .bn-block-outer,
+.reader-typography .static-note > * + :is(pre, figure, table, hr),
+.reader-typography .static-note > :is(pre, figure, table, hr) + * {
+  margin-top: 1.5em;
+}
+.reader-typography .bn-block-content[data-content-type="codeBlock"],
+.reader-typography .static-note pre {
+  margin-block: 0;
+}
+.reader-typography [data-content-type="divider"] hr,
+.reader-typography .static-note hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 0.6em 0;
+}
+.reader-typography .bn-visual-media,
+.reader-typography .static-note figure img {
+  border-radius: 0.5rem;
+}
+.reader-typography .bn-file-caption,
+.reader-typography .static-note figcaption {
+  font-family: var(--prose-heading-family) !important;
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+  text-align: center;
+  padding-top: 0.5em;
+}
+
 /* Centre the editor in the reading column (its 54px side padding holds the drag
  * handles; the title above uses the same padding so they line up), and let it
  * sit on whatever surface it's placed on. */
 /* Published pages: the body lines up with the title (no drag-handle gutter). */
 .published-note .bn-editor {
   padding-inline: 0;
+  max-width: var(--reader-content-width) !important;
 }
 .reader-typography .bn-editor {
-  max-width: var(--reader-content-width);
+  /* The text column is the reading width; the editor adds its 54px handle gutters. */
+  max-width: calc(var(--reader-content-width) + 108px);
   margin-inline: auto;
   background: transparent;
 }

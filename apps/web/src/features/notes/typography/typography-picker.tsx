@@ -45,6 +45,7 @@ export interface TypographyPickerProps {
 
 const FAMILIES: NotesFontFamily[] = [
   // Serif
+  "source-serif",
   "fraunces",
   "instrument-serif",
   "georgia",

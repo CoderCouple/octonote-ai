@@ -135,7 +135,7 @@ export function NotesPane({
           onSaveStateChange={setSaveState}
           onEditorReady={onEditorReady}
           header={
-            <div className="mx-auto max-w-[var(--reader-content-width)] px-[54px] pt-10 pb-2">
+            <div className="mx-auto max-w-[calc(var(--reader-content-width)+108px)] px-[54px] pt-12 pb-6">
               <NoteTitle
                 value={title}
                 editable={editable}

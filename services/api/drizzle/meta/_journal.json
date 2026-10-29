@@ -169,6 +169,13 @@
       "when": 1793249753224,
       "tag": "0023_drop_canvas_tldraw_backup",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793296471306,
+      "tag": "0024_notes_font_source_serif",
+      "breakpoints": true
     }
   ]
 }

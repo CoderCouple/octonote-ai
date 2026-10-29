@@ -41,14 +41,13 @@ export function useNoteTypography(): NoteTypographyResolved {
       // and by BlockNote-adjacent markup. Declared here so anything nested
       // inside the article inherits automatically.
       ["--font-reader-family" as string]: fontFamilyStack(family),
-      ["--font-reader-size" as string]: `${fontSizePx(size)}px`,
+      ["--font-reader-size" as string]: `${fontSizePx(size, family)}px`,
       ["--font-reader-line-height" as string]: String(
         lineHeightRatio(lineHeight),
       ),
       ["--reader-content-width" as string]: `${widthRem}rem`,
-      fontFamily: `var(--font-reader-family)`,
-      fontSize: `var(--font-reader-size)`,
-      lineHeight: `var(--font-reader-line-height)`,
+      // The family/size apply to the note body only (.bn-container /
+      // .static-note in globals.css), so titles and bylines stay in the UI face.
       maxWidth: `var(--reader-content-width)`,
     }),
     [family, size, lineHeight, widthRem],

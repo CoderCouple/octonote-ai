@@ -14,12 +14,22 @@ import {
   Instrument_Serif,
   Inter,
   Newsreader,
+  Source_Serif_4,
 } from "next/font/google";
 import type {
   NotesFontFamily,
   NotesFontSize,
   NotesLineHeight,
 } from "@octonote/shared";
+
+/** The default reading face: Adobe's Source Serif (sturdy, made for long reads on screen). */
+export const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  variable: "--font-source-serif",
+  display: "swap",
+  weight: ["400", "600", "700"],
+  style: ["normal", "italic"],
+});
 
 export const fraunces = Fraunces({
   subsets: ["latin"],
@@ -97,6 +107,7 @@ export type NotesContentWidth = "narrow" | "medium" | "wide";
 
 /** All variables to hoist onto <html> in the root layout. */
 export const READER_FONT_VARIABLES = [
+  sourceSerif.variable,
   fraunces.variable,
   instrumentSerif.variable,
   newsreader.variable,
@@ -112,6 +123,8 @@ export const READER_FONT_VARIABLES = [
  */
 export function fontFamilyStack(family: NotesFontFamily): string {
   switch (family) {
+    case "source-serif":
+      return `var(--font-source-serif), "Source Serif 4", Charter, "Bitstream Charter", ui-serif, Georgia, serif`;
     case "fraunces":
       return `var(--font-fraunces), Fraunces, ui-serif, Georgia, serif`;
     case "instrument-serif":
@@ -132,19 +145,19 @@ export function fontFamilyStack(family: NotesFontFamily): string {
   }
 }
 
-/** Base font size in px per preset. Body copy uses this; headings scale from it. */
-export function fontSizePx(size: NotesFontSize): number {
-  switch (size) {
-    case "sm":
-      return 14;
-    case "lg":
-      return 18;
-    case "xl":
-      return 20;
-    case "md":
-    default:
-      return 16;
-  }
+const SERIF_FAMILIES = new Set<NotesFontFamily>(["source-serif", "newsreader", "georgia", "fraunces", "instrument-serif"]);
+
+/** True for the book faces; they read best a little larger than sans text. */
+export const isSerif = (family: NotesFontFamily) => SERIF_FAMILIES.has(family);
+
+/**
+ * Base font size in px per preset. Body copy uses this; headings scale from
+ * it. Serifs run small, so they get ~3px more (Medium/Substack set long
+ * reads at 20–21px; Notion's sans at 16px).
+ */
+export function fontSizePx(size: NotesFontSize, family: NotesFontFamily = "source-serif"): number {
+  const sans = { sm: 15, md: 17, lg: 19, xl: 21 }[size] ?? 17;
+  return isSerif(family) ? sans + 3 : sans;
 }
 
 export function lineHeightRatio(lh: NotesLineHeight): number {
@@ -155,25 +168,27 @@ export function lineHeightRatio(lh: NotesLineHeight): number {
       return 1.85;
     case "normal":
     default:
-      return 1.7;
+      return 1.65;
   }
 }
 
 /** rem widths keyed by preset. Used as the article's `max-width`. */
 export function contentWidthRem(width: NotesContentWidth): number {
   switch (width) {
+    // ~65–75 characters a line at the default size: the comfortable measure.
     case "narrow":
-      return 40;
+      return 36;
     case "wide":
-      return 64;
+      return 52;
     case "medium":
     default:
-      return 52;
+      return 42;
   }
 }
 
 /** Human labels for the picker UI. */
 export const FONT_FAMILY_LABELS: Record<NotesFontFamily, string> = {
+  "source-serif": "Source Serif",
   fraunces: "Fraunces",
   "instrument-serif": "Instrument Serif",
   georgia: "Georgia",

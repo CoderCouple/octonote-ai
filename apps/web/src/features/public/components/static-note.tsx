@@ -78,13 +78,6 @@ function asInline(content: Block["content"]): Inline[] | undefined {
   return Array.isArray(content) ? content : undefined;
 }
 
-// BlockNote's heading scale (3em / 2em / 1.3em), so the swap doesn't jump.
-const HEADING = {
-  1: "mt-3 text-[3em] font-bold leading-[1.5]",
-  2: "mt-3 text-[2em] font-bold leading-[1.5]",
-  3: "mt-3 text-[1.3em] font-bold leading-[1.5]",
-} as const;
-
 function renderBlock(b: Block, key: number): ReactNode {
   const p = b.props ?? {};
   const text = inline(asInline(b.content));
@@ -98,9 +91,8 @@ function renderBlock(b: Block, key: number): ReactNode {
       const Tag = `h${level + 1}` as "h2" | "h3" | "h4";
       return (
         <Fragment key={key}>
-          <Tag className={`text-foreground-strong ${HEADING[level]}`}>
-            {text}
-          </Tag>
+          {/* Sizes and spacing: the .reader-typography rules in globals.css. */}
+          <Tag>{text}</Tag>
           {children}
         </Fragment>
       );
@@ -113,10 +105,7 @@ function renderBlock(b: Block, key: number): ReactNode {
       return renderList([b], key);
     case "quote":
       return (
-        <blockquote
-          key={key}
-          className="text-muted-foreground my-1 border-l-2 border-current pl-4"
-        >
+        <blockquote key={key}>
           {text}
           {children}
         </blockquote>
@@ -132,7 +121,7 @@ function renderBlock(b: Block, key: number): ReactNode {
       return (
         <pre
           key={key}
-          className="bg-code-background text-code-foreground my-2 overflow-x-auto rounded-lg p-4 font-mono text-sm leading-[1.6] break-words whitespace-pre-wrap"
+          className="bg-code-background text-code-foreground overflow-x-auto rounded-lg p-4 font-mono text-sm leading-[1.6] break-words whitespace-pre-wrap"
         >
           {html ? (
             // highlight.js escapes the code; only its own spans are added.
@@ -147,23 +136,20 @@ function renderBlock(b: Block, key: number): ReactNode {
       return typeof p.latex === "string" && p.latex ? (
         <div
           key={key}
-          className="my-2 overflow-x-auto"
+          className="overflow-x-auto"
           dangerouslySetInnerHTML={{ __html: math(p.latex, true) }}
         />
       ) : null;
     case "mermaid":
       // The diagram renders in the browser; crawlers get its source as text.
       return (
-        <figure
-          key={key}
-          className="bg-muted/40 my-2 min-h-48 rounded-lg border"
-        >
+        <figure key={key} className="bg-muted/40 min-h-48 rounded-lg border">
           <pre className="sr-only">{String(p.code ?? "")}</pre>
         </figure>
       );
     case "image":
       return p.url ? (
-        <figure key={key} className="my-2">
+        <figure key={key}>
           {/* eslint-disable-next-line @next/next/no-img-element -- plain HTML on purpose: same URL the editor loads */}
           <img
             src={String(p.url)}
@@ -181,7 +167,7 @@ function renderBlock(b: Block, key: number): ReactNode {
       return p.imageUrl ? (
         <figure
           key={key}
-          className="my-2"
+
           style={{ width: `${Number(p.widthPct) || 100}%` }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- plain HTML on purpose: same URL the editor loads */}
@@ -203,7 +189,7 @@ function renderBlock(b: Block, key: number): ReactNode {
       const t = b.content as TableContent | undefined;
       if (!t || t.type !== "tableContent") return null;
       return (
-        <div key={key} className="my-2 overflow-x-auto">
+        <div key={key} className="overflow-x-auto">
           <table className="border-collapse text-sm">
             <tbody>
               {t.rows.map((row, r) => (
@@ -223,17 +209,11 @@ function renderBlock(b: Block, key: number): ReactNode {
     case "divider":
       return <hr key={key} className="my-4" />;
     case "canvasReference":
-      return (
-        <div key={key} className="bg-muted/40 my-2 h-24 rounded-lg border" />
-      );
+      return <div key={key} className="bg-muted/40 h-24 rounded-lg border" />;
     default:
       return (
         <Fragment key={key}>
-          {text ? (
-            <p className="py-[3px]">{text}</p>
-          ) : (
-            <p className="h-[1.5em]" />
-          )}
+          {text ? <p>{text}</p> : <p className="h-[1.5em]" />}
           {children}
         </Fragment>
       );
@@ -255,7 +235,7 @@ function renderList(items: Block[], key: number): ReactNode {
       }
     >
       {items.map((b, i) => (
-        <li key={i} className="py-[3px]">
+        <li key={i}>
           {type === "checkListItem" ? (
             <input
               type="checkbox"
@@ -302,7 +282,7 @@ export function StaticNote({ document }: { document: unknown }) {
       ? (document as { blocks: Block[] }).blocks
       : [];
   return (
-    <div className="static-note text-foreground whitespace-pre-wrap mx-auto max-w-[var(--reader-content-width)] text-[length:var(--font-reader-size,1rem)] leading-normal">
+    <div className="static-note mx-auto max-w-[var(--reader-content-width)] whitespace-pre-wrap">
       {renderBlocks(blocks)}
     </div>
   );

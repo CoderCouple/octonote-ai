@@ -367,6 +367,7 @@ export const ChangeEventSchema = z.object({
 // =============================================================================
 
 export const NotesFontFamilySchema = z.enum([
+  "source-serif",
   "fraunces",
   "instrument-serif",
   "georgia",
