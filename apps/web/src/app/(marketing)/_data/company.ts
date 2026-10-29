@@ -21,4 +21,5 @@ export const FOUNDERS: { name: string; role: string; url?: string }[] = [
 /** Official profiles; sent as `sameAs` so Google ties them to octonote.ai. */
 export const PROFILES: { label: string; url: string }[] = [
   { label: "LinkedIn", url: "https://www.linkedin.com/company/octonote-ai/" },
+  { label: "Reddit", url: "https://www.reddit.com/r/OctonoteAI/" },
 ];

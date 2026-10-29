@@ -17,6 +17,10 @@
   "navbar": {
     "links": [
       {
+        "label": "Community",
+        "href": "https://www.reddit.com/r/OctonoteAI/"
+      },
+      {
         "label": "Examples",
         "href": "https://octonote.ai/#examples"
       },
@@ -136,11 +140,19 @@
             "href": "https://octonote.ai/students"
           },
           {
+            "label": "Community (Reddit)",
+            "href": "https://www.reddit.com/r/OctonoteAI/"
+          },
+          {
             "label": "Contact",
             "href": "mailto:hello@octonote.ai"
           }
         ]
       }
-    ]
+    ],
+    "socials": {
+      "reddit": "https://www.reddit.com/r/OctonoteAI/",
+      "linkedin": "https://www.linkedin.com/company/octonote-ai/"
+    }
   }
 }
