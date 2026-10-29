@@ -10,7 +10,7 @@
  * offers "See on canvas", which switches over and zooms to it.
  *
  * Both panes stay mounted: a hidden pane is laid over the visible one,
- * invisible, so tldraw keeps its size and the reader keeps their place.
+ * invisible, so the canvas keeps its size and the reader keeps their place.
  */
 import { Link2 } from "lucide-react";
 import { MadeWithCta } from "./made-with-cta";
@@ -306,6 +306,7 @@ export function PublishedProject({
               className={pane(showCanvas, false)}
             >
               <CanvasStage
+                canvasId={canvas.id}
                 canvasDocument={canvas.document}
                 title={title}
                 notebook={null}

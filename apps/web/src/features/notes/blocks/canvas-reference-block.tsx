@@ -2,7 +2,7 @@
 
 /**
  * `canvasReference` block: a card linking to a canvas, with its thumbnail
- * and title. Reference only — never renders tldraw inside the note (an
+ * and title. Reference only — never renders the canvas inside the note (an
  * inline canvas block is a v2 feature).
  */
 import { createReactBlockSpec } from "@blocknote/react";

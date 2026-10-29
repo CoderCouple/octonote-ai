@@ -1,5 +1,5 @@
 /**
- * Renders the current canvas page to a small PNG, uploads it to Supabase
+ * Renders the canvas document to a small PNG (always light), uploads it to Supabase
  * Storage and records the URL on the canvas (shown by the notes
  * canvas-reference block).
  *
@@ -7,30 +7,21 @@
  * derived from a canvas id; the API only hands the URL to people who can
  * view the canvas. The previous thumbnail is removed best-effort.
  */
-import type { Editor } from "tldraw";
+import type { CanvasDocument } from "@octonote/octodraw";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { updateCanvasClientApi } from "../api/canvases-client-api";
 import { THUMBNAIL_BUCKET } from "../constants";
+import { renderCanvasPng } from "./render";
 
 const MAX_WIDTH_PX = 800;
 
 export async function uploadCanvasThumbnail(
-  editor: Editor,
+  doc: CanvasDocument,
   canvasId: string,
   previousUrl: string | null,
 ): Promise<string | null> {
-  const shapeIds = [...editor.getCurrentPageShapeIds()];
-  if (shapeIds.length === 0) return null;
-  const bounds = editor.getCurrentPageBounds();
-  const scale = bounds && bounds.w > MAX_WIDTH_PX ? MAX_WIDTH_PX / bounds.w : 1;
-
-  const { blob } = await editor.toImage(shapeIds, {
-    format: "png",
-    background: true,
-    padding: 32,
-    scale,
-    darkMode: false,
-  });
+  const blob = await renderCanvasPng(doc, { maxWidth: MAX_WIDTH_PX });
+  if (!blob) return null;
 
   const supabase = createSupabaseBrowserClient();
   const path = `${canvasId}/${crypto.randomUUID()}.png`;

@@ -1,0 +1,46 @@
+title Multi-tenant SaaS
+direction down
+
+Tenant admins [icon: admin]
+End users [icon: users]
+
+Platform [icon: cloud, color: indigo] {
+  Control plane [color: purple] {
+    Tenant service [icon: building]
+    Billing service [icon: stripe]
+    Provisioner [icon: terraform]
+    Feature flags [icon: flag]
+  }
+  Data plane [color: blue] {
+    Shared cell [description: small tenants] {
+      Shared API [icon: server]
+      Shared workers [icon: worker]
+      Shared DB [icon: postgres, shape: cylinder, description: row-level security]
+    }
+    Dedicated cells [description: enterprise tenants] {
+      Cell Acme [color: teal] {
+        Acme API [icon: server]
+        Acme DB [icon: postgres, shape: cylinder]
+      }
+      Cell Globex [color: teal] {
+        Globex API [icon: server]
+        Globex DB [icon: postgres, shape: cylinder]
+      }
+    }
+  }
+  Router [icon: split, description: tenant-aware]
+}
+Identity provider [icon: okta]
+
+Tenant admins > Tenant service
+End users > Router
+Router > Shared API, Acme API, Globex API
+Shared API > Shared DB
+Shared API --> Shared workers
+Acme API > Acme DB
+Globex API > Globex DB
+Tenant service > Provisioner
+Provisioner --> Dedicated cells: creates
+Tenant service > Billing service
+Router <> Identity provider: SSO
+Feature flags --> Data plane

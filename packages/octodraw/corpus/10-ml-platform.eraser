@@ -1,0 +1,44 @@
+title ML platform
+direction right
+colorMode outline
+
+Data scientists [icon: users]
+Applications [icon: browser]
+
+Feature engineering [color: blue] {
+  Data lake [icon: bucket]
+  Feature pipelines [icon: spark]
+  Feature store [icon: database, description: Feast]
+}
+Training [color: purple] {
+  Notebooks [icon: python, description: Jupyter]
+  Training jobs [icon: pytorch, description: GPU cluster]
+  Experiment tracking [icon: chart, description: MLflow]
+  Hyperparameter search [icon: target]
+}
+Registry [color: orange] {
+  Model registry [icon: boxes]
+  Approval gate [shape: diamond]
+}
+Serving [color: green] {
+  Batch scoring [icon: worker]
+  Online inference [icon: nvidia, description: Triton]
+  Feature lookup [icon: cache]
+}
+Monitoring [color: red] {
+  Drift detection [icon: activity]
+  Performance metrics [icon: gauge]
+}
+
+Data scientists > Notebooks
+Data lake > Feature pipelines > Feature store
+Feature store > Training jobs, Feature lookup
+Notebooks > Training jobs
+Hyperparameter search > Training jobs
+Training jobs > Experiment tracking
+Training jobs > Model registry > Approval gate
+Approval gate > Batch scoring, Online inference: approved
+Applications > Online inference
+Online inference > Feature lookup
+Online inference, Batch scoring --> Drift detection, Performance metrics
+Drift detection --> Feature pipelines: retrain trigger [color: red]

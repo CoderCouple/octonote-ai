@@ -1,0 +1,39 @@
+title CI/CD pipeline
+direction right
+colorMode pastel
+
+Developer [icon: user]
+GitHub [icon: github] {
+  Pull request [icon: branch]
+  Main branch [icon: branch]
+}
+CI [icon: github-actions, color: blue] {
+  Lint [icon: check]
+  Unit tests [icon: check]
+  Build image [icon: docker]
+  Security scan [icon: shield, color: red]
+}
+Registry [icon: aws-ecr]
+CD [icon: argo, color: green] {
+  Staging deploy [icon: rocket]
+  Smoke tests [icon: check]
+  Approval [icon: users, shape: diamond]
+  Production deploy [icon: rocket]
+}
+Clusters [icon: kubernetes] {
+  Staging [icon: k8s-namespace, color: yellow]
+  Production [icon: k8s-namespace, color: red]
+}
+Slack alerts [icon: notification]
+
+Developer > Pull request: push
+Pull request > Lint > Unit tests > Build image > Security scan
+Security scan > Registry: publish
+Pull request > Main branch: merge
+Main branch > Staging deploy
+Registry --> Staging deploy: image tag
+Staging deploy > Staging
+Staging deploy > Smoke tests > Approval
+Approval > Production deploy: approved
+Production deploy > Production
+Smoke tests, Production deploy --> Slack alerts: status

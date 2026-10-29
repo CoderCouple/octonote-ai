@@ -17,6 +17,7 @@ import { ProjectsRepository } from "../db/repository/projects.repository";
 import { SharingRepository, type ShareableRow } from "../db/repository/sharing.repository";
 import { UsersRepository } from "../db/repository/users.repository";
 import type { ResourceKind } from "../model/sharing.model";
+import { readCanvasDocument } from "./lib/canvas-document";
 import { emailLocalPart } from "./me.service";
 
 export interface PublicNote {
@@ -216,7 +217,7 @@ export class PublicService {
       kind: "canvas",
       id: row.id,
       title: row.title,
-      document: row.document,
+      document: readCanvasDocument(row),
       thumbnailUrl: row.thumbnailUrl,
       updatedAt: row.updatedAt.toISOString(),
     };

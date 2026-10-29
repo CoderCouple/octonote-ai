@@ -8,12 +8,12 @@ description: "Write a mermaid flowchart; Octonote lays it out as real, editable 
 ```bash
 octonote canvas create "Login flow" --from-mermaid flow.mmd
 octonote canvas redraw cnv_… --from-mermaid flow.mmd
-octonote canvas pull cnv_… -o board.json   # raw tldraw JSON
+octonote canvas pull cnv_… -o board.json   # raw canvas JSON (octodraw format)
 ```
 
 ## canvas create
 
-Create a canvas — drawn from a mermaid flowchart or class diagram, from tldraw JSON, or empty
+Create a canvas — drawn from a mermaid flowchart or class diagram, from canvas JSON, or empty
 
 ```bash
 octonote canvas create [title] [options]
@@ -23,7 +23,7 @@ octonote canvas create [title] [options]
 | --- | --- |
 | <code>&lt;title&gt;</code> | title (default: Untitled canvas) |
 | <code>-m, --from-mermaid &lt;path&gt;</code> | mermaid flowchart or class diagram file ("-" for stdin) to draw as real shapes |
-| <code>-f, --file &lt;path&gt;</code> | tldraw snapshot JSON (from `canvas pull`) |
+| <code>-f, --file &lt;path&gt;</code> | canvas JSON (from `canvas pull`) |
 | <code>-n, --notebook &lt;notebook&gt;</code> | put it in a notebook (id or exact name) |
 | <code>--publish</code> | publish it to the web and print the public URL |
 
@@ -42,7 +42,7 @@ octonote canvas redraw <canvas> [options]
 
 ## canvas pull
 
-Save a canvas as tldraw JSON
+Save a canvas as JSON (Octonote canvas format: &#123; version: 1, items &#125;)
 
 ```bash
 octonote canvas pull <canvas> [options]
@@ -55,7 +55,7 @@ octonote canvas pull <canvas> [options]
 
 ## canvas push
 
-Replace a canvas with tldraw JSON (from `canvas pull`)
+Replace a canvas with canvas JSON (from `canvas pull`)
 
 ```bash
 octonote canvas push <file> [options]
@@ -63,5 +63,5 @@ octonote canvas push <file> [options]
 
 | Argument or option | What it does |
 | --- | --- |
-| <code>&lt;file&gt;</code> | tldraw snapshot JSON ("-" for stdin) (required) |
+| <code>&lt;file&gt;</code> | canvas JSON ("-" for stdin) (required) |
 | <code>--id &lt;canvas&gt;</code> | canvas to update (required) |

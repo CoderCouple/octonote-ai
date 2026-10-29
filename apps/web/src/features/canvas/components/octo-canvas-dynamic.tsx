@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 
-// tldraw needs window/canvas APIs at mount; without ssr:false the first paint
-// races with hydration and the editor sometimes never initializes its layout.
+// The canvas measures its container and text with browser APIs at mount, and
+// octodraw is large: load it on the client, in its own chunk.
 export const OctoCanvas = dynamic(
   () => import("./octo-canvas").then((m) => m.OctoCanvas),
   {
@@ -16,4 +16,4 @@ export const OctoCanvas = dynamic(
   },
 );
 
-export type { OctoCanvasProps } from "./octo-canvas";
+export type { CanvasEditorApi, OctoCanvasProps } from "./octo-canvas";

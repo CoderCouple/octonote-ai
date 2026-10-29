@@ -1,4 +1,5 @@
 import type { canvases } from "../db/schemas/canvases";
+import { readCanvasDocument, type OctodrawDocument } from "../service/lib/canvas-document";
 import { pickSharing, type SharingState } from "./sharing.model";
 
 export interface Canvas extends SharingState {
@@ -9,7 +10,8 @@ export interface Canvas extends SharingState {
   notebookId: string | null;
   createdByUserId: string;
   title: string;
-  document: unknown;
+  /** Always octodraw, converted on read while the row is still tldraw. */
+  document: OctodrawDocument;
   thumbnailUrl: string | null;
   settings: Record<string, unknown>;
   createdAt: Date;
@@ -25,7 +27,7 @@ export function toCanvas(row: typeof canvases.$inferSelect): Canvas {
     notebookId: row.notebookId,
     createdByUserId: row.createdByUserId,
     title: row.title,
-    document: row.document,
+    document: readCanvasDocument(row),
     thumbnailUrl: row.thumbnailUrl,
     settings: (row.settings as Record<string, unknown>) ?? {},
     ...pickSharing(row),

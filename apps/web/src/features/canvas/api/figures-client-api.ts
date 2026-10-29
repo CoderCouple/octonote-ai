@@ -1,4 +1,4 @@
-/** Canvas figures API (no tldraw imports — safe for the notes bundle). */
+/** Canvas figures API (no canvas engine imports — safe for the notes bundle). */
 import { clientApi } from "@/lib/api/client-fetch";
 
 export interface FigureSummary {

@@ -85,6 +85,8 @@ export class ProjectsRepository extends BaseRepository<typeof projects> {
     project: typeof projects.$inferInsert;
     noteTitle: string;
     canvasTitle: string;
+    /** An empty octodraw canvas document. */
+    canvasDocument: unknown;
   }) {
     return this.db.transaction(async (tx) => {
       const [project] = await tx.insert(projects).values(input.project).returning();
@@ -101,7 +103,7 @@ export class ProjectsRepository extends BaseRepository<typeof projects> {
         .returning();
       const [canvas] = await tx
         .insert(canvases)
-        .values({ ...common, title: input.canvasTitle })
+        .values({ ...common, title: input.canvasTitle, document: input.canvasDocument, documentFormat: "octodraw" })
         .returning();
       if (!page || !canvas) throw new Error("Insert failed on project pair");
       return { project, page, canvas };

@@ -23,7 +23,16 @@ export const canvases = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     title: text("title").notNull(),
+    /** Octodraw `CanvasDocument` (`{ version: 1, items }`); tldraw snapshots until converted. */
     document: jsonb("document").notNull(),
+    /**
+     * What `document` holds: "tldraw" (legacy store snapshot) or "octodraw".
+     * Defaults to "tldraw" so rows written by an older API version are still
+     * picked up by `db:convert-canvases`; new code always sets it explicitly.
+     */
+    documentFormat: text("document_format").default("tldraw").notNull(),
+    /** The original tldraw snapshot, kept when a canvas is converted to octodraw. */
+    documentTldraw: jsonb("document_tldraw"),
     thumbnailUrl: text("thumbnail_url"),
     settings: jsonb("settings").default(sql`'{}'::jsonb`).notNull(),
     ...sharingColumns(),

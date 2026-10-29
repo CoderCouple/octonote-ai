@@ -1,0 +1,37 @@
+title Multi-region active/passive
+direction right
+
+Global users [icon: globe]
+DNS [icon: aws-route53, description: health-checked failover]
+
+Primary region [icon: flag, color: teal, description: us-east-1] {
+  Primary edge [icon: aws-cloudfront]
+  Primary LB [icon: aws-alb]
+  Primary app [color: blue] {
+    App A1 [icon: aws-ec2]
+    App A2 [icon: aws-ec2]
+  }
+  Primary DB [icon: aws-aurora, shape: cylinder, description: writer]
+  Primary cache [icon: aws-elasticache]
+  Primary bucket [icon: aws-s3]
+}
+Standby region [icon: flag, color: gray, description: us-west-2] {
+  Standby LB [icon: aws-alb]
+  Standby app [color: gray] {
+    App B1 [icon: aws-ec2]
+  }
+  Replica DB [icon: aws-aurora, shape: cylinder, description: reader]
+  Replica bucket [icon: aws-s3]
+}
+Backups [icon: aws-backup]
+
+Global users > DNS
+DNS > Primary edge: active
+DNS --> Standby LB: failover
+Primary edge > Primary LB > App A1, App A2
+App A1, App A2 > Primary DB, Primary cache
+App A1, App A2 > Primary bucket
+Standby LB > App B1 > Replica DB
+Primary DB --> Replica DB: async replication
+Primary bucket --> Replica bucket: cross-region replication
+Primary DB, Replica DB --> Backups

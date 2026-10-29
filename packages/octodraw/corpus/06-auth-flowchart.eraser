@@ -1,0 +1,33 @@
+title Login flow
+direction down
+
+Start [shape: oval, color: green]
+Enter credentials [icon: user]
+Account exists? [shape: diamond, color: yellow]
+Password valid? [shape: diamond, color: yellow]
+MFA enabled? [shape: diamond, color: yellow]
+Send code [icon: mail]
+Code valid? [shape: diamond, color: yellow]
+Too many attempts? [shape: diamond, color: orange]
+Lock account [icon: lock, color: red]
+Show error [icon: alert, color: red]
+Create session [icon: key, color: blue]
+Redirect to app [icon: browser]
+Offer sign up [icon: users]
+End [shape: oval]
+
+Start > Enter credentials > Account exists?
+Account exists? > Password valid?: yes
+Account exists? > Offer sign up: no
+Password valid? > MFA enabled?: yes
+Password valid? > Too many attempts?: no
+Too many attempts? > Lock account: yes
+Too many attempts? > Show error: no
+Show error > Enter credentials: retry
+MFA enabled? > Send code: yes
+MFA enabled? > Create session: no
+Send code > Code valid?
+Code valid? > Create session: yes
+Code valid? > Show error: no
+Create session > Redirect to app > End
+Lock account, Offer sign up > End

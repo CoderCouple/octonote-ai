@@ -16,17 +16,17 @@ beforeEach(async () => {
 });
 
 const FLOW = "graph LR\n  A[API] --> B[(DB)]\n  A --> C([Queue])";
-const shapesOf = (doc: unknown) =>
-  Object.values((doc as { store: Record<string, { typeName: string; type?: string }> }).store).filter(
-    (r) => r.typeName === "shape",
-  );
+const itemsOf = (doc: unknown) => (doc as { version: number; items: { type: string }[] }).items;
 
 describe("canvases from mermaid", () => {
   it("creates a drawn canvas", async () => {
     const canvas = await h.canvasDiagrams.create(alice.workspaceId, { title: "Flow", mermaid: FLOW }, alice.id);
-    const shapes = shapesOf(canvas.document);
-    expect(shapes.filter((s) => s.type === "geo")).toHaveLength(3);
-    expect(shapes.filter((s) => s.type === "arrow")).toHaveLength(2);
+    expect(canvas.document.version).toBe(1);
+    const items = itemsOf(canvas.document);
+    expect(items.filter((s) => s.type === "shape")).toHaveLength(3);
+    expect(items.filter((s) => s.type === "line")).toHaveLength(2);
+    const { canvas: stored } = await h.canvases.getOne(canvas.id, alice.id);
+    expect(itemsOf(stored.document)).toHaveLength(5);
   });
 
   it("rejects non-flowcharts before creating anything", async () => {
@@ -43,6 +43,6 @@ describe("canvases from mermaid", () => {
     expect(await statusOf(h.canvasDiagrams.replace(canvas.id, "graph TD\n X --> Y", undefined, bob.id))).toBe(404);
     const redrawn = await h.canvasDiagrams.replace(canvas.id, "graph TD\n X --> Y", "Renamed", alice.id);
     expect(redrawn.title).toBe("Renamed");
-    expect(shapesOf(redrawn.document).filter((s) => s.type === "geo")).toHaveLength(2);
+    expect(itemsOf(redrawn.document).filter((s) => s.type === "shape")).toHaveLength(2);
   });
 });

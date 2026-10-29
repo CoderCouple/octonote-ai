@@ -43,7 +43,7 @@ octonote note append pag_… --text "- shipped the CLI"`,
     match: (n) => n.startsWith("canvas "),
     example: `octonote canvas create "Login flow" --from-mermaid flow.mmd
 octonote canvas redraw cnv_… --from-mermaid flow.mmd
-octonote canvas pull cnv_… -o board.json   # raw tldraw JSON`,
+octonote canvas pull cnv_… -o board.json   # raw canvas JSON (octodraw format)`,
   },
   {
     slug: "projects",

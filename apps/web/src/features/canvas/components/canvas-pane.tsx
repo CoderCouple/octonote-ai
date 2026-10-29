@@ -3,13 +3,10 @@
 import {
   ArrowDownFromLine,
   ArrowRightFromLine,
-  Group,
   LayoutGrid,
   Network,
   Shapes,
-  Ungroup,
 } from "lucide-react";
-import type { Editor } from "tldraw";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
@@ -37,7 +34,7 @@ import {
 import { updateCanvasClientApi } from "../api/canvases-client-api";
 import type { Canvas } from "../types";
 import type { RearrangeDirection } from "../lib/rearrange";
-import { OctoCanvas } from "./octo-canvas-dynamic";
+import { OctoCanvas, type CanvasEditorApi } from "./octo-canvas-dynamic";
 
 interface CanvasPaneProps {
   canvas: Canvas;
@@ -58,39 +55,15 @@ export function CanvasPane({
   const [autoShape, setAutoShape] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [title, setTitle] = useState(canvas.title);
-  const editorRef = useRef<Editor | null>(null);
+  const editorRef = useRef<CanvasEditorApi | null>(null);
 
-  // Loaded on click so tldraw stays out of the page's first bundle.
-  async function makeFigure() {
+  function rearrange(direction: RearrangeDirection) {
     const editor = editorRef.current;
     if (!editor) return;
-    const { wrapSelectionInFigure } = await import("../lib/figures");
-    if (!wrapSelectionInFigure(editor)) {
-      toast.message("Select some shapes first, then make them a figure.");
-    }
-  }
-
-  async function ungroup() {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const { ungroupSelection } = await import("../lib/figures");
-    const result = ungroupSelection(editor);
-    if (result === "noop")
-      toast.message(
-        "Select a figure to dissolve, or shapes inside one to lift them out.",
-      );
-  }
-
-  async function rearrange(direction: RearrangeDirection) {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const { rearrangeShapes } = await import("../lib/rearrange");
-    const wholePage = editor.getSelectedShapeIds().length < 2;
-    if (!rearrangeShapes(editor, direction)) {
+    if (!editor.rearrange(direction)) {
       toast.message("Add a few shapes first, then rearrange them.");
       return;
     }
-    if (wholePage) editor.zoomToFit({ animation: { duration: 300 } });
     toast.message("Rearranged", {
       action: { label: "Undo", onClick: () => editor.undo() },
     });
@@ -147,45 +120,12 @@ export function CanvasPane({
               </Toggle>
             </TooltipTrigger>
             <TooltipContent>
-              Auto-shape — pencil strokes snap to clean shapes
+              Auto-shape — pen strokes snap to clean shapes
             </TooltipContent>
           </Tooltip>
         ) : null}
         {editable ? (
           <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="size-8 p-0"
-                  aria-label="Make figure"
-                  onClick={makeFigure}
-                >
-                  <Group className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Figure — group the selected shapes so you can embed them in a
-                note
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="size-8 p-0"
-                  aria-label="Ungroup"
-                  onClick={ungroup}
-                >
-                  <Ungroup className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Ungroup — dissolve a figure, or lift shapes out of it
-              </TooltipContent>
-            </Tooltip>
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>

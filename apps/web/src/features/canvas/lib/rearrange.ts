@@ -1,5 +1,5 @@
 import dagre from "@dagrejs/dagre";
-import type { Editor, TLArrowBinding, TLShape, TLShapeId } from "tldraw";
+import { resolveLines, type CanvasDocument, type CanvasItem } from "@octonote/octodraw";
 
 /**
  * Rearrange: lays shapes out again, top to bottom (vertically) or left to
@@ -8,7 +8,8 @@ import type { Editor, TLArrowBinding, TLShape, TLShapeId } from "tldraw";
  *
  * Works on the selection, or the whole page when fewer than two shapes are
  * selected. A box that fully surrounds other boxes (a mermaid subgraph, or one
- * drawn by hand) is kept around them. One undo step reverses it.
+ * drawn by hand) is kept around them. Returns a new document, so the host's
+ * history makes it one undo step.
  */
 
 export type RearrangeDirection = "vertical" | "horizontal";
@@ -44,7 +45,7 @@ const surrounds = (outer: RearrangeBox, inner: RearrangeBox) =>
 
 /**
  * New positions (and sizes, for containers), with the result's top-left corner
- * where the original one was. Pure: no tldraw, so it can be tested.
+ * where the original one was. Pure, so it can be tested.
  */
 export function rearrangeLayout(
   input: RearrangeInput,
@@ -115,80 +116,53 @@ export function rearrangeLayout(
   return placed;
 }
 
-/** Rearranges the editor's selection (or page). Returns false when there's nothing to do. */
-export function rearrangeShapes(editor: Editor, direction: RearrangeDirection): boolean {
-  const pageId = editor.getCurrentPageId();
-  const topLevel = (id: TLShapeId): TLShape | undefined => {
-    let shape = editor.getShape(id);
-    while (shape && shape.parentId !== pageId) {
-      shape = editor.getShape(shape.parentId as TLShapeId);
-    }
-    return shape;
-  };
+/** Items that take part as boxes (not lines, pen strokes or locked items). */
+const isBox = (item: CanvasItem) =>
+  item.type !== "line" && item.type !== "pen" && !item.locked;
 
-  const selected = editor.getSelectedShapeIds();
+/**
+ * Rearranges the selection (or every item when fewer than two are selected).
+ * Returns the new document, or null when there's nothing to do.
+ */
+export function rearrangeDocument(
+  doc: CanvasDocument,
+  selection: string[],
+  direction: RearrangeDirection,
+): CanvasDocument | null {
   const scope =
-    selected.length >= 2
-      ? [...new Set(selected.map((id) => topLevel(id)).filter((s) => !!s))]
-      : editor.getCurrentPageShapes().filter((s) => s.parentId === pageId);
+    selection.length >= 2
+      ? doc.items.filter((i) => selection.includes(i.id))
+      : doc.items;
+  const nodes = scope.filter(isBox);
+  if (nodes.length < 2) return null;
+  const nodeIds = new Set(nodes.map((n) => n.id));
 
-  const nodes = scope.filter(
-    (s) => s.type !== "arrow" && s.type !== "line" && s.type !== "draw" && !s.isLocked,
-  );
-  if (nodes.length < 2) return false;
-  const nodeIds = new Set<string>(nodes.map((s) => s.id));
-
-  const boxes: RearrangeBox[] = [];
-  for (const s of nodes) {
-    const b = editor.getShapePageBounds(s.id);
-    if (b) boxes.push({ id: s.id, x: b.x, y: b.y, w: b.w, h: b.h });
-  }
-
-  // Arrows whose two ends are bound to boxes being rearranged.
-  const arrows = editor
-    .getCurrentPageShapes()
-    .filter((s) => s.type === "arrow");
+  const boxes: RearrangeBox[] = nodes.map(({ id, x, y, w, h }) => ({ id, x, y, w, h }));
+  // Arrows whose two ends are attached to boxes being rearranged.
   const edges: RearrangeInput["edges"] = [];
-  for (const arrow of arrows) {
-    const bindings = editor.getBindingsFromShape<TLArrowBinding>(arrow, "arrow");
-    const start = bindings.find((b) => b.props.terminal === "start");
-    const end = bindings.find((b) => b.props.terminal === "end");
-    if (!start || !end) continue;
-    const from = topLevel(start.toId)?.id;
-    const to = topLevel(end.toId)?.id;
+  for (const item of doc.items) {
+    if (item.type !== "line") continue;
+    const from = item.start.item;
+    const to = item.end.item;
     if (!from || !to || !nodeIds.has(from) || !nodeIds.has(to)) continue;
-    const label = editor.getShapeUtil(arrow).getText(arrow) ?? "";
-    edges.push({ from, to, label: label || undefined });
+    edges.push({ from, to, label: item.text || undefined });
   }
 
   const placed = rearrangeLayout({ boxes, edges }, direction);
-  editor.markHistoryStoppingPoint("rearrange");
-  editor.run(() => {
-    for (const s of nodes) {
-      const p = placed.get(s.id);
-      const was = boxes.find((b) => b.id === s.id);
-      if (!p || !was) continue;
-      // Move by the change in page bounds, so rotated shapes land right too.
-      const update: Record<string, unknown> = {
-        id: s.id,
-        type: s.type,
-        x: s.x + (p.x - was.x),
-        y: s.y + (p.y - was.y),
-      };
-      if ((p.w !== was.w || p.h !== was.h) && "w" in s.props && "h" in s.props) {
-        update.props = { w: p.w, h: p.h };
-      }
-      editor.updateShape(update as Parameters<Editor["updateShape"]>[0]);
-    }
-    // Straighten arrows between rearranged boxes; their ends follow the bindings.
-    for (const arrow of arrows) {
-      const ends = editor
-        .getBindingsFromShape<TLArrowBinding>(arrow, "arrow")
-        .map((b) => topLevel(b.toId)?.id);
-      if (ends.length === 2 && ends.every((id) => id && nodeIds.has(id))) {
-        editor.updateShape({ id: arrow.id, type: "arrow", props: { bend: 0 } });
-      }
-    }
+  const items = doc.items.map((item) => {
+    const p = placed.get(item.id);
+    if (!p) return item;
+    const resized = p.w !== item.w || p.h !== item.h;
+    return {
+      ...item,
+      x: p.x,
+      y: p.y,
+      w: p.w,
+      h: p.h,
+      // A resized figure no longer follows its diagram's natural size.
+      ...(resized && item.type === "figure" ? { autoSize: false } : {}),
+    } as CanvasItem;
   });
-  return true;
+  // Attached arrow ends follow their boxes.
+  return resolveLines({ ...doc, items });
 }

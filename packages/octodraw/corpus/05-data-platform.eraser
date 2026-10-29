@@ -1,0 +1,44 @@
+title Modern data platform
+direction right
+
+Sources [color: gray] {
+  App database [icon: postgres, shape: cylinder]
+  Clickstream [icon: analytics]
+  CRM [icon: hubspot]
+  Billing [icon: stripe]
+}
+Ingestion [color: blue] {
+  CDC [icon: kafka, description: Debezium]
+  Event collector [icon: segment]
+  Batch loader [icon: airflow, description: Airflow]
+}
+Lakehouse [icon: databricks, color: orange] {
+  Raw zone [icon: bucket, description: Bronze]
+  Clean zone [icon: bucket, description: Silver]
+  Curated zone [icon: bucket, description: Gold]
+  Spark jobs [icon: spark]
+}
+Warehouse [icon: snowflake, color: lightblue] {
+  Staging models [icon: dbt]
+  Marts [icon: table]
+}
+Consumers [color: green] {
+  BI dashboards [icon: dashboard, description: Looker]
+  Reverse ETL [icon: sync]
+  Data science [icon: python]
+  ML features [icon: brain]
+}
+Data catalog [icon: book]
+Quality checks [icon: check, color: red]
+
+App database > CDC
+Clickstream > Event collector
+CRM, Billing > Batch loader
+CDC, Event collector, Batch loader > Raw zone
+Raw zone > Spark jobs > Clean zone > Curated zone
+Curated zone > Staging models > Marts
+Marts > BI dashboards, Reverse ETL, Data science
+Curated zone > ML features
+Reverse ETL --> CRM: sync back
+Quality checks --> Clean zone, Marts: validates
+Data catalog -- Lakehouse, Warehouse

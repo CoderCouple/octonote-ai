@@ -22,7 +22,7 @@ const IGNORED_RE = /^(note|style|classDef|cssClass|callback)\b/;
 const REL_RE =
   /^([\w.-]+)(?:\s+"([^"]*)")?\s*(<\||\*|o|<)?(--|\.\.)(\|>|\*|o|>)?\s*(?:"([^"]*)"\s*)?([\w.-]+)\s*(?::\s*(.+))?$/;
 
-/** UML end → tldraw arrowhead. tldraw has one diamond, so aggregation shares it. */
+/** UML end → arrowhead name (aggregation and composition share "diamond"). */
 const HEAD: Record<string, string> = {
   "<|": "triangle",
   "|>": "triangle",

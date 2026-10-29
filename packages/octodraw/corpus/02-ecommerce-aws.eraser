@@ -1,0 +1,46 @@
+title E-commerce on AWS
+direction right
+
+Shopper [icon: user]
+Admin [icon: admin]
+Route 53 [icon: aws-route53]
+CloudFront [icon: aws-cloudfront, color: purple]
+WAF [icon: aws-waf, color: red]
+
+AWS Cloud [icon: aws-cloud, color: orange] {
+  VPC [icon: aws-vpc, color: green, description: 10.0.0.0/16] {
+    Public subnet [color: green, description: 10.0.1.0/24] {
+      ALB [icon: aws-elb]
+      NAT gateway [icon: aws-vpc]
+    }
+    App subnet [color: blue, description: 10.0.2.0/24] {
+      Storefront [icon: aws-ecs, description: ECS Fargate]
+      Catalog [icon: aws-ecs, description: ECS Fargate]
+      Checkout [icon: aws-ecs, description: ECS Fargate]
+      Search [icon: aws-opensearch]
+    }
+    Data subnet [color: purple, description: 10.0.3.0/24] {
+      Orders DB [icon: aws-rds, description: Aurora Postgres]
+      Cache [icon: aws-elasticache, description: Redis]
+    }
+  }
+  Product images [icon: aws-s3]
+  Order events [icon: aws-sqs]
+  Fulfillment [icon: aws-lambda]
+  Emails [icon: aws-ses]
+}
+Payment provider [icon: stripe]
+Warehouse API [icon: warehouse]
+
+Shopper > Route 53 > CloudFront > WAF > ALB
+Admin > ALB: admin console
+ALB > Storefront, Catalog, Checkout
+Storefront > Catalog, Search
+Catalog > Orders DB, Cache
+Catalog > Product images
+Checkout > Orders DB
+Checkout > Payment provider: charge [color: green]
+Checkout --> Order events: OrderCreated
+Order events > Fulfillment
+Fulfillment > Warehouse API, Emails
+App subnet > NAT gateway: outbound

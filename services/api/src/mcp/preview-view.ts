@@ -125,10 +125,10 @@ export function previewHtml(): string {
       '<div class="actions">' + (canFullscreen ? '<button class="btn" data-mode-toggle>' + (mode === "fullscreen" ? "Collapse" : "Expand") + "</button>" : "") +
       pub + '<button class="btn primary" data-open="' + esc(p.url) + '">Open in Octonote</button></div></div>';
   }
-  // tldraw colour names → strokes and soft fills (light/dark aware via CSS vars where it matters).
+  // Outline colour names (or hex values) → strokes and soft fills (light/dark aware via CSS vars where it matters).
   var COLORS = { black: "var(--strong)", grey: "#9b9a97", "light-violet": "#c8a2f0", violet: "#8f4cd6", blue: "#2f6fd6", "light-blue": "#4ba1f1",
     yellow: "#f1ac4b", orange: "#e16919", green: "#099268", "light-green": "#4cb05e", "light-red": "#f87777", red: "#e03131", white: "#ffffff" };
-  function strokeOf(c) { return COLORS[c] || "var(--strong)"; }
+  function strokeOf(c) { return COLORS[c] || (/^#[0-9a-fA-F]{3,8}$/.test(String(c)) ? c : "var(--strong)"); }
   function fillOf(sh) {
     if (sh.kind === "note") return sh.color === "black" ? "#fef3c7" : "color-mix(in srgb, " + strokeOf(sh.color) + " 22%, var(--bg))";
     if (sh.fill === "none") return "none";

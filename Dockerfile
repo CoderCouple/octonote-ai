@@ -13,6 +13,8 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY services/api/package.json services/api/
 COPY packages/shared/package.json packages/shared/
 COPY packages/content/package.json packages/content/
+# Workspace dependency of api/content; only its package.json is needed to install (nothing imports it at runtime).
+COPY packages/octodraw/package.json packages/octodraw/
 RUN NODE_ENV=development pnpm install --frozen-lockfile --filter @octonote/api...
 
 FROM base AS build
@@ -33,6 +35,7 @@ COPY --from=build /app/packages/shared/dist packages/shared/dist
 COPY --from=build /app/packages/content/package.json packages/content/
 COPY --from=build /app/packages/content/server.js packages/content/
 COPY --from=build /app/packages/content/dist packages/content/dist
+COPY packages/octodraw/package.json packages/octodraw/
 COPY --from=build /app/services/api/package.json services/api/
 COPY --from=build /app/services/api/dist services/api/dist
 COPY --from=build /app/services/api/drizzle services/api/drizzle

@@ -12,3 +12,16 @@ export {
 } from "./notes/markdown-to-blocks";
 export { toStandardBlocks } from "./notes/blocks-to-markdown";
 export { parseLinkLine, safeUrl } from "./canvas/mermaid-links";
+
+// Canvases (octodraw). Pure — safe in browsers, the API and the CLI.
+export type {
+  CanvasDocument as OctodrawDocument,
+  CanvasItem as OctodrawItem,
+} from "./canvas/octodraw-types";
+export { emptyOctodrawDocument } from "./canvas/octodraw-types";
+export { isOctodrawDocument, toOctodrawDocument } from "./canvas/canvas-document";
+export { isTldrawDocument, richTextToPlain, tldrawToOctodraw } from "./canvas/tldraw-to-octodraw";
+export { mermaidToOctodraw } from "./canvas/mermaid-to-octodraw";
+export { flowchartToOctodraw } from "./canvas/flowchart-to-octodraw";
+export { MermaidParseError, parseMermaidFlowchart, type Flowchart } from "./canvas/mermaid-flowchart";
+export { isClassDiagram, parseMermaidClassDiagram } from "./canvas/mermaid-class";

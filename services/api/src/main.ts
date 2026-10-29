@@ -12,7 +12,7 @@ try {
 
 async function bootstrap() {
   // Autosave sends the whole note/canvas document as JSON; Fastify's 1MB
-  // default is too small for large tldraw snapshots.
+  // default is too small for large canvas documents.
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ bodyLimit: 10 * 1024 * 1024 }),

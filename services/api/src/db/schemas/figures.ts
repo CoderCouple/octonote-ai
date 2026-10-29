@@ -6,7 +6,7 @@ import { workspaces } from "./workspaces";
 /**
  * A "figure" on a canvas: a titled group of shapes that can be embedded in
  * notes as an image. The id is minted on the client when the figure is made
- * (it lives on the tldraw shape's meta), so the canvas and this row agree
+ * (it lives on the canvas item), so the canvas and this row agree
  * without a round trip. The PNG sits at a fixed Storage path per figure and
  * is overwritten on every change, so every embed always shows the latest.
  */

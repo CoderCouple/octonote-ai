@@ -1,0 +1,33 @@
+title Strangler-fig migration
+direction right
+
+Clients [icon: users]
+Facade [icon: split, color: blue, description: routes by path]
+
+Legacy monolith [icon: server, color: gray] {
+  Accounts module [icon: user]
+  Orders module [icon: cart]
+  Inventory module [icon: package]
+  Reporting module [icon: chart]
+  Monolith DB [icon: mysql, shape: cylinder]
+}
+New platform [icon: kubernetes, color: green] {
+  Accounts service [icon: user]
+  Orders service [icon: cart]
+  Orders DB [icon: postgres, shape: cylinder]
+  Inventory service [icon: package, description: in progress]
+}
+Sync [color: orange] {
+  CDC stream [icon: kafka]
+  Anti-corruption layer [icon: shield]
+}
+
+Clients > Facade
+Facade > Legacy monolith: /reports, /inventory
+Facade > New platform: /accounts, /orders
+Accounts module, Orders module, Inventory module, Reporting module > Monolith DB
+Orders service > Orders DB
+Monolith DB --> CDC stream: changes
+CDC stream > Anti-corruption layer > New platform
+Inventory service -- Inventory module: dual write
+Legacy monolith --> New platform: shrinking

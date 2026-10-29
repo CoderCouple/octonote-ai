@@ -127,6 +127,7 @@ export function PublishedCanvas({
 
         <div className="relative flex-1">
           <CanvasStage
+            canvasId={canvas.id}
             canvasDocument={canvas.document}
             title={title}
             notebook={notebook}
@@ -145,11 +146,13 @@ export function PublishedCanvas({
  * canvases and by the canvas pane of published projects.
  */
 export function CanvasStage({
+  canvasId,
   canvasDocument,
   title,
   notebook,
   onReady,
 }: {
+  canvasId: string;
   canvasDocument: unknown;
   title: string;
   /** Read inside a published notebook: its minimap on the left edge. */
@@ -168,6 +171,7 @@ export function CanvasStage({
     <>
       <div className="relative h-full w-full">
         <CanvasReadOnly
+          canvasId={canvasId}
           initialDocument={canvasDocument}
           onReady={(a) => {
             setApi(a);

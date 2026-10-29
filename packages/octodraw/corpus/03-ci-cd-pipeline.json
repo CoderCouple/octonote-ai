@@ -1,0 +1,800 @@
+{
+  "title": "CI/CD Pipeline with Approval and Deployment Stages",
+  "diagramX": 25,
+  "diagramY": -5,
+  "elements": [
+    {
+      "tag": "Textbox",
+      "text": "CI/CD pipeline",
+      "fontSize": 18,
+      "id": "title",
+      "x": 15,
+      "y": 15,
+      "width": 105.796875,
+      "height": 19.5703125
+    },
+    {
+      "color": "gray",
+      "tag": "Group",
+      "title": {
+        "text": "GitHub",
+        "icon": "github"
+      },
+      "id": "gh",
+      "x": 135,
+      "y": 65,
+      "width": 160,
+      "height": 320
+    },
+    {
+      "color": "blue",
+      "bgColor": "#eef4ff",
+      "tag": "Group",
+      "title": {
+        "text": "CI",
+        "icon": "github-actions"
+      },
+      "id": "ci",
+      "x": 345,
+      "y": 65,
+      "width": 540,
+      "height": 160
+    },
+    {
+      "color": "green",
+      "bgColor": "#eefaf0",
+      "tag": "Group",
+      "title": {
+        "text": "CD",
+        "icon": "argo"
+      },
+      "id": "cd",
+      "x": 345,
+      "y": 275,
+      "width": 540,
+      "height": 180
+    },
+    {
+      "color": "gray",
+      "tag": "Group",
+      "title": {
+        "text": "Clusters",
+        "icon": "kubernetes"
+      },
+      "id": "cl",
+      "x": 345,
+      "y": 505,
+      "width": 540,
+      "height": 140
+    },
+    {
+      "tag": "Icon",
+      "icon": "user",
+      "texts": [
+        {
+          "text": "Developer",
+          "fontSize": 14
+        }
+      ],
+      "id": "dev",
+      "x": 25,
+      "y": 115,
+      "width": 50,
+      "height": 50
+    },
+    {
+      "tag": "Icon",
+      "icon": "git-branch",
+      "texts": [
+        {
+          "text": "Pull request",
+          "fontSize": 14
+        }
+      ],
+      "id": "pr",
+      "x": 190,
+      "y": 135,
+      "width": 50,
+      "height": 50,
+      "containerId": "gh"
+    },
+    {
+      "tag": "Icon",
+      "icon": "git-branch",
+      "texts": [
+        {
+          "text": "Main branch",
+          "fontSize": 14
+        }
+      ],
+      "id": "main",
+      "x": 190,
+      "y": 295,
+      "width": 50,
+      "height": 50,
+      "containerId": "gh"
+    },
+    {
+      "tag": "Icon",
+      "icon": "check",
+      "texts": [
+        {
+          "text": "Lint",
+          "fontSize": 14
+        }
+      ],
+      "id": "lint",
+      "x": 385,
+      "y": 135,
+      "width": 50,
+      "height": 50,
+      "containerId": "ci"
+    },
+    {
+      "tag": "Icon",
+      "icon": "check",
+      "texts": [
+        {
+          "text": "Unit tests",
+          "fontSize": 14
+        }
+      ],
+      "id": "unit",
+      "x": 515,
+      "y": 135,
+      "width": 50,
+      "height": 50,
+      "containerId": "ci"
+    },
+    {
+      "tag": "Icon",
+      "icon": "docker",
+      "texts": [
+        {
+          "text": "Build image",
+          "fontSize": 14
+        }
+      ],
+      "id": "build",
+      "x": 645,
+      "y": 135,
+      "width": 50,
+      "height": 50,
+      "containerId": "ci"
+    },
+    {
+      "tag": "Icon",
+      "icon": "shield",
+      "texts": [
+        {
+          "text": "Security scan",
+          "fontSize": 14
+        }
+      ],
+      "color": "red",
+      "id": "scan",
+      "x": 789,
+      "y": 135,
+      "width": 50,
+      "height": 50,
+      "containerId": "ci"
+    },
+    {
+      "tag": "Icon",
+      "icon": "aws-ecr",
+      "texts": [
+        {
+          "text": "Registry",
+          "fontSize": 14
+        }
+      ],
+      "id": "reg",
+      "x": 965,
+      "y": 205,
+      "width": 50,
+      "height": 50
+    },
+    {
+      "tag": "Icon",
+      "icon": "rocket",
+      "texts": [
+        {
+          "text": "Staging deploy",
+          "fontSize": 14
+        }
+      ],
+      "id": "sdep",
+      "x": 385,
+      "y": 345,
+      "width": 50,
+      "height": 50,
+      "containerId": "cd"
+    },
+    {
+      "tag": "Icon",
+      "icon": "check",
+      "texts": [
+        {
+          "text": "Smoke tests",
+          "fontSize": 14
+        }
+      ],
+      "id": "smoke",
+      "x": 515,
+      "y": 345,
+      "width": 50,
+      "height": 50,
+      "containerId": "cd"
+    },
+    {
+      "color": "green",
+      "bgColor": "#ffffff",
+      "tag": "Shape",
+      "shape": "diamond",
+      "texts": [
+        {
+          "text": "Approval",
+          "fontSize": 14
+        }
+      ],
+      "icon": "users",
+      "id": "appr",
+      "x": 615,
+      "y": 325,
+      "width": 103.94378723659516,
+      "height": 100,
+      "containerId": "cd"
+    },
+    {
+      "tag": "Icon",
+      "icon": "rocket",
+      "texts": [
+        {
+          "text": "Production deploy",
+          "fontSize": 14
+        }
+      ],
+      "id": "pdep",
+      "x": 789,
+      "y": 345,
+      "width": 50,
+      "height": 50,
+      "containerId": "cd"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-namespace",
+      "texts": [
+        {
+          "text": "Staging",
+          "fontSize": 14
+        }
+      ],
+      "color": "#d4a017",
+      "id": "stg",
+      "x": 385,
+      "y": 555,
+      "width": 50,
+      "height": 50,
+      "containerId": "cl"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-namespace",
+      "texts": [
+        {
+          "text": "Production",
+          "fontSize": 14
+        }
+      ],
+      "color": "red",
+      "id": "prod",
+      "x": 789,
+      "y": 555,
+      "width": 50,
+      "height": 50,
+      "containerId": "cl"
+    },
+    {
+      "tag": "Icon",
+      "icon": "bell",
+      "texts": [
+        {
+          "text": "Slack alerts",
+          "fontSize": 14
+        }
+      ],
+      "id": "slack",
+      "x": 965,
+      "y": 425,
+      "width": 50,
+      "height": 50
+    },
+    {
+      "tag": "Relationship",
+      "from": "dev",
+      "to": "pr",
+      "label": "push",
+      "labelPlacement": {
+        "x": 61,
+        "y": 12,
+        "width": 29,
+        "height": 16
+      },
+      "id": "r1",
+      "x": 75,
+      "y": 140,
+      "width": 115,
+      "height": 20,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          36,
+          0
+        ],
+        [
+          36,
+          20
+        ],
+        [
+          115,
+          20
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "pr",
+      "to": "lint",
+      "id": "r2",
+      "x": 240,
+      "y": 160,
+      "width": 145,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          145,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "lint",
+      "to": "unit",
+      "id": "r3",
+      "x": 435,
+      "y": 160,
+      "width": 80,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          80,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "unit",
+      "to": "build",
+      "id": "r4",
+      "x": 565,
+      "y": 160,
+      "width": 80,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          80,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "build",
+      "to": "scan",
+      "id": "r5",
+      "x": 695,
+      "y": 160,
+      "width": 94,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          94,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "scan",
+      "to": "reg",
+      "label": "publish",
+      "labelPlacement": {
+        "x": 53.5,
+        "y": 65,
+        "width": 42,
+        "height": 16
+      },
+      "id": "r6",
+      "x": 839,
+      "y": 160,
+      "width": 126,
+      "height": 73,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          23,
+          0
+        ],
+        [
+          23,
+          73
+        ],
+        [
+          126,
+          73
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "pr",
+      "to": "main",
+      "label": "merge",
+      "labelPlacement": {
+        "x": -18.5,
+        "y": 37,
+        "width": 37,
+        "height": 16
+      },
+      "id": "r7",
+      "x": 215,
+      "y": 205,
+      "width": 0,
+      "height": 90,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          90
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "main",
+      "to": "sdep",
+      "id": "r8",
+      "x": 240,
+      "y": 320,
+      "width": 145,
+      "height": 50,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          81,
+          0
+        ],
+        [
+          81,
+          50
+        ],
+        [
+          145,
+          50
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "reg",
+      "to": "sdep",
+      "label": "image tag",
+      "lineStyle": "dashed",
+      "fromPort": "bottom",
+      "toPort": "top",
+      "labelPlacement": {
+        "x": -319,
+        "y": 17,
+        "width": 58,
+        "height": 16
+      },
+      "id": "r9",
+      "x": 990,
+      "y": 275,
+      "width": 580,
+      "height": 70,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          25
+        ],
+        [
+          -580,
+          25
+        ],
+        [
+          -580,
+          70
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "sdep",
+      "to": "stg",
+      "id": "r10",
+      "x": 410,
+      "y": 415,
+      "width": 0,
+      "height": 140,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          140
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "sdep",
+      "to": "smoke",
+      "id": "r11",
+      "x": 435,
+      "y": 370,
+      "width": 80,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          80,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "smoke",
+      "to": "appr",
+      "id": "r12",
+      "x": 565,
+      "y": 370,
+      "width": 56.117942738843,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          56.117942738843,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "appr",
+      "to": "pdep",
+      "label": "approved",
+      "labelPlacement": {
+        "x": 9.583607911638069,
+        "y": -20,
+        "width": 55,
+        "height": 16
+      },
+      "id": "r13",
+      "x": 712.8327841767239,
+      "y": 370,
+      "width": 74.16721582327614,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          74.16721582327614,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "pdep",
+      "to": "prod",
+      "id": "r14",
+      "x": 808,
+      "y": 430,
+      "width": 0,
+      "height": 125,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          125
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "smoke",
+      "to": "slack",
+      "label": "status",
+      "lineStyle": "dashed",
+      "fromPort": "bottom",
+      "toPort": "bottom",
+      "labelPlacement": {
+        "x": 207,
+        "y": 106,
+        "width": 36,
+        "height": 16
+      },
+      "id": "r15",
+      "x": 540,
+      "y": 415,
+      "width": 450,
+      "height": 114,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          114
+        ],
+        [
+          450,
+          114
+        ],
+        [
+          450,
+          80
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "pdep",
+      "to": "slack",
+      "lineStyle": "dashed",
+      "id": "r16",
+      "x": 824,
+      "y": 430,
+      "width": 166,
+      "height": 78,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          49
+        ],
+        [
+          101,
+          49
+        ],
+        [
+          101,
+          -29
+        ],
+        [
+          166,
+          -29
+        ],
+        [
+          166,
+          -5
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    }
+  ]
+}

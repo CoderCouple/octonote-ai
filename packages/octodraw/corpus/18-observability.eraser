@@ -1,0 +1,36 @@
+title Observability stack
+direction right
+
+Workloads [color: gray] {
+  Services [icon: server]
+  Databases [icon: database]
+  Kubernetes nodes [icon: kubernetes]
+  Browsers [icon: browser, description: RUM]
+}
+Collection [color: blue] {
+  OTel collector [icon: opentelemetry]
+  Node exporter [icon: cpu]
+  Log agent [icon: logs, description: Fluent Bit]
+}
+Backends [color: purple] {
+  Metrics [icon: prometheus]
+  Logs [icon: logs, description: Loki]
+  Traces [icon: activity, description: Tempo]
+  Long-term storage [icon: bucket]
+}
+Visualize and alert [color: orange] {
+  Grafana [icon: grafana]
+  Alertmanager [icon: alert]
+}
+On-call [icon: pagerduty, color: red]
+Status page [icon: globe]
+
+Services > OTel collector: traces, metrics
+Browsers > OTel collector
+Kubernetes nodes > Node exporter > Metrics
+Services, Databases, Kubernetes nodes > Log agent > Logs
+OTel collector > Metrics, Traces, Logs
+Metrics, Logs, Traces --> Long-term storage
+Metrics, Logs, Traces > Grafana
+Metrics > Alertmanager > On-call
+Alertmanager --> Status page

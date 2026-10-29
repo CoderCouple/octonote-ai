@@ -5,9 +5,6 @@
  */
 import type { ServerBlockNoteEditor } from "@blocknote/server-util";
 import { toStandardBlocks } from "./notes/blocks-to-markdown";
-import { flowchartToCanvas } from "./canvas/flowchart-to-canvas";
-import { isClassDiagram, parseMermaidClassDiagram } from "./canvas/mermaid-class";
-import { parseMermaidFlowchart } from "./canvas/mermaid-flowchart";
 import { markdownToBlocks } from "./notes/markdown-to-blocks";
 import type { NoteBlock, NoteDocument } from "./notes/types";
 
@@ -65,17 +62,4 @@ export async function noteDocumentToHtml(document: unknown): Promise<string> {
       : [];
   if (blocks.length === 0) return "";
   return (await serverEditor()).blocksToHTMLLossy(toStandardBlocks(blocks) as never);
-}
-
-export { MermaidParseError, parseMermaidFlowchart, type Flowchart } from "./canvas/mermaid-flowchart";
-export { flowchartToCanvas } from "./canvas/flowchart-to-canvas";
-
-export { isClassDiagram, parseMermaidClassDiagram } from "./canvas/mermaid-class";
-export { parseLinkLine, safeUrl } from "./canvas/mermaid-links";
-
-/** A mermaid flowchart or class diagram → a canvas document (tldraw snapshot), laid out. */
-export function mermaidToCanvasDocument(source: string) {
-  return flowchartToCanvas(
-    isClassDiagram(source) ? parseMermaidClassDiagram(source) : parseMermaidFlowchart(source),
-  );
 }

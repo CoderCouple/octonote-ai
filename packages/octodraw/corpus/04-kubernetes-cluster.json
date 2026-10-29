@@ -1,0 +1,832 @@
+{
+  "title": "Kubernetes Cluster Application Architecture",
+  "diagramX": 50,
+  "diagramY": 1100,
+  "elements": [
+    {
+      "tag": "Textbox",
+      "text": "## Kubernetes cluster",
+      "fontSize": 18,
+      "id": "title",
+      "x": 15,
+      "y": 15,
+      "width": 196.25,
+      "height": 28
+    },
+    {
+      "tag": "Icon",
+      "icon": "users",
+      "texts": [
+        {
+          "text": "Users",
+          "fontSize": 14
+        }
+      ],
+      "id": "users",
+      "x": 420,
+      "y": 65,
+      "width": 50,
+      "height": 50
+    },
+    {
+      "tag": "Icon",
+      "icon": "load-balancer",
+      "texts": [
+        {
+          "text": "Cloud load balancer",
+          "fontSize": 14
+        }
+      ],
+      "id": "lb",
+      "x": 420,
+      "y": 171,
+      "width": 50,
+      "height": 50
+    },
+    {
+      "tag": "Relationship",
+      "from": "users",
+      "to": "lb",
+      "id": "r1",
+      "x": 445,
+      "y": 135,
+      "width": 0,
+      "height": 36,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          36
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "color": "blue",
+      "bgColor": "#f3f7ff",
+      "tag": "Group",
+      "title": {
+        "text": "Cluster",
+        "icon": "kubernetes"
+      },
+      "id": "cluster",
+      "x": 15,
+      "y": 271,
+      "width": 1100,
+      "height": 4244
+    },
+    {
+      "color": "gray",
+      "bgColor": "#f7f7f7",
+      "tag": "Group",
+      "title": {
+        "text": "Control plane",
+        "icon": "k8s-control-plane"
+      },
+      "id": "cp",
+      "x": 45,
+      "y": 3831,
+      "width": 249,
+      "height": 664,
+      "containerId": "cluster"
+    },
+    {
+      "tag": "Icon",
+      "icon": "cog",
+      "texts": [
+        {
+          "text": "Scheduler",
+          "fontSize": 14
+        }
+      ],
+      "id": "sched",
+      "x": 85,
+      "y": 3901,
+      "width": 50,
+      "height": 50,
+      "containerId": "cp"
+    },
+    {
+      "tag": "Icon",
+      "icon": "settings",
+      "texts": [
+        {
+          "text": "Controller manager",
+          "fontSize": 14
+        }
+      ],
+      "id": "cm",
+      "x": 205,
+      "y": 3901,
+      "width": 50,
+      "height": 50,
+      "containerId": "cp"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-api-server",
+      "texts": [
+        {
+          "text": "API server",
+          "fontSize": 14
+        }
+      ],
+      "id": "api",
+      "x": 150,
+      "y": 4071,
+      "width": 50,
+      "height": 50,
+      "containerId": "cp"
+    },
+    {
+      "tag": "Relationship",
+      "from": "sched",
+      "to": "api",
+      "id": "r19",
+      "x": 110,
+      "y": 3971,
+      "width": 57,
+      "height": 100,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          15
+        ],
+        [
+          57,
+          15
+        ],
+        [
+          57,
+          100
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "cm",
+      "to": "api",
+      "id": "r20",
+      "x": 230,
+      "y": 3986,
+      "width": 47,
+      "height": 85,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          24
+        ],
+        [
+          -30,
+          24
+        ],
+        [
+          -30,
+          0
+        ],
+        [
+          -47,
+          0
+        ],
+        [
+          -47,
+          85
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-etcd",
+      "texts": [
+        {
+          "text": "etcd",
+          "fontSize": 14
+        }
+      ],
+      "id": "etcd",
+      "x": 150,
+      "y": 4251,
+      "width": 50,
+      "height": 50,
+      "containerId": "cp"
+    },
+    {
+      "tag": "Relationship",
+      "from": "api",
+      "to": "etcd",
+      "startArrowhead": "arrow",
+      "id": "r18",
+      "x": 175,
+      "y": 4141,
+      "width": 0,
+      "height": 110,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          110
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "color": "blue",
+      "tag": "Group",
+      "title": {
+        "text": "Ingress namespace",
+        "icon": "k8s-namespace"
+      },
+      "id": "ingns",
+      "x": 335,
+      "y": 3831,
+      "width": 220,
+      "height": 165,
+      "containerId": "cluster"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-ingress",
+      "texts": [
+        {
+          "text": "Ingress controller",
+          "fontSize": 14
+        },
+        {
+          "text": "NGINX",
+          "color": "gray",
+          "fontSize": 12
+        }
+      ],
+      "id": "ingc",
+      "x": 420,
+      "y": 3876,
+      "width": 50,
+      "height": 50,
+      "containerId": "ingns"
+    },
+    {
+      "tag": "Relationship",
+      "from": "lb",
+      "to": "ingc",
+      "id": "r2",
+      "x": 445,
+      "y": 256,
+      "width": 0,
+      "height": 3620,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3620
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "color": "green",
+      "bgColor": "#f2fbf3",
+      "tag": "Group",
+      "title": {
+        "text": "App namespace",
+        "icon": "k8s-namespace"
+      },
+      "id": "appns",
+      "x": 335,
+      "y": 3991,
+      "width": 750,
+      "height": 324,
+      "containerId": "cluster"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-service",
+      "texts": [
+        {
+          "text": "Web service",
+          "fontSize": 14
+        }
+      ],
+      "id": "websvc",
+      "x": 375,
+      "y": 4092,
+      "width": 50,
+      "height": 50,
+      "containerId": "appns"
+    },
+    {
+      "tag": "Relationship",
+      "from": "ingc",
+      "to": "websvc",
+      "id": "r3",
+      "x": 445,
+      "y": 3976,
+      "width": 45,
+      "height": 116,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          38
+        ],
+        [
+          -45,
+          38
+        ],
+        [
+          -45,
+          116
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "color": "green",
+      "tag": "Group",
+      "title": {
+        "text": "Web deployment",
+        "fontSize": 14,
+        "icon": "k8s-deployment"
+      },
+      "id": "webdep",
+      "x": 475,
+      "y": 4032,
+      "width": 161,
+      "height": 263,
+      "containerId": "appns"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-pod",
+      "size": 40,
+      "texts": [
+        {
+          "text": "Web pod 1",
+          "fontSize": 12
+        }
+      ],
+      "id": "wp1",
+      "x": 535.5,
+      "y": 4077,
+      "width": 40,
+      "height": 40,
+      "containerId": "webdep"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-pod",
+      "size": 40,
+      "texts": [
+        {
+          "text": "Web pod 2",
+          "fontSize": 12
+        }
+      ],
+      "id": "wp2",
+      "x": 535.5,
+      "y": 4147,
+      "width": 40,
+      "height": 40,
+      "containerId": "webdep"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-pod",
+      "size": 40,
+      "texts": [
+        {
+          "text": "Web pod 3",
+          "fontSize": 12
+        }
+      ],
+      "id": "wp3",
+      "x": 535.5,
+      "y": 4217,
+      "width": 40,
+      "height": 40,
+      "containerId": "webdep"
+    },
+    {
+      "tag": "Relationship",
+      "from": "websvc",
+      "to": "webdep",
+      "id": "r4",
+      "x": 425,
+      "y": 4117,
+      "width": 50,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          50,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-service",
+      "texts": [
+        {
+          "text": "API service",
+          "fontSize": 14
+        }
+      ],
+      "id": "apisvc",
+      "x": 676,
+      "y": 4092,
+      "width": 50,
+      "height": 50,
+      "containerId": "appns"
+    },
+    {
+      "tag": "Relationship",
+      "from": "webdep",
+      "to": "apisvc",
+      "id": "r7",
+      "x": 636,
+      "y": 4164,
+      "width": 40,
+      "height": 47,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          20,
+          0
+        ],
+        [
+          20,
+          -47
+        ],
+        [
+          40,
+          -47
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "color": "green",
+      "tag": "Group",
+      "title": {
+        "text": "API deployment",
+        "fontSize": 14,
+        "icon": "k8s-deployment"
+      },
+      "id": "apidep",
+      "x": 776,
+      "y": 4032,
+      "width": 154,
+      "height": 193,
+      "containerId": "appns"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-pod",
+      "size": 40,
+      "texts": [
+        {
+          "text": "API pod 1",
+          "fontSize": 12
+        }
+      ],
+      "id": "ap1",
+      "x": 833,
+      "y": 4077,
+      "width": 40,
+      "height": 40,
+      "containerId": "apidep"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-pod",
+      "size": 40,
+      "texts": [
+        {
+          "text": "API pod 2",
+          "fontSize": 12
+        }
+      ],
+      "id": "ap2",
+      "x": 833,
+      "y": 4147,
+      "width": 40,
+      "height": 40,
+      "containerId": "apidep"
+    },
+    {
+      "tag": "Relationship",
+      "from": "apisvc",
+      "to": "apidep",
+      "id": "r10",
+      "x": 726,
+      "y": 4117,
+      "width": 50,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          50,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-configmap",
+      "size": 40,
+      "texts": [
+        {
+          "text": "Config",
+          "fontSize": 12
+        }
+      ],
+      "id": "cfg",
+      "x": 996,
+      "y": 4032,
+      "width": 40,
+      "height": 40,
+      "containerId": "appns"
+    },
+    {
+      "tag": "Relationship",
+      "from": "apidep",
+      "to": "cfg",
+      "lineStyle": "dashed",
+      "id": "r15",
+      "x": 930,
+      "y": 4052,
+      "width": 66,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          66,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-secret",
+      "size": 40,
+      "texts": [
+        {
+          "text": "Secrets",
+          "fontSize": 12
+        }
+      ],
+      "id": "sec",
+      "x": 996,
+      "y": 4117,
+      "width": 40,
+      "height": 40,
+      "containerId": "appns"
+    },
+    {
+      "tag": "Relationship",
+      "from": "apidep",
+      "to": "sec",
+      "lineStyle": "dashed",
+      "id": "r16",
+      "x": 930,
+      "y": 4137,
+      "width": 66,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          66,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-hpa",
+      "size": 40,
+      "texts": [
+        {
+          "text": "Autoscaler",
+          "fontSize": 12
+        }
+      ],
+      "id": "hpa",
+      "x": 996,
+      "y": 4202,
+      "width": 40,
+      "height": 40,
+      "containerId": "appns"
+    },
+    {
+      "tag": "Relationship",
+      "from": "hpa",
+      "to": "apidep",
+      "label": "scales",
+      "lineStyle": "dashed",
+      "labelPlacement": {
+        "x": -44.5,
+        "y": -28.5,
+        "width": 37,
+        "height": 16
+      },
+      "id": "r17",
+      "x": 996,
+      "y": 4222,
+      "width": 66,
+      "height": 41,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -26,
+          0
+        ],
+        [
+          -26,
+          -41
+        ],
+        [
+          -66,
+          -41
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "color": "purple",
+      "bgColor": "#f7f2fd",
+      "tag": "Group",
+      "title": {
+        "text": "Data namespace",
+        "icon": "k8s-namespace"
+      },
+      "id": "datans",
+      "x": 335,
+      "y": 4345,
+      "width": 750,
+      "height": 150,
+      "containerId": "cluster"
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-statefulset",
+      "texts": [
+        {
+          "text": "Postgres",
+          "fontSize": 14
+        },
+        {
+          "text": "StatefulSet",
+          "color": "gray",
+          "fontSize": 12
+        }
+      ],
+      "id": "pg",
+      "x": 830,
+      "y": 4390,
+      "width": 50,
+      "height": 50,
+      "containerId": "datans"
+    },
+    {
+      "tag": "Relationship",
+      "from": "apidep",
+      "to": "pg",
+      "id": "r12",
+      "x": 854,
+      "y": 4225,
+      "width": 0,
+      "height": 165,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          165
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Icon",
+      "icon": "k8s-pvc",
+      "texts": [
+        {
+          "text": "Volume",
+          "fontSize": 14
+        }
+      ],
+      "id": "vol",
+      "x": 995,
+      "y": 4390,
+      "width": 50,
+      "height": 50,
+      "containerId": "datans"
+    },
+    {
+      "tag": "Relationship",
+      "from": "pg",
+      "to": "vol",
+      "endArrowhead": "bar",
+      "id": "r14",
+      "x": 880,
+      "y": 4415,
+      "width": 115,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          115,
+          0
+        ]
+      ],
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    }
+  ]
+}

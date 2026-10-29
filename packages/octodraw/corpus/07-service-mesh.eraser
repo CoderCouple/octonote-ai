@@ -1,0 +1,47 @@
+title Service mesh
+direction right
+
+Mobile app [icon: mobile]
+Web app [icon: react]
+Partners [icon: building]
+
+Edge [color: gray] {
+  API gateway [icon: kong]
+  Auth [icon: auth0]
+}
+Mesh [icon: istio, color: blue] {
+  Users svc [icon: server]
+  Profiles svc [icon: server]
+  Feed svc [icon: server]
+  Posts svc [icon: server]
+  Media svc [icon: server]
+  Notifications svc [icon: server]
+  Search svc [icon: server]
+  Recommendations svc [icon: brain]
+}
+Datastores [color: purple] {
+  Users DB [icon: postgres, shape: cylinder]
+  Posts DB [icon: mongodb, shape: cylinder]
+  Graph DB [icon: neo4j, shape: cylinder]
+  Search index [icon: elasticsearch]
+  Media store [icon: bucket]
+  Cache [icon: redis]
+}
+Message bus [icon: kafka, color: orange]
+Push providers [icon: notification]
+
+Mobile app, Web app, Partners > API gateway
+API gateway <> Auth
+API gateway > Users svc, Feed svc, Posts svc, Search svc
+Users svc <> Profiles svc
+Feed svc > Posts svc, Recommendations svc
+Posts svc > Media svc
+Users svc, Profiles svc > Users DB
+Posts svc > Posts DB
+Recommendations svc > Graph DB
+Search svc > Search index
+Media svc > Media store
+Feed svc, Users svc > Cache
+Posts svc --> Message bus: PostCreated
+Message bus --> Notifications svc, Search svc, Recommendations svc
+Notifications svc > Push providers

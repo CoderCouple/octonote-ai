@@ -1,0 +1,45 @@
+title Real-time chat
+direction right
+
+Mobile clients [icon: mobile]
+Web clients [icon: browser]
+
+Edge [color: gray] {
+  CDN [icon: cloudflare]
+  WebSocket gateway [icon: webhook, description: sticky sessions]
+}
+Chat backend [color: blue] {
+  Presence svc [icon: users, description: Go]
+  Messaging svc [icon: chat, description: Elixir]
+  Rooms svc [icon: layers, description: Node.js]
+  Moderation svc [icon: shield, description: Python]
+  Media upload svc [icon: upload]
+}
+Realtime fabric [color: red] {
+  Pub/sub [icon: redis, description: Redis Streams]
+  Presence cache [icon: redis]
+}
+Storage [color: purple] {
+  Message store [icon: cassandra, shape: cylinder]
+  Rooms DB [icon: postgres, shape: cylinder]
+  Attachments [icon: bucket]
+}
+Push [icon: notification]
+Search [icon: elasticsearch]
+Abuse ML [icon: brain, color: orange]
+
+Mobile clients, Web clients > CDN > WebSocket gateway
+WebSocket gateway <> Messaging svc: frames
+WebSocket gateway <> Presence svc: heartbeats
+Messaging svc > Rooms svc
+Messaging svc > Message store
+Messaging svc --> Pub/sub: fan-out
+Pub/sub --> WebSocket gateway: deliver
+Presence svc > Presence cache
+Rooms svc > Rooms DB
+Messaging svc --> Moderation svc: scan
+Moderation svc > Abuse ML
+Media upload svc > Attachments
+Mobile clients > Media upload svc
+Messaging svc --> Push: offline users
+Message store --> Search: index

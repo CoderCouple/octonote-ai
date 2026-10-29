@@ -88,7 +88,7 @@ $ octonote note append pag_… --text "- shipped the CLI"`,
     match: (n) => n.startsWith("canvas "),
     example: `$ octonote canvas create "Login flow" --from-mermaid flow.mmd
 $ octonote canvas redraw cnv_… --from-mermaid flow.mmd
-$ octonote canvas pull cnv_… -o board.json   # raw tldraw JSON`,
+$ octonote canvas pull cnv_… -o board.json   # raw canvas JSON`,
   },
   {
     id: "ref-projects",
@@ -527,7 +527,7 @@ function Content() {
       </Sub>
       <Sub title="Canvases: mermaid flowcharts">
         <P>
-          Flowcharts become real tldraw shapes with arrows bound to them — drag
+          Flowcharts become real canvas shapes with arrows attached to them — drag
           a box and its arrows follow.
         </P>
         <CodeBlock
@@ -571,7 +571,7 @@ function Content() {
         </div>
         <P>
           Other mermaid diagrams (sequence, gantt, class…) can't become canvases
-          — put them in a note as a <C>```mermaid</C> block instead. Raw tldraw
+          — put them in a note as a <C>```mermaid</C> block instead. Raw canvas
           JSON works too: <C>canvas pull</C> / <C>canvas push</C>.
         </P>
       </Sub>

@@ -1,0 +1,41 @@
+title Video streaming
+direction right
+
+Creators [icon: camera]
+Viewers [icon: monitor]
+
+Upload [color: blue] {
+  Upload API [icon: upload]
+  Raw videos [icon: bucket]
+}
+Transcoding [color: orange] {
+  Job queue [icon: queue]
+  Transcoder fleet [icon: cpu, description: FFmpeg on spot]
+  Thumbnailer [icon: image]
+  Packager [icon: package, description: HLS / DASH]
+}
+Delivery [color: green] {
+  Origin storage [icon: bucket]
+  CDN [icon: cloudflare]
+  Player [icon: video]
+}
+Metadata [color: purple] {
+  Catalog API [icon: api]
+  Catalog DB [icon: postgres, shape: cylinder]
+  Recommendations [icon: brain]
+}
+DRM license server [icon: lock, color: red]
+Analytics [icon: analytics]
+
+Creators > Upload API > Raw videos
+Raw videos --> Job queue: new upload
+Job queue > Transcoder fleet > Packager > Origin storage
+Transcoder fleet > Thumbnailer > Origin storage
+Packager > Catalog API: renditions ready
+Catalog API > Catalog DB
+Origin storage > CDN > Player
+Viewers > Player
+Player > Catalog API, Recommendations
+Player <> DRM license server: keys
+Player --> Analytics: playback events
+Analytics --> Recommendations

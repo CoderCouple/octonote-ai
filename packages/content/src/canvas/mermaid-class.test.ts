@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mermaidToCanvasDocument } from "../server";
+import { mermaidToOctodraw } from "../server";
 import { isClassDiagram, parseMermaidClassDiagram } from "./mermaid-class";
 import { MermaidParseError } from "./mermaid-flowchart";
 import { parseLinkLine } from "./mermaid-links";
@@ -68,26 +68,24 @@ describe("parseMermaidClassDiagram", () => {
     expect(() => parseMermaidClassDiagram("classDiagram\n  class A {\n  +x")).toThrow(/missing its/);
   });
 
-  it("becomes a valid canvas with linked, top-left class boxes and UML heads", () => {
-    const recs = Object.values(
-      (mermaidToCanvasDocument(SRC) as unknown as { store: Record<string, Record<string, any>> }).store,
-    );
-    const ledger = recs.find((r) => r.id === "shape:node-Ledger")!;
-    expect(ledger.props).toMatchObject({ align: "start", verticalAlign: "start", url: expect.stringContaining("ledger.py") });
-    const heads = recs.filter((r) => r.type === "arrow").map((a) => a.props.arrowheadStart);
-    expect(heads).toContain("triangle");
-    expect(heads).toContain("diamond");
+  it("becomes an octodraw canvas with linked class boxes and attached relations", () => {
+    const items = mermaidToOctodraw(SRC).items as Record<string, any>[];
+    const ledger = items.find((r) => r.id === "node-Ledger")!;
+    expect(ledger).toMatchObject({ type: "shape", shape: "rectangle", link: expect.stringContaining("ledger.py") });
+    const lines = items.filter((r) => r.type === "line");
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.every((l) => l.start.item && l.end.item)).toBe(true);
+    // UML heads (triangle, diamond) are drawn as octodraw arrows.
+    expect(lines.some((l) => l.startArrow || l.endArrow)).toBe(true);
   });
 });
 
 describe("flowchart click links", () => {
   it("puts the link on the box", () => {
-    const recs = Object.values(
-      (mermaidToCanvasDocument(
-        'flowchart LR\n  A[Ledger] --> B\n  click A href "https://example.com/ledger.py#L3" "open"\n  click B call cb()',
-      ) as unknown as { store: Record<string, Record<string, any>> }).store,
-    );
-    expect(recs.find((r) => r.id === "shape:node-A")!.props.url).toBe("https://example.com/ledger.py#L3");
-    expect(recs.find((r) => r.id === "shape:node-B")!.props.url).toBe("");
+    const items = mermaidToOctodraw(
+      'flowchart LR\n  A[Ledger] --> B\n  click A href "https://example.com/ledger.py#L3" "open"\n  click B call cb()',
+    ).items as Record<string, any>[];
+    expect(items.find((r) => r.id === "node-A")!.link).toBe("https://example.com/ledger.py#L3");
+    expect(items.find((r) => r.id === "node-B")!.link).toBeUndefined();
   });
 });

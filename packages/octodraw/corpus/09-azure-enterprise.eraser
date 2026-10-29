@@ -1,0 +1,46 @@
+title Enterprise app on Azure
+direction down
+colorMode bold
+
+Employees [icon: users]
+Customers [icon: user]
+
+Azure subscription [icon: cloud, color: blue] {
+  Front door [icon: azure-front-door]
+  Identity [color: purple] {
+    Entra ID [icon: azure-entra-id]
+    Key vault [icon: azure-key-vault]
+  }
+  App tier [color: lightblue] {
+    Customer portal [icon: azure-app-service]
+    Internal tools [icon: azure-app-service]
+    API management [icon: azure-api-management]
+    Order functions [icon: azure-functions]
+  }
+  Integration [color: teal] {
+    Service bus [icon: azure-service-bus]
+    Logic apps [icon: azure-logic-apps]
+    Event grid [icon: azure-event-grid]
+  }
+  Data tier [color: indigo] {
+    SQL database [icon: azure-sql-database]
+    Cosmos DB [icon: azure-cosmos-db]
+    Blob storage [icon: azure-blob-storage]
+    Synapse [icon: azure-synapse]
+  }
+  Monitor [icon: azure-monitor]
+}
+SAP ERP [icon: building]
+
+Customers > Front door > Customer portal
+Employees > Front door > Internal tools
+Customer portal, Internal tools > API management
+API management > Order functions
+Customer portal, Internal tools <> Entra ID: SSO
+Order functions > SQL database, Cosmos DB
+Order functions --> Service bus: orders
+Service bus > Logic apps > SAP ERP
+Blob storage > Event grid > Order functions
+SQL database, Cosmos DB > Synapse
+App tier -- Key vault: secrets
+Monitor --> App tier, Data tier

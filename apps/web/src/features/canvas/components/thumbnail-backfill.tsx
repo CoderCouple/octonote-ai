@@ -3,7 +3,7 @@
 /**
  * Canvases made outside the editor (API, imports, examples) have no
  * thumbnail until someone opens them. Lists mount this with the ones
- * missing a picture; it makes them in the background (tldraw loads only
+ * missing a picture; it makes them in the background (octodraw loads only
  * when there's work) and refreshes the list. Each canvas is tried once per
  * browser session, so empty canvases aren't retried on every visit.
  */

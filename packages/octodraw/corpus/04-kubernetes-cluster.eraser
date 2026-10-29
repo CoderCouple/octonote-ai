@@ -1,0 +1,49 @@
+title Kubernetes cluster
+direction down
+
+Users [icon: users]
+Cloud load balancer [icon: load-balancer]
+
+Cluster [icon: kubernetes, color: blue] {
+  Control plane [icon: k8s-control-plane, color: gray] {
+    API server [icon: k8s-api-server]
+    Scheduler [icon: cog]
+    Controller manager [icon: settings]
+    etcd [icon: k8s-etcd, shape: cylinder]
+  }
+  Ingress namespace [icon: k8s-namespace] {
+    Ingress controller [icon: k8s-ingress, description: NGINX]
+  }
+  App namespace [icon: k8s-namespace, color: green] {
+    Web deployment [icon: k8s-deployment] {
+      Web pod 1 [icon: k8s-pod]
+      Web pod 2 [icon: k8s-pod]
+      Web pod 3 [icon: k8s-pod]
+    }
+    Web service [icon: k8s-service]
+    API deployment [icon: k8s-deployment] {
+      API pod 1 [icon: k8s-pod]
+      API pod 2 [icon: k8s-pod]
+    }
+    API service [icon: k8s-service]
+    Config [icon: k8s-configmap]
+    Secrets [icon: k8s-secret]
+    Autoscaler [icon: k8s-hpa]
+  }
+  Data namespace [icon: k8s-namespace, color: purple] {
+    Postgres [icon: k8s-statefulset, description: StatefulSet]
+    Volume [icon: k8s-pvc]
+  }
+}
+
+Users > Cloud load balancer > Ingress controller
+Ingress controller > Web service
+Web service > Web pod 1, Web pod 2, Web pod 3
+Web pod 1, Web pod 2, Web pod 3 > API service
+API service > API pod 1, API pod 2
+API pod 1, API pod 2 > Postgres
+Postgres - Volume
+API deployment -- Config, Secrets
+Autoscaler --> API deployment: scales
+API server <> etcd
+Scheduler, Controller manager > API server

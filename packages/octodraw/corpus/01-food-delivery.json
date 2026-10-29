@@ -1,0 +1,173 @@
+{
+  "title": "Food Delivery System Architecture",
+  "diagramX": -218.33984375,
+  "diagramY": 1178.078125,
+  "elements": [
+    { "tag": "Textbox", "text": "## Food delivery", "fontSize": 18, "id": "title", "x": 15, "y": 15, "width": 138.46875, "height": 28 },
+    {
+      "tag": "Shape", "icon": "user",
+      "texts": [{ "text": "Diner", "fontSize": 16 }, { "text": "Person", "fontSize": 12, "color": "gray" }],
+      "bgColor": "#f1f5f9", "borderColor": "#94a3b8", "id": "diner", "x": 205, "y": 65, "width": 180, "height": 64
+    },
+    {
+      "tag": "Shape", "icon": "bike",
+      "texts": [{ "text": "Courier", "fontSize": 16 }, { "text": "Person", "fontSize": 12, "color": "gray" }],
+      "bgColor": "#f1f5f9", "borderColor": "#94a3b8", "id": "courier", "x": 445, "y": 65, "width": 180, "height": 64
+    },
+    {
+      "tag": "Shape", "icon": "users",
+      "texts": [{ "text": "Restaurant staff", "fontSize": 16 }, { "text": "Person", "fontSize": 12, "color": "gray" }],
+      "bgColor": "#f1f5f9", "borderColor": "#94a3b8", "id": "staff", "x": 685, "y": 65, "width": 180, "height": 64
+    },
+    {
+      "tag": "Group", "title": { "text": "Forkway · software system", "icon": "truck" },
+      "color": "blue", "bgColor": "#f5f9ff", "borderColor": "#93c5fd", "id": "forkway", "x": 15, "y": 175, "width": 1060, "height": 740
+    },
+    {
+      "color": "blue", "bgColor": "#eaf2ff", "borderColor": "#93c5fd", "tag": "Group",
+      "title": { "text": "Apps · React Native", "icon": "mobile" },
+      "id": "apps", "x": 162.5, "y": 225, "width": 740, "height": 134, "containerId": "forkway"
+    },
+    {
+      "bgColor": "white", "borderColor": "#93c5fd", "tag": "Shape",
+      "texts": [{ "text": "Diner app", "fontSize": 16 }, { "text": "React Native", "color": "gray", "fontSize": 12 }],
+      "icon": "mobile", "id": "dinerapp", "x": 192.5, "y": 277, "width": 180, "height": 64, "containerId": "apps"
+    },
+    {
+      "tag": "Relationship", "from": "diner", "to": "dinerapp", "label": "orders food", "fromPort": "bottom", "toPort": "top",
+      "labelPlacement": { "x": -33.5, "y": 63, "width": 67, "height": 16 },
+      "id": "r1", "x": 289.33984375, "y": 128.921875, "width": 0, "height": 148, "points": [[0, 0], [0, 148]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "bgColor": "white", "borderColor": "#93c5fd", "tag": "Shape",
+      "texts": [{ "text": "Courier app", "fontSize": 16 }, { "text": "React Native", "color": "gray", "fontSize": 12 }],
+      "icon": "mobile", "id": "courierapp", "x": 442.5, "y": 277, "width": 182.5, "height": 64, "containerId": "apps"
+    },
+    {
+      "tag": "Relationship", "from": "courier", "to": "courierapp", "label": "delivers", "fromPort": "bottom", "toPort": "top",
+      "labelPlacement": { "x": -22.5, "y": 63, "width": 45, "height": 16 },
+      "id": "r2", "x": 534.33984375, "y": 128.921875, "width": 0, "height": 148, "points": [[0, 0], [0, 148]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "bgColor": "white", "borderColor": "#93c5fd", "tag": "Shape",
+      "texts": [{ "text": "Restaurant app", "fontSize": 16 }, { "text": "React Native, tablet", "color": "gray", "fontSize": 12 }],
+      "icon": "tablet", "id": "restapp", "x": 692.5, "y": 277, "width": 190, "height": 64, "containerId": "apps"
+    },
+    {
+      "tag": "Relationship", "from": "staff", "to": "restapp", "label": "prepares", "fromPort": "bottom", "toPort": "top",
+      "labelPlacement": { "x": -25.5, "y": 63, "width": 51, "height": 16 },
+      "id": "r3", "x": 781.33984375, "y": 128.921875, "width": 0, "height": 148, "points": [[0, 0], [0, 148]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "bgColor": "white", "borderColor": "#93c5fd", "tag": "Shape",
+      "texts": [{ "text": "API gateway", "fontSize": 16 }, { "text": "Envoy", "color": "gray", "fontSize": 12 }],
+      "icon": "network", "id": "gw", "x": 442.5, "y": 399, "width": 182.5, "height": 64, "containerId": "forkway"
+    },
+    {
+      "tag": "Relationship", "from": "apps", "to": "gw",
+      "id": "r4", "x": 533.33984375, "y": 358.921875, "width": 0, "height": 40, "points": [[0, 0], [0, 40]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "color": "blue", "bgColor": "#eaf2ff", "borderColor": "#93c5fd", "tag": "Group",
+      "title": { "text": "Services · Kubernetes", "icon": "k8s-namespace" },
+      "id": "services", "x": 42.5, "y": 505, "width": 1011, "height": 270, "containerId": "forkway"
+    },
+    {
+      "color": "blue", "bgColor": "#ffffff", "borderColor": "#93c5fd", "tag": "Group",
+      "title": { "text": "Order service · Kotlin, Spring Boot", "icon": "kotlin" },
+      "id": "ordersvc", "x": 62.5, "y": 555, "width": 566, "height": 184, "containerId": "services"
+    },
+    {
+      "bgColor": "#f5f9ff", "borderColor": "#93c5fd", "tag": "Shape",
+      "texts": [{ "text": "Order API", "fontSize": 16 }, { "text": "REST", "color": "gray", "fontSize": 12 }],
+      "icon": "server", "id": "orderapi", "x": 82.5, "y": 615, "width": 160, "height": 64, "containerId": "ordersvc"
+    },
+    {
+      "tag": "Relationship", "from": "gw", "to": "orderapi", "fromPort": "bottom", "toPort": "top",
+      "id": "r7", "x": 473.33984375, "y": 462.921875, "width": 311, "height": 152, "points": [[0, 0], [0, 117], [-311, 117], [-311, 152]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "bgColor": "#f5f9ff", "borderColor": "#93c5fd", "tag": "Shape", "shape": "cylinder",
+      "texts": [{ "text": "Orders DB", "fontSize": 16 }, { "text": "PostgreSQL", "color": "gray", "fontSize": 12 }],
+      "icon": "postgres", "id": "ordersdb", "x": 278.5, "y": 605, "width": 150, "height": 84, "containerId": "ordersvc"
+    },
+    {
+      "tag": "Relationship", "from": "orderapi", "to": "ordersdb", "fromPort": "right", "toPort": "left",
+      "id": "r10", "x": 242.33984375, "y": 646.921875, "width": 36, "height": 0, "points": [[0, 0], [36, 0]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "bgColor": "#f5f9ff", "borderColor": "#93c5fd", "tag": "Shape",
+      "texts": [{ "text": "Order worker", "fontSize": 16 }, { "text": "Consumer", "color": "gray", "fontSize": 12 }],
+      "icon": "worker", "id": "worker", "x": 448.5, "y": 615, "width": 160, "height": 64, "containerId": "ordersvc"
+    },
+    {
+      "bgColor": "white", "borderColor": "#93c5fd", "tag": "Shape",
+      "texts": [{ "text": "Payments service", "fontSize": 16 }, { "text": "Kotlin", "color": "gray", "fontSize": 12 }],
+      "icon": "kotlin", "id": "payments", "x": 668.5, "y": 615, "width": 160, "height": 64, "containerId": "services"
+    },
+    {
+      "tag": "Relationship", "from": "gw", "to": "payments", "fromPort": "bottom", "toPort": "top",
+      "id": "r8", "x": 534.33984375, "y": 462.921875, "width": 214, "height": 152, "points": [[0, 0], [0, 71], [214, 71], [214, 152]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "bgColor": "white", "borderColor": "#93c5fd", "tag": "Shape",
+      "texts": [{ "text": "Dispatch service", "fontSize": 16 }, { "text": "Go", "color": "gray", "fontSize": 12 }],
+      "icon": "go", "id": "dispatch", "x": 858.5, "y": 615, "width": 174.94206435978413, "height": 64, "containerId": "services"
+    },
+    {
+      "tag": "Relationship", "from": "gw", "to": "dispatch", "fromPort": "bottom", "toPort": "top",
+      "id": "r9", "x": 595.33984375, "y": 462.921875, "width": 351, "height": 152, "points": [[0, 0], [0, 63], [351, 63], [351, 152]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "bgColor": "#fff4e6", "borderColor": "#fdba74", "tag": "Shape",
+      "texts": [{ "text": "Event bus", "fontSize": 16 }, { "text": "Kafka", "color": "gray", "fontSize": 12 }],
+      "icon": "kafka", "id": "bus", "x": 412.5, "y": 821, "width": 240, "height": 64, "containerId": "forkway"
+    },
+    {
+      "tag": "Relationship", "from": "orderapi", "to": "bus", "label": "OrderPlaced", "lineStyle": "dashed", "fromPort": "bottom", "toPort": "left",
+      "labelPlacement": { "x": 89, "y": 166, "width": 72, "height": 16 },
+      "id": "r11", "x": 162.33984375, "y": 678.921875, "width": 250, "height": 174, "points": [[0, 0], [0, 174], [250, 174]],
+      "endArrowhead": "triangle", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship", "from": "bus", "to": "worker", "fromPort": "top", "toPort": "bottom",
+      "id": "r12", "x": 530.33984375, "y": 820.921875, "width": 0, "height": 142, "points": [[0, 0], [0, -142]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship", "from": "bus", "to": "dispatch", "lineStyle": "dashed", "fromPort": "right", "toPort": "bottom",
+      "id": "r13", "x": 652.33984375, "y": 852.921875, "width": 266, "height": 174, "points": [[0, 0], [266, 0], [266, -174]],
+      "endArrowhead": "triangle", "color": "#1c1c1c", "lineWidth": 0.75
+    },
+    {
+      "tag": "Shape", "icon": "stripe",
+      "texts": [{ "text": "Payment gateway", "fontSize": 16 }, { "text": "External system", "fontSize": 12, "color": "gray" }],
+      "bgColor": "#f1f5f9", "borderColor": "#94a3b8", "id": "stripe", "x": 655, "y": 955, "width": 185.62023528913656, "height": 64
+    },
+    {
+      "tag": "Relationship", "from": "payments", "to": "stripe", "label": "charges", "color": "green", "fromPort": "bottom", "toPort": "top",
+      "labelPlacement": { "x": -23.5, "y": 130, "width": 47, "height": 16 },
+      "id": "r14", "x": 748.33984375, "y": 678.921875, "width": 0, "height": 276, "points": [[0, 0], [0, 276]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "lineWidth": 0.75
+    },
+    {
+      "bgColor": "#f1f5f9", "borderColor": "#94a3b8", "tag": "Shape",
+      "texts": [{ "text": "Maps and routing", "fontSize": 16 }, { "text": "External system", "color": "gray", "fontSize": 12 }],
+      "icon": "map", "id": "maps", "x": 870, "y": 955, "width": 181.9291689246893, "height": 64
+    },
+    {
+      "tag": "Relationship", "from": "dispatch", "to": "maps", "label": "ETAs", "fromPort": "bottom", "toPort": "top",
+      "labelPlacement": { "x": -14.5, "y": 158, "width": 29, "height": 16 },
+      "id": "r15", "x": 977.33984375, "y": 678.921875, "width": 0, "height": 276, "points": [[0, 0], [0, 276]],
+      "endArrowhead": "triangle", "lineStyle": "solid", "color": "#1c1c1c", "lineWidth": 0.75
+    }
+  ]
+}

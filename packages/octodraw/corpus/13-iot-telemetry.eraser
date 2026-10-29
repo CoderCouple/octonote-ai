@@ -1,0 +1,37 @@
+title IoT telemetry
+direction up
+
+Field [color: gray] {
+  Sensors [icon: sensor]
+  Gateways [icon: router]
+  Firmware updates [icon: download]
+}
+Connectivity [color: lightblue] {
+  MQTT broker [icon: radio, description: EMQX]
+  Device registry [icon: list]
+  Cert authority [icon: key]
+}
+Processing [color: blue] {
+  Rules engine [icon: workflow]
+  Stream processor [icon: flink]
+  Alerting [icon: alert, color: red]
+}
+Storage [color: purple] {
+  Time series DB [icon: influxdb]
+  Cold storage [icon: archive]
+}
+Apps [color: green] {
+  Ops dashboard [icon: grafana]
+  Mobile app [icon: mobile]
+  Field technicians [icon: users]
+}
+
+Sensors > Gateways > MQTT broker: telemetry
+Gateways <> Cert authority: mTLS
+MQTT broker > Device registry
+MQTT broker > Rules engine > Stream processor
+Stream processor > Time series DB
+Time series DB --> Cold storage: after 30 days
+Stream processor > Alerting > Mobile app, Field technicians
+Time series DB > Ops dashboard
+Firmware updates --> Gateways: OTA

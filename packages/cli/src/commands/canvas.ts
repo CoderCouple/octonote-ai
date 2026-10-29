@@ -16,24 +16,26 @@ interface Canvas {
   document?: unknown;
 }
 
-function parseSnapshot(text: string): unknown {
+/** Canvas JSON from `canvas pull`: an octodraw document, `{ version: 1, items: [...] }`. */
+function parseCanvasJson(text: string): unknown {
   let doc: unknown;
   try {
     doc = JSON.parse(text);
   } catch {
     throw usage(
       "That file isn't JSON.",
-      "`canvas push` takes a tldraw snapshot from `canvas pull`; to draw from a diagram use --from-mermaid.",
+      "`canvas push` takes canvas JSON from `canvas pull`; to draw from a diagram use --from-mermaid.",
     );
   }
   if (
     !doc ||
     typeof doc !== "object" ||
-    !("store" in doc) ||
-    !("schema" in doc)
+    (doc as { version?: unknown }).version !== 1 ||
+    !Array.isArray((doc as { items?: unknown }).items)
   ) {
     throw usage(
-      "That JSON isn't a tldraw snapshot (it needs `store` and `schema`).",
+      "That JSON isn't an Octonote canvas (it needs `version: 1` and an `items` list).",
+      "Start from `canvas pull <id>`; to draw from a diagram use --from-mermaid.",
     );
   }
   return doc;
@@ -43,20 +45,20 @@ export function registerCanvas(program: Command) {
   const canvas = program
     .command("canvas")
     .description(
-      "Canvases: draw them from mermaid flowcharts or class diagrams, or push tldraw JSON",
+      "Canvases: draw them from mermaid flowcharts or class diagrams, or push canvas JSON",
     );
 
   canvas
     .command("create")
     .description(
-      "Create a canvas — drawn from a mermaid flowchart or class diagram, from tldraw JSON, or empty",
+      "Create a canvas — drawn from a mermaid flowchart or class diagram, from canvas JSON, or empty",
     )
     .argument("[title]", "title", "Untitled canvas")
     .option(
       "-m, --from-mermaid <path>",
       'mermaid flowchart or class diagram file ("-" for stdin) to draw as real shapes',
     )
-    .option("-f, --file <path>", "tldraw snapshot JSON (from `canvas pull`)")
+    .option("-f, --file <path>", "canvas JSON (from `canvas pull`)")
     .option(
       "-n, --notebook <notebook>",
       "put it in a notebook (id or exact name)",
@@ -80,7 +82,7 @@ export function registerCanvas(program: Command) {
             ? await readContent({ file: opts.fromMermaid })
             : null;
           const document = opts.file
-            ? parseSnapshot((await readContent({ file: opts.file })) ?? "")
+            ? parseCanvasJson((await readContent({ file: opts.file })) ?? "")
             : null;
           const notebookId = opts.notebook
             ? (await resolveNotebook(ctx, opts.notebook)).id
@@ -126,7 +128,7 @@ export function registerCanvas(program: Command) {
 
   canvas
     .command("pull")
-    .description("Save a canvas as tldraw JSON")
+    .description("Save a canvas as JSON (Octonote canvas format: { version: 1, items })")
     .argument("<canvas>", "canvas id (cnv_…) or URL")
     .option("-o, --out <path>", "file to write (default: <id>.json)")
     .action(
@@ -147,13 +149,13 @@ export function registerCanvas(program: Command) {
 
   canvas
     .command("push")
-    .description("Replace a canvas with tldraw JSON (from `canvas pull`)")
-    .argument("<file>", 'tldraw snapshot JSON ("-" for stdin)')
+    .description("Replace a canvas with canvas JSON (from `canvas pull`)")
+    .argument("<file>", 'canvas JSON ("-" for stdin)')
     .requiredOption("--id <canvas>", "canvas to update")
     .action(
       action(async (ctx, file: string, opts: { id: string }) => {
         const { id } = parseRef(opts.id, "canvas");
-        const document = parseSnapshot((await readContent({ file })) ?? "");
+        const document = parseCanvasJson((await readContent({ file })) ?? "");
         const row = await ctx.api.patch<Canvas>(`/canvases/${id}`, {
           document,
         });

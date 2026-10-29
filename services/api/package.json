@@ -14,6 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:deployed": "node dist/migrate.js",
+    "db:convert-canvases": "tsx src/scripts/convert-canvases.ts",
+    "db:convert-canvases:deployed": "node dist/scripts/convert-canvases.js",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
@@ -22,6 +24,7 @@
     "@nestjs/core": "^10.4.15",
     "@nestjs/platform-fastify": "^10.4.15",
     "@octonote/content": "workspace:*",
+    "@octonote/octodraw": "workspace:*",
     "@octonote/shared": "workspace:*",
     "@supabase/supabase-js": "^2.47.10",
     "drizzle-orm": "^0.38.4",

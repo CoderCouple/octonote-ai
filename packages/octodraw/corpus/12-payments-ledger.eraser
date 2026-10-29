@@ -1,0 +1,44 @@
+title Payments and ledger
+direction down
+
+Merchant [icon: store]
+Cardholder [icon: credit-card]
+
+Payments platform [icon: wallet, color: green] {
+  API [icon: api, description: Public REST API]
+  Payment orchestrator [icon: workflow]
+  Risk engine [icon: shield, color: red]
+  Routing [icon: split]
+  Processors [color: gray] {
+    Stripe [icon: stripe]
+    Adyen [icon: credit-card]
+    PayPal [icon: paypal]
+  }
+  Ledger [icon: book, color: blue] {
+    Journal [icon: table, description: double-entry]
+    Balances [icon: scale]
+    Reconciliation [icon: check]
+  }
+  Webhooks [icon: webhook]
+}
+Bank settlement files [icon: bank]
+Finance team [icon: users]
+
+legend [position: bottom-right] {
+  [connection: >, label: Synchronous call]
+  [connection: -->, label: Async event]
+  [color: red, label: Risk control]
+}
+
+Cardholder > Merchant: checkout
+Merchant > API: create payment
+API > Payment orchestrator
+Payment orchestrator > Risk engine: score
+Payment orchestrator > Routing > Stripe, Adyen, PayPal
+Stripe, Adyen, PayPal --> Payment orchestrator: result
+Payment orchestrator --> Journal: posted
+Journal > Balances
+Bank settlement files > Reconciliation
+Reconciliation <> Journal
+Payment orchestrator --> Webhooks > Merchant
+Finance team > Reconciliation: reviews

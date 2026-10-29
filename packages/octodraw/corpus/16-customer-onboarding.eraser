@@ -1,0 +1,25 @@
+title Customer onboarding
+direction right
+wrap on
+
+Lead submits the signup form on the marketing site [icon: browser, color: blue]
+Is the email domain on the enterprise allow-list? [shape: diamond, color: yellow]
+Create a self-serve trial workspace automatically [icon: rocket, color: green]
+Route the lead to an account executive for a sales call [icon: users, color: purple]
+Send the welcome email with getting-started guide [icon: mail]
+Schedule a kickoff call with solutions engineering [icon: calendar]
+Did the customer finish setup within seven days? [shape: diamond, color: yellow]
+Trigger the activation nudge sequence [icon: bell, color: orange]
+Mark the account as activated in the CRM [icon: check, color: green]
+Hand over to customer success [icon: heart]
+
+Lead submits the signup form on the marketing site > Is the email domain on the enterprise allow-list?
+Is the email domain on the enterprise allow-list? > Create a self-serve trial workspace automatically: no
+Is the email domain on the enterprise allow-list? > Route the lead to an account executive for a sales call: yes
+Create a self-serve trial workspace automatically > Send the welcome email with getting-started guide
+Route the lead to an account executive for a sales call > Schedule a kickoff call with solutions engineering
+Send the welcome email with getting-started guide, Schedule a kickoff call with solutions engineering > Did the customer finish setup within seven days?
+Did the customer finish setup within seven days? > Mark the account as activated in the CRM: yes
+Did the customer finish setup within seven days? > Trigger the activation nudge sequence: no
+Trigger the activation nudge sequence --> Did the customer finish setup within seven days?: re-check
+Mark the account as activated in the CRM > Hand over to customer success

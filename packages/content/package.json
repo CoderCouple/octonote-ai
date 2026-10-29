@@ -2,7 +2,7 @@
   "name": "@octonote/content",
   "version": "0.1.0",
   "private": true,
-  "description": "Octonote content formats: markdown <-> note blocks (BlockNote) and diagrams -> canvases. No app or API code.",
+  "description": "Octonote content formats: markdown <-> note blocks (BlockNote), diagrams -> octodraw canvases, and old tldraw canvases -> octodraw. No app or API code.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -32,9 +32,7 @@
     "@blocknote/core": "0.51.4",
     "@blocknote/server-util": "0.51.4",
     "@dagrejs/dagre": "3.1.1",
-    "@tldraw/store": "5.5.2",
-    "@tldraw/tlschema": "5.5.2",
-    "@tldraw/utils": "5.5.2",
+    "@octonote/octodraw": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

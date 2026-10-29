@@ -6,9 +6,6 @@ import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import "./globals.css";
-// Hoist tldraw's CSS to the root so dynamic-imported canvas chunks don't have
-// to ship their own (and risk loading the chunk before the CSS arrives).
-import "tldraw/tldraw.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

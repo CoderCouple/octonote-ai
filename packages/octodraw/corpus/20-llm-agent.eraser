@@ -1,0 +1,44 @@
+title LLM agent with RAG
+direction down
+typeface mono
+styleMode plain
+
+User [icon: user]
+Chat UI [icon: nextjs]
+
+Agent runtime [icon: bot, color: violet] {
+  Orchestrator [icon: workflow, description: plans and loops]
+  Model [icon: claude, description: Claude]
+  Guardrails [icon: shield, color: red]
+  Memory [icon: redis, description: conversation state]
+  Tools [color: blue] {
+    Web search [icon: search]
+    Code sandbox [icon: terminal]
+    Ticketing [icon: linear]
+    Calendar [icon: calendar]
+  }
+}
+Retrieval [icon: layers, color: teal] {
+  Embeddings [icon: sparkles]
+  Vector store [icon: database, description: pgvector]
+  Reranker [icon: list]
+}
+Knowledge sources [color: gray] {
+  Docs site [icon: docs]
+  Wiki [icon: notion]
+  Support tickets [icon: invoice]
+}
+Ingestion pipeline [icon: pipeline]
+Evals [icon: check, color: green]
+Tracing [icon: activity]
+
+User > Chat UI <> Orchestrator
+Orchestrator <> Model
+Orchestrator > Guardrails
+Orchestrator <> Memory
+Orchestrator > Web search, Code sandbox, Ticketing, Calendar
+Orchestrator > Reranker: query
+Reranker > Vector store
+Docs site, Wiki, Support tickets > Ingestion pipeline > Embeddings > Vector store
+Orchestrator --> Tracing
+Tracing --> Evals

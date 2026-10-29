@@ -5,7 +5,7 @@
  * lives at a fixed URL per figure that the canvas overwrites whenever the
  * figure changes, so the note always shows the latest picture — in the
  * editor, on mobile and on published pages. In the app it also refreshes
- * the title and links to the canvas. Never renders tldraw (live inline
+ * the title and links to the canvas. Never renders the canvas itself (live inline
  * canvases are v2).
  */
 import { createReactBlockSpec } from "@blocknote/react";

@@ -50,7 +50,7 @@ export interface FlowEdge {
   /** Arrowheads at each end. */
   start: boolean;
   end: boolean;
-  /** tldraw arrowhead names when not a plain arrow (class diagrams: triangle, diamond). */
+  /** Arrowhead names when not a plain arrow (class diagrams: triangle, diamond); octodraw draws any of them as an arrow. */
   startHead?: string;
   endHead?: string;
 }

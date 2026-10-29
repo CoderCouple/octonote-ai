@@ -1,0 +1,827 @@
+{
+  "title": "User Login and MFA Authentication Flow",
+  "diagramX": 70,
+  "diagramY": 7290.21875,
+  "elements": [
+    {
+      "tag": "Textbox",
+      "text": "Login flow",
+      "fontSize": 18,
+      "hAlign": "center",
+      "id": "title",
+      "x": 255,
+      "y": 15,
+      "width": 76.125,
+      "height": 19.5703125
+    },
+    {
+      "color": "green",
+      "bgColor": "#dcfce7",
+      "tag": "Shape",
+      "shape": "oval",
+      "texts": [
+        {
+          "text": "Start",
+          "fontSize": 14
+        }
+      ],
+      "id": "start",
+      "x": 345,
+      "y": 65,
+      "width": 120,
+      "height": 50
+    },
+    {
+      "tag": "Shape",
+      "texts": [
+        {
+          "text": "Enter credentials",
+          "fontSize": 14
+        }
+      ],
+      "icon": "user",
+      "id": "enter",
+      "x": 325,
+      "y": 151,
+      "width": 160,
+      "height": 56
+    },
+    {
+      "color": "yellow",
+      "bgColor": "#fef9c3",
+      "tag": "Shape",
+      "shape": "diamond",
+      "texts": [
+        {
+          "text": "Account exists?",
+          "fontSize": 14
+        }
+      ],
+      "id": "exists",
+      "x": 325,
+      "y": 243,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "color": "yellow",
+      "bgColor": "#fef9c3",
+      "tag": "Shape",
+      "shape": "diamond",
+      "texts": [
+        {
+          "text": "Password valid?",
+          "fontSize": 14
+        }
+      ],
+      "id": "pwd",
+      "x": 325,
+      "y": 384,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "tag": "Shape",
+      "texts": [
+        {
+          "text": "Offer sign up",
+          "fontSize": 14
+        }
+      ],
+      "icon": "users",
+      "id": "signup",
+      "x": 605,
+      "y": 263,
+      "width": 160,
+      "height": 56
+    },
+    {
+      "color": "yellow",
+      "bgColor": "#fef9c3",
+      "tag": "Shape",
+      "shape": "diamond",
+      "texts": [
+        {
+          "text": "MFA enabled?",
+          "fontSize": 14
+        }
+      ],
+      "id": "mfa",
+      "x": 325,
+      "y": 525,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "color": "orange",
+      "bgColor": "#ffedd5",
+      "tag": "Shape",
+      "shape": "diamond",
+      "texts": [
+        {
+          "text": "Too many attempts?",
+          "fontSize": 14
+        }
+      ],
+      "id": "attempts",
+      "x": 25,
+      "y": 384,
+      "width": 180,
+      "height": 96
+    },
+    {
+      "color": "red",
+      "bgColor": "#fee2e2",
+      "tag": "Shape",
+      "texts": [
+        {
+          "text": "Lock account",
+          "fontSize": 14
+        }
+      ],
+      "icon": "lock",
+      "id": "lock",
+      "x": 35,
+      "y": 666,
+      "width": 160,
+      "height": 56
+    },
+    {
+      "color": "red",
+      "bgColor": "#fee2e2",
+      "tag": "Shape",
+      "texts": [
+        {
+          "text": "Show error",
+          "fontSize": 14
+        }
+      ],
+      "icon": "alert-triangle",
+      "id": "error",
+      "x": 35,
+      "y": 151,
+      "width": 160,
+      "height": 56
+    },
+    {
+      "tag": "Shape",
+      "texts": [
+        {
+          "text": "Send code",
+          "fontSize": 14
+        }
+      ],
+      "icon": "mail",
+      "id": "send",
+      "x": 325,
+      "y": 666,
+      "width": 160,
+      "height": 56
+    },
+    {
+      "color": "yellow",
+      "bgColor": "#fef9c3",
+      "tag": "Shape",
+      "shape": "diamond",
+      "texts": [
+        {
+          "text": "Code valid?",
+          "fontSize": 14
+        }
+      ],
+      "id": "code",
+      "x": 325,
+      "y": 762,
+      "width": 160,
+      "height": 96
+    },
+    {
+      "color": "blue",
+      "bgColor": "#dbeafe",
+      "tag": "Shape",
+      "texts": [
+        {
+          "text": "Create session",
+          "fontSize": 14
+        }
+      ],
+      "icon": "key",
+      "id": "session",
+      "x": 605,
+      "y": 782,
+      "width": 160,
+      "height": 56
+    },
+    {
+      "tag": "Shape",
+      "texts": [
+        {
+          "text": "Redirect to app",
+          "fontSize": 14
+        }
+      ],
+      "icon": "app-window",
+      "id": "redirect",
+      "x": 605,
+      "y": 898,
+      "width": 160,
+      "height": 56
+    },
+    {
+      "tag": "Shape",
+      "shape": "oval",
+      "texts": [
+        {
+          "text": "End",
+          "fontSize": 14
+        }
+      ],
+      "id": "end",
+      "x": 345,
+      "y": 994,
+      "width": 120,
+      "height": 50
+    },
+    {
+      "tag": "Relationship",
+      "from": "start",
+      "to": "enter",
+      "fromPort": "bottom",
+      "toPort": "top",
+      "id": "r1",
+      "x": 405,
+      "y": 117,
+      "width": 0,
+      "height": 32,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          32
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "enter",
+      "to": "exists",
+      "fromPort": "bottom",
+      "toPort": "top",
+      "id": "r2",
+      "x": 405,
+      "y": 206.78125,
+      "width": 0,
+      "height": 37.33185570892965,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          37.33185570892965
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "exists",
+      "to": "pwd",
+      "label": "yes",
+      "fromPort": "bottom",
+      "toPort": "top",
+      "labelPlacement": {
+        "x": -10.5,
+        "y": 15.317752599994492,
+        "width": 21,
+        "height": 16
+      },
+      "id": "r3",
+      "x": 405,
+      "y": 337.9634974000055,
+      "width": 0,
+      "height": 47.149608308924144,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          47.149608308924144
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "exists",
+      "to": "signup",
+      "label": "no",
+      "fromPort": "right",
+      "toPort": "left",
+      "labelPlacement": {
+        "x": 58.15698290227658,
+        "y": -8,
+        "width": 15,
+        "height": 16
+      },
+      "id": "r4",
+      "x": 479.3430170977234,
+      "y": 290.78125,
+      "width": 123.65698290227658,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          123.65698290227658,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "pwd",
+      "to": "mfa",
+      "label": "yes",
+      "fromPort": "bottom",
+      "toPort": "top",
+      "labelPlacement": {
+        "x": -10.5,
+        "y": 15.317752599994492,
+        "width": 21,
+        "height": 16
+      },
+      "id": "r5",
+      "x": 405,
+      "y": 478.9634974000055,
+      "width": 0,
+      "height": 47.149608308924144,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          47.149608308924144
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "pwd",
+      "to": "attempts",
+      "label": "no",
+      "fromPort": "left",
+      "toPort": "right",
+      "labelPlacement": {
+        "x": -75.87147985117088,
+        "y": -8,
+        "width": 15,
+        "height": 16
+      },
+      "id": "r6",
+      "x": 330.8714798511709,
+      "y": 431.78125,
+      "width": 132.61330777129479,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -132.61330777129479,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "attempts",
+      "to": "lock",
+      "label": "yes",
+      "fromPort": "bottom",
+      "toPort": "top",
+      "labelPlacement": {
+        "x": -10.5,
+        "y": 85.62889292690306,
+        "width": 21,
+        "height": 16
+      },
+      "id": "r7",
+      "x": 115,
+      "y": 479.15235707309694,
+      "width": 0,
+      "height": 184.84764292690306,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          184.84764292690306
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "attempts",
+      "to": "error",
+      "label": "no",
+      "fromPort": "top",
+      "toPort": "bottom",
+      "labelPlacement": {
+        "x": -7.5,
+        "y": -97.62935735856263,
+        "width": 15,
+        "height": 16
+      },
+      "id": "r8",
+      "x": 115,
+      "y": 384.91060735856263,
+      "width": 0,
+      "height": 175.91060735856263,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          -175.91060735856263
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "error",
+      "to": "enter",
+      "label": "retry",
+      "fromPort": "right",
+      "toPort": "left",
+      "labelPlacement": {
+        "x": 53.5,
+        "y": -8,
+        "width": 28,
+        "height": 16
+      },
+      "id": "r9",
+      "x": 195,
+      "y": 178.78125,
+      "width": 130,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          130,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "mfa",
+      "to": "send",
+      "label": "yes",
+      "fromPort": "bottom",
+      "toPort": "top",
+      "labelPlacement": {
+        "x": -10.5,
+        "y": 15.317752599994492,
+        "width": 21,
+        "height": 16
+      },
+      "id": "r10",
+      "x": 405,
+      "y": 619.9634974000055,
+      "width": 0,
+      "height": 44.03650259999449,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          44.03650259999449
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "mfa",
+      "to": "session",
+      "label": "no",
+      "fromPort": "right",
+      "toPort": "top",
+      "labelPlacement": {
+        "x": 98.15698290227658,
+        "y": -8,
+        "width": 15,
+        "height": 16
+      },
+      "id": "r11",
+      "x": 479.3430170977234,
+      "y": 572.78125,
+      "width": 205.65698290227658,
+      "height": 207.21875,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          205.65698290227658,
+          0
+        ],
+        [
+          205.65698290227658,
+          207.21875
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "send",
+      "to": "code",
+      "fromPort": "bottom",
+      "toPort": "top",
+      "id": "r12",
+      "x": 405,
+      "y": 721.78125,
+      "width": 0,
+      "height": 41.33185570892965,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          41.33185570892965
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "code",
+      "to": "session",
+      "label": "yes",
+      "fromPort": "right",
+      "toPort": "left",
+      "labelPlacement": {
+        "x": 55.15698290227658,
+        "y": -8,
+        "width": 21,
+        "height": 16
+      },
+      "id": "r13",
+      "x": 479.3430170977234,
+      "y": 809.78125,
+      "width": 123.65698290227658,
+      "height": 0,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          123.65698290227658,
+          0
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "code",
+      "to": "error",
+      "label": "no",
+      "fromPort": "left",
+      "toPort": "left",
+      "labelPlacement": {
+        "x": -168.37147985117088,
+        "y": -8,
+        "width": 15,
+        "height": 16
+      },
+      "id": "r14",
+      "x": 330.8714798511709,
+      "y": 809.78125,
+      "width": 315.8714798511709,
+      "height": 631,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -315.8714798511709,
+          0
+        ],
+        [
+          -315.8714798511709,
+          -631
+        ],
+        [
+          -297.8714798511709,
+          -631
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "session",
+      "to": "redirect",
+      "fromPort": "bottom",
+      "toPort": "top",
+      "id": "r15",
+      "x": 685,
+      "y": 837.78125,
+      "width": 0,
+      "height": 60,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          60
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "redirect",
+      "to": "end",
+      "fromPort": "left",
+      "toPort": "right",
+      "id": "r16",
+      "x": 605,
+      "y": 925.78125,
+      "width": 138,
+      "height": 93,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -60,
+          0
+        ],
+        [
+          -60,
+          93
+        ],
+        [
+          -138,
+          93
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "lock",
+      "to": "end",
+      "fromPort": "bottom",
+      "toPort": "left",
+      "id": "r17",
+      "x": 115,
+      "y": 721.78125,
+      "width": 228,
+      "height": 297,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          297
+        ],
+        [
+          228,
+          297
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    },
+    {
+      "tag": "Relationship",
+      "from": "signup",
+      "to": "end",
+      "fromPort": "right",
+      "toPort": "bottom",
+      "id": "r18",
+      "x": 765,
+      "y": 290.78125,
+      "width": 370,
+      "height": 763,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          10,
+          0
+        ],
+        [
+          10,
+          763
+        ],
+        [
+          -360,
+          763
+        ],
+        [
+          -360,
+          755.21875
+        ]
+      ],
+      "endArrowhead": "triangle",
+      "lineStyle": "solid",
+      "color": "#1c1c1c",
+      "lineWidth": 0.75
+    }
+  ]
+}

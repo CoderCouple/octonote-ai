@@ -5,7 +5,7 @@
  * (edit access, plan limits, audit) still applies.
  */
 import { Injectable } from "@nestjs/common";
-import { MermaidParseError, mermaidToCanvasDocument } from "@octonote/content/server";
+import { MermaidParseError, mermaidToOctodraw } from "@octonote/content/server";
 import type { CanvasCreate } from "../api/v1/request/canvas.request";
 import { BadRequest } from "../common/error/error-factory";
 import type { Canvas } from "../model/canvas.model";
@@ -36,7 +36,7 @@ export class CanvasDiagramService {
 
 function draw(mermaid: string) {
   try {
-    return mermaidToCanvasDocument(mermaid) as unknown as Record<string, unknown>;
+    return mermaidToOctodraw(mermaid);
   } catch (err) {
     if (err instanceof MermaidParseError) {
       throw BadRequest(err.message, { code: "MERMAID_INVALID", line: err.line ?? null });

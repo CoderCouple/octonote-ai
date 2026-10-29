@@ -1,0 +1,39 @@
+title Food delivery
+direction down
+
+Diner [icon: user, description: Person]
+Courier [icon: bike, description: Person]
+Restaurant staff [icon: users, description: Person]
+
+Forkway [icon: truck, color: blue, description: software system] {
+  Apps [icon: mobile, description: React Native] {
+    Diner app [icon: mobile, description: React Native]
+    Courier app [icon: mobile, description: React Native]
+    Restaurant app [icon: tablet, description: "React Native, tablet"]
+  }
+  API gateway [icon: network, description: Envoy]
+  Services [icon: k8s-namespace, description: Kubernetes] {
+    Order service [icon: kotlin, description: "Kotlin, Spring Boot"] {
+      Order API [icon: server, description: REST]
+      Order worker [icon: worker, description: Consumer]
+      Orders DB [icon: postgres, shape: cylinder, description: PostgreSQL]
+    }
+    Payments service [icon: kotlin, description: Kotlin]
+    Dispatch service [icon: go, description: Go]
+  }
+  Event bus [icon: kafka, color: orange, description: Kafka]
+}
+Payment gateway [icon: stripe, description: External system]
+Maps and routing [icon: map, description: External system]
+
+Diner > Diner app: orders food
+Courier > Courier app: delivers
+Restaurant staff > Restaurant app: prepares
+Diner app, Courier app, Restaurant app > API gateway
+API gateway > Order API, Payments service, Dispatch service
+Order API > Orders DB
+Order API --> Event bus: OrderPlaced
+Order worker < Event bus
+Event bus --> Dispatch service
+Payments service > Payment gateway: charges [color: green]
+Dispatch service > Maps and routing: ETAs

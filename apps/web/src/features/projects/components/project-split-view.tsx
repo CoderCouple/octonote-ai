@@ -125,7 +125,7 @@ export function ProjectSplitView({
           initialLinkRole={project.linkRole}
         />
       </FocusHeader>
-      {/* Panes stay mounted across layout changes so tldraw/BlockNote don't reload.
+      {/* Panes stay mounted across layout changes so the canvas and BlockNote don't reload.
           Split is side by side, except on a phone held upright (narrow + portrait),
           where the panes stack: note on top, canvas below. */}
       <div className="flex flex-1 overflow-hidden max-md:portrait:flex-col">

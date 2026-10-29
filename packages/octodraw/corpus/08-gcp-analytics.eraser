@@ -1,0 +1,38 @@
+title Real-time analytics on GCP
+direction right
+
+Devices [icon: iot]
+Web clients [icon: browser]
+
+GCP project [icon: google-cloud, color: blue] {
+  Ingest [color: blue] {
+    Load balancer [icon: gcp-load-balancing]
+    Collector [icon: gcp-cloud-run, description: Cloud Run]
+    Events topic [icon: gcp-pubsub]
+  }
+  Processing [color: green] {
+    Stream pipeline [icon: gcp-dataflow]
+    Batch jobs [icon: gcp-dataproc]
+    Scheduler [icon: gcp-cloud-scheduler]
+  }
+  Storage [color: purple] {
+    Raw archive [icon: gcp-cloud-storage]
+    Analytics warehouse [icon: gcp-bigquery]
+    Feature store [icon: gcp-bigtable]
+  }
+  Serving [color: orange] {
+    Dashboards [icon: dashboard, description: Looker Studio]
+    Prediction API [icon: gcp-vertex-ai]
+  }
+  Monitoring [icon: gcp-cloud-monitoring]
+}
+
+Devices, Web clients > Load balancer > Collector > Events topic
+Events topic > Stream pipeline
+Stream pipeline > Analytics warehouse, Feature store
+Stream pipeline --> Raw archive: replay copy
+Scheduler > Batch jobs
+Raw archive > Batch jobs > Analytics warehouse
+Analytics warehouse > Dashboards
+Feature store > Prediction API
+Monitoring -- Ingest, Processing

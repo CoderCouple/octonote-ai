@@ -75,7 +75,10 @@ Links: `click A href "https://…"` makes a box open that page (canvases and
 note diagrams alike) — point code boxes at the file and line on GitHub.
 Other diagram types (sequence, state, ER, gantt…) can't be canvases — put
 them in a note as a ```mermaid block instead.
-Raw tldraw JSON also works: `canvas pull <id> -o c.json` / `canvas push c.json --id <id>`.
+Raw canvas JSON also works: `canvas pull <id> -o c.json` / `canvas push c.json --id <id>`.
+It's `{ "version": 1, "items": [...] }`; items are shape (rectangle|ellipse|diamond,
+text), sticky, text, line (start/end {x,y,item?}, startArrow, endArrow, dashed, text),
+frame, code, image, icon, pen and figure, each with x, y, w, h.
 
 ## Project = note + canvas
   octonote project create "Auth flow" --note auth.md --canvas-mermaid auth.mmd \

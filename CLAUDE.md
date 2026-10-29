@@ -15,7 +15,7 @@ Port in progress (started 2026-10-08) from `~/Desktop/octo-focus-ai`, the prior 
 | Entity | What it is |
 |---|---|
 | **Note** | A BlockNote document. Can stand alone. |
-| **Canvas** | A tldraw board. Can stand alone. |
+| **Canvas** | An octodraw board (our in-house canvas). Can stand alone. |
 | **Project** | An eraser.io-style file: **exactly one note + one canvas**, viewed as notes / canvas / split. The project owns its pair — they never appear in the top-level Notes/Canvases lists. |
 | **Notebook** | A folder-like collection holding any number of standalone notes, standalone canvases and projects. **An item is in at most one notebook** (or none). Deleting a notebook must not silently delete items — decide (move to root vs. block) when building it. |
 
@@ -50,7 +50,7 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 **IN SCOPE:**
 - Notes editor (BlockNote) — standard blocks (paragraph, heading, list, todo, code, quote, divider, image) + custom blocks: `canvas-reference`, **`mathBlock` + inline `math` (KaTeX) and `mermaid` diagrams** (added 2026-10-09, user decision; Mermaid ported from OctoFocus with `securityLevel: "strict"`). Pasted markdown with `$…$`, `$$…$$`, ```math or ```mermaid is converted by `features/notes/lib/markdown-import.ts`.
 - `canvas-reference` block — references a canvas page in the workspace. Renders a thumbnail (PNG snapshot stored on the canvas record) + canvas title. Clicking opens the canvas page. **Reference only, not inline rendering.** No tldraw instance inside the note.
-- Canvas (tldraw) — default toolset, plus **Rearrange** (added 2026-10-20, user decision): a header menu that lays out the selection (or the whole canvas) vertically or horizontally with dagre, keeping surrounding boxes around their contents; one undo step (`features/canvas/lib/rearrange.ts`).
+- Canvas (**octodraw**, `packages/octodraw` — replaced tldraw 2026-10-28, see below) — its own toolset, plus **Rearrange** (added 2026-10-20, user decision): a header menu that lays out the selection (or the whole canvas) vertically or horizontally with dagre, keeping surrounding boxes around their contents; one undo step (`features/canvas/lib/rearrange.ts`, works on octodraw items).
 - Standalone notes, standalone canvases, projects (1 note + 1 canvas), notebooks
 - Sharing + publishing (Google Docs model above)
 - **View analytics for published pages** (added 2026-10-09, user decision): anonymous hourly views + daily unique visitors (`resource_views`; uniques via Plausible-style daily-rotating salt hash of account id or IP+UA, salt and hashes deleted daily), bots/link previews and the item's own owners/editors skipped, nothing about the visitor stored; owners + editors see a chart in the list's Analytics panel. No visitor tracking on published pages (PostHog never loads there — see Tracking below).
@@ -61,7 +61,7 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - **Follow-ups CRM** (added 2026-10-21, user decision; built in layers — design canvas https://claude.ai/artifact/QidF79ovZrnmPenoNnVuBx): Admin → Inbox (`/admin/inbox`). Layer 1 (built): everyone who signed up (never staff) with folders Needs attention / Not contacted / Everyone, status (`crm_contacts`, audited), a timeline mixing what we know (signed up + source, first note/canvas/project/notebook, codes, staff Pro, billing events — read from their tables, never titles or content) with conversations staff log (`crm_entries`: LinkedIn, call, WhatsApp, meeting, note; the first one moves New → Contacted), and follow-ups (`crm_followups`, assignable to staff only). Layer 2 (built): email from the Inbox via Resend (`common/crm-mailer.ts`, `CRM_MAILER`) as "<first name> from Octonote" <hello@octonote.ai>, hidden copy to `CRM_BCC` (default hello@), templates in `@octonote/shared` `CRM_TEMPLATES`, Sent folder. Layer 3 (built): each email gets its own reply address `r-<entry uuid>@$CRM_REPLY_DOMAIN` (reply.octonote.ai: MX → Resend receiving, set 2026-10-21); `POST /crm/inbound` verifies Resend's `email.received` webhook (`RESEND_WEBHOOK_SECRET`, svix headers over the raw body), fetches the text (with `RESEND_RECEIVING_API_KEY`, a full-access key; `RESEND_API_KEY` stays sending-only), trims quoted history, saves it as `email_in` (dedup by Resend id, falls back to the sender's email), New/Contacted → Replied, forwards a copy to the team inbox; unread via `crm_contacts.last_seen_at`. Without those env vars replies just go to hello@. Layer 4 (built): owners (`crm_contacts.owner_user_id`, staff only, audited; Inbox filter) and Admin → Follow-ups (`/admin/followups`, `GET /admin/crm/overview?owner=Next layers: 4 dashboard with charts + owners, 5 sidebar-09 rail across admin.weeks=`): totals, pipeline bars, outreach/replies area chart (plain SVG in the shadcn look, `features/admin/components/crm-charts.tsx`, no chart library), and the day's lists. Layer 5 (built): the admin nav is a sidebar-09 icon rail on desktop (named tabs on phones), a Follow-up panel on People → a person (`crm-panel.tsx`), a 30-day activity strip (`activity_days` per source) and snooze on follow-ups.
 - **Students get Pro free for 12 months**: first sign-in with an email whose domain ends in a row of the **`student_email_suffixes`** table (seeded with `edu`; add rows like `ac.uk` in Supabase Studio — no deploy; `enabled = false` retires one; `id` defaults to `sfx_<uuid>` in SQL) sets `users.student_pro_until`; never extended; covers workspaces they own.
 - **`octonote` CLI for agents** (added 2026-10-13, user decision — "the last interface and a very important one"): `packages/cli` (`@octonote/cli`, bin `octonote`) lets Claude Code / Codex / scripts create, read and edit notes (markdown), draw canvases from mermaid flowcharts, manage projects/notebooks, publish and share. Talks only to the public API (own small HTTP client, no private workspace deps, so it can ship to npm). JSON when piped, stable error codes + exit codes, never prompts. Auth: `octonote login` → `/cli/connect` (Authorize) → token handed to a 127.0.0.1 listener (paste fallback); or `OCTONOTE_TOKEN` from Settings → CLI & agents. Tokens (`cli_tokens`, `ont_…`, SHA-256 at rest) work in both auth guards and can't mint tokens or delete the account (`requireWebSession`). Agents learn it via `octonote guide` / `octonote setup claude|codex` (+ `--skill`); the guide text lives in `packages/cli/src/guide/agent-guide.ts`.
-- **Content formats live in `packages/content`** (`@octonote/content`): markdown ⇄ note blocks (the editor's paste importer, the API's `/pages/:id/markdown` routes and the CLI all use it) and mermaid flowchart → tldraw canvas (dagre layout, validated by tldraw's schema; pinned to the web app's tldraw version — a test fails on drift). Server-only parts are in `@octonote/content/server`, which loads BlockNote's ES build with a native import (its CJS build is broken in Node).
+- **Content formats live in `packages/content`** (`@octonote/content`): markdown ⇄ note blocks (the editor's paste importer, the API's `/pages/:id/markdown` routes and the CLI all use it), mermaid flowchart/class diagram → octodraw canvas (`mermaidToOctodraw`, dagre layout) and the one-way tldraw → octodraw converter (`toOctodrawDocument`, plain TS, for canvases saved before the switch). octodraw's document types are copied in `src/canvas/octodraw-types.ts` (content builds to CJS and can't import octodraw's TS source) — keep them in step with `packages/octodraw/src/canvas/model.ts`; the tests check against octodraw's real `isCanvasDocument`. Server-only parts are in `@octonote/content/server`, which loads BlockNote's ES build with a native import (its CJS build is broken in Node).
 - **Grid / list views** (added 2026-10-13, user decision): every library list (web Notes/Canvases/Projects/Notebooks/notebook view, mobile tabs + notebook page) and the published notebook toggle between table/list and a grid of cards, remembered per list per device. Cards show the canvas thumbnail (a project's canvas), a note's opening lines, or a notebook's item counts. Canvases missing a thumbnail get one from `ThumbnailBackfill` when a web list shows them.
 - **Title search** (added 2026-10-12, user decision): a search field on Home (web + mobile) that finds notes, canvases, projects and notebooks by name. Full-text search stays v2.
 - Auth (Supabase: email code + **Google, Apple, Microsoft** sign-in — Apple/Microsoft added 2026-10-13, user decision; Apple is also required by App Store guideline 4.8 once any social login exists on iOS). Buttons only render for providers enabled in Supabase (GoTrue `/auth/v1/settings`), so a half-configured provider never shows a failing button.
@@ -74,7 +74,7 @@ Sidebar order: **Home, Notes, Canvases, Projects, Notebooks, Shared.** Notes/Can
 - **Assistant apps — in progress (user decision 2026-10-27):** one remote MCP server in `services/api` (Streamable HTTP) with OAuth sign-in, exposing the CLI's commands as tools → a Claude.ai custom connector, a ChatGPT app (Apps SDK; in-chat preview card later) and Gemini CLI. Auth follows the MCP 2026-07-28 spec: Octonote is its own authorization server (PKCE, CIMD with DCR kept for older clients, RFC 9728 resource metadata, RFC 8707 audience binding). Publish/share/delete only on request, as in the CLI. Everything else in the deferred list below stays deferred until the user picks it.
 
 **EXPLICITLY DEFERRED to v2+ (do not add in v1 even if "it's small"):**
-- **Inline canvas block** (full tldraw rendered inside a note) — ships in v2 after we learn how users actually use the `canvas-reference` block. Do not add tldraw inside the BlockNote editor in v1.
+- **Inline canvas block** (a full canvas rendered inside a note) — ships in v2 after we learn how users actually use the `canvas-reference` block. Do not add the canvas inside the BlockNote editor in v1.
 - Custom diagrams-as-code DSL beyond Mermaid
 - AI diagram generation (Claude)
 - Multiplayer (Yjs / Hocuspocus) — single-user with auto-save is enough
@@ -95,9 +95,10 @@ Monorepo managed with pnpm workspaces + Turborepo.
 ```
 apps/
   web          Next.js 15 + React 19 + App Router + TanStack Query
-               Hosts notes editor (BlockNote) + canvas (tldraw).
+               Hosts notes editor (BlockNote) + canvas (octodraw).
                Also hosts marketing landing page.
                Deployed to Vercel.
+  octodraw-playground  Vite playground for octodraw (dev only)
   mobile       Expo + expo-router + NativeWind + Supabase + EAS
                Editor and canvas rendered via Expo DOM (React web
                components inside native screens — not WebView).
@@ -112,6 +113,7 @@ packages/
   api-client   Typed client for services/api — imported by web and mobile
   content      Markdown ⇄ note blocks, mermaid → canvas (web, API, CLI share it)
   cli          `octonote` CLI for people and agents (public API only)
+  octodraw     In-house canvas (replaced tldraw 2026-10-28); octodraw-server = its AI route (unused)
 supabase/      SQL migrations + minimal RLS. Supabase = identity + storage
                + Postgres. Business logic lives in services/api, never in RLS.
 ```
@@ -168,14 +170,14 @@ Decided 2026-10-08, following the prior app's final commit (which replaced its E
 | Database + auth + storage | Supabase | Postgres + auth (identity) + storage. Frontend goes through `services/api`, not Supabase SDK, for business data. |
 | Multiplayer server | ~~Hocuspocus~~ | **Deferred to v2.** No persistent WS server in v1. |
 | Doc editor | **BlockNote** (built on Tiptap) | Notion-style block-first API out of the box; prior version shipped this successfully. Don't use raw Tiptap. |
-| Freeform canvas | **tldraw** | Chosen for aesthetic quality — cleaner "SaaS product" look vs Excalidraw's hand-drawn sketchy aesthetic. Free with watermark during private beta; buy Business license at public launch (~$6k/yr tier at time of writing — verify current pricing). |
+| Freeform canvas | **octodraw** (in-house, `packages/octodraw`) | Replaced tldraw on 2026-10-28 (user decision): no paid licence, Eraser-style diagram-as-code figures, kept **monolithic** in this repo (never a separate npm package). |
 | Diagrams-as-code | Mermaid (rendered block) | **In v1 since 2026-10-09** as a note block; lazy-loaded, strict security. The eraser-style DSL is still v2. |
 | Multiplayer | ~~Yjs~~ | **Deferred to v2.** v1 is single-user with debounced auto-save. |
 | AI | ~~Anthropic Claude~~ | **Deferred to v2.** No AI in v1. |
 
-### Why tldraw (not Excalidraw)
+### octodraw (replaced tldraw on 2026-10-28)
 
-User has a strong aesthetic preference for tldraw's clean modern look over Excalidraw's hand-drawn sketchy aesthetic. For a serious SaaS product the visual polish of tldraw matches the positioning better. Licensing: ship on free tier (with watermark) during private beta, buy Business license at public launch. Revisit a custom canvas build only if licensing becomes expensive relative to revenue — do not pre-optimize.
+`packages/octodraw` (`@octonote/octodraw`) is our own canvas, merged from the CoderCouple/octodraw repo; its own `packages/octodraw/CLAUDE.md` describes the internals. `packages/octodraw-server` (AI route) and `apps/octodraw-playground` came with it; **the AI assistant is not wired up yet** (user decision — octodraw only shows AI buttons when the host passes `onAskAi`). It uses **Eraser's icon artwork by default (`iconSet` 'eraser', user decision)**; that artwork has no redistribution licence — never publish octodraw as a public package. The web app's canvas lives in `apps/web/src/features/canvas` (editor `octo-canvas.tsx`, theme from design tokens `lib/octodraw-theme.ts`, thumbnails/figure PNGs rendered from the document in `lib/render.ts`). Figures embeddable in notes are octodraw `figure` items (API id `fig_…` derived from canvas id + item id); old tldraw figures keep their last PNG. Items may carry `link` (http(s) only, `safeLink`). There is no tldraw anywhere — don't bring it back.
 
 
 ## Design system — one source of truth
@@ -197,8 +199,7 @@ User has a strong aesthetic preference for tldraw's clean modern look over Excal
 - `projects.notebook_id` is nullable; projects can sit in a notebook.
 - Sharing columns (`link_access`, `link_role`, `published`, `public_slug`) live on each shareable table; per-person grants live in `resource_shares`.
 - Notes can embed canvases via the `canvas-reference` block (one-way link).
-- v1 content storage is JSON (BlockNote document for notes, tldraw snapshot for canvases) saved on debounce. No Yjs in v1.
-- **tldraw license:** v5+ hides the canvas after 5s on non-localhost domains without `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`. Get the free watermarked key before any deployed beta.
+- v1 content storage is JSON (BlockNote document for notes, octodraw `{ version: 1, items }` document for canvases) saved on debounce. No Yjs in v1.
 
 ## Commands
 
@@ -247,7 +248,7 @@ API tests under `test/integration/` run against real Postgres in-process (PGlite
 - Mobile: `pnpm mobile:env hosted` / `pnpm mobile:env local` switches the app (writes/removes `apps/mobile/.env.local`), then restart Expo with `--clear`.
 - Stripe (test mode first): API env `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO_MONTH`, `STRIPE_PRICE_PRO_YEAR` (+ `PUBLIC_APP_URL` for redirects). Locally, `stripe listen --forward-to localhost:4000/billing/webhook` prints the webhook secret.
 - Social sign-in: `[remotes.production.auth.external.{google,apple,azure}]` read `GOOGLE_OAUTH_CLIENT_ID/SECRET`, `APPLE_OAUTH_CLIENT_ID/SECRET`, `AZURE_OAUTH_CLIENT_ID/SECRET` from `.env.hosted`. Callback for all three: `https://auth.octonote.ai/auth/v1/callback` (the custom domain; Google also keeps the old supabase.co one). Switch a provider on in `config.toml` only once its keys are in `.env.hosted`, then `supabase config push`. **Google and Apple are live (2026-10-15); Microsoft is next** (Azure app with the same callback, keys in `.env.hosted`, switch on in `config.toml`, push). Google's screen shows "Octonote AI" + logo (brand verified; authorized domain octonote.ai only). Apple: Services ID `ai.octonote.signin` (App ID `ai.octonote.app`), secret from `scripts/apple-client-secret.mjs` — **expires 2027-04-13**. Apple's private email relay has octonote.ai, send.octonote.ai and hello@octonote.ai registered (re-register if the sender changes). Provider logos for both apps live in `packages/shared/src/brand-marks.ts`. **The Apple secret is a JWT that expires after ≤6 months** — regenerate from the .p8 key and re-push before then.
-- Before a public launch: provider credentials set + pushed (social sign-in above). (Done: tldraw license key on Vercel, custom domain octonote.ai.)
+- Before a public launch: provider credentials set + pushed (social sign-in above). (Done: custom domain octonote.ai.)
 
 ## API structure notes
 
@@ -273,14 +274,14 @@ API tests under `test/integration/` run against real Postgres in-process (PGlite
    - Copy wholesale as `@octonote/web`
    - Delete overload: mermaid/mind-elixir/flashcard/infographic/recharts/react-live code, custom AI blocks, meeting UI
    - Trim deps in `package.json` accordingly
-   - Keep: BlockNote editor, tldraw canvas, auth flow, workspace/page UI, marketing hero + waitlist
+   - Keep: BlockNote editor, canvas, auth flow, workspace/page UI, marketing hero + waitlist
 7. Point everything at new Supabase project + new Vercel + Railway + EAS projects.
 8. Build the `canvas-reference` custom BlockNote block (web + mobile):
    - Server: canvas record stores a `thumbnail_url` (PNG snapshot regenerated on canvas save, uploaded to Supabase Storage)
    - Block schema: `{ type: 'canvasReference', props: { canvasId: string } }`
    - Renders: thumbnail + title + click → navigate to canvas page
    - Slash menu entry: "/canvas" opens a picker of workspace canvases
-   - **Hard rule:** this block does NOT render tldraw inline. If a future session is tempted, that's the inline-canvas feature which is v2.
+   - **Hard rule:** this block does NOT render the canvas inline. If a future session is tempted, that's the inline-canvas feature which is v2.
 
 ## Memory
 

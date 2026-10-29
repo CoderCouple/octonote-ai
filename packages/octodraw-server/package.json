@@ -1,0 +1,40 @@
+{
+  "name": "@octonote/octodraw-server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "description": "Server route for octodraw's AI assistant: calls Claude with the host's key and streams diagrams back (Fetch API Request/Response).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    },
+    "types": "./dist/types/index.d.ts"
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "dev": "node --env-file-if-exists=.env src/dev.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "@octonote/octodraw": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
