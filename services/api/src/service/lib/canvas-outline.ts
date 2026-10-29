@@ -5,10 +5,12 @@
  * made by agents have no PNG snapshot until someone opens them in the web
  * app; this lets the card show the real diagram anyway.
  *
- * Line ends attached to an item are recomputed from that item (like
- * octodraw's `lineEnds`) and clipped to its outline. Rotation, pen strokes,
- * icons and images are left out.
+ * Line ends attached to an item are recomputed with octodraw's own rule
+ * (`octodrawLineEnds`: aimed at the end's anchor or the item's centre — on a
+ * bent line at the control point — and clipped to the outline); bends (same
+ * convention as the card), dashed outlines and fills carry over. Rotation, pen strokes, icons and images are left out.
  */
+import { octodrawLineEnds, type OctodrawItem } from "@octonote/content/server";
 
 export interface OutlineShape {
   kind: "geo" | "note" | "text" | "frame";
@@ -58,16 +60,17 @@ interface Item {
   device?: string;
   fontSize?: number;
   link?: string;
-  start?: { x?: number; y?: number; item?: string };
-  end?: { x?: number; y?: number; item?: string };
+  start?: { x?: number; y?: number; item?: string; anchor?: { x?: number; y?: number } };
+  end?: { x?: number; y?: number; item?: string; anchor?: { x?: number; y?: number } };
   startArrow?: boolean;
   endArrow?: boolean;
   dashed?: boolean;
+  bend?: number;
+  fill?: string;
+  rotation?: number;
 }
 
 const MAX_SHAPES = 600;
-/** Gap between an attached line end and its item, as in octodraw. */
-const END_GAP = 4;
 
 /** Octodraw palette names → the card's colour names; hex values pass through. */
 const COLOR_NAMES: Record<string, string> = {
@@ -104,29 +107,15 @@ function sizeKey(fontSize: unknown): string {
 
 const num = (v: unknown, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
 
-/** Where a line from the shape's centre towards `toward` leaves its outline (plus a small gap). */
-function outlinePoint(s: OutlineShape, toward: { x: number; y: number }) {
-  const cx = s.x + s.w / 2;
-  const cy = s.y + s.h / 2;
-  const dx = toward.x - cx;
-  const dy = toward.y - cy;
-  if (!dx && !dy) return { x: cx, y: cy };
-  const hw = Math.max(s.w / 2, 1) + END_GAP;
-  const hh = Math.max(s.h / 2, 1) + END_GAP;
-  let t: number;
-  if (s.geo === "ellipse") t = 1 / Math.sqrt((dx / hw) ** 2 + (dy / hh) ** 2);
-  else if (s.geo === "diamond") t = 1 / (Math.abs(dx) / hw + Math.abs(dy) / hh);
-  else t = Math.min(dx ? hw / Math.abs(dx) : Infinity, dy ? hh / Math.abs(dy) : Infinity);
-  t = Math.min(t, 1);
-  return { x: cx + dx * t, y: cy + dy * t };
-}
+/** Octodraw fill → the card's fill key (undefined = octodraw's default tint). */
+const fillKey = (fill: unknown) => (fill === "none" ? "none" : fill === "solid" ? "solid" : "semi");
 
 function toShape(it: Item): OutlineShape | null {
   const box = { x: num(it.x), y: num(it.y), w: Math.max(num(it.w, 100), 1), h: Math.max(num(it.h, 60), 1) };
   const url = typeof it.link === "string" && it.link ? { url: it.link } : {};
   switch (it.type) {
     case "shape":
-      return { ...box, ...url, kind: "geo", geo: it.shape === "ellipse" || it.shape === "diamond" ? it.shape : "rectangle", label: String(it.text ?? ""), color: cardColor(it.color), fill: "semi", dash: "solid", size: "s" };
+      return { ...box, ...url, kind: "geo", geo: it.shape === "ellipse" || it.shape === "diamond" ? it.shape : "rectangle", label: String(it.text ?? ""), color: cardColor(it.color), fill: fillKey(it.fill), dash: it.dashed ? "dashed" : "solid", size: "s" };
     case "sticky":
       // The card paints an uncoloured ("black") note yellow, like octodraw's default sticky.
       return { ...box, ...url, kind: "note", geo: "rectangle", label: String(it.text ?? ""), color: it.color && it.color !== "yellow" ? cardColor(it.color) : "black", fill: "solid", dash: "solid", size: "s" };
@@ -149,33 +138,37 @@ export function canvasOutline(document: unknown): CanvasOutline | null {
   if (!Array.isArray(items)) return null;
 
   const shapes: OutlineShape[] = [];
-  const shapeById = new Map<string, OutlineShape>();
+  /** Items lines can attach to, with sane boxes, in octodraw's shape (for its line maths). */
+  const targets = new Map<string, OctodrawItem>();
   for (const it of items as Item[]) {
     if (!it || typeof it !== "object" || shapes.length >= MAX_SHAPES) continue;
     const shape = toShape(it);
     if (!shape) continue;
     shapes.push(shape);
-    if (typeof it.id === "string") shapeById.set(it.id, shape);
+    if (typeof it.id === "string") {
+      // The card draws boxes unrotated, so its line ends ignore rotation too.
+      targets.set(it.id, { ...(it as unknown as OctodrawItem), x: shape.x, y: shape.y, w: shape.w, h: shape.h, rotation: undefined });
+    }
   }
 
   const arrows: OutlineArrow[] = [];
   for (const it of items as Item[]) {
     if (!it || it.type !== "line" || arrows.length >= MAX_SHAPES) continue;
-    const target = (e: Item["start"]) => (e?.item ? shapeById.get(e.item) : undefined);
-    const free = (e: Item["start"]) => ({ x: num(e?.x), y: num(e?.y) });
-    const centre = (s: OutlineShape) => ({ x: s.x + s.w / 2, y: s.y + s.h / 2 });
-    const s = target(it.start);
-    const t = target(it.end);
-    const aimS = s ? centre(s) : free(it.start);
-    const aimT = t ? centre(t) : free(it.end);
-    const from = s ? outlinePoint(s, aimT) : aimS;
-    const to = t ? outlinePoint(t, aimS) : aimT;
+    const end = (e: Item["start"]) => {
+      const a = e?.anchor;
+      const anchor = a && Number.isFinite(Number(a.x)) && Number.isFinite(Number(a.y)) ? { x: Math.min(1, Math.max(0, Number(a.x))), y: Math.min(1, Math.max(0, Number(a.y))) } : undefined;
+      return { x: num(e?.x), y: num(e?.y), ...(e?.item && targets.has(e.item) ? { item: e.item } : {}), ...(anchor ? { anchor } : {}) };
+    };
+    const bend = num(it.bend);
+    const line = { id: String(it.id), type: "line", x: 0, y: 0, w: 0, h: 0, start: end(it.start), end: end(it.end), ...(bend ? { bend } : {}) };
+    const { start: from, end: to } = octodrawLineEnds(line as never, targets);
     arrows.push({
       x1: from.x,
       y1: from.y,
       x2: to.x,
       y2: to.y,
-      bend: 0,
+      // Same convention as octodraw (the card draws a quadratic through mid + bend·n).
+      bend,
       label: String(it.text ?? ""),
       color: cardColor(it.color),
       dash: it.dashed ? "dashed" : "solid",

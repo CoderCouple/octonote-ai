@@ -172,7 +172,14 @@ export function previewHtml(): string {
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     function grow(x, y) { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); }
     o.shapes.forEach(function (s) { grow(s.x, s.y - (s.kind === "frame" ? 24 : 0)); grow(s.x + s.w, s.y + s.h); });
-    o.arrows.forEach(function (a) { grow(a.x1, a.y1); grow(a.x2, a.y2); });
+    o.arrows.forEach(function (a) {
+      grow(a.x1, a.y1); grow(a.x2, a.y2);
+      // A bent line bulges to mid + bend·n (n = (−dy, dx)/len) at its middle.
+      if (a.bend) {
+        var bl = Math.hypot(a.x2 - a.x1, a.y2 - a.y1) || 1;
+        grow((a.x1 + a.x2) / 2 - (a.y2 - a.y1) / bl * a.bend, (a.y1 + a.y2) / 2 + (a.x2 - a.x1) / bl * a.bend);
+      }
+    });
     var pad = 24; minX -= pad; minY -= pad; maxX += pad; maxY += pad;
     var w = maxX - minX, h = maxY - minY;
     var parts = ['<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>'];

@@ -13,7 +13,7 @@ import { CommentLayer, type DraftThread } from './Comments';
 import { renderCanvasSvg } from './export';
 import { InsertPalette, type InsertChoice } from './InsertPalette';
 import { moveSlide, presentationSlides, setSlideHidden, setSlideNotes } from './present';
-import { CODE_FONT_SIZE, CodeView, FrameView, IconView, ImageView, LineView, PenView, ShapeView, STICKY_FONT_SIZE, StickyView, TEXT_LINE_HEIGHT, textFont, TextView, type ItemContext } from './items';
+import { CODE_FONT_SIZE, CodeView, FrameView, IconView, ImageView, linePath, LineView, PenView, shapeColors, shapeTextPadding, ShapeView, STICKY_FONT_SIZE, StickyView, TEXT_LINE_HEIGHT, textFont, TextView, type ItemContext } from './items';
 import {
   addComment,
   addItems,
@@ -52,7 +52,10 @@ import {
   itemAt,
   itemsInBox,
   lineBetween,
+  bendThrough,
   lineEnds,
+  lineGeometry,
+  withLineBox,
   moveItems,
   newItemId,
   penFromPoints,
@@ -171,7 +174,8 @@ type Gesture =
   | { kind: 'create'; start: Point; shape: ShapeKind; id: string }
   | { kind: 'pen'; points: Point[] }
   | { kind: 'line'; start: Endpoint; arrow: boolean }
-  | { kind: 'endpoint'; id: string; which: 'start' | 'end' };
+  | { kind: 'endpoint'; id: string; which: 'start' | 'end' }
+  | { kind: 'bend'; id: string };
 
 const ZOOM_MIN = 0.1;
 const ZOOM_MAX = 4;
@@ -696,7 +700,15 @@ export function OctoCanvas(props: OctoCanvasProps) {
           if (!line) return;
           const target = itemAt(base, p, 0);
           const end: Endpoint = target && target.type !== 'line' ? { ...p, item: target.id } : p;
-          setPreview(resolveLines(updateItem(base, g.id, { [g.which]: end, ...boxFromPoints(g.which === 'start' ? p : line.start, g.which === 'end' ? p : line.end) })));
+          // A new attachment aims at the item's centre (any old anchor is dropped with the old end).
+          setPreview(resolveLines(updateItem(base, g.id, withLineBox({ ...line, [g.which]: end }))));
+          break;
+        }
+        case 'bend': {
+          const line = getItem(base, g.id) as LineItem | undefined;
+          if (!line || line.locked) return;
+          const bend = bendThrough(base, line, p, 4 / camRef.current.k);
+          setPreview(resolveLines(updateItem(base, g.id, withLineBox({ ...line, bend }, lineEnds(base, { ...line, bend })))));
           break;
         }
       }
@@ -728,7 +740,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
       const base = docRef.current;
       const current = previewRef.current;
       setPreview(null);
-      if (g.kind === 'move' || g.kind === 'resize' || g.kind === 'resize-group' || g.kind === 'rotate' || g.kind === 'endpoint') {
+      if (g.kind === 'move' || g.kind === 'resize' || g.kind === 'resize-group' || g.kind === 'rotate' || g.kind === 'endpoint' || g.kind === 'bend') {
         if (current && current !== base) commit(current);
       } else if (g.kind === 'create') {
         const drawn = current ? (getItem(current, g.id) as ShapeItem | undefined) : undefined;
@@ -868,6 +880,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
       const id = handle.getAttribute('data-for')!;
       const kind = handle.getAttribute('data-handle')!;
       if (kind === 'start' || kind === 'end') begin({ kind: 'endpoint', id, which: kind });
+      else if (kind === 'bend') begin({ kind: 'bend', id });
       else if (kind === 'rotate') {
         const items = doc.items.filter((i) => selection.includes(i.id));
         const pivot = centerOf(boundsOf(items)!);
@@ -1003,6 +1016,11 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const patchLines = (patch: Partial<Pick<LineItem, 'startArrow' | 'endArrow' | 'dashed'>>) => {
     let next = doc;
     for (const id of selection) if (getItem(next, id)?.type === 'line') next = updateItem(next, id, patch);
+    commit(next);
+  };
+  const patchShapes = (patch: Partial<Pick<ShapeItem, 'dashed' | 'fill' | 'align' | 'valign'>>) => {
+    let next = doc;
+    for (const id of selection) if (getItem(next, id)?.type === 'shape') next = updateItem(next, id, patch);
     commit(next);
   };
 
@@ -1540,8 +1558,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
               const color = props.highlights![item.id];
               if (!color) return null;
               if (item.type === 'line') {
-                const { start, end } = lineEnds(shown, item);
-                return <line key={`hl-${item.id}`} x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={6 / k} strokeOpacity={0.45} strokeLinecap="round" />;
+                return <path key={`hl-${item.id}`} d={linePath(lineGeometry(shown, item))} fill="none" stroke={color} strokeWidth={6 / k} strokeOpacity={0.45} strokeLinecap="round" />;
               }
               return <rect key={`hl-${item.id}`} x={item.x - 6 / k} y={item.y - 6 / k} width={item.w + 12 / k} height={item.h + 12 / k} transform={turn(item)} rx={6 / k} fill={color} fillOpacity={0.08} stroke={color} strokeWidth={2 / k} />;
             })}
@@ -1553,7 +1570,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
               <g key={`peer-${peer.clientId}`} className="occ-peer-selection">
                 {picked.map((item) =>
                   item.type === 'line' ? (
-                    <line key={item.id} x1={lineEnds(shown, item).start.x} y1={lineEnds(shown, item).start.y} x2={lineEnds(shown, item).end.x} y2={lineEnds(shown, item).end.y} stroke={peer.color} strokeWidth={3 / k} strokeOpacity={0.5} />
+                    <path key={item.id} d={linePath(lineGeometry(shown, item))} fill="none" stroke={peer.color} strokeWidth={3 / k} strokeOpacity={0.5} />
                   ) : (
                     <rect key={item.id} x={item.x - 3 / k} y={item.y - 3 / k} width={item.w + 6 / k} height={item.h + 6 / k} transform={turn(item)} fill="none" stroke={peer.color} strokeWidth={1.5 / k} rx={4 / k} />
                   ),
@@ -1601,10 +1618,22 @@ export function OctoCanvas(props: OctoCanvasProps) {
             );
           })()}
           {single?.type === 'line' &&
-            (['start', 'end'] as const).map((which) => {
-              const p = lineEnds(shown, single)[which];
-              return <circle key={which} data-handle={which} data-for={single.id} className="occ-handle occ-handle-point" cx={p.x} cy={p.y} r={(handle * 0.6) / k} fill={theme.color.raised} stroke={theme.color.accent} strokeWidth={1.5 / k} />;
-            })}
+            (() => {
+              const g = lineGeometry(shown, single);
+              return (
+                <>
+                  {(['start', 'end'] as const).map((which) => (
+                    <circle key={which} data-handle={which} data-for={single.id} className="occ-handle occ-handle-point" cx={g[which].x} cy={g[which].y} r={(handle * 0.6) / k} fill={theme.color.raised} stroke={theme.color.accent} strokeWidth={1.5 / k} />
+                  ))}
+                  {/* Drag the middle to bend the line (back near the straight line to straighten it). */}
+                  {!single.locked && (
+                    <circle data-handle="bend" data-for={single.id} className="occ-handle occ-handle-bend" cx={g.mid.x} cy={g.mid.y} r={(handle * 0.45) / k} fill={theme.color.accent} stroke={theme.color.raised} strokeWidth={1.5 / k}>
+                      <title>Drag to curve</title>
+                    </circle>
+                  )}
+                </>
+              );
+            })()}
           {marquee && <rect x={marquee.x} y={marquee.y} width={marquee.w} height={marquee.h} fill={theme.color.accentSoft} fillOpacity={0.5} stroke={theme.color.accent} strokeWidth={1 / k} />}
         </svg>
 
@@ -1664,6 +1693,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
           clearance={rotatable ? 30 : 0}
           onColor={recolor}
           onLine={patchLines}
+          onShape={patchShapes}
           onDuplicate={duplicateSelected}
           onDelete={removeSelected}
           onOpenFigure={single?.type === 'figure' && onOpenFigure ? () => onOpenFigure(single.id) : undefined}
@@ -2149,6 +2179,16 @@ const EMPTY_PLACEMENTS: ViewPlacements = {};
 const noop = () => {};
 const KIND_LABEL = { flow: 'Diagram', erd: 'Data model', sequence: 'Sequence diagram', bpmn: 'Process' } as const;
 
+/** Where the editor's text starts, matching how the item draws its label. */
+function editorPadding(item: CanvasItem, box: Box, textHeight: number): CSSProperties {
+  if (item.type === 'sticky') return { paddingTop: Math.max(0, box.h / 2 - textHeight / 2) };
+  if (item.type !== 'shape') return { paddingTop: 0 };
+  const pad = shapeTextPadding(item);
+  const valign = item.valign ?? 'middle';
+  const top = valign === 'top' ? pad.y : valign === 'bottom' ? box.h - pad.y - textHeight : box.h / 2 - textHeight / 2;
+  return { paddingTop: Math.max(0, top), paddingLeft: item.align === 'left' ? pad.x : 0, paddingRight: item.align === 'right' ? pad.x : 0 };
+}
+
 function TextEditor({ item, theme, onDone }: { item: CanvasItem; theme: Theme; onDone: (value: string) => void }) {
   const initial = item.type === 'text' || item.type === 'shape' || item.type === 'line' || item.type === 'sticky' || item.type === 'code' ? (item.text ?? '') : '';
   const [value, setValue] = useState(initial);
@@ -2215,12 +2255,9 @@ function TextEditor({ item, theme, onDone }: { item: CanvasItem; theme: Theme; o
         transform: item.rotation ? `rotate(${item.rotation}deg)` : undefined,
         transformOrigin: `${item.x + item.w / 2 - box.x}px ${item.y + item.h / 2 - box.y}px`,
         font: item.type === 'code' ? `400 ${fontSize}px/1.5 ${theme.font.mono}` : item.type === 'text' ? textFont(theme, item) : `${item.type === 'sticky' ? 500 : theme.text.node.weight} ${fontSize}px/${TEXT_LINE_HEIGHT} ${theme.font.sans}`,
-        color: theme.color.text,
-        textAlign: item.type === 'text' ? (item.align ?? 'left') : item.type === 'code' ? 'left' : 'center',
-        paddingTop:
-          item.type === 'shape' || item.type === 'sticky'
-            ? Math.max(0, box.h / 2 - (fontSize * TEXT_LINE_HEIGHT * Math.max(1, value.split('\n').length)) / 2)
-            : 0,
+        color: item.type === 'shape' ? shapeColors(theme, item.color, item.fill).text : theme.color.text,
+        textAlign: item.type === 'text' ? (item.align ?? 'left') : item.type === 'shape' ? (item.align ?? 'center') : item.type === 'code' ? 'left' : 'center',
+        ...editorPadding(item, box, fontSize * TEXT_LINE_HEIGHT * Math.max(1, value.split('\n').length)),
       }}
     />
   );
@@ -2260,6 +2297,11 @@ function ToolRail({ tool, onTool, onInsert }: { tool: CanvasTool; onTool: (t: Ca
   );
 }
 
+const FILL_NEXT = { tint: 'solid', solid: 'none', none: 'tint' } as const;
+const FILL_LABEL = { tint: 'tint', solid: 'solid', none: 'none' } as const;
+const ALIGN_NEXT = { left: 'center', center: 'right', right: 'left' } as const;
+const VALIGN_NEXT = { top: 'middle', middle: 'bottom', bottom: 'top' } as const;
+
 function SelectionBar(props: {
   box: Box;
   cam: Camera;
@@ -2276,6 +2318,7 @@ function SelectionBar(props: {
   clearance?: number;
   onColor: (color: string | undefined) => void;
   onLine: (patch: Partial<Pick<LineItem, 'startArrow' | 'endArrow' | 'dashed'>>) => void;
+  onShape: (patch: Partial<Pick<ShapeItem, 'dashed' | 'fill' | 'align' | 'valign'>>) => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onOpenFigure?: () => void;
@@ -2294,6 +2337,8 @@ function SelectionBar(props: {
   const below = top - gap < 52;
   const colorable = items.some((i) => i.type !== 'figure');
   const lines = items.filter((i): i is LineItem => i.type === 'line');
+  const shapes = items.filter((i): i is ShapeItem => i.type === 'shape');
+  const shape = shapes[0];
   const current = items.find((i) => i.type !== 'figure')?.color;
   return (
     <div className="occ-selbar occ-chrome" style={{ left, top: below ? cam.y + (box.y + box.h) * cam.k + 12 : top - gap, transform: below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)' }} onPointerDown={(e) => e.stopPropagation()}>
@@ -2404,6 +2449,28 @@ function SelectionBar(props: {
           </button>
         </span>
       )}
+      {shape && (
+        <span className="occ-bar-group" role="group" aria-label="Shape">
+          <button type="button" className="occ-bar-btn" onClick={() => props.onShape({ fill: FILL_NEXT[shape.fill ?? 'tint'] })} title={`Fill: ${FILL_LABEL[shape.fill ?? 'tint']} (click to change)`} aria-label={`Fill: ${FILL_LABEL[shape.fill ?? 'tint']}`}>
+            <svg width={14} height={14} viewBox="0 0 24 24" aria-hidden="true">
+              <rect x={4} y={4} width={16} height={16} rx={3} fill={shape.fill === 'none' ? 'none' : 'currentColor'} fillOpacity={shape.fill === 'solid' ? 1 : 0.25} stroke="currentColor" strokeWidth={2} />
+            </svg>
+          </button>
+          <button type="button" className="occ-bar-btn" aria-pressed={shapes.every((s) => s.dashed)} onClick={() => props.onShape({ dashed: !shapes.every((s) => s.dashed) || undefined })} title="Dashed outline">
+            <Glyph d="M4 4h4M12 4h4M20 4v4M20 12v4M20 20h-4M12 20H8M4 20v-4M4 12V8" />
+          </button>
+          {shape.text && (
+            <>
+              <button type="button" className="occ-bar-btn occ-bar-small" onClick={() => props.onShape({ align: ALIGN_NEXT[shape.align ?? 'center'] })} title={`Text ${shape.align ?? 'center'} (click to change)`} aria-label={`Text alignment: ${shape.align ?? 'center'}`}>
+                <Glyph d={(shape.align ?? 'center') === 'left' ? 'M4 6h16M4 12h10M4 18h13' : shape.align === 'right' ? 'M4 6h16M10 12h10M7 18h13' : 'M4 6h16M7 12h10M5.5 18h13'} />
+              </button>
+              <button type="button" className="occ-bar-btn occ-bar-small" onClick={() => props.onShape({ valign: VALIGN_NEXT[shape.valign ?? 'middle'] })} title={`Text ${shape.valign ?? 'middle'} (click to change)`} aria-label={`Vertical text position: ${shape.valign ?? 'middle'}`}>
+                <Glyph d={(shape.valign ?? 'middle') === 'top' ? 'M4 4h16M12 8v12M8 12l4-4 4 4' : shape.valign === 'bottom' ? 'M4 20h16M12 4v12M8 12l4 4 4-4' : 'M4 12h16M12 3v5M12 16v5'} />
+              </button>
+            </>
+          )}
+        </span>
+      )}
       <span className="occ-bar-group occ-menu-anchor">
         <button type="button" className="occ-bar-btn" onClick={props.onArrangeToggle} aria-expanded={props.arrangeOpen} title="Layer order and rotation">
           <Glyph d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5" /> Arrange
@@ -2482,6 +2549,7 @@ const CSS = `
 .occ-handle-n, .occ-handle-s { cursor: ns-resize; }
 .occ-handle-e, .occ-handle-w { cursor: ew-resize; }
 .occ-handle-point { cursor: move; }
+.occ-handle-bend { cursor: grab; }
 .occ-handle-rotate { cursor: grab; }
 .occ-menu-sep { height: 1px; margin: 4px 2px; background: var(--od-color-border); }
 .occ-angle { position: absolute; transform-origin: 50% 0; padding: 2px 6px; border-radius: var(--od-radius-sm); background: var(--od-color-text); color: var(--od-color-canvas); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; }

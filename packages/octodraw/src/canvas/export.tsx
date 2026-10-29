@@ -5,8 +5,8 @@ import type { IconResolver } from '../icons/types';
 import { Icon } from '../react/DiagramSvg';
 import { lineColor } from '../react/theme';
 import type { Theme } from '../theme/tokens';
-import { CODE_FONT_SIZE, DeviceOutline, inkColor, penPath, shapeColors, shapePath, STICKY_FONT_SIZE, stickyColors, TEXT_LINE_HEIGHT } from './items';
-import { boundsOf, lineEnds, type CanvasDocument, type CanvasItem } from './model';
+import { CODE_FONT_SIZE, DASH, DeviceOutline, inkColor, linePath, penPath, shapeColors, shapePath, shapeTextPadding, STICKY_FONT_SIZE, stickyColors, TEXT_LINE_HEIGHT } from './items';
+import { boundsOf, lineGeometry, type CanvasDocument, type CanvasItem } from './model';
 
 // The whole canvas as one standalone SVG. Figures are passed in already
 // exported (each figure's OctoDiagram renders itself) and nested at their box.
@@ -42,13 +42,18 @@ function itemSvg(item: CanvasItem, doc: CanvasDocument, o: CanvasSvgOptions): Re
   const font = theme.font.sans;
   switch (item.type) {
     case 'shape': {
-      const { fill, stroke } = shapeColors(theme, item.color);
+      const { fill, stroke, text } = shapeColors(theme, item.color, item.fill);
       const size = theme.text.node.size;
-      const lines = (item.text ?? '').split('\n').length;
+      const textHeight = (item.text ?? '').split('\n').length * size * TEXT_LINE_HEIGHT;
+      const pad = shapeTextPadding(item);
+      const align = item.align ?? 'center';
+      const valign = item.valign ?? 'middle';
+      const x = align === 'left' ? pad.x : align === 'right' ? item.w - pad.x : item.w / 2;
+      const y = valign === 'top' ? pad.y : valign === 'bottom' ? item.h - pad.y - textHeight : item.h / 2 - textHeight / 2;
       return (
         <g transform={`translate(${item.x} ${item.y})`}>
-          <path d={shapePath(item.shape, item.w, item.h)} fill={fill} stroke={stroke} strokeWidth={1.25} />
-          {item.text && <TextLines text={item.text} x={item.w / 2} y={item.h / 2 - (lines * size * TEXT_LINE_HEIGHT) / 2} size={size} lineHeight={TEXT_LINE_HEIGHT} anchor="middle" font={font} weight={theme.text.node.weight} fill={theme.color.text} />}
+          <path d={shapePath(item.shape, item.w, item.h)} fill={fill} stroke={stroke} strokeWidth={1.25} strokeDasharray={item.dashed ? DASH : undefined} />
+          {item.text && <TextLines text={item.text} x={x} y={y} size={size} lineHeight={TEXT_LINE_HEIGHT} anchor={align === 'left' ? 'start' : align === 'right' ? 'end' : 'middle'} font={font} weight={theme.text.node.weight} fill={text} />}
         </g>
       );
     }
@@ -74,7 +79,7 @@ function itemSvg(item: CanvasItem, doc: CanvasDocument, o: CanvasSvgOptions): Re
     case 'pen':
       return <path transform={`translate(${item.x} ${item.y})`} d={penPath(item.points, item.w, item.h)} fill="none" stroke={inkColor(theme, item.color)} strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" />;
     case 'line': {
-      const { start, end } = lineEnds(doc, item);
+      const geometry = lineGeometry(doc, item);
       const color = lineColor(theme, item.color) ?? theme.color.edge;
       const marker = `occ-export-arrow-${item.id}`;
       return (
@@ -84,9 +89,9 @@ function itemSvg(item: CanvasItem, doc: CanvasDocument, o: CanvasSvgOptions): Re
               <path d="M0 0L10 5L0 10z" fill={color} />
             </marker>
           </defs>
-          <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={color} strokeWidth={1.5} strokeDasharray={item.dashed ? '6 5' : undefined} markerStart={item.startArrow ? `url(#${marker})` : undefined} markerEnd={item.endArrow ? `url(#${marker})` : undefined} />
+          <path d={linePath(geometry)} fill="none" stroke={color} strokeWidth={1.5} strokeDasharray={item.dashed ? DASH : undefined} markerStart={item.startArrow ? `url(#${marker})` : undefined} markerEnd={item.endArrow ? `url(#${marker})` : undefined} />
           {item.text && (
-            <text x={(start.x + end.x) / 2} y={(start.y + end.y) / 2 + 4} fontSize={theme.text.edge.size} fontFamily={font} fill={theme.color.textMuted} textAnchor="middle" stroke={theme.color.canvas} strokeWidth={4} paintOrder="stroke">
+            <text x={geometry.mid.x} y={geometry.mid.y + 4} fontSize={theme.text.edge.size} fontFamily={font} fill={theme.color.textMuted} textAnchor="middle" stroke={theme.color.canvas} strokeWidth={4} paintOrder="stroke">
               {item.text}
             </text>
           )}

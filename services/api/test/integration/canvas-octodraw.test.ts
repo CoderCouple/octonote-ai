@@ -6,10 +6,11 @@
  */
 import { readFileSync } from "fs";
 import { join } from "path";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { toOctodrawDocument } from "@octonote/content/server";
 import { beforeEach, describe, expect, it } from "vitest";
 import { canvases } from "../../src/db/schemas/canvases";
-import { convertCanvases } from "../../src/scripts/convert-canvases";
+import { convertCanvases, reconvertCanvases } from "../../src/scripts/convert-canvases";
 import { canvasOutline } from "../../src/service/lib/canvas-outline";
 import { createHarness, type Harness } from "./harness";
 
@@ -106,6 +107,72 @@ describe("db:convert-canvases", () => {
   });
 });
 
+/** The fixture with what the first converter lost: a bent arrow aimed at a precise anchor. */
+function richTldraw() {
+  const doc = structuredClone(TLDRAW) as { store: Record<string, { props: Record<string, unknown> }> };
+  doc.store["shape:edge-1"]!.props.bend = 40;
+  Object.assign(doc.store["binding:edge-1-end"]!.props, { isPrecise: true, normalizedAnchor: { x: 0.2, y: 0.8 } });
+  return doc;
+}
+
+async function setUpdatedAt(id: string, at: string) {
+  await h.db.execute(sql`update canvases set updated_at = ${at}::timestamptz where id = ${id}`);
+}
+
+describe("db:reconvert-canvases", () => {
+  const BEFORE = new Date("2026-10-28T00:00:00Z");
+
+  it("rebuilds untouched converted canvases from their backup and leaves edited ones alone", async () => {
+    const stale = await h.canvases.create(alice.workspaceId, { title: "Untouched" }, alice.id);
+    const edited = await h.canvases.create(alice.workspaceId, { title: "Edited since" }, alice.id);
+    const native = await h.canvases.create(alice.workspaceId, { title: "Born octodraw" }, alice.id);
+    const rich = richTldraw();
+    for (const id of [stale.id, edited.id]) await makeLegacy(id, rich);
+    await convertCanvases(h.db);
+    // Pretend the first conversion lost everything, and that "edited" was saved after it.
+    const oldDoc = { version: 1, items: [] };
+    await h.db.update(canvases).set({ document: oldDoc as never }).where(eq(canvases.id, stale.id));
+    const editedDoc = { version: 1, items: [{ id: "mine", type: "shape", shape: "rectangle", x: 0, y: 0, w: 10, h: 10 }] };
+    await h.db.update(canvases).set({ document: editedDoc as never }).where(eq(canvases.id, edited.id));
+    await setUpdatedAt(stale.id, "2026-10-20 10:00:00.123456+00");
+    await setUpdatedAt(edited.id, "2026-10-28 00:00:00.000001+00");
+    const staleBefore = await rowOf(stale.id);
+
+    const lines: string[] = [];
+    const dry = await reconvertCanvases(h.db, { before: BEFORE, dryRun: true, batchSize: 1, log: (l) => lines.push(l) });
+    expect(dry).toMatchObject({ scanned: 2, reconverted: 1, skipped: 0, failed: [] });
+    expect(dry.editedSince.map((r) => r.id)).toEqual([edited.id]);
+    const stats = dry.canvases[0]!;
+    expect(stats).toMatchObject({ id: stale.id, items: { shape: 5, line: 3 } });
+    expect(stats.fidelity).toMatchObject({ bent: 1, anchored: 1, aligned: 1, dashed: 1 });
+    expect(stats.fidelity.filled).toBeGreaterThan(0);
+    expect(lines.some((l) => l.startsWith("[dry-run]") && l.includes("bent=1 anchored=1"))).toBe(true);
+    expect(lines.some((l) => l.includes(edited.id) && l.includes("edited since conversion"))).toBe(true);
+    expect((await rowOf(stale.id)).document).toEqual(oldDoc);
+
+    const real = await reconvertCanvases(h.db, { before: BEFORE });
+    expect(real).toMatchObject({ scanned: 2, reconverted: 1, skipped: 0, failed: [] });
+    const row = await rowOf(stale.id);
+    expect(row.document).toEqual(toOctodrawDocument(rich));
+    expect(row.documentFormat).toBe("octodraw");
+    expect(row.documentTldraw).toEqual(rich);
+    expect(row.updatedAt).toEqual(staleBefore.updatedAt);
+    const line = itemsOf(row.document).find((i) => (i as { bend?: number }).bend) as unknown as { end: { anchor?: unknown; item?: string } };
+    expect(line.end).toMatchObject({ item: "node-A", anchor: { x: 0.2, y: 0.8 } });
+    // The edited canvas and the canvas born in octodraw are untouched.
+    expect((await rowOf(edited.id)).document).toEqual(editedDoc);
+    expect((await rowOf(native.id)).documentTldraw).toBeNull();
+
+    // Reruns are harmless: same output.
+    await reconvertCanvases(h.db, { before: BEFORE });
+    expect((await rowOf(stale.id)).document).toEqual(row.document);
+  });
+
+  it("needs a valid cutoff", async () => {
+    await expect(reconvertCanvases(h.db, { before: new Date("nope") })).rejects.toThrow(/before/);
+  });
+});
+
 describe("reads before conversion", () => {
   it("GET and published reads return octodraw for a tldraw row", async () => {
     const c = await h.canvases.create(alice.workspaceId, { title: "Flow" }, alice.id);
@@ -182,6 +249,24 @@ describe("assistant card outline", () => {
     const inside = (x: number, y: number) => x > api.x && x < api.x + api.w && y > api.y && y < api.y + api.h;
     expect(inside(first.x2, first.y2)).toBe(false);
     expect(Math.abs(first.x2 - api.x)).toBeLessThan(10);
+  });
+
+  it("carries bends, anchors, dashed outlines and fills", () => {
+    const doc = {
+      version: 1,
+      items: [
+        { id: "a", type: "shape", shape: "rectangle", x: 0, y: 0, w: 100, h: 100, dashed: true, fill: "none" },
+        { id: "b", type: "shape", shape: "rectangle", x: 300, y: 0, w: 100, h: 100, fill: "solid" },
+        { id: "l", type: "line", x: 0, y: 0, w: 0, h: 0, bend: -30, start: { x: 0, y: 0, item: "a" }, end: { x: 0, y: 0, item: "b", anchor: { x: 0.5, y: 0 } } },
+      ],
+    };
+    const o = canvasOutline(doc)!;
+    expect(o.shapes.map((s) => [s.dash, s.fill])).toEqual([["dashed", "none"], ["solid", "solid"]]);
+    const a = o.arrows[0]!;
+    expect(a.bend).toBe(-30);
+    // The end aims at b's top-middle and leaves along the curve (bulging up): just above b's top edge.
+    expect(a.y2).toBeLessThan(0);
+    expect(a.x2).toBeGreaterThan(300);
   });
 
   it("draws nothing for an empty canvas", () => {

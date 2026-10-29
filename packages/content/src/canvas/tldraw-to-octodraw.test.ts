@@ -5,7 +5,7 @@ import { isOctodrawDocument, toOctodrawDocument } from "./canvas-document";
 import type { CanvasItem, LineItem, PenItem, ShapeItem, TextItem } from "./octodraw-types";
 import { isTldrawDocument, richTextToPlain, tldrawToOctodraw } from "./tldraw-to-octodraw";
 // octodraw's own model (TS source), to check our output is what its editor expects.
-import { isCanvasDocument, resolveLines } from "../../../octodraw/src/canvas/model";
+import { distanceToLine, isCanvasDocument, lineBounds, lineGeometry, resolveLines } from "../../../octodraw/src/canvas/model";
 
 type Rec = Record<string, any>;
 
@@ -53,14 +53,14 @@ const shape = (id: string, type: string, x: number, y: number, props: Rec, extra
   props,
   ...extra,
 });
-const binding = (arrow: string, terminal: "start" | "end", to: string, anchor = { x: 0.5, y: 0.5 }): Rec => ({
+const binding = (arrow: string, terminal: "start" | "end", to: string, anchor = { x: 0.5, y: 0.5 }, isPrecise = false): Rec => ({
   id: `binding:${arrow}-${terminal}`,
   typeName: "binding",
   type: "arrow",
   fromId: `shape:${arrow}`,
   toId: `shape:${to}`,
   meta: {},
-  props: { terminal, normalizedAnchor: anchor, isExact: false, isPrecise: false, snap: "none" },
+  props: { terminal, normalizedAnchor: anchor, isExact: false, isPrecise, snap: "none" },
 });
 
 /** A hand-made tldraw editor snapshot, the shape the web app saved. */
@@ -96,6 +96,14 @@ function handMade() {
     shape("grpkid", "geo", 10, 10, { geo: "star", w: 50, h: 50, richText: toRichText("") }, { parentId: "shape:grp" }),
     shape("ln", "line", 0, 900, { color: "orange", dash: "dashed", spline: "line", points: { a1: { id: "a1", index: "a1", x: 0, y: 0 }, a2: { id: "a2", index: "a2", x: 200, y: 50 } } }, { index: "aB" }),
     shape("vid", "video", 0, 0, { w: 100, h: 100 }, { index: "aC" }),
+    // Fidelity: a group title at the top left, dotted, patterned; a semi-filled box; a precise, bent arrow; a free bent arrow.
+    shape("grouptitle", "geo", 2000, 500, { geo: "rectangle", w: 300, h: 200, richText: toRichText("Group"), align: "start-legacy", verticalAlign: "start", dash: "dotted", fill: "pattern" }, { index: "aD" }),
+    shape("semi", "geo", 2400, 500, { geo: "rectangle", w: 100, h: 100, richText: toRichText(""), align: "end", verticalAlign: "end", fill: "semi", dash: "draw" }, { index: "aE" }),
+    shape("arrow3", "arrow", 0, 0, { arrowheadEnd: "arrow", start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, bend: -30, richText: toRichText("") }, { index: "aF" }),
+    binding("arrow3", "start", "grouptitle", { x: 0.9, y: 0.1 }, true),
+    binding("arrow3", "end", "semi", { x: 0.2, y: 0.9 }, false),
+    shape("arrow4", "arrow", 2000, 0, { start: { x: 0, y: 0 }, end: { x: 200, y: 0 }, bend: 40, richText: toRichText("") }, { index: "aG" }),
+    shape("elbow", "arrow", 2000, 100, { kind: "elbow", start: { x: 0, y: 0 }, end: { x: 200, y: 50 }, bend: 40, richText: toRichText("") }, { index: "aH" }),
     { id: "camera:page:page", typeName: "camera", x: 0, y: 0, z: 1, meta: {} },
   ];
   return {
@@ -176,12 +184,60 @@ describe("tldraw → octodraw", () => {
 
   it("leaves lines exactly where octodraw's editor would put them", () => {
     const resolved = resolveLines(doc as never);
-    for (const line of resolved.items.filter((i: Rec) => i.type === "line") as LineItem[]) {
+    const lines = resolved.items.filter((i: Rec) => i.type === "line") as LineItem[];
+    expect(lines.some((l) => l.bend && l.start.anchor)).toBe(true);
+    for (const line of lines) {
       const ours = byId(items, line.id) as LineItem;
-      for (const k of ["x", "y", "w", "h"] as const) expect(ours[k]).toBeCloseTo(line[k], 1);
-      expect(ours.start.x).toBeCloseTo(line.start.x, 1);
-      expect(ours.end.y).toBeCloseTo(line.end.y, 1);
+      // octodraw leaves free lines' boxes alone: ours must already include the curve.
+      const box = line.start.item || line.end.item ? line : lineBounds(line.start, line.end, line.bend);
+      for (const k of ["x", "y", "w", "h"] as const) expect(ours[k]).toBeCloseTo(box[k], 1);
+      for (const e of ["start", "end"] as const) {
+        expect(ours[e].x).toBeCloseTo(line[e].x, 1);
+        expect(ours[e].y).toBeCloseTo(line[e].y, 1);
+      }
     }
+  });
+
+  it("keeps label alignment, dashes and fills on geo shapes", () => {
+    expect(byId(items, "grouptitle")).toMatchObject({ align: "left", valign: "top", dashed: true, fill: "solid" });
+    const semi = byId(items, "semi") as ShapeItem;
+    expect(semi).toMatchObject({ align: "right", valign: "bottom", fill: "tint" });
+    expect(semi.dashed).toBeUndefined();
+    // tldraw's default fill is none; centred labels stay implicit.
+    const box = byId(items, "box") as ShapeItem;
+    expect(box.fill).toBe("none");
+    expect(box.align).toBeUndefined();
+    expect(box.valign).toBeUndefined();
+  });
+
+  it("keeps bends: octodraw's curve passes through tldraw's middle point", () => {
+    // Bound ends are clipped differently from tldraw's, so the middle point lies on our curve, not exactly at its t = 0.5.
+    // tldraw (curved-arrow.ts): middle = midpoint of the terminals + bend · (−dy, dx)/len.
+    const middle = (a: { x: number; y: number }, b: { x: number; y: number }, bend: number) => {
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      return { x: (a.x + b.x) / 2 - (bend * (b.y - a.y)) / len, y: (a.y + b.y) / 2 + (bend * (b.x - a.x)) / len };
+    };
+    // A free arrow: same ends, same bend; (0,0)→(200,0) bend 40 bulges down through (100, 40).
+    const free = byId(items, "arrow4") as LineItem;
+    expect(free).toMatchObject({ bend: 40, start: { x: 2000, y: 0 }, end: { x: 2200, y: 0 } });
+    expect(lineGeometry(doc as never, free).mid).toEqual({ x: 2100, y: 40 });
+    expect(free).toMatchObject({ y: 0, h: 40 });
+    // Bound arrows: tldraw's terminals are the shapes' centres (imprecise) or the precise anchor.
+    const a1 = byId(items, "arrow1") as LineItem;
+    const box = byId(items, "box");
+    const note = byId(items, "note1");
+    const want1 = middle({ x: box.x + box.w / 2, y: box.y + box.h / 2 }, { x: note.x + note.w / 2, y: note.y + note.h / 2 }, 20);
+    expect(a1.bend).toBeGreaterThan(0);
+    expect(distanceToLine(want1, lineGeometry(doc as never, a1))).toBeLessThan(1);
+    const a3 = byId(items, "arrow3") as LineItem;
+    expect(a3.start).toMatchObject({ item: "grouptitle", anchor: { x: 0.9, y: 0.1 } });
+    // Imprecise: tldraw aims at the centre, whatever the stored anchor says.
+    expect(a3.end.anchor).toBeUndefined();
+    expect(a3.bend).toBeLessThan(0);
+    const want3 = middle({ x: 2000 + 270, y: 500 + 20 }, { x: 2450, y: 550 }, -30);
+    expect(distanceToLine(want3, lineGeometry(doc as never, a3))).toBeLessThan(1);
+    // Elbow arrows are drawn straight.
+    expect((byId(items, "elbow") as LineItem).bend).toBeUndefined();
   });
 
   it("converts what the old tldraw mermaid emitter stored: bound arrows become attached lines", () => {

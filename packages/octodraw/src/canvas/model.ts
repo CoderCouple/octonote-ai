@@ -28,10 +28,21 @@ export function safeLink(item: { link?: string }): string | undefined {
   return link && /^https?:\/\//i.test(link) ? link : undefined;
 }
 
+export type ShapeFill = 'tint' | 'none' | 'solid';
+export type HorizontalAlign = 'left' | 'center' | 'right';
+export type VerticalAlign = 'top' | 'middle' | 'bottom';
+
 export interface ShapeItem extends ItemBase {
   type: 'shape';
   shape: ShapeKind;
   text?: string;
+  /** Label placement inside the shape (default center / middle). */
+  align?: HorizontalAlign;
+  valign?: VerticalAlign;
+  /** Dashed outline (the same dash lines use). */
+  dashed?: boolean;
+  /** 'tint' (default): the color's pale fill; 'none': outline only; 'solid': the color's strong fill. */
+  fill?: ShapeFill;
 }
 
 export interface TextItem extends ItemBase {
@@ -82,6 +93,12 @@ export interface Endpoint {
   y: number;
   /** Item this end is attached to; it then follows the item. */
   item?: string;
+  /**
+   * With `item`: the point (0–1 in the item's unrotated box) the line aims at
+   * instead of the item's centre. The end sits where the line toward it enters
+   * the outline, or at the anchor itself when it lies on/outside the outline.
+   */
+  anchor?: Point;
 }
 
 export interface LineItem extends ItemBase {
@@ -92,6 +109,12 @@ export interface LineItem extends ItemBase {
   endArrow?: boolean;
   dashed?: boolean;
   text?: string;
+  /**
+   * Curvature: signed distance (canvas units) from the chord midpoint to the
+   * curve's midpoint along n = (−dy, dx)/len, (dx, dy) = end − start. Drawn as a
+   * quadratic Bézier with control point mid + 2·bend·n. 0 / undefined = straight.
+   */
+  bend?: number;
 }
 
 export interface IconItem extends ItemBase {
@@ -276,7 +299,7 @@ export function cloneItems(items: CanvasItem[], dx = 0, dy = 0): CanvasItem[] {
   return items.map((item) => {
     const copy = { ...item, id: ids.get(item.id)!, x: item.x + dx, y: item.y + dy } as CanvasItem;
     if (copy.type === 'line') {
-      const remap = (e: Endpoint): Endpoint => (e.item && ids.has(e.item) ? { x: e.x + dx, y: e.y + dy, item: ids.get(e.item) } : { x: e.x + dx, y: e.y + dy });
+      const remap = (e: Endpoint): Endpoint => (e.item && ids.has(e.item) ? { ...e, x: e.x + dx, y: e.y + dy, item: ids.get(e.item) } : { x: e.x + dx, y: e.y + dy });
       copy.start = remap(copy.start);
       copy.end = remap(copy.end);
     }
@@ -354,19 +377,163 @@ export function outlinePoint(item: CanvasItem, toward: Point, gap = 4): Point {
   return { x: c.x + dx * Math.min(t, 1), y: c.y + dy * Math.min(t, 1) };
 }
 
-/** The drawn end points of a line: attached ends sit on their item's outline, aimed at the other end. */
-export function lineEnds(doc: CanvasDocument, line: LineItem): { start: Point; end: Point } {
+/** An anchor (0–1 in the item's unrotated box) as a canvas point. */
+export function anchorPoint(item: Box & { rotation?: number }, anchor: Point): Point {
+  const clamp = (v: number) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.5);
+  const p = { x: item.x + clamp(anchor.x) * item.w, y: item.y + clamp(anchor.y) * item.h };
+  return item.rotation ? rotatePoint(p, centerOf(item), item.rotation) : p;
+}
+
+/** Whether a point is inside the item's outline grown by `gap` (tested in the item's unrotated frame). */
+function insideOutline(item: CanvasItem, p: Point, gap: number): boolean {
+  const c = centerOf(item);
+  const q = item.rotation ? rotatePoint(p, c, -item.rotation) : p;
+  const dx = Math.abs(q.x - c.x);
+  const dy = Math.abs(q.y - c.y);
+  const hw = item.w / 2 + gap;
+  const hh = item.h / 2 + gap;
+  if (item.type === 'shape' && item.shape === 'ellipse') return (dx * dx) / (hw * hw) + (dy * dy) / (hh * hh) <= 1;
+  if (item.type === 'shape' && item.shape === 'diamond') return dx / hw + dy / hh <= 1;
+  return dx <= hw && dy <= hh;
+}
+
+/**
+ * The end of a line attached at `anchor` (a canvas point) and coming from `from`:
+ * where the segment from → anchor enters the outline (grown by `gap`) when the
+ * anchor is inside it and `from` is outside; otherwise the anchor itself.
+ */
+export function anchoredEnd(item: CanvasItem, anchor: Point, from: Point, gap = 4): Point {
+  if (!insideOutline(item, anchor, gap) || insideOutline(item, from, gap)) return { x: anchor.x, y: anchor.y };
+  // Outlines are convex, so the segment crosses once: bisect for the crossing.
+  let lo = 0;
+  let hi = 1;
+  const at = (t: number) => ({ x: from.x + (anchor.x - from.x) * t, y: from.y + (anchor.y - from.y) * t });
+  for (let i = 0; i < 40; i++) {
+    const t = (lo + hi) / 2;
+    if (insideOutline(item, at(t), gap)) hi = t;
+    else lo = t;
+  }
+  return at(hi);
+}
+
+/** Control point of a bent line: mid + 2·bend·n (undefined when straight). */
+export function bendControl(start: Point, end: Point, bend: number | undefined): Point | undefined {
+  if (!bend || !Number.isFinite(bend)) return undefined;
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len = Math.hypot(dx, dy);
+  if (!len) return undefined;
+  return { x: (start.x + end.x) / 2 - (2 * bend * dy) / len, y: (start.y + end.y) / 2 + (2 * bend * dx) / len };
+}
+
+export interface LineGeometry {
+  start: Point;
+  end: Point;
+  /** Quadratic Bézier control point; absent for straight lines. */
+  control?: Point;
+  /** The curve's midpoint (where the label sits). */
+  mid: Point;
+}
+
+/** Point at t (0–1) along a line, straight or curved. */
+export function pointOnLine(g: LineGeometry, t: number): Point {
+  const u = 1 - t;
+  if (!g.control) return { x: g.start.x * u + g.end.x * t, y: g.start.y * u + g.end.y * t };
+  return { x: u * u * g.start.x + 2 * u * t * g.control.x + t * t * g.end.x, y: u * u * g.start.y + 2 * u * t * g.control.y + t * t * g.end.y };
+}
+
+function geometryOf(start: Point, end: Point, bend: number | undefined): LineGeometry {
+  const control = bendControl(start, end, bend);
+  const g: LineGeometry = { start, end, mid: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } };
+  if (control) {
+    g.control = control;
+    g.mid = pointOnLine(g, 0.5);
+  }
+  return g;
+}
+
+/**
+ * The drawn geometry of a line. Attached ends sit on their item's outline,
+ * aimed at the other end (its anchor or item centre) — or, on a bent line,
+ * along the curve's end tangent (toward the control point), so arrowheads meet
+ * the outline. Ends with an `anchor` aim at that point (see `anchoredEnd`).
+ */
+export function lineGeometry(doc: CanvasDocument, line: LineItem): LineGeometry {
   const target = (e: Endpoint) => (e.item ? getItem(doc, e.item) : undefined);
   const s = target(line.start);
   const t = target(line.end);
-  const aimS = s ? centerOf(s) : line.start;
-  const aimT = t ? centerOf(t) : line.end;
-  return { start: s ? outlinePoint(s, aimT) : { x: line.start.x, y: line.start.y }, end: t ? outlinePoint(t, aimS) : { x: line.end.x, y: line.end.y } };
+  const aim = (e: Endpoint, item: CanvasItem | undefined): Point => (!item ? { x: e.x, y: e.y } : e.anchor ? anchorPoint(item, e.anchor) : centerOf(item));
+  const place = (e: Endpoint, item: CanvasItem | undefined, from: Point): Point => (!item ? { x: e.x, y: e.y } : e.anchor ? anchoredEnd(item, anchorPoint(item, e.anchor), from) : outlinePoint(item, from));
+  let start = place(line.start, s, aim(line.end, t));
+  let end = place(line.end, t, aim(line.start, s));
+  let control = bendControl(start, end, line.bend);
+  if (control && (s || t)) {
+    // Aim attached ends at the control point; two passes settle it closely enough.
+    for (let i = 0; i < 2; i++) {
+      start = place(line.start, s, control);
+      end = place(line.end, t, control);
+      control = bendControl(start, end, line.bend) ?? control;
+    }
+  }
+  return geometryOf(start, end, line.bend);
 }
 
-function withLineBox(line: LineItem, ends: { start: Point; end: Point } = line): LineItem {
-  const box = boxFromPoints(ends.start, ends.end);
-  return { ...line, ...box };
+/** The drawn end points of a line (see `lineGeometry`). */
+export function lineEnds(doc: CanvasDocument, line: LineItem): { start: Point; end: Point } {
+  const { start, end } = lineGeometry(doc, line);
+  return { start, end };
+}
+
+/** Bounds of a line between two points, including its curve. */
+export function lineBounds(start: Point, end: Point, bend: number | undefined): Box {
+  const g = geometryOf(start, end, bend);
+  if (!g.control) return boxFromPoints(start, end);
+  const xs = [start.x, end.x];
+  const ys = [start.y, end.y];
+  // Extremes of a quadratic Bézier per axis: t = (p0 − p1) / (p0 − 2p1 + p2).
+  for (const axis of ['x', 'y'] as const) {
+    const d = start[axis] - 2 * g.control[axis] + end[axis];
+    if (!d) continue;
+    const t = (start[axis] - g.control[axis]) / d;
+    if (t > 0 && t < 1) {
+      const p = pointOnLine(g, t);
+      xs.push(p.x);
+      ys.push(p.y);
+    }
+  }
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+
+/** A line with its box fitted to its ends (and curve). */
+export function withLineBox(line: LineItem, ends: { start: Point; end: Point } = line): LineItem {
+  return { ...line, ...lineBounds(ends.start, ends.end, line.bend) };
+}
+
+/** Distance from a point to a line's drawn path (curves sampled finely). */
+export function distanceToLine(p: Point, g: LineGeometry): number {
+  if (!g.control) return distanceToSegment(p, g.start, g.end);
+  let best = Infinity;
+  let prev = g.start;
+  const steps = 32;
+  for (let i = 1; i <= steps; i++) {
+    const next = pointOnLine(g, i / steps);
+    best = Math.min(best, distanceToSegment(p, prev, next));
+    prev = next;
+  }
+  return best;
+}
+
+/** The bend whose curve passes through `p` at its middle (measured on the straight line; |bend| < snap → straight). */
+export function bendThrough(doc: CanvasDocument, line: LineItem, p: Point, snap = 4): number | undefined {
+  const { start, end } = lineGeometry(doc, { ...line, bend: undefined });
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len = Math.hypot(dx, dy);
+  if (!len) return undefined;
+  const bend = ((p.x - (start.x + end.x) / 2) * -dy + (p.y - (start.y + end.y) / 2) * dx) / len;
+  return Math.abs(bend) < snap ? undefined : Math.round(bend * 100) / 100;
 }
 
 /** Recomputes attached line ends (and line boxes) after items moved or resized. */
@@ -436,8 +603,7 @@ export function itemAt(doc: CanvasDocument, p: Point, tolerance = 6): CanvasItem
   for (let i = doc.items.length - 1; i >= 0; i--) {
     const item = doc.items[i]!;
     if (item.type === 'line') {
-      const { start, end } = lineEnds(doc, item);
-      if (distanceToSegment(p, start, end) <= tolerance) return item;
+      if (distanceToLine(p, lineGeometry(doc, item)) <= tolerance) return item;
     } else if (item.rotation) {
       const q = rotatePoint(p, centerOf(item), -item.rotation);
       if (q.x >= item.x - tolerance && q.x <= item.x + item.w + tolerance && q.y >= item.y - tolerance && q.y <= item.y + item.h + tolerance) return item;
@@ -470,13 +636,32 @@ export function penFromPoints(points: Point[], color?: string): PenItem {
 }
 
 /** Builds a line between two endpoints. */
-export function lineBetween(start: Endpoint, end: Endpoint, options: Partial<Pick<LineItem, 'startArrow' | 'endArrow' | 'dashed' | 'color'>> = {}): LineItem {
+export function lineBetween(start: Endpoint, end: Endpoint, options: Partial<Pick<LineItem, 'startArrow' | 'endArrow' | 'dashed' | 'color' | 'bend'>> = {}): LineItem {
   return withLineBox({ id: newItemId(), type: 'line', x: 0, y: 0, w: 0, h: 0, start, end, endArrow: true, ...options });
+}
+
+const optional = (value: unknown, ok: (v: unknown) => boolean) => value === undefined || ok(value);
+const isFiniteNumber = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
+const oneOf = (values: readonly string[]) => (v: unknown) => typeof v === 'string' && values.includes(v);
+const isPoint = (v: unknown) => !!v && typeof v === 'object' && isFiniteNumber((v as Point).x) && isFiniteNumber((v as Point).y);
+
+/** Checks an item's optional styling fields (the rest of an item is trusted, as before). */
+function validItem(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Record<string, unknown>;
+  if (item.type === 'shape') {
+    return optional(item.align, oneOf(['left', 'center', 'right'])) && optional(item.valign, oneOf(['top', 'middle', 'bottom'])) && optional(item.dashed, (v) => typeof v === 'boolean') && optional(item.fill, oneOf(['tint', 'none', 'solid']));
+  }
+  if (item.type === 'line') {
+    const end = (e: unknown) => !e || typeof e !== 'object' || optional((e as Endpoint).anchor, isPoint);
+    return optional(item.bend, isFiniteNumber) && end(item.start) && end(item.end);
+  }
+  return true;
 }
 
 /** A loose check that a value is a canvas document (for pasted or stored JSON). */
 export function isCanvasDocument(value: unknown): value is CanvasDocument {
-  return !!value && typeof value === 'object' && (value as CanvasDocument).version === 1 && Array.isArray((value as CanvasDocument).items);
+  return !!value && typeof value === 'object' && (value as CanvasDocument).version === 1 && Array.isArray((value as CanvasDocument).items) && (value as CanvasDocument).items.every(validItem);
 }
 
 // ---- snapping ----
@@ -540,6 +725,8 @@ export function resizeItems(doc: CanvasDocument, ids: Iterable<string>, from: Bo
       const end = (e: Endpoint): Endpoint => (e.item ? e : { ...e, ...map(e) });
       scaled.start = end(scaled.start);
       scaled.end = end(scaled.end);
+      if (scaled.bend) scaled.bend *= Math.sqrt(sx * sy);
+      return withLineBox(scaled);
     }
     if (scaled.type === 'text') scaled.fontSize = Math.max(6, Math.round((item as TextItem).fontSize * Math.min(sx, sy)));
     if (scaled.type === 'figure') scaled.autoSize = false;

@@ -4,7 +4,7 @@ import type { IconResolver } from '../icons/types';
 import { Icon } from '../react/DiagramSvg';
 import { lineColor, swatchFor } from '../react/theme';
 import type { Theme } from '../theme/tokens';
-import { lineEnds, safeLink, type CanvasDocument, type CanvasItem, type CodeItem, type DeviceKind, type FrameItem, type IconItem, type ImageItem, type LineItem, type PenItem, type ShapeItem, type StickyItem, type TextItem } from './model';
+import { lineGeometry, safeLink, type LineGeometry, type CanvasDocument, type CanvasItem, type CodeItem, type DeviceKind, type FrameItem, type IconItem, type ImageItem, type LineItem, type PenItem, type ShapeItem, type StickyItem, type TextItem } from './model';
 
 // Renderers for canvas items. Each is an absolutely positioned element in
 // canvas units (the world layer applies the camera transform), tagged with
@@ -20,9 +20,26 @@ export const TEXT_LINE_HEIGHT = 1.3;
 
 const placed = (item: CanvasItem, extra?: CSSProperties): CSSProperties => ({ position: 'absolute', left: item.x, top: item.y, width: item.w, height: item.h, transform: item.rotation ? `rotate(${item.rotation}deg)` : undefined, ...extra });
 
-export function shapeColors(theme: Theme, color: string | undefined) {
+/** Fill, outline, glyph and label colors of a shape (or icon) in a color and fill style. */
+export function shapeColors(theme: Theme, color: string | undefined, fill: ShapeItem['fill'] = 'tint') {
   const swatch = swatchFor(theme, color);
-  return { fill: swatch?.nodeFill ?? theme.node.fill, stroke: swatch?.stroke ?? theme.node.stroke, icon: swatch?.icon ?? theme.node.icon };
+  const stroke = swatch?.stroke ?? theme.node.stroke;
+  const icon = swatch?.icon ?? theme.node.icon;
+  if (fill === 'none') return { fill: 'none', stroke, icon, text: theme.color.text };
+  // Solid: the swatch's strong fill with its contrasting text; uncolored shapes use the ink color with canvas-colored text.
+  if (fill === 'solid') return swatch ? { fill: swatch.solid, stroke: swatch.solid, icon, text: swatch.onSolid } : { fill: theme.node.stroke, stroke: theme.node.stroke, icon, text: theme.color.canvas };
+  return { fill: swatch?.nodeFill ?? theme.node.fill, stroke, icon, text: theme.color.text };
+}
+
+/** The dash pattern lines and dashed shapes share. */
+export const DASH = '6 5';
+
+/** Inner padding of a shape's label (rectangles hug their edges, round shapes keep their label off the curve). */
+export const shapeTextPadding = (item: Pick<ShapeItem, 'shape' | 'w' | 'h'>) => (item.shape === 'rectangle' ? { x: 8, y: 8 } : { x: item.w * 0.15, y: item.h * 0.15 });
+
+/** SVG path of a line: M…L for straight lines, M…Q for bent ones. */
+export function linePath(g: LineGeometry): string {
+  return g.control ? `M${g.start.x} ${g.start.y}Q${g.control.x} ${g.control.y} ${g.end.x} ${g.end.y}` : `M${g.start.x} ${g.start.y}L${g.end.x} ${g.end.y}`;
 }
 
 export const inkColor = (theme: Theme, color: string | undefined) => lineColor(theme, color) ?? theme.color.text;
@@ -35,14 +52,27 @@ export function shapePath(shape: ShapeItem['shape'], w: number, h: number): stri
 }
 
 export const ShapeView = memo(function ShapeView({ item, ctx, hideText }: { item: ShapeItem; ctx: ItemContext; hideText?: boolean }) {
-  const { fill, stroke } = shapeColors(ctx.theme, item.color);
+  const { fill, stroke, text } = shapeColors(ctx.theme, item.color, item.fill);
+  const pad = shapeTextPadding(item);
+  const align = item.align ?? 'center';
+  const valign = item.valign ?? 'middle';
   return (
     <div data-item-id={item.id} className="occ-item" style={placed(item)}>
       <svg width={item.w} height={item.h} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-        <path d={shapePath(item.shape, item.w, item.h)} fill={fill} stroke={stroke} strokeWidth={1.25} vectorEffect="non-scaling-stroke" />
+        <path d={shapePath(item.shape, item.w, item.h)} fill={fill} stroke={stroke} strokeWidth={1.25} strokeDasharray={item.dashed ? DASH : undefined} vectorEffect="non-scaling-stroke" />
       </svg>
       {item.text && !hideText && (
-        <div className="occ-shape-text" style={{ font: `${ctx.theme.text.node.weight} ${ctx.theme.text.node.size}px/${TEXT_LINE_HEIGHT} ${ctx.theme.font.sans}`, color: ctx.theme.color.text, padding: item.shape === 'rectangle' ? 8 : `${item.h * 0.15}px ${item.w * 0.15}px` }}>
+        <div
+          className="occ-shape-text"
+          style={{
+            font: `${ctx.theme.text.node.weight} ${ctx.theme.text.node.size}px/${TEXT_LINE_HEIGHT} ${ctx.theme.font.sans}`,
+            color: text,
+            padding: `${pad.y}px ${pad.x}px`,
+            textAlign: align,
+            justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
+            alignItems: valign === 'top' ? 'flex-start' : valign === 'bottom' ? 'flex-end' : 'center',
+          }}
+        >
           {item.text}
         </div>
       )}
@@ -203,10 +233,11 @@ export const PenView = memo(function PenView({ item, ctx }: { item: PenItem; ctx
 });
 
 export function LineView({ item, doc, ctx }: { item: LineItem; doc: CanvasDocument; ctx: ItemContext }) {
-  const { start, end } = lineEnds(doc, item);
+  const geometry = lineGeometry(doc, item);
+  const d = linePath(geometry);
   const color = lineColor(ctx.theme, item.color) ?? ctx.theme.color.edge;
   const marker = `occ-arrow-${item.id}`;
-  const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+  const { mid } = geometry;
   return (
     <svg data-item-id={item.id} className="occ-item occ-stroke" style={{ position: 'absolute', left: 0, top: 0, width: 1, height: 1, overflow: 'visible' }}>
       <defs>
@@ -214,15 +245,13 @@ export function LineView({ item, doc, ctx }: { item: LineItem; doc: CanvasDocume
           <path d="M0 0L10 5L0 10z" fill={color} />
         </marker>
       </defs>
-      <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="transparent" strokeWidth={12} />
-      <line
-        x1={start.x}
-        y1={start.y}
-        x2={end.x}
-        y2={end.y}
+      <path d={d} fill="none" stroke="transparent" strokeWidth={12} />
+      <path
+        d={d}
+        fill="none"
         stroke={color}
         strokeWidth={1.5}
-        strokeDasharray={item.dashed ? '6 5' : undefined}
+        strokeDasharray={item.dashed ? DASH : undefined}
         markerStart={item.startArrow ? `url(#${marker})` : undefined}
         markerEnd={item.endArrow ? `url(#${marker})` : undefined}
       />

@@ -71,6 +71,15 @@ export {
   itemsInBox,
   lineBetween,
   lineEnds,
+  lineGeometry,
+  lineBounds,
+  withLineBox,
+  bendControl,
+  bendThrough,
+  anchorPoint,
+  anchoredEnd,
+  distanceToLine,
+  pointOnLine,
   moveItems,
   newItemId,
   penFromPoints,
@@ -87,6 +96,7 @@ export {
   rotatedBounds,
   rotatePoint,
 } from './canvas/model';
+export type { LineGeometry, ShapeFill, HorizontalAlign, VerticalAlign } from './canvas/model';
 export type { Box, CanvasDocument, CanvasItem, CanvasPeer, PresentationSettings, CanvasItemType, CodeItem, CommentAuthor, CommentMessage, CommentThread, DeviceKind, Endpoint, FigureItem, FrameItem, Handle, IconItem, ImageItem, ItemPatch, LayerMove, LineItem, PenItem, ShapeItem, ShapeKind, SnapResult, StickyItem, TextItem } from './canvas/model';
 export { renderCanvasSvg } from './canvas/export';
 export type { CanvasSvgOptions } from './canvas/export';

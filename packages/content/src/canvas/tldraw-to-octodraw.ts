@@ -9,8 +9,10 @@
  *
  * Mapping (lossy parts marked ~):
  *   geo     → shape (rectangle / ellipse / diamond; other geos → rectangle~),
- *             label as text, `url` as `link`. ~fill, dash, size, font, label
- *             alignment are dropped (octodraw centres shape text).
+ *             label as text, `url` as `link`, label align/verticalAlign →
+ *             align/valign, dashed/dotted → dashed, fill none → "none",
+ *             semi → "tint", solid/fill/pattern/lined-fill → "solid"
+ *             (~pattern hatching). ~size and font are dropped.
  *   note    → sticky (tldraw's default "black" note is yellow, so no color).
  *   text    → text; size s/m/l/xl → octodraw's 14/20/32/48 presets × scale.
  *   frame   → a plain rectangle + its name as a small text above it (tldraw
@@ -22,8 +24,10 @@
  *   arrow   → line; bound ends attach (`item`) to the converted shape,
  *             arrowheads become start/endArrow (~every head style is drawn
  *             as octodraw's arrow), dashed/dotted → dashed, label → text.
- *             ~Bends, elbow routing and precise anchors become straight
- *             centre-aimed lines.
+ *             Precise binding anchors (where tldraw aims at them) → `anchor`;
+ *             a bend → `bend`, fitted so the curve passes through tldraw's
+ *             middle point (~tldraw draws a circular arc, octodraw a
+ *             quadratic). ~Elbow routing becomes a straight line.
  *   line    → line for two points; 3+ points → pen (~a smoothed stroke).
  *   draw / highlight → pen, points normalized to the box. ~Stroke width,
  *             pressure, closed/filled strokes.
@@ -38,6 +42,7 @@
  */
 import {
   emptyOctodrawDocument,
+  lineEnds,
   settleLines,
   type CanvasDocument,
   type CanvasItem,
@@ -179,6 +184,28 @@ function geoShape(geo: string): ShapeKind {
   if (geo === "ellipse" || geo === "oval" || geo === "cloud") return "ellipse";
   if (geo === "diamond") return "diamond";
   return "rectangle";
+}
+
+/** tldraw label alignment ("start" / "middle" / "end", plus "-legacy" variants). */
+const alignStep = (v: unknown) => str(v).replace(/-legacy$/, "");
+
+/** A geo shape's label placement, stroke and fill in octodraw's terms (defaults left out). */
+function geoStyle(p: Obj): Pick<ShapeItem, "align" | "valign" | "dashed" | "fill"> {
+  const out: Pick<ShapeItem, "align" | "valign" | "dashed" | "fill"> = {};
+  const h = alignStep(p.align);
+  if (h === "start") out.align = "left";
+  else if (h === "end") out.align = "right";
+  const v = alignStep(p.verticalAlign);
+  if (v === "start") out.valign = "top";
+  else if (v === "end") out.valign = "bottom";
+  const dash = str(p.dash);
+  if (dash === "dashed" || dash === "dotted") out.dashed = true;
+  // tldraw's default fill is "none".
+  const fill = str(p.fill) || "none";
+  if (fill === "none") out.fill = "none";
+  else if (fill === "semi") out.fill = "tint";
+  else if (fill === "solid" || fill === "fill" || fill === "pattern" || fill === "lined-fill") out.fill = "solid";
+  return out;
 }
 
 function safeLink(raw: unknown): string | undefined {
@@ -401,6 +428,7 @@ export function tldrawToOctodraw(snapshot: unknown): CanvasDocument {
         const text = labelOf(p);
         if (text) shape.text = text;
         if (color) shape.color = color;
+        Object.assign(shape, geoStyle(p));
         const link = safeLink(p.url);
         if (link) shape.link = link;
         items.push(shape);
@@ -536,9 +564,88 @@ export function tldrawToOctodraw(snapshot: unknown): CanvasDocument {
     if (pages.length > 1) pageOffset = placePage(items, start, pageOffset, str(page.name), uniqueId(`page-${itemId(page.id.replace(/^page:/, ""))}`), arrows, targets);
   }
 
-  for (const { rec, xf, at, id } of arrows) items[at] = arrowLine(rec, xf, bindings, targets, id);
+  /** Bent arrows: the page point tldraw's curve passes through midway. */
+  const middles = new Map<string, Pt>();
+  for (const { rec, xf, at, id } of arrows) {
+    const { line, middle } = arrowLine(rec, xf, bindings, targets, id);
+    items[at] = line;
+    if (middle) middles.set(id, middle);
+  }
 
-  return { version: 1, items: settleLines(items.filter(Boolean)).map(roundLine) };
+  let out = items.filter(Boolean);
+  if (middles.size) {
+    const byId = new Map(out.map((i) => [i.id, i]));
+    out = out.map((it) => (it.type === "line" && middles.has(it.id) ? solveBend(it, middles.get(it.id)!, byId) : it));
+  }
+  return { version: 1, items: settleLines(out).map(roundLine) };
+}
+
+/**
+ * octodraw measures `bend` from the drawn (clipped) ends, tldraw from its aim
+ * points, and attached ends slide along their outline as the bend changes
+ * (they aim at the control point). Find the bend whose settled curve passes
+ * through tldraw's middle point: a fixed point of b ↦ fit(settle(b)), by
+ * bisection when it can be bracketed, else damped iteration.
+ */
+function solveBend(line: LineItem, middle: Pt, byId: Map<string, CanvasItem>): LineItem {
+  const settle = (b: number | undefined): LineItem => {
+    const l: LineItem = { ...line };
+    if (b) l.bend = b;
+    else delete l.bend;
+    const ends = lineEnds(l, byId);
+    return { ...l, start: { ...l.start, ...ends.start }, end: { ...l.end, ...ends.end } };
+  };
+  const fit = (b: number) => fitBend(settle(b), middle).bend ?? 0;
+  const f = (b: number) => fit(b) - b;
+  let lo = line.bend ?? 0;
+  let hi = fit(lo);
+  let flo = f(lo);
+  let fhi = f(hi);
+  let bend: number;
+  if (flo === 0) bend = lo;
+  else if (Math.sign(flo) !== Math.sign(fhi)) {
+    for (let i = 0; i < 40 && Math.abs(hi - lo) > 0.01; i++) {
+      const m = (lo + hi) / 2;
+      const fm = f(m);
+      if (Math.sign(fm) === Math.sign(flo)) {
+        lo = m;
+        flo = fm;
+      } else {
+        hi = m;
+        fhi = fm;
+      }
+    }
+    bend = (lo + hi) / 2;
+  } else {
+    bend = hi;
+    for (let i = 0; i < 30; i++) bend = (bend + fit(bend)) / 2;
+  }
+  bend = round(bend);
+  const out: LineItem = { ...line };
+  if (Math.abs(bend) >= 0.5) out.bend = bend;
+  else delete out.bend;
+  return out;
+}
+
+/**
+ * The line with `bend` set so its curve passes through `middle`. The curve is
+ * chord(t) + 4t(1−t)·bend·n, so with `middle` at chord parameter t and
+ * normal offset h, bend = h / (4t(1−t)) (t kept away from the ends).
+ */
+function fitBend(line: LineItem, middle: Pt): LineItem {
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  const len = Math.hypot(dx, dy);
+  const next: LineItem = { ...line };
+  delete next.bend;
+  if (!len) return next;
+  const mx = middle.x - line.start.x;
+  const my = middle.y - line.start.y;
+  const t = Math.min(0.85, Math.max(0.15, (mx * dx + my * dy) / (len * len)));
+  const h = (mx * -dy + my * dx) / len;
+  const bend = round(h / (4 * t * (1 - t)));
+  if (Math.abs(bend) >= 0.5) next.bend = bend;
+  return next;
 }
 
 const rounded = (p: Pt): Endpoint => ({ x: round(p.x), y: round(p.y) });
@@ -562,24 +669,70 @@ function arrowLine(
   bindings: Map<string, Rec>,
   targets: Map<string, { item: string; xf: Xf; w: number; h: number }>,
   id: string,
-): LineItem {
+): { line: LineItem; middle?: Pt } {
   const p = isObj(rec.props) ? rec.props : {};
-  const end = (key: "start" | "end"): Endpoint => {
+  type Target = { item: string; xf: Xf; w: number; h: number };
+  const bound = (key: "start" | "end") => {
     const b = bindings.get(`${rec.id}:${key}`);
     const target = b && typeof b.toId === "string" ? targets.get(b.toId) : undefined;
-    if (b && target) {
-      const bp = isObj(b.props) ? b.props : {};
+    return b && target ? { b, target } : undefined;
+  };
+  const bs = bound("start");
+  const be = bound("end");
+  // tldraw aims at a binding's anchor only when it's precise, or when one
+  // bound shape contains the other (then the containing end is forced precise).
+  const pageBox = (t: Target) => {
+    const pts = [apply(t.xf, { x: 0, y: 0 }), apply(t.xf, { x: t.w, y: 0 }), apply(t.xf, { x: 0, y: t.h }), apply(t.xf, { x: t.w, y: t.h })];
+    const xs = pts.map((q) => q.x);
+    const ys = pts.map((q) => q.y);
+    return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+  };
+  const contains = (a: Target, b: Target) => {
+    const A = pageBox(a);
+    const B = pageBox(b);
+    return A.x0 <= B.x0 && A.y0 <= B.y0 && A.x1 >= B.x1 && A.y1 >= B.y1;
+  };
+  const sameShape = !!bs && !!be && bs.b.toId === be.b.toId;
+  const forceStart = !!bs && !!be && (sameShape || contains(bs.target, be.target));
+  const forceEnd = !!bs && !!be && (sameShape || contains(be.target, bs.target));
+
+  /** One end: tldraw's terminal (the page point it aims at) and our endpoint. */
+  const end = (key: "start" | "end", hit: ReturnType<typeof bound>, force: boolean): { at: Pt; ep: Endpoint } => {
+    if (hit) {
+      const bp = isObj(hit.b.props) ? hit.b.props : {};
       const a = isObj(bp.normalizedAnchor) ? bp.normalizedAnchor : {};
-      const at = apply(target.xf, { x: target.w * num(a.x, 0.5), y: target.h * num(a.y, 0.5) });
-      return { ...rounded(at), item: target.item };
+      const precise = bp.isPrecise === true || force;
+      const clamp = (v: number) => Math.min(1, Math.max(0, v));
+      const ax = precise ? clamp(num(a.x, 0.5)) : 0.5;
+      const ay = precise ? clamp(num(a.y, 0.5)) : 0.5;
+      const at = apply(hit.target.xf, { x: hit.target.w * ax, y: hit.target.h * ay });
+      const ep: Endpoint = { ...rounded(at), item: hit.target.item };
+      if (Math.abs(ax - 0.5) > 1e-3 || Math.abs(ay - 0.5) > 1e-3) ep.anchor = { x: round(ax, 4), y: round(ay, 4) };
+      return { at, ep };
     }
     const local = isObj(p[key]) ? (p[key] as Obj) : {};
-    return rounded(apply(xf, { x: num(local.x), y: num(local.y) }));
+    const at = apply(xf, { x: num(local.x), y: num(local.y) });
+    return { at, ep: rounded(at) };
   };
-  const line: LineItem = { id, type: "line", x: 0, y: 0, w: 0, h: 0, start: end("start"), end: end("end") };
+  const s = end("start", bs, forceStart);
+  const e = end("end", be, forceEnd);
+  const line: LineItem = { id, type: "line", x: 0, y: 0, w: 0, h: 0, start: s.ep, end: e.ep };
   if (line.start.item && line.start.item === line.end.item) {
     // A loop onto one shape: octodraw can't draw it; keep it as a free line.
     delete line.end.item;
+    delete line.end.anchor;
+  }
+  // tldraw: middle = midpoint of the terminals + bend · (−dy, dx)/len
+  // (curved-arrow.ts: med + u.per().mul(−bend), per(x, y) = (y, −x)).
+  let middle: Pt | undefined;
+  const bend = num(p.bend);
+  const len = Math.hypot(e.at.x - s.at.x, e.at.y - s.at.y);
+  if (str(p.kind) !== "elbow" && Math.abs(bend) >= 0.5 && len > 0) {
+    middle = {
+      x: (s.at.x + e.at.x) / 2 + (bend * -(e.at.y - s.at.y)) / len,
+      y: (s.at.y + e.at.y) / 2 + (bend * (e.at.x - s.at.x)) / len,
+    };
+    line.bend = round(bend);
   }
   const head = (v: unknown, fallback: string) => (typeof v === "string" ? v : fallback);
   if (head(p.arrowheadStart, "none") !== "none") line.startArrow = true;
@@ -589,7 +742,7 @@ function arrowLine(
   if (color) line.color = color;
   const text = labelOf(p);
   if (text) line.text = text;
-  return line;
+  return { line, middle };
 }
 
 /**

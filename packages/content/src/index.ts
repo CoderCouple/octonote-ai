@@ -18,7 +18,7 @@ export type {
   CanvasDocument as OctodrawDocument,
   CanvasItem as OctodrawItem,
 } from "./canvas/octodraw-types";
-export { emptyOctodrawDocument } from "./canvas/octodraw-types";
+export { emptyOctodrawDocument, lineEnds as octodrawLineEnds } from "./canvas/octodraw-types";
 export { isOctodrawDocument, toOctodrawDocument } from "./canvas/canvas-document";
 export { isTldrawDocument, richTextToPlain, tldrawToOctodraw } from "./canvas/tldraw-to-octodraw";
 export { mermaidToOctodraw } from "./canvas/mermaid-to-octodraw";

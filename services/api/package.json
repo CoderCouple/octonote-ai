@@ -16,6 +16,8 @@
     "db:migrate:deployed": "node dist/migrate.js",
     "db:convert-canvases": "tsx src/scripts/convert-canvases.ts",
     "db:convert-canvases:deployed": "node dist/scripts/convert-canvases.js",
+    "db:reconvert-canvases": "tsx src/scripts/convert-canvases.ts --reconvert",
+    "db:reconvert-canvases:deployed": "node dist/scripts/convert-canvases.js --reconvert",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
