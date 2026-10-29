@@ -6,6 +6,7 @@
  * missing a picture; it makes them in the background (octodraw loads only
  * when there's work) and refreshes the list. Each canvas is tried once per
  * browser session, so empty canvases aren't retried on every visit.
+ * Project ids (`prj_…`) work too: their canvas gets the picture.
  */
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";

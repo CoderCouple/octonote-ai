@@ -242,7 +242,11 @@ export function LibraryTable({
       {readOnly ? null : (
         <ThumbnailBackfill
           canvasIds={rows
-            .filter((r) => r.kind === "canvas" && !r.thumbnailUrl)
+            .filter(
+              (r) =>
+                (r.kind === "canvas" || r.kind === "project") &&
+                !r.thumbnailUrl,
+            )
             .map((r) => r.id)}
         />
       )}

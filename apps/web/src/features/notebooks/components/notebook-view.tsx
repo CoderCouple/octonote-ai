@@ -19,7 +19,7 @@ import {
 } from "@/features/sharing";
 import { updateNotebookClientApi } from "../api/notebooks-client-api";
 import type { NotebookContents } from "../types";
-import { previewFromMarkdown } from "@octonote/shared";
+import { firstImageUrl, previewFromMarkdown } from "@octonote/shared";
 
 export function NotebookView({
   contents,
@@ -54,6 +54,8 @@ export function NotebookView({
       id: n.id,
       title: n.title,
       subtitle: previewFromMarkdown(n.contentMd, n.title) || "Empty note",
+      // The note's first image, if it has one, as its card picture.
+      thumbnailUrl: firstImageUrl(n.contentMd),
       notebookId: n.notebookId,
       access: accessOf(n, notebook),
       publishedVia: via(n),

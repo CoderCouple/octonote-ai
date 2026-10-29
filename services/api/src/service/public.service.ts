@@ -8,7 +8,7 @@
  * or workspace details.
  */
 import { Injectable } from "@nestjs/common";
-import { previewFromMarkdown, readingMinutes } from "@octonote/shared";
+import { firstImageUrl, previewFromMarkdown, readingMinutes } from "@octonote/shared";
 import { NotFound } from "../common/error/error-factory";
 import { CanvasesRepository } from "../db/repository/canvases.repository";
 import { NotebooksRepository } from "../db/repository/notebooks.repository";
@@ -63,7 +63,7 @@ export interface PublicNotebookItem {
   id: string;
   title: string;
   updatedAt: string;
-  /** Canvas thumbnail (a project's comes from its canvas); null for notes. */
+  /** Canvas thumbnail (a project's comes from its canvas, else its note's first image); a note's first image; or null. */
   thumbnailUrl: string | null;
   /** The opening of the note (a project's own note), plain text. */
   excerpt: string | null;
@@ -269,7 +269,8 @@ export class PublicService {
           id: n.id,
           title: n.title,
           updatedAt: n.updatedAt.toISOString(),
-          thumbnailUrl: null,
+          // The note's first image, if it has one.
+          thumbnailUrl: firstImageUrl(n.contentMd),
           ...noteMeta(n.contentMd, n.title),
         })),
         ...canvases.map((c) => ({
@@ -288,7 +289,8 @@ export class PublicService {
             id: p.id,
             title: p.name,
             updatedAt: p.updatedAt.toISOString(),
-            thumbnailUrl: p.thumbnailUrl,
+            // Its canvas's picture, else the first image in its note.
+            thumbnailUrl: p.thumbnailUrl ?? (note ? firstImageUrl(note.contentMd) : null),
             ...(note
               ? noteMeta(note.contentMd, note.title)
               : { excerpt: p.description, minutes: null }),

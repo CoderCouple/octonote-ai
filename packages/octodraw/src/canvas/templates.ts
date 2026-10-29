@@ -1,4 +1,4 @@
-import type { DiagramType } from '../dsl/detect';
+import { detectDiagramType, type DiagramType } from '../dsl/detect';
 import { lineBetween, newItemId, type CanvasItem, type FigureItem, type FrameItem, type StickyItem, type TextItem } from './model';
 
 /** Starter code for new figures, one per diagram kind. */
@@ -324,6 +324,16 @@ export function figureTitle(source: string): string | undefined {
   return /^\s*title\s+(.+?)\s*$/m.exec(source)?.[1];
 }
 
+const KIND_LABEL = { flow: 'Diagram', erd: 'Data model', sequence: 'Sequence diagram', bpmn: 'Process' } as const;
+
+/** What a figure is called above its border: its `title`, else its kind. */
+export function figureLabel(source: string): string {
+  return figureTitle(source) ?? KIND_LABEL[detectDiagramType(source)];
+}
+
+/** The title above a figure's border (canvas units): font size, gap to the border, and the room it takes. */
+export const FIGURE_TITLE = { size: 14, gap: 6, space: 26 } as const;
+
 // ---- whole-canvas templates ----
 
 /** A starter board: several items laid out together (built fresh each time, at the origin). */
@@ -338,6 +348,8 @@ const source = (id: string) => FIGURE_TEMPLATES.find((t) => t.id === id)!.source
 const heading = (text: string, x: number, y: number, fontSize = 32): TextItem => ({ id: newItemId(), type: 'text', x, y, w: Math.ceil(text.length * fontSize * 0.56), h: Math.ceil(fontSize * 1.3), text, fontSize, bold: true });
 const label = (text: string, x: number, y: number): TextItem => ({ id: newItemId(), type: 'text', x, y, w: Math.ceil(text.length * 20 * 0.56), h: 26, text, fontSize: 20, bold: true });
 const sticky = (text: string, x: number, y: number, color?: string): StickyItem => ({ id: newItemId(), type: 'sticky', x, y, w: 180, h: 180, text, color });
+/** The figure's source with its title set (shown above the figure's border). */
+const titled = (title: string, src: string) => (/^\s*title\s+.*$/m.test(src) ? src.replace(/^\s*title\s+.*$/m, `title ${title}`) : `title ${title}\n${src}`);
 const figure = (src: string, x: number, y: number, w = 520, h = 340): FigureItem => ({ id: newItemId(), type: 'figure', x, y, w, h, source: src, autoSize: false });
 
 /** Columns of sticky notes under headings (brainstorms, retros). */
@@ -359,10 +371,8 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     build: () => [
       heading('System design review', 0, 0),
       { id: newItemId(), type: 'text', x: 0, y: 52, w: 520, h: 26, text: 'Goal: one sentence on what this system does and for whom.', fontSize: 18 },
-      label('Architecture', 0, 112),
-      figure(source('architecture'), 0, 148),
-      label('Data model', 580, 112),
-      figure(source('erd'), 580, 148, 420, 340),
+      figure(titled('Architecture', source('architecture')), 0, 148),
+      figure(titled('Data model', source('erd')), 580, 148, 420, 340),
       label('Open questions', 1060, 112),
       sticky('How do we scale writes?', 1060, 148),
       sticky('What happens when the database is down?', 1260, 148, 'orange'),
@@ -414,10 +424,8 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     build: () => [
       heading('Feature spec', 0, 0),
       { id: newItemId(), type: 'text', x: 0, y: 52, w: 560, h: 26, text: 'Problem, proposal and how it works.', fontSize: 18 },
-      label('Flow', 0, 112),
-      figure(source('flowchart'), 0, 148, 360, 460),
-      label('Sequence', 420, 112),
-      figure(source('sequence'), 420, 148, 480, 340),
+      figure(titled('Flow', source('flowchart')), 0, 148, 360, 460),
+      figure(titled('Sequence', source('sequence')), 420, 148, 480, 340),
       label('API', 960, 112),
       { id: newItemId(), type: 'code', x: 960, y: 148, w: 380, h: 170, language: 'typescript', text: 'POST /api/items\n{\n  "title": string\n}\n→ 201 { "id": string }\n' },
     ],
@@ -451,8 +459,7 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     build: () => [
       heading('Incident postmortem', 0, 0),
       { id: newItemId(), type: 'text', x: 0, y: 52, w: 560, h: 26, text: 'Impact: who was affected, for how long.', fontSize: 18 },
-      label('What happened', 0, 112),
-      figure(`title Timeline\ndirection right\n\nDeploy [icon: upload]\nErrors spike [icon: alert-triangle, color: red]\nAlert fired [icon: bell]\nRollback [icon: rotate-ccw]\nRecovered [icon: check-circle, color: green]\n\nDeploy > Errors spike: 10:02\nErrors spike > Alert fired: 10:07\nAlert fired > Rollback: 10:15\nRollback > Recovered: 10:21\n`, 0, 148, 760, 240),
+      figure(titled('What happened', `title Timeline\ndirection right\n\nDeploy [icon: upload]\nErrors spike [icon: alert-triangle, color: red]\nAlert fired [icon: bell]\nRollback [icon: rotate-ccw]\nRecovered [icon: check-circle, color: green]\n\nDeploy > Errors spike: 10:02\nErrors spike > Alert fired: 10:07\nAlert fired > Rollback: 10:15\nRollback > Recovered: 10:21\n`), 0, 148, 760, 240),
       label('Root causes', 0, 430),
       sticky('Missing test for the migration', 0, 466, 'red'),
       sticky('Alert threshold too high', 200, 466, 'orange'),

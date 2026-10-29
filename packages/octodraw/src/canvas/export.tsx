@@ -7,6 +7,7 @@ import { lineColor } from '../react/theme';
 import type { Theme } from '../theme/tokens';
 import { CODE_FONT_SIZE, DASH, DeviceOutline, inkColor, linePath, penPath, shapeColors, shapePath, shapeTextPadding, STICKY_FONT_SIZE, stickyColors, TEXT_LINE_HEIGHT } from './items';
 import { boundsOf, lineGeometry, type CanvasDocument, type CanvasItem } from './model';
+import { FIGURE_TITLE, figureLabel } from './templates';
 
 // The whole canvas as one standalone SVG. Figures are passed in already
 // exported (each figure's OctoDiagram renders itself) and nested at their box.
@@ -125,6 +126,10 @@ function itemSvg(item: CanvasItem, doc: CanvasDocument, o: CanvasSvgOptions): Re
         <g>
           <rect x={item.x} y={item.y} width={item.w} height={item.h} rx={8} fill={theme.color.canvas} stroke={theme.color.border} />
           {nested && <g dangerouslySetInnerHTML={{ __html: nested }} />}
+          {/* The title above the border, as on the canvas. */}
+          <text x={item.x + 2} y={item.y - FIGURE_TITLE.gap - 3} fontSize={FIGURE_TITLE.size} fontFamily={theme.font.sans} fontWeight={600} fill={theme.color.text}>
+            {figureLabel(item.source)}
+          </text>
         </g>
       );
     }
@@ -136,7 +141,8 @@ export function renderCanvasSvg(doc: CanvasDocument, options: CanvasSvgOptions):
   const padding = options.padding ?? 32;
   const wanted = options.ids ? new Set(options.ids) : undefined;
   const items = wanted ? doc.items.filter((i) => wanted.has(i.id)) : doc.items;
-  const box = boundsOf(items) ?? { x: 0, y: 0, w: 1, h: 1 };
+  // Figures' titles sit above their boxes; make room for them.
+  const box = boundsOf(items.map((i) => (i.type === 'figure' ? { ...i, y: i.y - FIGURE_TITLE.space, h: i.h + FIGURE_TITLE.space } : i))) ?? { x: 0, y: 0, w: 1, h: 1 };
   const width = Math.ceil(box.w + padding * 2);
   const height = Math.ceil(box.h + padding * 2);
   const body = renderToStaticMarkup(createElement('g', { transform: `translate(${padding - box.x} ${padding - box.y})` }, ...items.map((item) => createElement('g', { key: item.id, transform: item.rotation ? `rotate(${item.rotation} ${item.x + item.w / 2} ${item.y + item.h / 2})` : undefined }, itemSvg(item, doc, options)))));

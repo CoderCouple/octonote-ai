@@ -30,10 +30,19 @@ export function ThumbnailBackfillImpl({
         if (started.current.has(id)) continue;
         started.current.add(id);
         try {
-          const canvas = await clientApi.get<Canvas>(`/canvases/${id}`);
+          // A project's picture is its canvas's.
+          const canvasId = id.startsWith("prj_")
+            ? (
+                await clientApi.get<{ canvasId: string | null }>(
+                  `/projects/${id}`,
+                )
+              ).canvasId
+            : id;
+          if (!canvasId) continue;
+          const canvas = await clientApi.get<Canvas>(`/canvases/${canvasId}`);
           const doc = toCanvasDocument(canvas.document);
           if (doc.items.length === 0) continue;
-          if (await uploadCanvasThumbnail(doc, id, null)) madeAny = true;
+          if (await uploadCanvasThumbnail(doc, canvasId, null)) madeAny = true;
         } catch (err) {
           // Viewers can't update the canvas; empty or broken ones are skipped.
           console.warn("Thumbnail backfill skipped", id, err);

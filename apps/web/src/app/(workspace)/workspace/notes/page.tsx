@@ -6,7 +6,7 @@ import {
 } from "@/features/library";
 import { listNotesApi } from "@/features/notes/api/notes-api";
 import { listNotebooksApi } from "@/features/notebooks/api/notebooks-api";
-import { previewFromMarkdown } from "@octonote/shared";
+import { firstImageUrl, previewFromMarkdown } from "@octonote/shared";
 import { activeWorkspaceId } from "../../_lib";
 
 export default async function NotesPage() {
@@ -34,6 +34,8 @@ export default async function NotesPage() {
           id: n.id,
           title: n.title,
           subtitle: previewFromMarkdown(n.contentMd, n.title) || "Empty note",
+          // The note's first image, if it has one, as its card picture.
+          thumbnailUrl: firstImageUrl(n.contentMd),
           notebookId: n.notebookId,
           notebookName,
           access: accessOf(n, notebook),

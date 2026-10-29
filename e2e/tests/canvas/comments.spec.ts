@@ -27,7 +27,7 @@ test("a comment is saved under the signed-in person's name, on a canvas and in a
     await box.press("Enter");
 
     const saved = await waitForDoc(api, canvasId, (d) => ((d as { comments?: Thread[] }).comments ?? []).length === 1, "comment saved");
-    const [thread] = (saved.document as { comments: Thread[] }).comments;
+    const [thread] = (saved.document as unknown as { comments: Thread[] }).comments;
     expect(thread!.messages[0]).toMatchObject({ author: { id: user.id, name }, text: "Looks good" });
     // The pin names the author too.
     await expect(ui.root.getByRole("button", { name: `Comment by ${name}` })).toBeVisible();
@@ -57,5 +57,5 @@ test("@ suggests people the canvas is shared with and keeps the mention", async 
   await box.press("Enter");
 
   const saved = await waitForDoc(api, c.id, (d) => ((d as { comments?: Thread[] }).comments ?? []).length === 1, "comment saved");
-  expect((saved.document as { comments: Thread[] }).comments[0]!.messages[0]!.text).toBe(`Can you check this @${who.user.name}`);
+  expect((saved.document as unknown as { comments: Thread[] }).comments[0]!.messages[0]!.text).toBe(`Can you check this @${who.user.name}`);
 });

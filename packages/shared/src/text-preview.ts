@@ -28,3 +28,14 @@ export function readingMinutes(md: string): number {
   const words = md ? md.trim().split(/\s+/).filter(Boolean).length : 0;
   return Math.max(1, Math.ceil(words / 220));
 }
+
+/**
+ * The first image in a note's markdown (`![alt](url)` or `<img src>`), for
+ * card thumbnails; http(s) only, never inside code blocks. Null when none.
+ */
+export function firstImageUrl(md: string): string | null {
+  const text = md.replace(/```[\s\S]*?```/g, " ");
+  const m = /!\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+["'][^"']*["'])?\s*\)|<img\b[^>]*\bsrc=["']([^"']+)["']/i.exec(text);
+  const url = m?.[1] ?? m?.[2];
+  return url && /^https?:\/\//i.test(url) ? url : null;
+}

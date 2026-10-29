@@ -80,7 +80,7 @@ import {
   safeLink,
 } from './model';
 import { renderSourceSvg } from '../export/source';
-import { CANVAS_TEMPLATES, FIGURE_TEMPLATES, figureTitle, type CanvasTemplate } from './templates';
+import { CANVAS_TEMPLATES, FIGURE_TEMPLATES, FIGURE_TITLE, figureLabel, figureTitle, type CanvasTemplate } from './templates';
 import type { CanvasChangeMeta } from './useCanvasHistory';
 
 export type CanvasTool = 'select' | 'hand' | ShapeKind | 'sticky' | 'arrow' | 'line' | 'pen' | 'text' | 'comment';
@@ -512,7 +512,8 @@ export function OctoCanvas(props: OctoCanvasProps) {
       for (const item of current.items) {
         if (item.type !== 'figure' || (wanted && !wanted.has(item.id))) continue;
         // Off-screen figures aren't mounted; render those straight from their code.
-        const svg = (await figureRefs.current.get(item.id)?.exportSvg({ embedFonts: false, title: true })) ?? (await renderSourceSvg(item.source, { theme, icons, iconSet, placements: item.placements, title: true })).svg;
+        // No title inside: renderCanvasSvg draws it above the figure's border.
+        const svg = (await figureRefs.current.get(item.id)?.exportSvg({ embedFonts: false, title: false })) ?? (await renderSourceSvg(item.source, { theme, icons, iconSet, placements: item.placements })).svg;
         if (svg) figureSvgs.set(item.id, svg);
       }
       const fontCss = embedFonts ? await collectFontCss([theme.font.sans, theme.font.mono]).catch(() => '') : undefined;
@@ -1425,6 +1426,13 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const selBox = boundsOf(selectedItems);
   const single = selectedItems.length === 1 ? selectedItems[0]! : undefined;
   const k = cam.k;
+  // Presenting a frame or figure shows only that slide, not what sits next to it
+  // on the canvas (the camera's margin would). Clipped in world units, with room
+  // for strokes; a whole-canvas slide isn't clipped.
+  const presentSlide = presenting !== null ? slides[presenting] : undefined;
+  const presentClip = presentSlide?.id
+    ? (({ x, y, w, h }: Box, m: number, top: number) => `polygon(${x - m}px ${y - top}px, ${x + w + m}px ${y - top}px, ${x + w + m}px ${y + h + m}px, ${x - m}px ${y + h + m}px)`)(presentSlide.box, 6, presentSlide.figure ? FIGURE_TITLE.space : 6)
+    : undefined;
   const cursor = presenting !== null && laser ? 'none' : panning ? 'grabbing' : tool === 'hand' || spaceHeld.current ? 'grab' : tool === 'select' ? 'default' : tool === 'text' ? 'text' : tool === 'comment' ? 'copy' : 'crosshair';
   const groupHandles = selectedItems.length > 1 && selBox && !selectedItems.some((i) => i.locked);
   const rotatable = selectedItems.some(canRotate) && !selectedItems.some((i) => i.locked) && !entered && !editing;
@@ -1502,7 +1510,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
     >
       <style>{CSS}</style>
       {props.ghosts && props.ghosts.length > 0 && <style>{`${props.ghosts.map((id) => `.occ-world [data-item-id="${id.replace(/["\\]/g, '')}"]`).join(',')} { opacity: 0.3; filter: grayscale(1); }`}</style>}
-      <div className={`occ-world${camGliding ? ' occ-world-glide' : ''}`} style={{ transform: `translate(${cam.x}px, ${cam.y}px) scale(${k})` }}>
+      <div className={`occ-world${camGliding ? ' occ-world-glide' : ''}`} style={{ transform: `translate(${cam.x}px, ${cam.y}px) scale(${k})`, clipPath: presentClip }}>
         {shown.items.map((item) => {
           switch (item.type) {
             case 'shape':
@@ -1528,7 +1536,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
               if (!figureLive(item))
                 return (
                   <div key={item.id} data-item-id={item.id} className="occ-item occ-figure occ-figure-parked" style={{ position: 'absolute', left: item.x, top: item.y, width: item.w, height: item.h }}>
-                    <div className="occ-figure-tab">{figureTitle(item.source) ?? KIND_LABEL[detectDiagramType(item.source)]}</div>
+                    <div className="occ-figure-tab">{figureLabel(item.source)}</div>
                   </div>
                 );
               return (
@@ -2142,7 +2150,7 @@ const FigureView = memo(function FigureView({
   onSize: (id: string, size: { width: number; height: number }) => void;
   onAskAi?: (figureId: string | null) => void;
 }) {
-  const title = figureTitle(item.source) ?? KIND_LABEL[detectDiagramType(item.source)];
+  const title = figureLabel(item.source);
   const onContentSize = useCallback((size: { width: number; height: number }) => onSize(item.id, size), [onSize, item.id]);
   const ref = useCallback((handle: OctoDiagramHandle | null) => register(item.id, handle), [register, item.id]);
   const onPlacementsChange = useCallback((next: ViewPlacements) => onPlacements(item.id, next), [onPlacements, item.id]);
@@ -2177,7 +2185,6 @@ const FigureView = memo(function FigureView({
 
 const EMPTY_PLACEMENTS: ViewPlacements = {};
 const noop = () => {};
-const KIND_LABEL = { flow: 'Diagram', erd: 'Data model', sequence: 'Sequence diagram', bpmn: 'Process' } as const;
 
 /** Where the editor's text starts, matching how the item draws its label. */
 function editorPadding(item: CanvasItem, box: Box, textHeight: number): CSSProperties {
@@ -2539,8 +2546,8 @@ const CSS = `
 .occ-line-label { display: table; margin: 0 auto; padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
 .occ-figure { border-radius: var(--od-radius-lg); box-shadow: 0 0 0 1px var(--od-color-border); background: var(--od-color-canvas); }
 .occ-figure-body { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
-.occ-figure-tab { position: absolute; left: 0; bottom: 100%; margin-bottom: 4px; font: var(--od-text-ui); font-size: 12px; font-weight: 600; color: var(--od-color-text-muted); white-space: nowrap; opacity: 0; transition: opacity 120ms; pointer-events: none; }
-.occ-figure:hover .occ-figure-tab, .occ-figure-selected .occ-figure-tab, .occ-figure-entered .occ-figure-tab { opacity: 1; }
+/* The figure's title sits above its border, always shown (as in Eraser). */
+.occ-figure-tab { position: absolute; left: 2px; bottom: 100%; margin-bottom: ${FIGURE_TITLE.gap}px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font: var(--od-text-ui); font-size: ${FIGURE_TITLE.size}px; line-height: 1.2; font-weight: 600; color: var(--od-color-text); white-space: nowrap; pointer-events: none; }
 .occ-figure-entered { box-shadow: 0 0 0 2px var(--od-color-accent), var(--od-shadow-chrome); }
 .occ-overlay { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 .occ-handle { pointer-events: all; }
@@ -2686,7 +2693,7 @@ const CSS = `
 .occ-peer-tag { position: absolute; transform: translateY(calc(-100% - 6px)); opacity: 0.92; }
 @media (prefers-reduced-motion: reduce) { .occ-peer-cursor { transition: none; } }
 .occ-focus { position: absolute; inset: 0; z-index: 2; background: var(--od-color-canvas); }
-.occ-world-glide { transition: transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.occ-world-glide { transition: transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1), clip-path 600ms cubic-bezier(0.2, 0.7, 0.2, 1); }
 .occ-root:fullscreen { width: 100vw !important; height: 100vh !important; }
 .occ-present-bar { position: absolute; left: 50%; bottom: var(--od-space-4); transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 4px; max-width: calc(100% - 24px); background: var(--od-color-raised); border: 1px solid var(--od-color-border); border-radius: var(--od-radius-lg); box-shadow: var(--od-shadow-chrome); transition: opacity 300ms ease, transform 300ms ease; }
 .occ-present-bar-hidden { opacity: 0; transform: translate(-50%, 8px); pointer-events: none; }

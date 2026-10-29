@@ -86,4 +86,24 @@ describe("published notebook items", () => {
       minutes: 1,
     });
   });
+
+  it("a note with an image shows it; a project without a canvas picture shows its note's image", async () => {
+    const ws = alice.workspaceId;
+    const nb = await h.notebooks.create(ws, { name: "Guides" }, alice.id);
+    const IMG = "https://cdn.example.com/diagram.png";
+    const withImage = await h.pages.create(ws, { title: "Pictured", notebookId: nb.id }, alice.id);
+    await h.pages.update(withImage.id, { contentMd: `Intro.\n\n\`\`\`\n![not this](https://x.example/code.png)\n\`\`\`\n\n![A diagram](${IMG} "caption")` }, alice.id);
+    const unsafe = await h.pages.create(ws, { title: "Data URL", notebookId: nb.id }, alice.id);
+    await h.pages.update(unsafe.id, { contentMd: "![x](data:image/png;base64,AAAA)" }, alice.id);
+    const { project, noteId } = await h.projects.create(ws, { name: "Proj", notebookId: nb.id }, alice.id);
+    await h.pages.update(noteId, { contentMd: `<img src="${IMG}" alt="">` }, alice.id);
+    await h.settings.setPublished("notebook", nb.id, true, alice.id);
+
+    const view = await h.public.getBySlug(await slugOf(nb.id));
+    if (view.resource.kind !== "notebook") throw new Error("expected a notebook");
+    const byId = new Map(view.resource.items.map((i) => [i.id, i]));
+    expect(byId.get(withImage.id)!.thumbnailUrl).toBe(IMG);
+    expect(byId.get(unsafe.id)!.thumbnailUrl).toBeNull();
+    expect(byId.get(project.id)!.thumbnailUrl).toBe(IMG);
+  });
 });

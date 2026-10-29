@@ -61,12 +61,13 @@ async function inlineImages(doc: CanvasDocument): Promise<CanvasDocument> {
   return { ...doc, items };
 }
 
-function figureSvg(item: FigureItem) {
+/** `title`: false on the canvas, where the title is drawn above the figure's border. */
+function figureSvg(item: FigureItem, title = true) {
   return renderSourceSvg(item.source, {
     theme,
     measureText,
     placements: item.placements,
-    title: true,
+    title,
     iconSet: "eraser",
   });
 }
@@ -84,7 +85,7 @@ export async function renderCanvasPng(
   for (const item of items) {
     if (item.type !== "figure") continue;
     try {
-      figureSvgs.set(item.id, (await figureSvg(item)).svg);
+      figureSvgs.set(item.id, (await figureSvg(item, false)).svg);
     } catch {
       // A figure whose code doesn't lay out is drawn as its empty frame.
     }

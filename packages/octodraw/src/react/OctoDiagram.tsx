@@ -153,8 +153,12 @@ function stepCaption(step: { from: string; to: string; label?: string }, diagram
 }
 
 const ZOOM_MIN = 0.1;
-/** Padding around an embedded diagram; the top leaves room for the breadcrumbs. */
-const EMBED_PAD = { x: 20, top: 48, bottom: 20 };
+/**
+ * Padding around an embedded diagram. The host shows the title outside the box
+ * (canvas figures: above the border, like Eraser), so the top level has no
+ * header; a drilled-in level shows its breadcrumbs and leaves room for them.
+ */
+const EMBED_PAD = { x: 20, top: 20, crumbsTop: 48, bottom: 20 };
 const STREAM_LAYOUT_MS = 900;
 // Draw-in pacing: slow enough to follow each component appearing.
 const DRAW_IN_NODE_MS = 240;
@@ -227,6 +231,8 @@ export function OctoDiagram({
   const groupIds = useMemo(() => [...diagram.nodes.values()].filter((n) => n.kind === 'group' && n.children.length > 0).map((n) => n.id), [diagram]);
 
   const view = useMemo(() => buildView(diagram, { focus, expandDepth, collapsedGroups }), [diagram, focus, expandDepth, collapsedGroups]);
+  const embedTopRef = useRef(EMBED_PAD.top);
+  embedTopRef.current = focus ? EMBED_PAD.crumbsTop : EMBED_PAD.top;
   const anyExpanded = useMemo(() => [...view.nodes.values()].some((n) => n.kind === 'group'), [view]);
   // Collapsing or expanding everything changes the size a lot, so re-fit afterwards.
   const refitAfterLayout = useRef(false);
@@ -443,9 +449,10 @@ export function OctoDiagram({
     (rect: Rect, padding = 56, maxScale = 1.25): Transform => {
       const { width, height } = viewport();
       if (embedded) {
-        // Compact padding with room for the breadcrumbs on top; never enlarge past 1:1.
-        const k = clamp(Math.min((width - EMBED_PAD.x * 2) / Math.max(rect.width, 1), (height - EMBED_PAD.top - EMBED_PAD.bottom) / Math.max(rect.height, 1), 1), ZOOM_MIN, ZOOM_MAX);
-        return { k, x: width / 2 - (rect.x + rect.width / 2) * k, y: EMBED_PAD.top + (height - EMBED_PAD.top - EMBED_PAD.bottom) / 2 - (rect.y + rect.height / 2) * k };
+        // Compact padding (room for the breadcrumbs when drilled in); never enlarge past 1:1.
+        const top = embedTopRef.current;
+        const k = clamp(Math.min((width - EMBED_PAD.x * 2) / Math.max(rect.width, 1), (height - top - EMBED_PAD.bottom) / Math.max(rect.height, 1), 1), ZOOM_MIN, ZOOM_MAX);
+        return { k, x: width / 2 - (rect.x + rect.width / 2) * k, y: top + (height - top - EMBED_PAD.bottom) / 2 - (rect.y + rect.height / 2) * k };
       }
       const k = clamp(Math.min((width - padding * 2) / Math.max(rect.width, 1), (height - padding * 2) / Math.max(rect.height, 1), maxScale), ZOOM_MIN, ZOOM_MAX);
       return { k, x: width / 2 - (rect.x + rect.width / 2) * k, y: height / 2 - (rect.y + rect.height / 2) * k };
@@ -456,7 +463,7 @@ export function OctoDiagram({
   const contentSizeRef = useRef(onContentSize);
   contentSizeRef.current = onContentSize;
   useEffect(() => {
-    if (layout) contentSizeRef.current?.({ width: Math.ceil(layout.width + EMBED_PAD.x * 2), height: Math.ceil(layout.height + EMBED_PAD.top + EMBED_PAD.bottom) });
+    if (layout) contentSizeRef.current?.({ width: Math.ceil(layout.width + EMBED_PAD.x * 2), height: Math.ceil(layout.height + embedTopRef.current + EMBED_PAD.bottom) });
   }, [layout]);
 
   // True while the camera shows the whole diagram as fitted (not panned or zoomed by the user),
@@ -1066,7 +1073,7 @@ export function OctoDiagram({
         </g>
       </svg>
 
-      <header className="od-header">
+      {!(embedded && !view.focus) && <header className="od-header">
         <nav className="od-crumbs" aria-label="Diagram levels">
           {crumbs.map((crumb, i) => {
             const last = i === crumbs.length - 1;
@@ -1087,7 +1094,7 @@ export function OctoDiagram({
           })}
         </nav>
         {subtitle && <p className="od-subtitle">{subtitle}</p>}
-      </header>
+      </header>}
 
       {isFilterActive(filter) && !flow && (
         <div className="od-chips">

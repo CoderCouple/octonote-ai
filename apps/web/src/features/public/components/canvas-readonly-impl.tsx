@@ -2,6 +2,7 @@
 
 import {
   OctoCanvas,
+  visibleSlides,
   type Box,
   type OctoCanvasHandle,
 } from "@octonote/octodraw";
@@ -33,6 +34,10 @@ export interface CanvasViewApi {
   fit: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
+  /** Slides to present (figures and frames, as the author ordered them); 0 = nothing to present. */
+  slideCount: number;
+  /** Full-screen presentation, one slide at a time (Esc ends it). */
+  present: () => void;
 }
 
 export interface CanvasViewState {
@@ -49,6 +54,7 @@ export function CanvasReadOnlyImpl({
   initialDocument,
   onReady,
   onViewChange,
+  onPresentingChange,
   startOnFirstFigure = false,
 }: {
   /** Needed to map figures to the ids notes embed them by. */
@@ -56,6 +62,8 @@ export function CanvasReadOnlyImpl({
   initialDocument: unknown;
   onReady?: (api: CanvasViewApi) => void;
   onViewChange?: (state: CanvasViewState) => void;
+  /** True while presenting, so the page can hide its own controls. */
+  onPresentingChange?: (presenting: boolean) => void;
   /** Phones: open zoomed to the first figure so it's readable straight away. */
   startOnFirstFigure?: boolean;
 }) {
@@ -122,10 +130,12 @@ export function CanvasReadOnlyImpl({
         fit,
         zoomIn: () => handle.current?.zoomIn(),
         zoomOut: () => handle.current?.zoomOut(),
+        slideCount: visibleSlides(doc).length,
+        present: () => handle.current?.present(),
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [figures, canvasId, startOnFirstFigure]);
+  }, [doc, figures, canvasId, startOnFirstFigure]);
 
   return (
     // The page has its own zoom controls and figure list: hide the canvas's corner chrome.
@@ -142,6 +152,7 @@ export function CanvasReadOnlyImpl({
         colorScheme={colorScheme}
         themes={CANVAS_THEMES}
         onPresenceChange={onPresenceChange}
+        onPresentChange={(slide) => onPresentingChange?.(slide !== null)}
         style={{ position: "absolute", inset: 0 }}
       />
     </div>
