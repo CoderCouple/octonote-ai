@@ -12,7 +12,7 @@ import { CanvasesRepository } from "../db/repository/canvases.repository";
 import { PagesRepository } from "../db/repository/pages.repository";
 import { ProjectsRepository } from "../db/repository/projects.repository";
 import { toProject, type Project } from "../model/project.model";
-import { emptyCanvasDocument } from "./lib/canvas-document";
+import { emptyOctodrawDocument } from "@octonote/content/server";
 import { NotebookPlacement } from "./lib/notebook-placement";
 import { expectedChildTitle, isAutoTitle } from "./lib/project-child-naming";
 import { WorkspacesService } from "./workspaces.service";
@@ -87,7 +87,7 @@ export class ProjectsService {
       },
       noteTitle: expectedChildTitle(input.name, "Note"),
       canvasTitle: expectedChildTitle(input.name, "Canvas"),
-      canvasDocument: emptyCanvasDocument(),
+      canvasDocument: emptyOctodrawDocument(),
     });
     await this.changeEvents.record({
       workspaceId,

@@ -9,14 +9,14 @@
  * own model functions to catch drift.
  *
  * octodraw-side extension (not yet in model.ts): `link` on items — the URL a
- * box links to (mermaid `click`, tldraw geo `url`).
+ * box links to (mermaid `click`).
  *
- * Optional fidelity fields (bend, anchor, align/valign, dashed, fill) carry
- * what tldraw canvases had; octodraw treats a missing field as its default
+ * Optional style fields (bend, anchor, align/valign, dashed, fill);
+ * octodraw treats a missing field as its default
  * (straight, centre-aimed, centred text, solid stroke, tinted fill). The line
  * maths below mirrors model.ts (`anchorPoint`, `anchoredEnd`, `bendControl`,
- * `lineGeometry`, `lineBounds`); tldraw-to-octodraw.test.ts checks it
- * against the real functions.
+ * `lineGeometry`, `lineBounds`); flowchart-to-octodraw.test.ts checks
+ * straight lines against the real functions.
  */
 
 export type ShapeKind = "rectangle" | "ellipse" | "diamond";

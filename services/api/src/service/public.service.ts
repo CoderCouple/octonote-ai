@@ -17,7 +17,7 @@ import { ProjectsRepository } from "../db/repository/projects.repository";
 import { SharingRepository, type ShareableRow } from "../db/repository/sharing.repository";
 import { UsersRepository } from "../db/repository/users.repository";
 import type { ResourceKind } from "../model/sharing.model";
-import { readCanvasDocument } from "./lib/canvas-document";
+import { toOctodrawDocument } from "@octonote/content/server";
 import { emailLocalPart } from "./me.service";
 
 export interface PublicNote {
@@ -217,7 +217,7 @@ export class PublicService {
       kind: "canvas",
       id: row.id,
       title: row.title,
-      document: readCanvasDocument(row),
+      document: toOctodrawDocument(row.document),
       thumbnailUrl: row.thumbnailUrl,
       updatedAt: row.updatedAt.toISOString(),
     };

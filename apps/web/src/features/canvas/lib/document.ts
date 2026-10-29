@@ -1,8 +1,7 @@
 /**
  * The stored canvas `document` is an octodraw CanvasDocument
- * (`{ version: 1, items, comments?, presentation? }`, plain JSON). Canvases
- * saved before octodraw hold tldraw snapshots; @octonote/content converts
- * them on load, and the next save stores the octodraw document.
+ * (`{ version: 1, items, comments?, presentation? }`, plain JSON); anything
+ * else loads as an empty canvas.
  */
 import { toOctodrawDocument } from "@octonote/content";
 import type { CanvasDocument } from "@octonote/octodraw";

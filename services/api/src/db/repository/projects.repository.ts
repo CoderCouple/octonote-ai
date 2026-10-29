@@ -103,7 +103,7 @@ export class ProjectsRepository extends BaseRepository<typeof projects> {
         .returning();
       const [canvas] = await tx
         .insert(canvases)
-        .values({ ...common, title: input.canvasTitle, document: input.canvasDocument, documentFormat: "octodraw" })
+        .values({ ...common, title: input.canvasTitle, document: input.canvasDocument })
         .returning();
       if (!page || !canvas) throw new Error("Insert failed on project pair");
       return { project, page, canvas };

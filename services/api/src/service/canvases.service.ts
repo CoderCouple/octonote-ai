@@ -10,7 +10,7 @@ import { BadRequest, NotFound } from "../common/error/error-factory";
 import { PermissionsService, type ResolvedAccess } from "../common/permissions.service";
 import { CanvasesRepository, type CanvasSummaryRow } from "../db/repository/canvases.repository";
 import { toCanvas, type Canvas } from "../model/canvas.model";
-import { canvasDocumentWrite, emptyCanvasDocument } from "./lib/canvas-document";
+import { emptyOctodrawDocument, isOctodrawDocument } from "@octonote/content/server";
 import { NotebookPlacement } from "./lib/notebook-placement";
 import { WorkspacesService } from "./workspaces.service";
 import { PlanLimitsService } from "../common/plan-limits.service";
@@ -73,8 +73,7 @@ export class CanvasesService {
       notebookId: input.notebookId ?? null,
       createdByUserId: actorUserId,
       title: input.title,
-      document: emptyCanvasDocument(),
-      documentFormat: "octodraw",
+      document: emptyOctodrawDocument(),
     });
     await this.changeEvents.record({
       workspaceId,
@@ -99,17 +98,12 @@ export class CanvasesService {
     ) {
       throw BadRequest("Thumbnail must be uploaded to Octonote storage.");
     }
-    // Octodraw from here on; tldraw from older clients is converted and the
-    // canvas's first tldraw version kept as a backup.
-    let documentColumns: ReturnType<typeof canvasDocumentWrite> | null = null;
-    if (patch.document !== undefined) {
-      const existing = await this.canvasesRepo.findById(canvasId);
-      if (!existing) throw NotFound("Canvas not found.");
-      documentColumns = canvasDocumentWrite(patch.document, existing);
+    if (patch.document !== undefined && !isOctodrawDocument(patch.document)) {
+      throw BadRequest("Canvas document must be an octodraw document ({ version: 1, items }).");
     }
     const updated = await this.canvasesRepo.updateById(canvasId, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
-      ...(documentColumns ?? {}),
+      ...(patch.document !== undefined ? { document: patch.document as never } : {}),
       ...(patch.thumbnailUrl !== undefined ? { thumbnailUrl: patch.thumbnailUrl } : {}),
       ...(patch.settings !== undefined ? { settings: patch.settings as never } : {}),
       updatedAt: new Date(),

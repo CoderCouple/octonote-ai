@@ -20,7 +20,6 @@ export type {
 } from "./canvas/octodraw-types";
 export { emptyOctodrawDocument, lineEnds as octodrawLineEnds } from "./canvas/octodraw-types";
 export { isOctodrawDocument, toOctodrawDocument } from "./canvas/canvas-document";
-export { isTldrawDocument, richTextToPlain, tldrawToOctodraw } from "./canvas/tldraw-to-octodraw";
 export { mermaidToOctodraw } from "./canvas/mermaid-to-octodraw";
 export { flowchartToOctodraw } from "./canvas/flowchart-to-octodraw";
 export { MermaidParseError, parseMermaidFlowchart, type Flowchart } from "./canvas/mermaid-flowchart";
