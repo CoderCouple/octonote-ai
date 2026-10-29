@@ -1,6 +1,6 @@
 import { SUPPORT_EMAIL } from "@octonote/shared";
 import Link from "next/link";
-import { DEMO_URL } from "@/lib/site";
+import { DEMO_URL, DOCS_URL } from "@/lib/site";
 import { PROFILES } from "../_data/company";
 import { COMPARISONS } from "../_data/comparisons";
 import { USE_CASES } from "../_data/use-cases";
@@ -23,6 +23,7 @@ const COLUMNS: {
       { href: "/#agents", label: "Agents" },
       { href: "/#examples", label: "Examples" },
       { href: "/cli", label: "CLI" },
+      { href: DOCS_URL, label: "Docs" },
       { href: "/claude", label: "For Claude" },
       { href: "/chatgpt", label: "For ChatGPT" },
       { href: "/pricing", label: "Pricing" },

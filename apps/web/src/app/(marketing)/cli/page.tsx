@@ -17,6 +17,7 @@ import {
 } from "./_components/cli-landing";
 import { CodeBlock } from "./_components/code-block";
 import { Toc } from "./_components/toc";
+import { DOCS_URL } from "@/lib/site";
 import { INSTALL } from "./_data/install";
 import reference from "./_data/reference.json";
 
@@ -186,7 +187,15 @@ export default function CliDocsPage() {
         </h2>
         <p className="text-muted-foreground mt-3 max-w-2xl text-lg">
           Everything in v{reference.version}: agent setup, every command,
-          content formats, sign-in and what scripts can rely on.
+          content formats, sign-in and what scripts can rely on. Guides for the
+          whole app live at{" "}
+          <a
+            href={DOCS_URL}
+            className="text-foreground underline underline-offset-4"
+          >
+            docs.octonote.ai
+          </a>
+          .
         </p>
         <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-14">
           <article className="min-w-0">
@@ -527,8 +536,8 @@ function Content() {
       </Sub>
       <Sub title="Canvases: mermaid flowcharts">
         <P>
-          Flowcharts become real canvas shapes with arrows attached to them — drag
-          a box and its arrows follow.
+          Flowcharts become real canvas shapes with arrows attached to them —
+          drag a box and its arrows follow.
         </P>
         <CodeBlock
           label="flow.mmd"

@@ -17,3 +17,6 @@ export const SITE_DESCRIPTION =
  * while this is null, so the site never shows a dead link.
  */
 export const DEMO_URL: string | null = null;
+
+/** The docs site (Mintlify, deployed from docs/ on main). */
+export const DOCS_URL = "https://docs.octonote.ai";

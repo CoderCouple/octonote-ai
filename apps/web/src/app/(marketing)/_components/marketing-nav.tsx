@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { DOCS_URL } from "@/lib/site";
 import { BookDemoButton } from "./book-demo";
 import { Logo } from "./logo";
 
@@ -9,6 +10,7 @@ const NAV_LINKS = [
   { href: "/#agents", label: "Agents" },
   { href: "/#examples", label: "Examples" },
   { href: "/cli", label: "CLI" },
+  { href: DOCS_URL, label: "Docs" },
   { href: "/students", label: "Students" },
   { href: "/pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
