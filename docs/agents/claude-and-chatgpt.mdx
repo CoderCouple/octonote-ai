@@ -1,0 +1,70 @@
+---
+title: "Claude and ChatGPT"
+description: "Use Octonote from Claude.ai, ChatGPT and Gemini CLI: no install, just sign in."
+---
+
+Octonote has a remote MCP server, so chat assistants can read and write your notes, canvases, projects and notebooks directly, with no CLI to install. You sign in with your Octonote account and choose **Allow**; the assistant then works with the same items you see in the app.
+
+```txt Connector URL
+https://api.octonote.ai/mcp
+```
+
+## Connect
+
+<Tabs>
+  <Tab title="Claude">
+    1. In Claude, open **Settings → Connectors** and choose **Add custom connector**.
+    2. Name it **Octonote** and paste the connector URL above.
+    3. Click **Connect**, sign in to Octonote if asked, and choose **Allow**.
+
+    Turn the connector on in a chat from the tools menu, then ask away.
+  </Tab>
+  <Tab title="ChatGPT">
+    1. In ChatGPT, open **Settings → Apps** (custom apps may need developer mode under **Advanced**).
+    2. Create an app, name it **Octonote** and paste the connector URL above, with OAuth as the authentication.
+    3. Sign in to Octonote when asked and choose **Allow**.
+  </Tab>
+  <Tab title="Gemini CLI">
+    Add the server to `~/.gemini/settings.json`:
+
+    ```json
+    {
+      "mcpServers": {
+        "octonote": { "httpUrl": "https://api.octonote.ai/mcp" }
+      }
+    }
+    ```
+
+    Gemini CLI opens your browser to sign in the first time you use it.
+  </Tab>
+</Tabs>
+
+## What the assistant can do
+
+| Tool | What it does |
+| --- | --- |
+| `search`, `fetch`, `list_items` | Find items by title, read a note's markdown or a notebook's contents, list what you have |
+| `create_note`, `update_note` | Write a note from markdown, or replace or append to one |
+| `create_canvas`, `redraw_canvas` | Draw a canvas from a mermaid flowchart or class diagram |
+| `create_project`, `create_notebook` | Make a project (note and canvas side by side) or a notebook |
+| `rename`, `move` | Rename anything; move items in and out of notebooks |
+| `publish`, `share`, `set_link_access`, `delete` | Only when you ask. Assistants show these as actions that change things and usually ask you first |
+
+Notes support the same markdown as everywhere else: math, ` ```mermaid ` diagrams, code and tables. See [Writing content](/agents/writing-content).
+
+## Try asking
+
+- "Summarise this thread as a note in my **Research** notebook."
+- "Draw our signup flow as a canvas."
+- "Make a project explaining this repo: a write-up and a class diagram where each class links to its code."
+- "Publish the launch note and give me the link."
+
+## Your access, your control
+
+- The assistant acts as you: it sees only what you can see, and your plan's limits apply.
+- Access tokens expire after an hour and are renewed automatically. They only work for the MCP server, not the rest of the API.
+- See or disconnect apps any time in **Settings → Connected apps**; disconnecting ends access at once.
+
+<Note>
+  Prefer the terminal? Claude Code and Codex use the [CLI](/agents/overview) instead, which also works offline from your editor.
+</Note>

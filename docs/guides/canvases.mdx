@@ -1,28 +1,60 @@
 ---
 title: "Canvases"
-description: "An infinite canvas for flows, maps and architecture diagrams."
+description: "An infinite canvas for flows, maps and architecture diagrams, with diagrams you write as code."
 ---
 
-A canvas is an infinite whiteboard with shapes, arrows, text, sticky notes, pencil and more. The tools in the canvas header:
+A canvas is an infinite board for boxes, arrows, sticky notes, text, drawings, images and **figures**: diagrams written as code that lay themselves out.
 
-| Tool | What it does |
-| --- | --- |
-| **Auto-shape** | Rough pencil strokes snap into a clean circle, ellipse, rectangle or arrow. Arrows attach to the shapes near their ends. Off by default. |
-| **Make figure** | Groups the selected shapes into a figure you can embed in a note. |
-| **Ungroup** | Dissolves a figure, or lifts shapes out of it. |
-| **Rearrange** | Lays out the selection (or the whole canvas) **vertically** or **horizontally**. Undo from the "Rearranged" message. |
+## Tools
+
+The tools sit on the left edge. Each has a one-letter shortcut.
+
+| Tool | Key | What it does |
+| --- | --- | --- |
+| **Select** | V | Pick, move and resize. Drag on empty space to select several. |
+| **Pan** | H | Move around. Holding Space does the same with any tool. |
+| **Rectangle / Ellipse / Diamond** | R / O / D | Draw a box. Type to give it a label. |
+| **Sticky note** | S | A coloured note. |
+| **Arrow / Line** | A / L | Drag from one box to another; the ends stay attached when the boxes move. Drag the middle handle to curve it. |
+| **Pen** | P | Freehand drawing. Turn on **Auto-shape** in the header and rough strokes snap to clean shapes. |
+| **Text** | T | Free text. |
+| **Comment** | C | Pin a comment to a shape or a spot. Type `@` to mention someone with access. |
+| **+** | ⌘K or / | Insert a diagram from a template, a shape, an icon or a device frame (phone, browser, …). |
+
+Select something to get its bar: colour, fill (tint, solid or none), dashed outline, text size and alignment, layer order, duplicate and delete.
+
+**Rearrange** in the header lays out the selection (or the whole canvas) vertically or horizontally. Undo from the "Rearranged" message.
 
 ## Figures
 
-A figure is a named part of a canvas, like "Request path" or "Data model".
+A figure is a diagram written as code: architecture maps, flowcharts, data models (ERD), sequence diagrams and processes. Octonote lays it out, routes the arrows and keeps it tidy as it grows. The syntax is the same as [Eraser's diagram-as-code](https://docs.eraser.io/docs/syntax), so code you or an AI wrote for Eraser works here.
 
-1. Select some shapes and click **Make figure**.
-2. Double-click the figure's title bar to rename it.
-3. Drag the figure's handle into a note to embed it, or add a **Figure** block in the note.
+- **Add one** from **+** (⌘K): pick a template.
+- **Turn a sketch into one:** select boxes and arrows you drew and click **To diagram**.
+- **Have an agent write one:** the CLI and the Claude/ChatGPT apps draw canvases from text (see below).
+- **Work inside it:** double-click (or press Enter) to drill into groups, collapse them, and play flows. Esc leaves.
+- **Name it** with a `title` line in its code. The title sits above the figure's border.
 
-The embedded figure updates when you change the drawing (a few seconds after the canvas saves).
+Embed a figure in a note with the **Figure** block, or drag it from the canvas into the note next to it in a project. The note's copy updates a few seconds after the canvas saves.
 
-On a published canvas, readers can jump between figures from the minimap on the right edge (on phones, the **Figures** button).
+## Present
+
+Every figure and device frame is a slide. Click **Present** (bottom right) to show them one at a time, full screen.
+
+- Arrows, Space or a click on the strip of slides under the slide moves between them. **S** hides the strip.
+- **L** turns on a laser pointer; **N** shows your speaker notes.
+- The **presenter view** button opens a second window with the current slide, the next one, your notes and a timer. Keep it on your own screen.
+- **Slides** (next to Present) sets the order, hides slides and holds the speaker notes.
+
+Readers of a [published](/guides/publishing) canvas or project can present it too.
+
+## Export
+
+**Export** (bottom right) downloads the canvas, or just the selection, as PNG, SVG or PDF, or copies it as an image. A selected figure's bar has its own export with more formats.
+
+## Comments
+
+Comments live on the canvas: pins on shapes or spots, with replies, resolve and delete. Comments show the name of the person who wrote them. Resolved ones are hidden until you show them.
 
 ## Draw from text
 

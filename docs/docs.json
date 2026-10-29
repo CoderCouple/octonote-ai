@@ -78,6 +78,7 @@
             "group": "Agents",
             "pages": [
               "agents/overview",
+              "agents/claude-and-chatgpt",
               "agents/claude-code",
               "agents/codex",
               "agents/cloud-and-ci",
