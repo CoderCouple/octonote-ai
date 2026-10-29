@@ -21,7 +21,10 @@ describe("mermaid → octodraw", () => {
     expect(isCanvasDocument(doc)).toBe(true);
     expect(shapes).toHaveLength(7); // 6 nodes + the container
     expect(lines).toHaveLength(5);
-    expect(doc.items[0]).toMatchObject({ id: "group-app", type: "shape", color: "gray" });
+    expect(doc.items[0]).toMatchObject({ id: "group-app", type: "shape", color: "blue" });
+    // Boxes take their subgraph's color; outside one, decisions are yellow.
+    expect(byId(doc.items, "node-A")).toMatchObject({ color: "blue" });
+    expect(byId(doc.items, "node-U")).not.toHaveProperty("color");
     expect(byId(doc.items, "group-app-title")).toMatchObject({ type: "text", text: "App servers", bold: true });
     expect(byId(doc.items, "node-C")).toMatchObject({ shape: "diamond", text: "Cache hit?" });
     expect(byId(doc.items, "node-U")).toMatchObject({ shape: "ellipse" });
@@ -30,6 +33,25 @@ describe("mermaid → octodraw", () => {
     expect(yes).toMatchObject({ start: { item: "node-C" }, end: { item: "node-R" }, endArrow: true });
     expect(lines.find((l) => l.dashed)).toMatchObject({ start: { item: "node-D" }, end: { item: "node-Q" } });
     expect(lines.every((l) => l.start.item && l.end.item)).toBe(true);
+  });
+
+  it("gives each top-level subgraph its own color, shared by nested ones", () => {
+    const items = mermaidToOctodraw(`flowchart TD
+      subgraph one [One]
+        A --> B
+        subgraph inner [Inner]
+          C
+        end
+      end
+      subgraph two [Two]
+        D{Ok?}
+      end
+      E{Free?}`).items;
+    expect(byId(items, "group-one")).toMatchObject({ color: "blue" });
+    expect(byId(items, "group-inner")).toMatchObject({ color: "blue" });
+    expect(byId(items, "group-two")).toMatchObject({ color: "purple" });
+    expect(byId(items, "node-D")).toMatchObject({ color: "purple" });
+    expect(byId(items, "node-E")).toMatchObject({ color: "yellow" });
   });
 
   it("lays out left to right without overlapping boxes, the container around its nodes", () => {

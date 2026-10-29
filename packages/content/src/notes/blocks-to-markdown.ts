@@ -3,8 +3,10 @@
  * serializer only knows the standard blocks, so Octonote's own blocks are
  * first rewritten into standard ones that read back the same way:
  * mermaid / math → fenced code, inline math → `$…$` code (read back as math
- * by markdownToBlocks), figures → images, canvas references → a line of text.
+ * by markdownToBlocks), figures → images tagged with the figure id (read back
+ * as figures), canvas references → a line of text.
  */
+import { figureUrl } from "./markdown-to-blocks";
 import type { NoteBlock } from "./types";
 
 export function toStandardBlocks(blocks: NoteBlock[]): NoteBlock[] {
@@ -31,8 +33,17 @@ function toStandard(block: NoteBlock): NoteBlock {
       return {
         type: "image",
         props: {
-          url: String(block.props?.imageUrl ?? ""),
-          caption: String(block.props?.title ?? ""),
+          // The fragment names the figure, so markdownToBlocks reads it back as one.
+          url: block.props?.figureId
+            ? figureUrl(
+                String(block.props?.imageUrl ?? ""),
+                String(block.props.figureId),
+                Number(block.props?.width ?? 0),
+                Number(block.props?.height ?? 0),
+              )
+            : String(block.props?.imageUrl ?? ""),
+          // A caption makes BlockNote write HTML; the title rides in the alt text instead.
+          caption: block.props?.figureId ? "" : String(block.props?.title ?? ""),
           name: String(block.props?.title ?? ""),
         },
         children,

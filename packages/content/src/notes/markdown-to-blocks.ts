@@ -29,6 +29,31 @@ const LINK_WITH_CODE_RE = /(?<!!)\[([^\]\n]*`[^\]\n]*)\]\(/g;
 
 export const MATH_LANGS = new Set(["math", "latex", "tex", "katex"]);
 
+/**
+ * A canvas figure in markdown is an image whose URL fragment names it:
+ * `![Title](<figure image url>#octonote-figure=fig_…&w=1200&h=800)` (size
+ * optional). It reads back as a `figure` block, so notes written by the CLI
+ * embed live figures instead of static images.
+ */
+const FIGURE_FRAGMENT_RE = /#octonote-figure=(fig_[0-9a-f-]{36})(?:&w=(\d+))?(?:&h=(\d+))?$/;
+
+export function figureUrl(imageUrl: string, figureId: string, width = 0, height = 0): string {
+  const size = width > 0 && height > 0 ? `&w=${Math.round(width)}&h=${Math.round(height)}` : "";
+  return `${imageUrl}#octonote-figure=${figureId}${size}`;
+}
+
+function readFigureUrl(url: string) {
+  const m = url.match(FIGURE_FRAGMENT_RE);
+  if (!m) return null;
+  return {
+    figureId: m[1]!,
+    imageUrl: url.slice(0, m.index),
+    width: Number(m[2] ?? 0),
+    height: Number(m[3] ?? 0),
+    widthPct: 100,
+  };
+}
+
 /** Cheap check: does this text use any of the extras? */
 export function hasMarkdownExtras(text: string): boolean {
   return (
@@ -150,6 +175,17 @@ function restoreBlock(block: NoteBlock, display: string[], inline: string[]): No
         id: block.id,
         type: "mathBlock",
         props: { latex: display[Number(token[1])] ?? "" },
+        children,
+      };
+  }
+
+  if (block.type === "image") {
+    const figure = readFigureUrl(String(block.props?.url ?? ""));
+    if (figure)
+      return {
+        id: block.id,
+        type: "figure",
+        props: { ...figure, title: String(block.props?.name || block.props?.caption || "") },
         children,
       };
   }

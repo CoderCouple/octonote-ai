@@ -101,6 +101,21 @@ describe("markdown → note document", () => {
     expect(flat.find((c) => c.text === "real italic")?.styles?.italic).toBe(true);
   });
 
+  it("reads an image tagged with a figure id as a figure, and writes it back the same way", async () => {
+    const id = "fig_0a1b2c3d-0000-4000-8000-123456789abc";
+    const url = `https://x.supabase.co/storage/v1/object/public/canvas-figures/${id}.png?v=7`;
+    const doc = await markdownToNoteDocument(`![The loop](${url}#octonote-figure=${id}&w=1200&h=800)\n\n![Plain](https://example.com/p.png)\n`);
+    expect(doc.blocks[0]).toMatchObject({
+      type: "figure",
+      props: { figureId: id, title: "The loop", imageUrl: url, width: 1200, height: 800 },
+    });
+    expect(doc.blocks[1]!.type).toBe("image");
+    const md = await noteDocumentToMarkdown(doc);
+    expect(md).toContain(`#octonote-figure=${id}&w=1200&h=800`);
+    const again = await markdownToNoteDocument(md);
+    expect(again.blocks[0]!.props).toMatchObject({ figureId: id, imageUrl: url });
+  });
+
   it("handles an empty document", async () => {
     expect(await noteDocumentToMarkdown({})).toBe("");
     expect((await markdownToNoteDocument("")).blocks.length).toBeLessThanOrEqual(1);
