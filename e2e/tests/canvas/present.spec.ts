@@ -138,3 +138,28 @@ test("the presenter view shows this slide, the next one, notes and the timer", a
   await expect(pv.getByRole("region", { name: "Current slide" }).getByRole("img", { name: "Second" })).toBeVisible();
   await expect(pv.getByText("No notes for this slide.", { exact: false })).toBeVisible();
 });
+
+test("presenting shows a strip of every slide; clicking one goes there", async ({ page, api, enter }) => {
+  const fig = (id: string, x: number, title: string) => ({ id, type: "figure", x, y: 0, w: 500, h: 300, source: `title ${title}\nA > B`, autoSize: false });
+  const c = await api.createCanvas(e2eTitle("slide strip"));
+  await api.updateCanvas(c.id, { document: docOf([fig("f1", 0, "First"), fig("f2", 700, "Second"), fig("f3", 1400, "Third")]) });
+  await enter(`/c/${c.id}`);
+  const ui = await new CanvasUi(page).ready({ items: 3 });
+  await ui.root.getByRole("button", { name: "Present", exact: true }).click();
+  const strip = page.getByRole("list", { name: "Slides" });
+  await expect(strip.getByRole("listitem")).toHaveCount(3);
+  await expect(strip.getByRole("listitem", { name: "Slide 1: First" })).toHaveAttribute("aria-current", "true");
+  await expect(strip.locator("img")).toHaveCount(3);
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: test.info().outputPath("slide-strip.png") });
+
+  await strip.getByRole("listitem", { name: "Slide 3: Third" }).click();
+  await expect(page.getByText("3 / 3")).toBeVisible();
+  await expect(strip.getByRole("listitem", { name: "Slide 3: Third" })).toHaveAttribute("aria-current", "true");
+
+  // S hides it.
+  await page.keyboard.press("s");
+  await expect(strip).toHaveCount(0);
+  await page.keyboard.press("s");
+  await expect(strip).toBeVisible();
+});

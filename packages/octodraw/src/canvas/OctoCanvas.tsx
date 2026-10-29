@@ -178,6 +178,8 @@ type Gesture =
   | { kind: 'bend'; id: string };
 
 const ZOOM_MIN = 0.1;
+/** Room kept free under a slide for the slide strip (px). */
+const STRIP_ROOM = 112;
 const ZOOM_MAX = 4;
 const COLORS = [undefined, 'blue', 'green', 'red', 'orange', 'purple', 'yellow', 'gray'] as const;
 const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
@@ -373,11 +375,12 @@ export function OctoCanvas(props: OctoCanvasProps) {
     const c = camRef.current;
     return { x: (clientX - rect.left - c.x) / c.k, y: (clientY - rect.top - c.y) / c.k };
   };
-  const fitBox = useCallback((box: Box, maxScale = 1) => {
+  /** `bottom`: extra room kept free at the bottom (the slide strip while presenting). */
+  const fitBox = useCallback((box: Box, maxScale = 1, bottom = 0) => {
     const { width, height } = viewport();
     const pad = 64;
-    const k = clamp(Math.min((width - pad * 2) / Math.max(box.w, 1), (height - pad * 2) / Math.max(box.h, 1), maxScale), ZOOM_MIN, ZOOM_MAX);
-    setCam({ k, x: width / 2 - (box.x + box.w / 2) * k, y: height / 2 - (box.y + box.h / 2) * k });
+    const k = clamp(Math.min((width - pad * 2) / Math.max(box.w, 1), (height - bottom - pad * 2) / Math.max(box.h, 1), maxScale), ZOOM_MIN, ZOOM_MAX);
+    setCam({ k, x: width / 2 - (box.x + box.w / 2) * k, y: (height - bottom) / 2 - (box.y + box.h / 2) * k });
   }, []);
   // Report this user's view as the camera moves, and follow someone else's.
   useEffect(() => report(), [cam]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1126,6 +1129,10 @@ export function OctoCanvas(props: OctoCanvasProps) {
         setNotesOpen((on) => !on);
         return;
       }
+      if (key === 's' && !mod) {
+        setStripOpen((on) => !on);
+        return;
+      }
     }
     if (readOnly) {
       // Only viewing keys.
@@ -1257,6 +1264,10 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const [presentDrawIn, setPresentDrawIn] = useState<{ id: string; nonce: number } | null>(null);
   const activeDrawIn = presenting !== null ? presentDrawIn : drawIn;
   const [barVisible, setBarVisible] = useState(true);
+  // The slide strip under the slide while presenting (Canva-style); S toggles it.
+  const [stripOpen, setStripOpen] = useState(true);
+  const stripOpenRef = useRef(stripOpen);
+  stripOpenRef.current = stripOpen;
   const savedCam = useRef<Camera | null>(null);
   const glideTimer = useRef(0);
   const presentChange = useRef(props.onPresentChange);
@@ -1272,7 +1283,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
       window.clearTimeout(glideTimer.current);
       glideTimer.current = window.setTimeout(() => setCamGliding(false), 650);
     }
-    fitBox(slide.box, 2);
+    fitBox(slide.box, 2, stripOpenRef.current ? STRIP_ROOM : 0);
   };
   const goToSlide = (index: number) => {
     const next = clamp(index, 0, slides.length - 1);
@@ -1415,6 +1426,10 @@ export function OctoCanvas(props: OctoCanvasProps) {
       el?.removeEventListener('pointerdown', wake);
     };
   }, [presenting === null]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Showing or hiding the strip re-fits the slide around it.
+  useEffect(() => {
+    if (presentingRef.current !== null) presentApi.current.show(presentingRef.current, true);
+  }, [stripOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- rendering ----
   // Nothing is selected in read-only views (a host-controlled selection may still name items).
@@ -1771,6 +1786,19 @@ export function OctoCanvas(props: OctoCanvasProps) {
         </div>
       )}
 
+      {presenting !== null && slides[presenting] && stripOpen && (
+        <SlideStrip
+          className={barVisible ? undefined : 'occ-present-bar-hidden'}
+          slides={slides}
+          index={presenting}
+          onGo={(i) => {
+            goToSlide(i);
+            // Keep the keys (arrows, S, Esc) working after a click on the strip.
+            rootRef.current?.focus({ preventScroll: true });
+          }}
+          preview={slidePreview}
+        />
+      )}
       {presenting !== null && slides[presenting] && (
         <div className={`occ-present-bar occ-chrome${barVisible ? '' : ' occ-present-bar-hidden'}`} role="toolbar" aria-label="Presentation">
           <button type="button" className="occ-icon-button" onClick={() => goToSlide(presenting - 1)} disabled={presenting === 0} aria-label="Previous slide">
@@ -1784,6 +1812,9 @@ export function OctoCanvas(props: OctoCanvasProps) {
             <Glyph d="M9 6l6 6-6 6" />
           </button>
           <span className="occ-corner-sep" />
+          <button type="button" className="occ-icon-button" aria-pressed={stripOpen} onClick={() => setStripOpen((on) => !on)} title="Slide strip (S)" aria-label="Slide strip">
+            <Glyph d="M3 15h5v5H3zM10 15h5v5h-5zM17 15h4v5h-4zM5 4h14v8H5z" />
+          </button>
           <button type="button" className="occ-icon-button" aria-pressed={laser} onClick={() => setLaser((on) => !on)} title="Laser pointer (L)" aria-label="Laser pointer">
             <Glyph d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M12 3v3M12 18v3M3 12h3M18 12h3" />
           </button>
@@ -2011,6 +2042,47 @@ body { margin: 0; font: 15px/1.5 Inter, system-ui, sans-serif; background: #0e0e
   .pv-notes-box { flex: none; }
 }
 `;
+
+/** While presenting: every slide as a thumbnail in a row (current one outlined); click one to go there. */
+function SlideStrip({ slides, index, onGo, preview, className }: { slides: ReturnType<typeof presentationSlides>; index: number; onGo: (index: number) => void; preview: (slide: ReturnType<typeof presentationSlides>[number]) => Promise<string>; className?: string }) {
+  const thumbs = useRef(new Map<string, string>());
+  const [, setEpoch] = useState(0);
+  const rowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let cancelled = false;
+    // Nearest slides first, so what's in view fills in before the rest.
+    const order = slides.map((s, i) => ({ s, d: Math.abs(i - index) })).sort((a, b) => a.d - b.d);
+    void (async () => {
+      for (const { s } of order) {
+        const key = s.id ?? '';
+        if (thumbs.current.has(key)) continue;
+        const src = await preview(s).catch(() => '');
+        if (cancelled) return;
+        thumbs.current.set(key, src);
+        setEpoch((e) => e + 1);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slides, index, preview]);
+  useEffect(() => {
+    rowRef.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [index]);
+  return (
+    <div ref={rowRef} className={`occ-strip occ-chrome${className ? ` ${className}` : ''}`} role="list" aria-label="Slides" onPointerDown={(e) => e.stopPropagation()}>
+      {slides.map((s, i) => {
+        const src = thumbs.current.get(s.id ?? '');
+        return (
+          <button key={s.id ?? i} type="button" role="listitem" className="occ-strip-slide" aria-current={i === index} onClick={() => onGo(i)} title={`${i + 1}. ${s.title}`} aria-label={`Slide ${i + 1}: ${s.title}`}>
+            {src ? <img src={src} alt="" draggable={false} /> : <span className="occ-strip-name">{s.title}</span>}
+            <span className="occ-strip-num">{i + 1}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /** The presentation outline: order (drag or arrows), hide, speaker notes. */
 function SlidesPanel(props: {
@@ -2725,6 +2797,14 @@ const CSS = `
 .occ-root:fullscreen { width: 100vw !important; height: 100vh !important; }
 .occ-present-bar { position: absolute; left: 50%; bottom: var(--od-space-4); transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 4px; max-width: calc(100% - 24px); background: var(--od-color-raised); border: 1px solid var(--od-color-border); border-radius: var(--od-radius-lg); box-shadow: var(--od-shadow-chrome); transition: opacity 300ms ease, transform 300ms ease; }
 .occ-present-bar-hidden { opacity: 0; transform: translate(-50%, 8px); pointer-events: none; }
+.occ-strip { position: absolute; left: 50%; bottom: calc(var(--od-space-4) + 52px); transform: translateX(-50%); z-index: 4; display: flex; gap: 10px; padding: 8px; max-width: calc(100% - 24px); overflow-x: auto; scrollbar-width: none; background: var(--od-color-raised); border: 1px solid var(--od-color-border); border-radius: var(--od-radius-lg); box-shadow: var(--od-shadow-chrome); transition: opacity 300ms ease, transform 300ms ease; }
+.occ-strip::-webkit-scrollbar { display: none; }
+.occ-strip-slide { position: relative; flex: none; width: 128px; height: 80px; padding: 0; border: 1px solid var(--od-color-border); border-radius: var(--od-radius-md); background: var(--od-color-canvas); overflow: hidden; cursor: pointer; display: grid; place-items: center; }
+.occ-strip-slide img { width: 100%; height: 100%; object-fit: contain; }
+.occ-strip-slide:hover { border-color: var(--od-color-text-muted); }
+.occ-strip-slide[aria-current="true"] { outline: 2px solid var(--od-color-accent); outline-offset: 2px; border-color: transparent; }
+.occ-strip-name { font: var(--od-text-ui); font-size: 11px; padding: 6px; color: var(--od-color-text-muted); text-align: center; overflow: hidden; }
+.occ-strip-num { position: absolute; left: 4px; bottom: 3px; font: var(--od-text-ui); font-size: 10px; font-weight: 600; line-height: 1; padding: 2px 4px; border-radius: 4px; background: var(--od-color-raised); color: var(--od-color-text-muted); }
 .occ-present-count { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--od-color-text-muted); padding: 0 4px; }
 .occ-present-title { font-size: 13px; font-weight: 600; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px; }
 @media (prefers-reduced-motion: reduce) { .occ-world-glide { transition: none; } }
