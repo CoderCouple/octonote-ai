@@ -104,6 +104,13 @@ export class CanvasesController {
     };
   }
 
+  /** People who can be @mentioned in the canvas's comments (id + name, no emails). */
+  @Get("canvases/:id/people")
+  @UseGuards(SupabaseAuthGuard)
+  async people(@Param("id", IdParam) id: string, @Req() req: AuthenticatedRequest): Promise<{ id: string; name: string }[]> {
+    return this.canvases.people(id, req.user.id);
+  }
+
   @Patch("canvases/:id")
   @UseGuards(SupabaseAuthGuard)
   async update(

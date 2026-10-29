@@ -15,6 +15,11 @@ export function updateCanvasClientApi(canvasId: string, body: CanvasUpdate) {
   return clientApi.patch<Canvas>(`/canvases/${canvasId}`, body);
 }
 
+/** People who can be @mentioned in the canvas's comments (editors only). */
+export function listCanvasPeopleClientApi(canvasId: string) {
+  return clientApi.get<{ id: string; name: string }[]>(`/canvases/${canvasId}/people`);
+}
+
 export function deleteCanvasClientApi(canvasId: string) {
   return clientApi.delete<Canvas>(`/canvases/${canvasId}`);
 }

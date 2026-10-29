@@ -12,7 +12,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { SaveState } from "@/components/save-indicator";
 import { uploadNoteImage } from "@/features/notes/lib/upload-image";
-import { updateCanvasClientApi } from "../api/canvases-client-api";
+import {
+  listCanvasPeopleClientApi,
+  updateCanvasClientApi,
+} from "../api/canvases-client-api";
 import { autoShape as applyAutoShape } from "../lib/auto-shape";
 import { toCanvasDocument } from "../lib/document";
 import {
@@ -76,6 +79,9 @@ export function OctoCanvas({
   const handle = useRef<OctoCanvasHandle>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<string[]>([]);
+  // Who can be @mentioned in comments: everyone with access to the canvas.
+  const [people, setPeople] = useState<CommentAuthor[]>();
+  const userId = user?.id;
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
   const autoShapeRef = useRef(autoShape);
@@ -237,6 +243,17 @@ export function OctoCanvas({
     };
   }, [readOnly, canvasId, undo]);
 
+  useEffect(() => {
+    if (readOnly || !userId) return;
+    let live = true;
+    void listCanvasPeopleClientApi(canvasId)
+      .then((list) => live && setPeople(list))
+      .catch((err) => console.warn("Couldn't load people to mention", err));
+    return () => {
+      live = false;
+    };
+  }, [readOnly, canvasId, userId]);
+
   const onEditorRef = useRef(onEditor);
   onEditorRef.current = onEditor;
   useEffect(() => {
@@ -284,6 +301,7 @@ export function OctoCanvas({
         onSelectionChange={setSelection}
         readOnly={readOnly}
         user={user ?? undefined}
+        people={people}
         colorScheme={colorScheme}
         themes={CANVAS_THEMES}
         onUploadImage={readOnly ? undefined : onUploadImage}

@@ -13,7 +13,7 @@
  * No access at all → 404, so private resources aren't revealed to exist.
  */
 import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { Database, DRIZZLE } from "../db/database.module";
 import {
   canvases,
@@ -21,6 +21,7 @@ import {
   pages,
   projects,
   resourceShares,
+  users,
   workspaceMembers,
 } from "../db/schema";
 
@@ -139,6 +140,36 @@ export class PermissionsService {
     const access = await this.resolve(userId, locator);
     this.assert(access, action);
     return access;
+  }
+
+  /**
+   * Everyone signed up who can open the resource by name: workspace members,
+   * creators in the chain and active per-person shares on it or an ancestor.
+   * Not "anyone with the link" visitors (nobody to list). Sorted by name.
+   */
+  async peopleWithAccess(locator: ResourceLocator): Promise<{ id: string; name: string; email: string }[]> {
+    const chain = await this.loadChain(locator);
+    const ids = new Set(chain.map((n) => n.createdByUserId));
+    const members = await this.db
+      .select({ userId: workspaceMembers.userId })
+      .from(workspaceMembers)
+      .where(eq(workspaceMembers.workspaceId, chain[0]!.workspaceId));
+    for (const m of members) ids.add(m.userId);
+    const shares = await this.db
+      .select({ userId: resourceShares.grantedToUserId })
+      .from(resourceShares)
+      .where(
+        and(
+          eq(resourceShares.status, "active"),
+          or(...chain.map((n) => and(eq(resourceShares.resourceKind, n.kind), eq(resourceShares.resourceId, n.id)))),
+        ),
+      );
+    for (const s of shares) if (s.userId) ids.add(s.userId);
+    const rows = await this.db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(inArray(users.id, [...ids]));
+    return rows.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /** The resource first, then its ancestors. Throws 404 if the resource is missing or deleted. */

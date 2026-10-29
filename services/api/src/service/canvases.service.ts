@@ -49,6 +49,13 @@ export class CanvasesService {
     private readonly planLimits: PlanLimitsService,
   ) {}
 
+  /** Who can be @mentioned in the canvas's comments: people with access, names only. Editors only. */
+  async people(id: string, actorUserId: string): Promise<{ id: string; name: string }[]> {
+    await this.permissions.require(actorUserId, { kind: "canvas", id }, "edit");
+    const people = await this.permissions.peopleWithAccess({ kind: "canvas", id });
+    return people.map((p) => ({ id: p.id, name: p.name.trim() || p.email.split("@")[0]! }));
+  }
+
   async listStandalone(workspaceId: string, actorUserId: string): Promise<CanvasSummaryRow[]> {
     await this.workspacesService.requireRole(actorUserId, workspaceId, [...MEMBER_ROLES]);
     return this.canvasesRepo.listStandalone(workspaceId);
