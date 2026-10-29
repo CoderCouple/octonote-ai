@@ -5,7 +5,9 @@
  *   - "Help improve Octonote" off means nothing is sent; no key means nothing either.
  */
 import { beforeEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 import { ProductAnalytics } from "../../src/common/product-analytics.service";
+import { users } from "../../src/db/schemas/users";
 import { createHarness, type Harness } from "./harness";
 
 let h: Harness;
@@ -80,6 +82,16 @@ describe("product analytics", () => {
     await h.pages.create(alice.workspaceId, { title: "Loud" }, alice.id);
     await settle();
     expect(events()).toEqual(["note_created"]);
+  });
+
+  it("sends nothing for staff (users.is_admin)", async () => {
+    const staff = await h.signIn("staff@example.com");
+    await h.db.update(users).set({ isAdmin: true }).where(eq(users.id, staff.id));
+    await settle();
+    h.posthog.sent.length = 0;
+    await h.pages.create(staff.workspaceId, { title: "Internal" }, staff.id);
+    await settle();
+    expect(h.posthog.sent).toEqual([]);
   });
 
   it("is off without a PostHog key", async () => {

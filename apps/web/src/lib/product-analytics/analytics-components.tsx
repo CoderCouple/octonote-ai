@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { startAppAnalytics, startSiteAnalytics, stopAppAnalytics, track } from "./posthog";
+import { markStaffBrowser, startAppAnalytics, startSiteAnalytics, stopAppAnalytics, track } from "./posthog";
 
 /** Marketing and sign-in pages: page views, plus clicks on sign-up links. */
 export function SiteAnalytics() {
@@ -20,10 +20,14 @@ export function SiteAnalytics() {
 }
 
 /** The signed-in app (workspace and editors). */
-export function AppAnalytics({ userId, allowed }: { userId: string; allowed: boolean }) {
+export function AppAnalytics({ userId, allowed, staff = false }: { userId: string; allowed: boolean; staff?: boolean }) {
   useEffect(() => {
+    if (staff) {
+      markStaffBrowser();
+      return;
+    }
     startAppAnalytics(userId, allowed);
     return () => stopAppAnalytics();
-  }, [userId, allowed]);
+  }, [userId, allowed, staff]);
   return null;
 }

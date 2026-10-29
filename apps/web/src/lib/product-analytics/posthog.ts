@@ -9,7 +9,9 @@
  *     input masked, and the note editor and canvas left out entirely;
  *   - never on published pages, the mobile/admin handoffs or the admin portal;
  *   - off without NEXT_PUBLIC_POSTHOG_KEY, and off for people who turn off
- *     "Help improve Octonote".
+ *     "Help improve Octonote";
+ *   - off for staff, and on any browser a staff account has used (one flag
+ *     in local storage, set only there), so our own visits don't count.
  * Events go through /ingest on our own domain (see next.config.ts).
  */
 import posthog from "posthog-js";
@@ -20,9 +22,33 @@ const UNTRACKED = /^\/(pub|embed|admin|admin-enter)(\/|$)/;
 
 let started = false;
 
+const STAFF_KEY = "octonote:staff";
+
+function isStaffBrowser(): boolean {
+  try {
+    return window.localStorage.getItem(STAFF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** A staff account signed in here: never track this browser again, and stop now. */
+export function markStaffBrowser(): void {
+  try {
+    window.localStorage.setItem(STAFF_KEY, "1");
+  } catch {
+    // Storage blocked: the app still skips tracking for staff while signed in.
+  }
+  if (started) {
+    posthog.stopSessionRecording();
+    posthog.opt_out_capturing();
+  }
+}
+
 function start(): boolean {
   if (!env.NEXT_PUBLIC_POSTHOG_KEY || typeof window === "undefined") return false;
   if (window.location.host.startsWith("admin.")) return false;
+  if (isStaffBrowser()) return false;
   if (started) return true;
   started = true;
   posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
