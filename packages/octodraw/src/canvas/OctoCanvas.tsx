@@ -1322,7 +1322,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
       presenterWinRef.current.focus();
       return;
     }
-    const win = window.open('', 'octodraw-presenter', 'width=960,height=620');
+    const win = window.open('', 'octodraw-presenter', 'width=1280,height=800');
     if (!win) return;
     win.document.title = 'Presenter view';
     win.document.body.innerHTML = '';
@@ -1790,7 +1790,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
           <button type="button" className="occ-icon-button" aria-pressed={notesOpen} onClick={() => setNotesOpen((on) => !on)} title="Speaker notes (N)" aria-label="Speaker notes">
             <Glyph d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
           </button>
-          <button type="button" className="occ-icon-button" aria-pressed={!!presenterWin} onClick={openPresenterView} title="Presenter view: notes, next slide and timer in a separate window" aria-label="Presenter view">
+          <button type="button" className="occ-icon-button" aria-pressed={!!presenterWin} onClick={openPresenterView} title="Presenter view: this slide, the next one, notes and timer in a separate window" aria-label="Presenter view">
             <Glyph d="M3 5h12v9H3zM17 9h4v10h-9v-3M6 18h6" />
           </button>
           <button type="button" className="occ-bar-btn" onClick={stopPresenting} title="Stop presenting (Esc)">
@@ -1900,33 +1900,35 @@ export function OctoCanvas(props: OctoCanvasProps) {
 /** The presenter's window: current slide and notes, what's next, elapsed time, controls. */
 function PresenterView({ slides, index, startedAt, onGo, onEnd, preview }: { slides: ReturnType<typeof presentationSlides>; index: number; startedAt: number; onGo: (index: number) => void; onEnd: () => void; preview: (slide: ReturnType<typeof presentationSlides>[number]) => Promise<string> }) {
   const [now, setNow] = useState(() => Date.now());
-  // Thumbnail of the next slide (cached per slide).
+  // Pictures of slides (cached per slide id); the current and next one, plus the previous for going back.
   const thumbs = useRef(new Map<string, string>());
-  const [nextThumb, setNextThumb] = useState<string | null>(null);
-  const upcoming = slides[index + 1];
+  const [, setThumbEpoch] = useState(0);
+  const slide = slides[index];
+  const next = slides[index + 1];
   useEffect(() => {
-    if (!upcoming) return setNextThumb(null);
-    const key = upcoming.id ?? '';
-    const cached = thumbs.current.get(key);
-    if (cached) return setNextThumb(cached);
-    setNextThumb(null);
     let cancelled = false;
-    void preview(upcoming).then((src) => {
-      thumbs.current.set(key, src);
-      if (!cancelled) setNextThumb(src);
-    });
+    for (const s of [slide, next, slides[index - 1], slides[index + 2]]) {
+      if (!s) continue;
+      const key = s.id ?? '';
+      if (thumbs.current.has(key)) continue;
+      void preview(s).then((src) => {
+        thumbs.current.set(key, src);
+        if (!cancelled) setThumbEpoch((e) => e + 1);
+      });
+    }
     return () => {
       cancelled = true;
     };
-  }, [upcoming, preview]);
+  }, [slide, next, slides, index, preview]);
+  const thumbOf = (s: typeof slide) => (s ? thumbs.current.get(s.id ?? '') : undefined);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
   const seconds = Math.max(0, Math.floor((now - startedAt) / 1000));
   const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-  const slide = slides[index];
-  const next = slides[index + 1];
+  const current = thumbOf(slide);
+  const upcoming = thumbOf(next);
   return (
     <div className="pv">
       <header className="pv-head">
@@ -1937,16 +1939,27 @@ function PresenterView({ slides, index, startedAt, onGo, onEnd, preview }: { sli
           {clock}
         </span>
       </header>
-      <main className="pv-main">
-        <h1>{slide?.title}</h1>
-        <div className="pv-notes">{slide?.notes || <span className="pv-muted">No notes for this slide.</span>}</div>
+      <main className="pv-body">
+        <section className="pv-current" aria-label="Current slide">
+          <div className="pv-label">Now · {slide?.title}</div>
+          <div className="pv-frame pv-frame-big">{current ? <img src={current} alt={slide?.title ?? ''} /> : <span className="pv-muted">Loading…</span>}</div>
+        </section>
+        <aside className="pv-side">
+          <section aria-label="Next slide">
+            <div className="pv-label">Next · {next ? next.title : 'End of the presentation'}</div>
+            <div className="pv-frame pv-frame-small">{next ? upcoming ? <img src={upcoming} alt={next.title} /> : <span className="pv-muted">Loading…</span> : <span className="pv-muted">That was the last slide.</span>}</div>
+          </section>
+          <section className="pv-notes-box" aria-label="Speaker notes">
+            <div className="pv-label">Notes</div>
+            <div className="pv-notes">{slide?.notes || <span className="pv-muted">No notes for this slide. Add them in the Slides panel.</span>}</div>
+          </section>
+        </aside>
       </main>
       <footer className="pv-foot">
-        <div className="pv-next">
-          {nextThumb && <img src={nextThumb} alt="" />}
-          <div>
-            <span className="pv-muted">Next</span> {next ? next.title : 'End of the presentation'}
-          </div>
+        <div className="pv-dots" aria-hidden="true">
+          {slides.map((s, i) => (
+            <span key={s.id ?? i} className={i === index ? 'pv-dot pv-dot-on' : i < index ? 'pv-dot pv-dot-past' : 'pv-dot'} />
+          ))}
         </div>
         <div className="pv-buttons">
           <button type="button" onClick={() => onGo(index - 1)} disabled={index === 0}>
@@ -1965,23 +1978,38 @@ function PresenterView({ slides, index, startedAt, onGo, onEnd, preview }: { sli
 }
 
 const PRESENTER_CSS = `
-:root { color-scheme: light dark; }
-body { margin: 0; font: 15px/1.5 Inter, system-ui, sans-serif; background: #111113; color: #f4f4f5; }
+:root { color-scheme: dark; }
+body { margin: 0; font: 15px/1.5 Inter, system-ui, sans-serif; background: #0e0e10; color: #f4f4f5; }
 .pv { display: flex; flex-direction: column; height: 100vh; }
-.pv-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid #27272a; }
+.pv-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #27272a; }
 .pv-count { color: #a1a1aa; font-size: 13px; }
 .pv-clock { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.pv-main { flex: 1; overflow-y: auto; padding: 20px 24px; }
-.pv-main h1 { margin: 0 0 14px; font-size: 26px; }
-.pv-notes { font-size: 22px; line-height: 1.5; white-space: pre-wrap; }
+.pv-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 20px; padding: 20px; }
+.pv-current { display: flex; flex-direction: column; min-height: 0; }
+.pv-side { display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+.pv-label { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #a1a1aa; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-frame { display: grid; place-items: center; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px #27272a; }
+.pv-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pv-frame-big { flex: 1; min-height: 0; box-shadow: 0 0 0 2px #3b82f6; }
+.pv-frame-small { aspect-ratio: 16 / 10; }
+.pv-frame .pv-muted { color: #71717a; }
+.pv-notes-box { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.pv-notes { flex: 1; overflow-y: auto; font-size: 20px; line-height: 1.5; white-space: pre-wrap; padding: 14px 16px; background: #18181b; border-radius: 10px; }
 .pv-muted { color: #71717a; }
-.pv-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 20px; border-top: 1px solid #27272a; }
-.pv-next { display: flex; align-items: center; gap: 12px; font-size: 15px; min-width: 0; }
-.pv-next img { width: 180px; height: 110px; object-fit: contain; background: #fff; border-radius: 6px; flex: none; }
-.pv-buttons { display: flex; gap: 8px; }
+.pv-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 20px; border-top: 1px solid #27272a; }
+.pv-dots { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.pv-dot { width: 8px; height: 8px; border-radius: 50%; background: #3f3f46; }
+.pv-dot-past { background: #71717a; }
+.pv-dot-on { background: #3b82f6; width: 20px; border-radius: 4px; }
+.pv-buttons { display: flex; gap: 8px; flex: none; }
 .pv-buttons button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid #3f3f46; background: #18181b; color: inherit; cursor: pointer; }
 .pv-buttons button:disabled { opacity: 0.4; cursor: default; }
 .pv-buttons .pv-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+@media (max-width: 760px) {
+  .pv-body { grid-template-columns: 1fr; overflow-y: auto; }
+  .pv-frame-big { flex: none; aspect-ratio: 16 / 10; }
+  .pv-notes-box { flex: none; }
+}
 `;
 
 /** The presentation outline: order (drag or arrows), hide, speaker notes. */

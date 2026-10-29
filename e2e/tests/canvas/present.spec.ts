@@ -112,3 +112,29 @@ test("a published canvas can be presented by signed-out readers", async ({ api, 
   await new CanvasUi(phone).ready({ items: 2 });
   await expect(phone.getByRole("button", { name: "Present" })).toBeVisible();
 });
+
+test("the presenter view shows this slide, the next one, notes and the timer", async ({ page, api, enter }) => {
+  const fig = (id: string, x: number, title: string) => ({ id, type: "figure", x, y: 0, w: 500, h: 300, source: `title ${title}\nA > B`, autoSize: false });
+  const c = await api.createCanvas(e2eTitle("presenter view"));
+  await api.updateCanvas(c.id, {
+    document: { ...docOf([fig("f1", 0, "First"), fig("f2", 700, "Second"), fig("f3", 1400, "Third")]), presentation: { notes: { f1: "Open with the problem." } } },
+  });
+  await enter(`/c/${c.id}`);
+  await new CanvasUi(page).ready({ items: 3 });
+  await page.getByRole("button", { name: "Present", exact: true }).click();
+  await expect(page.getByText("1 / 3")).toBeVisible();
+  const [pv] = await Promise.all([page.waitForEvent("popup"), page.locator(".occ-present-bar").getByRole("button", { name: "Presenter view" }).click()]);
+  await pv.setViewportSize({ width: 1280, height: 800 });
+  await expect(pv.getByText("Slide 1 of 3")).toBeVisible();
+  await expect(pv.getByText("Open with the problem.")).toBeVisible();
+  await expect(pv.getByRole("region", { name: "Current slide" }).getByRole("img", { name: "First" })).toBeVisible();
+  await expect(pv.getByRole("region", { name: "Next slide" }).getByRole("img", { name: "Second" })).toBeVisible();
+  await pv.screenshot({ path: test.info().outputPath("presenter-view.png") });
+
+  // Its Next drives the presentation.
+  await pv.getByRole("button", { name: "Next →" }).click();
+  await expect(page.getByText("2 / 3")).toBeVisible();
+  await expect(pv.getByText("Slide 2 of 3")).toBeVisible();
+  await expect(pv.getByRole("region", { name: "Current slide" }).getByRole("img", { name: "Second" })).toBeVisible();
+  await expect(pv.getByText("No notes for this slide.", { exact: false })).toBeVisible();
+});
