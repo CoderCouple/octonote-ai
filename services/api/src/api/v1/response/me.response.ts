@@ -1,3 +1,4 @@
+import { isStaff } from "../../../common/staff";
 import type { User } from "../../../model/user.model";
 import type { Workspace, WorkspaceMember } from "../../../model/workspace.model";
 
@@ -8,6 +9,8 @@ export interface UserDto {
   avatarUrl: string | null;
   /** Octonote staff: the app shows the Admin page link. */
   isAdmin: boolean;
+  /** Counted as staff (not tracked; can be left out of the admin numbers). */
+  isStaff: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +44,7 @@ export function userToDto(user: User): UserDto {
     email: user.email,
     avatarUrl: user.avatarUrl,
     isAdmin: user.isAdmin,
+    isStaff: isStaff(user),
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   };

@@ -23,8 +23,8 @@ export async function AppAnalyticsGate() {
     serverFetch<{ analytics?: boolean }>("/me/preferences")
       .then((p) => p.analytics !== false)
       .catch(() => false),
-    serverFetch<{ user: { isAdmin?: boolean } }>("/me")
-      .then((me) => Boolean(me.user.isAdmin))
+    serverFetch<{ user: { isAdmin?: boolean; isStaff?: boolean } }>("/me")
+      .then((me) => Boolean(me.user.isStaff ?? me.user.isAdmin))
       .catch(() => false),
   ]);
   return <AppAnalytics userId={buildIdFromUuid("usr", user.id)} allowed={allowed} staff={staff} />;

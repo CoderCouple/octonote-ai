@@ -12,6 +12,8 @@ export type ItemKind = "note" | "canvas" | "project" | "notebook";
 export interface AdminMetrics {
   days: number;
   generatedAt: string;
+  /** Staff (admins, @octonote.ai, STAFF_EMAILS) left out of people, activity and usage. */
+  excludeStaff?: boolean;
   growth: {
     users: number;
     workspaces: number;
@@ -446,4 +448,31 @@ export interface CrmOverview {
   notContacted: { person: { id: string; name: string; email: string }; joinedAt: string; source: string }[];
   /** Open follow-ups due in the next 7 days. */
   comingUp: { followup: CrmFollowup; person: { id: string; name: string; email: string } }[];
+}
+
+/**
+ * Website traffic from PostHog (GET /admin/traffic?days=N&excludeStaff=1),
+ * queried server-side with a read-only key. PostHog never runs on published
+ * pages (/pub), so their readers aren't here (see usage.views). Visits are
+ * PostHog sessions; PostHog keeps no cookies, so a visit ends on a full reload.
+ */
+export interface AdminTraffic {
+  days: number;
+  generatedAt: string;
+  excludeStaff: boolean;
+  /** False when the API has no PostHog read key. */
+  configured: boolean;
+  /** Set when PostHog couldn't be reached; the numbers are then zero. */
+  error?: string;
+  visits: number;
+  pageviews: number;
+  /** Clicks on any sign-up link, and views of /signup. */
+  signupClicks: number;
+  signupPageVisits: number;
+  series: { day: string; visits: number; pageviews: number }[];
+  /** Paths with ids collapsed (/n/pag_… → /n/:id). */
+  topPages: { path: string; visits: number }[];
+  referrers: { domain: string; visits: number }[];
+  countries: { country: string; visits: number }[];
+  devices: { device: string; visits: number }[];
 }

@@ -17,6 +17,7 @@ import { PAID_STATUSES } from "../common/plan-limits.service";
 import { Database, DRIZZLE } from "../db/database.module";
 import { workspaceBilling } from "../db/schemas/billing";
 import { promoCodes, promoRedemptions } from "../db/schemas/promotions";
+import { staffUserIds } from "../common/staff";
 import { describeCode, discountInForce } from "./promotions.service";
 
 const KINDS: ItemKind[] = ["note", "canvas", "project", "notebook"];
@@ -34,21 +35,53 @@ const ITEM_SOURCES: Record<ItemKind, { table: string; live: string }> = {
 
 type Row = Record<string, unknown>;
 
+/** SQL fragments that leave staff out (empty when staff are counted). */
+interface StaffFilter {
+  /** On `users` (column `id`). */
+  user: SQL;
+  /** On tables with `user_id` (activity_days, cli_tokens). */
+  userId: SQL;
+  /** On `users u`. */
+  u: SQL;
+  /** On `workspaces` (staff-owned ones left out). */
+  workspace: SQL;
+  /** On item tables (`created_by_user_id`). */
+  item: SQL;
+  /** On resource_shares (`granted_by_user_id`). */
+  share: SQL;
+}
+
+function staffFilter(exclude: boolean): StaffFilter {
+  if (!exclude) return { user: sql``, userId: sql``, u: sql``, workspace: sql``, item: sql``, share: sql`` };
+  const staff = staffUserIds();
+  return {
+    user: sql` and id not in ${staff}`,
+    userId: sql` and user_id not in ${staff}`,
+    u: sql` and u.id not in ${staff}`,
+    workspace: sql` and id not in (select workspace_id from workspace_members where role = 'OWNER' and user_id in ${staff})`,
+    item: sql` and (created_by_user_id is null or created_by_user_id not in ${staff})`,
+    share: sql` and (granted_by_user_id is null or granted_by_user_id not in ${staff})`,
+  };
+}
+
 @Injectable()
 export class AdminMetricsService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  async metrics(days: number, now = new Date()): Promise<AdminMetrics> {
+  /** `excludeStaff`: leave staff (admins, @octonote.ai, STAFF_EMAILS) out of people, activity and usage; revenue always counts. */
+  async metrics(days: number, now = new Date(), excludeStaff = false): Promise<AdminMetrics> {
     const today = utcDay(now);
     const from = addDays(today, -(days - 1));
+    const f = staffFilter(excludeStaff);
     const [growth, revenue, codes, usage] = await Promise.all([
-      this.growth(days, from, today),
-      this.revenue(from, today),
-      this.codes(from),
-      this.usage(from, today),
+      this.growth(days, from, today, f),
+      this.revenue(from, today, f),
+      this.codes(from, f),
+      this.usage(from, today, f),
     ]);
     return {
       days,
+      excludeStaff,
       generatedAt: now.toISOString(),
       growth,
       revenue,
@@ -61,6 +94,7 @@ export class AdminMetricsService {
     days: number,
     from: string,
     today: string,
+    f: StaffFilter,
   ): Promise<AdminMetrics["growth"]> {
     const before = addDays(from, -days);
     const weekAgo = addDays(today, -6);
@@ -68,26 +102,26 @@ export class AdminMetricsService {
     const lastCohortDay = addDays(today, -7);
     const [totals] = await this.rows(sql`
       select
-        (select count(*)::int from users) as users,
-        (select count(*)::int from workspaces) as workspaces,
-        (select count(*)::int from users where created_at >= ${from}::date) as signups,
-        (select count(*)::int from users where created_at >= ${before}::date and created_at < ${from}::date) as signups_before,
-        (select count(distinct user_id)::int from activity_days where day = ${today}::date) as active_day,
-        (select count(distinct user_id)::int from activity_days where day >= ${weekAgo}::date) as active_week,
-        (select count(distinct user_id)::int from activity_days where day >= ${monthAgo}::date) as active_month,
-        (select count(distinct user_id)::int from activity_days where day >= ${from}::date and source = 'web') as web,
-        (select count(distinct user_id)::int from activity_days where day >= ${from}::date and source = 'mobile') as mobile,
-        (select count(distinct user_id)::int from activity_days where day >= ${from}::date and source = 'cli') as cli
+        (select count(*)::int from users where true${f.user}) as users,
+        (select count(*)::int from workspaces where true${f.workspace}) as workspaces,
+        (select count(*)::int from users where created_at >= ${from}::date${f.user}) as signups,
+        (select count(*)::int from users where created_at >= ${before}::date and created_at < ${from}::date${f.user}) as signups_before,
+        (select count(distinct user_id)::int from activity_days where day = ${today}::date${f.userId}) as active_day,
+        (select count(distinct user_id)::int from activity_days where day >= ${weekAgo}::date${f.userId}) as active_week,
+        (select count(distinct user_id)::int from activity_days where day >= ${monthAgo}::date${f.userId}) as active_month,
+        (select count(distinct user_id)::int from activity_days where day >= ${from}::date and source = 'web'${f.userId}) as web,
+        (select count(distinct user_id)::int from activity_days where day >= ${from}::date and source = 'mobile'${f.userId}) as mobile,
+        (select count(distinct user_id)::int from activity_days where day >= ${from}::date and source = 'cli'${f.userId}) as cli
     `);
     const signups = await this.perDay(
-      sql`select (created_at at time zone 'UTC')::date as day, count(*)::int as n from users where created_at >= ${from}::date group by 1`,
+      sql`select (created_at at time zone 'UTC')::date as day, count(*)::int as n from users where created_at >= ${from}::date${f.user} group by 1`,
     );
     const active = await this.perDay(
-      sql`select day, count(distinct user_id)::int as n from activity_days where day >= ${from}::date group by 1`,
+      sql`select day, count(distinct user_id)::int as n from activity_days where day >= ${from}::date${f.userId} group by 1`,
     );
     const sources = await this.rows(sql`
       select coalesce(signup_ref, 'direct') as ref, count(*)::int as n
-      from users where created_at >= ${from}::date
+      from users where created_at >= ${from}::date${f.user}
       group by 1 order by 2 desc, 1 limit 15
     `);
     const [cohort] = await this.rows(sql`
@@ -99,7 +133,7 @@ export class AdminMetricsService {
             and a.day <= (u.created_at at time zone 'UTC')::date + 7
         ))::int as returned
       from users u
-      where u.created_at >= ${from}::date and (u.created_at at time zone 'UTC')::date <= ${lastCohortDay}::date
+      where u.created_at >= ${from}::date and (u.created_at at time zone 'UTC')::date <= ${lastCohortDay}::date${f.u}
     `);
     return {
       users: num(totals?.users),
@@ -135,6 +169,7 @@ export class AdminMetricsService {
   private async revenue(
     from: string,
     today: string,
+    f: StaffFilter,
   ): Promise<AdminMetrics["revenue"]> {
     const paying = await this.payingWorkspaces();
     const [events] = await this.rows(sql`
@@ -151,7 +186,7 @@ export class AdminMetricsService {
       sql`select (created_at at time zone 'UTC')::date as day, count(*)::int as n from billing_events where kind = 'ended' and created_at >= ${from}::date group by 1`,
     );
     const [ws] = await this.rows(
-      sql`select count(*)::int as n from workspaces`,
+      sql`select count(*)::int as n from workspaces where true${f.workspace}`,
     );
     return {
       mrrCents: paying.reduce((sum, p) => sum + p.monthlyCents, 0),
@@ -172,14 +207,14 @@ export class AdminMetricsService {
     };
   }
 
-  private async codes(from: string): Promise<AdminMetrics["codes"]> {
+  private async codes(from: string, f: StaffFilter): Promise<AdminMetrics["codes"]> {
     const paying = await this.payingWorkspaces();
     const payingIds = new Set(paying.map((p) => p.workspaceId));
     const [counts] = await this.rows(sql`
       select
         (select count(*)::int from promo_redemptions where created_at >= ${from}::date) as redemptions,
         (select count(distinct workspace_id)::int from promo_redemptions where kind = 'free_pro' and pro_until > now()) as free_active,
-        (select count(*)::int from users where student_pro_until > now()) as students
+        (select count(*)::int from users where student_pro_until > now()${f.user}) as students
     `);
     const freeRedeemers = await this.rows(
       sql`select distinct workspace_id from promo_redemptions where kind = 'free_pro'`,
@@ -244,6 +279,7 @@ export class AdminMetricsService {
   private async usage(
     from: string,
     today: string,
+    f: StaffFilter,
   ): Promise<AdminMetrics["usage"]> {
     const totals = {} as Record<ItemKind, number>;
     const created = {} as Record<ItemKind, number>;
@@ -251,7 +287,7 @@ export class AdminMetricsService {
     for (const kind of KINDS) {
       const { table, live } = ITEM_SOURCES[kind];
       const t = sql.raw(table);
-      const where = sql.raw(live);
+      const where = sql`${sql.raw(live)}${f.item}`;
       const [row] = await this.rows(sql`
         select count(*) filter (where ${where})::int as total,
                count(*) filter (where ${where} and created_at >= ${from}::date)::int as created
@@ -265,15 +301,15 @@ export class AdminMetricsService {
     }
     const [row] = await this.rows(sql`
       select
-        (select count(*)::int from pages where published_at is not null and deleted_at is null)
-          + (select count(*)::int from canvases where published_at is not null and deleted_at is null)
-          + (select count(*)::int from projects where published_at is not null and archived_at is null)
-          + (select count(*)::int from notebooks where published_at is not null) as published,
+        (select count(*)::int from pages where published_at is not null and deleted_at is null${f.item})
+          + (select count(*)::int from canvases where published_at is not null and deleted_at is null${f.item})
+          + (select count(*)::int from projects where published_at is not null and archived_at is null${f.item})
+          + (select count(*)::int from notebooks where published_at is not null${f.item}) as published,
         (select coalesce(sum(views), 0)::int from resource_views where hour >= ${from}::date) as views,
         (select coalesce(sum(visitors), 0)::int from resource_views where hour >= ${from}::date) as visitors,
-        (select count(*)::int from resource_shares where created_at >= ${from}::date) as shares,
-        (select count(distinct user_id)::int from activity_days where source = 'cli' and day >= ${from}::date) as cli_users,
-        (select count(*)::int from cli_tokens where revoked_at is null and (expires_at is null or expires_at > now())) as cli_tokens
+        (select count(*)::int from resource_shares where created_at >= ${from}::date${f.share}) as shares,
+        (select count(distinct user_id)::int from activity_days where source = 'cli' and day >= ${from}::date${f.userId}) as cli_users,
+        (select count(*)::int from cli_tokens where revoked_at is null and (expires_at is null or expires_at > now())${f.userId}) as cli_tokens
     `);
     return {
       totals,

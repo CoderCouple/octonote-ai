@@ -147,6 +147,36 @@ describe("metrics", () => {
     expect(m.usage.cliUsers).toBe(1);
   });
 
+  it("leaves staff out when asked: admins, @octonote.ai and STAFF_EMAILS", async () => {
+    const team = await h.signIn("payal@octonote.ai");
+    process.env.STAFF_EMAILS = ` ${alice.email.toUpperCase()} , someone@else.com`;
+    try {
+      await h.activity.record(alice.id, "web");
+      await h.activity.record(team.id, "web");
+      await h.activity.record(bob.id, "web");
+      await h.pages.create(alice.workspaceId, { title: "Staff note" }, alice.id);
+      await h.pages.create(team.workspaceId, { title: "Team note" }, team.id);
+      await h.pages.create(bob.workspaceId, { title: "Real note" }, bob.id);
+
+      const all = await h.adminMetrics.metrics(30);
+      expect(all.growth).toMatchObject({ users: 4, signups: 4, active: { day: 3 } });
+      expect(all.usage.totals.note).toBe(3);
+
+      const real = await h.adminMetrics.metrics(30, new Date(), true);
+      expect(real.excludeStaff).toBe(true);
+      // Only bob is a real user (admin, alice via STAFF_EMAILS and payal@octonote.ai are staff).
+      expect(real.growth).toMatchObject({ users: 1, workspaces: 1, signups: 1, active: { day: 1 } });
+      expect(real.usage.totals.note).toBe(1);
+    } finally {
+      delete process.env.STAFF_EMAILS;
+    }
+  });
+
+  it("reports traffic as not configured without a PostHog read key", async () => {
+    const t = await h.adminTraffic.traffic(7, true);
+    expect(t).toMatchObject({ configured: false, visits: 0, days: 7, excludeStaff: true });
+  });
+
   it("is empty but well-formed on a fresh database", async () => {
     const fresh = await createHarness();
     const m = await fresh.adminMetrics.metrics(7);

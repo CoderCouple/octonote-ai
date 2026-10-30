@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { Database, DRIZZLE } from "../db/database.module";
 import { userPreferences } from "../db/schemas/preferences";
 import { users } from "../db/schemas/users";
+import { isStaff } from "./staff";
 import { workspaceMembers } from "../db/schemas/workspaces";
 
 /**
@@ -114,9 +115,9 @@ export class ProductAnalytics {
       .from(userPreferences)
       .where(eq(userPreferences.userId, userId))
       .limit(1);
-    // Staff (users.is_admin) are never counted: their own use would drown real users.
-    const [person] = await this.db.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, userId)).limit(1);
-    const value = !person?.isAdmin && (row?.analytics ?? true);
+    // Staff are never counted: their own use would drown real users.
+    const [person] = await this.db.select({ email: users.email, isAdmin: users.isAdmin }).from(users).where(eq(users.id, userId)).limit(1);
+    const value = !(person && isStaff(person)) && (row?.analytics ?? true);
     this.optedIn.set(userId, { value, at: Date.now() });
     return value;
   }

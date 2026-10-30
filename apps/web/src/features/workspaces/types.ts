@@ -16,6 +16,8 @@ export interface MeUser {
   avatarUrl: string | null;
   /** Octonote staff: shows the Admin link. */
   isAdmin?: boolean;
+  /** Counted as staff in analytics (admins, @octonote.ai, STAFF_EMAILS). */
+  isStaff?: boolean;
 }
 
 export interface MembershipSummary {

@@ -1,14 +1,17 @@
 "use client";
 
 /**
- * Admin → Overview: growth, revenue, codes & offers and product usage over
- * the last 7, 30 or 90 days. Every number comes from Octonote's own
- * database (GET /admin/metrics); nothing from third-party analytics.
+ * Admin → Overview: website traffic, growth, revenue, codes & offers and
+ * product usage over the last 7, 30 or 90 days. Traffic comes from PostHog
+ * (read by the API, GET /admin/traffic); everything else from Octonote's own
+ * database (GET /admin/metrics). "Exclude staff" (on by default) leaves out
+ * admins, @octonote.ai and the API's STAFF_EMAILS.
  */
 import {
   ADMIN_METRIC_RANGES,
   type AdminMetricRange,
   type AdminMetrics,
+  type AdminTraffic,
 } from "@octonote/shared";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -22,7 +25,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAdminMetrics } from "@/features/admin/api";
+import { Switch } from "@/components/ui/switch";
+import { getAdminMetrics, getAdminTraffic } from "@/features/admin/api";
 import {
   change,
   errorText,
@@ -40,10 +44,13 @@ import { ViewsChart } from "@/features/analytics/components/views-chart";
 import { cn } from "@/lib/utils";
 
 const RANGE_KEY = "octonote.admin.range";
+const STAFF_KEY = "octonote.admin.excludeStaff";
 
 export default function AdminOverviewPage() {
   const [days, setDays] = useState<AdminMetricRange>(30);
+  const [excludeStaff, setExcludeStaff] = useState(true);
   const [data, setData] = useState<AdminMetrics | null>(null);
+  const [traffic, setTraffic] = useState<AdminTraffic | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,21 +58,36 @@ export default function AdminOverviewPage() {
       const saved = Number(localStorage.getItem(RANGE_KEY));
       if ((ADMIN_METRIC_RANGES as readonly number[]).includes(saved))
         setDays(saved as AdminMetricRange);
+      if (localStorage.getItem(STAFF_KEY) === "0") setExcludeStaff(false);
     } catch {
-      // Storage unavailable: keep the default.
+      // Storage unavailable: keep the defaults.
     }
   }, []);
 
   useEffect(() => {
     let live = true;
     setError(null);
-    getAdminMetrics(days)
+    setTraffic(null);
+    getAdminMetrics(days, excludeStaff)
       .then((m) => live && setData(m))
       .catch((err) => live && setError(errorText(err)));
+    // Slower (PostHog), and never blocks the rest of the page.
+    getAdminTraffic(days, excludeStaff)
+      .then((t) => live && setTraffic(t))
+      .catch(() => live && setTraffic(null));
     return () => {
       live = false;
     };
-  }, [days]);
+  }, [days, excludeStaff]);
+
+  function toggleStaff(on: boolean) {
+    setExcludeStaff(on);
+    try {
+      localStorage.setItem(STAFF_KEY, on ? "1" : "0");
+    } catch {
+      // Not remembered; fine.
+    }
+  }
 
   function pick(d: AdminMetricRange) {
     setDays(d);
@@ -86,6 +108,14 @@ export default function AdminOverviewPage() {
             : "How Octonote is doing."
         }
       >
+        <label className="text-muted-foreground mr-3 inline-flex items-center gap-2 text-sm">
+          <Switch
+            checked={excludeStaff}
+            onCheckedChange={toggleStaff}
+            aria-label="Exclude staff"
+          />
+          Exclude staff
+        </label>
         <div
           className="bg-muted inline-flex rounded-md p-0.5"
           role="tablist"
@@ -112,12 +142,17 @@ export default function AdminOverviewPage() {
 
       {error ? (
         <p className="text-destructive text-sm">{error}</p>
-      ) : !data || data.days !== days ? (
+      ) : !data ||
+        data.days !== days ||
+        Boolean(data.excludeStaff) !== excludeStaff ? (
         <div className="grid min-h-[40vh] place-items-center">
           <Loader2 className="text-muted-foreground size-5 animate-spin" />
         </div>
       ) : (
-        <Dashboard m={data} />
+        <>
+          <TrafficSection t={traffic} days={days} />
+          <Dashboard m={data} />
+        </>
       )}
     </PageBody>
   );
@@ -408,6 +443,120 @@ function Dashboard({ m }: { m: AdminMetrics }) {
         </div>
       </Section>
     </>
+  );
+}
+
+/** Website traffic (PostHog): visits → sign-up clicks → sign-up page → accounts. */
+function TrafficSection({ t, days }: { t: AdminTraffic | null; days: number }) {
+  if (t && !t.configured) return null;
+  return (
+    <Section
+      title="Website traffic"
+      description="From PostHog. Visits are browsing sessions on octonote.ai; published pages (/pub) aren't tracked. Ids in paths are grouped as :id."
+    >
+      {!t ? (
+        <div className="grid h-24 place-items-center">
+          <Loader2 className="text-muted-foreground size-4 animate-spin" />
+        </div>
+      ) : t.error ? (
+        <p className="text-muted-foreground text-sm">{t.error}</p>
+      ) : (
+        <>
+          <StatGrid>
+            <Stat
+              label={`Visits (${days} days)`}
+              value={t.visits.toLocaleString()}
+              sub={`${t.pageviews.toLocaleString()} page views`}
+            />
+            <Stat
+              label="Sign-up clicks"
+              value={t.signupClicks.toLocaleString()}
+              sub={`${fmtPercent(t.signupClicks, t.visits)} of visits`}
+            />
+            <Stat
+              label="Reached the sign-up page"
+              value={t.signupPageVisits.toLocaleString()}
+              sub={`${fmtPercent(t.signupPageVisits, t.visits)} of visits`}
+            />
+            <Stat
+              label="Pages per visit"
+              value={t.visits ? (t.pageviews / t.visits).toFixed(1) : "–"}
+            />
+          </StatGrid>
+          <Panel title="Visits per day">
+            <ViewsChart
+              buckets={t.series.map((s) => ({
+                start: `${s.day}T12:00:00`,
+                value: s.visits,
+              }))}
+              noun={["visit", "visits"]}
+              unit="day"
+            />
+          </Panel>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Panel title="Top pages">
+              <TopList
+                rows={t.topPages.map((p) => ({ label: p.path, n: p.visits }))}
+              />
+            </Panel>
+            <Panel title="Where visits came from">
+              <TopList
+                rows={t.referrers.map((r) => ({
+                  label: r.domain,
+                  n: r.visits,
+                }))}
+              />
+            </Panel>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Panel title="Countries">
+              <TopList
+                rows={t.countries.map((c) => ({
+                  label: c.country,
+                  n: c.visits,
+                }))}
+              />
+            </Panel>
+            <Panel title="Devices">
+              <TopList
+                rows={t.devices.map((d) => ({ label: d.device, n: d.visits }))}
+              />
+            </Panel>
+          </div>
+        </>
+      )}
+    </Section>
+  );
+}
+
+/** Label + count rows with a thin bar for the share of the largest. */
+function TopList({ rows }: { rows: { label: string; n: number }[] }) {
+  if (!rows.length)
+    return (
+      <p className="text-muted-foreground text-sm">Nothing in this period.</p>
+    );
+  const max = Math.max(...rows.map((r) => r.n), 1);
+  return (
+    <ul className="grid gap-1.5 text-sm">
+      {rows.map((r) => (
+        <li
+          key={r.label}
+          className="relative flex items-baseline justify-between gap-3 py-0.5"
+        >
+          <span
+            aria-hidden
+            className="bg-muted absolute inset-y-0 left-0 rounded"
+            style={{ width: `${(r.n / max) * 100}%` }}
+          />
+          <span className="text-foreground relative truncate pl-1.5">
+            {r.label}
+          </span>
+          <span className="text-foreground-strong relative pr-1.5 font-medium tabular-nums">
+            {r.n.toLocaleString()}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
