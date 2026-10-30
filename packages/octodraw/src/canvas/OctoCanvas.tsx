@@ -4,9 +4,9 @@ import { detectDiagramType } from '../dsl/detect';
 import type { IconSet } from '../icons/resolve';
 import { loadEraserIcons, loadFullIconCatalog, loadVendorIcons, onIconCatalogChange } from '../icons/resolve';
 import type { IconResolver } from '../icons/types';
-import type { ViewPlacements } from '../layout/arrange';
+import { renamePlacements, type ViewPlacements } from '../layout/arrange';
 import { collectFontCss, copyBlob, copyText, downloadBlob, svgToPdf, svgToPng } from '../export/browser';
-import { OctoDiagram, useResolvedScheme, type CopyFormat, type ExportFormat, type OctoDiagramHandle, type OctoDiagramProps } from '../react/OctoDiagram';
+import { OctoDiagram, useResolvedScheme, type CopyFormat, type ExportFormat, type OctoDiagramHandle, type OctoDiagramProps, type SourceChangeMeta } from '../react/OctoDiagram';
 import { themeCssVariables, themes as builtInThemes, type ColorScheme, type Theme } from '../theme/tokens';
 import { CommentLayer, type DraftThread } from './Comments';
 import { renderCanvasSvg } from './export';
@@ -1212,6 +1212,12 @@ export function OctoCanvas(props: OctoCanvasProps) {
         setEntered(null);
         rootRef.current?.focus({ preventScroll: true });
       }
+      // Undo / redo still belong to the canvas history (the element toolbar's edits are canvas changes).
+      if (mod && !event.defaultPrevented && (event.key.toLowerCase() === 'z' || event.key.toLowerCase() === 'y')) {
+        event.preventDefault();
+        if (event.shiftKey || event.key.toLowerCase() === 'y') onRedo?.();
+        else onUndo?.();
+      }
       return;
     }
     const key = event.key.toLowerCase();
@@ -1394,6 +1400,17 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const resolvedCount = (doc.comments ?? []).filter((c) => c.resolved).length;
 
   const onFigurePlacements = useCallback((id: string, placements: ViewPlacements) => commit(updateItem(docRef.current, id, { placements })), [commit]);
+  // The element toolbar inside an opened figure rewrites its code: one undo step
+  // per change, and a renamed box keeps its hand placement.
+  const onFigureSource = useCallback(
+    (id: string, source: string, meta: SourceChangeMeta) => {
+      const item = getItem(docRef.current, id);
+      if (item?.type !== 'figure') return;
+      const placements = meta.renamed && item.placements ? renamePlacements(item.placements, meta.renamed) : item.placements;
+      commit(updateItem(docRef.current, id, placements !== item.placements ? { source, placements } : { source }));
+    },
+    [commit],
+  );
 
   // ---- presentation mode (continued) ----
   const [camGliding, setCamGliding] = useState(false);
@@ -1751,6 +1768,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
                   onAskAi={onAskAi}
                   register={registerFigure}
                   onPlacements={onFigurePlacements}
+                  onSource={readOnly ? undefined : onFigureSource}
                 />
               );
           }
@@ -1947,6 +1965,8 @@ export function OctoCanvas(props: OctoCanvasProps) {
             source={enteredFigure.source}
             placements={enteredFigure.placements ?? EMPTY_PLACEMENTS}
             onPlacementsChange={(next) => onFigurePlacements(enteredFigure.id, next)}
+            onSourceChange={readOnly ? undefined : (next, meta) => onFigureSource(enteredFigure.id, next, meta)}
+            chrome
             colorScheme={scheme}
             themes={props.themes}
             icons={icons}
@@ -2416,9 +2436,12 @@ const FigureView = memo(function FigureView({
   onAskAi,
   register,
   onPlacements,
+  onSource,
 }: {
   register: (id: string, handle: OctoDiagramHandle | null) => void;
   onPlacements: (id: string, placements: ViewPlacements) => void;
+  /** Set when the canvas is editable: the element toolbar edits the figure's code. */
+  onSource?: (id: string, source: string, meta: SourceChangeMeta) => void;
   item: FigureItem;
   entered: boolean;
   selected: boolean;
@@ -2435,6 +2458,7 @@ const FigureView = memo(function FigureView({
   const onContentSize = useCallback((size: { width: number; height: number }) => onSize(item.id, size), [onSize, item.id]);
   const ref = useCallback((handle: OctoDiagramHandle | null) => register(item.id, handle), [register, item.id]);
   const onPlacementsChange = useCallback((next: ViewPlacements) => onPlacements(item.id, next), [onPlacements, item.id]);
+  const onSourceChange = useCallback((next: string, meta: SourceChangeMeta) => onSource?.(item.id, next, meta), [onSource, item.id]);
   return (
     <div data-item-id={item.id} className={`occ-item occ-figure${entered ? ' occ-figure-entered' : ''}${selected ? ' occ-figure-selected' : ''}`} style={{ position: 'absolute', left: item.x, top: item.y, width: item.w, height: item.h, opacity: item.opacity }}>
       <div className="occ-figure-tab">{title}</div>
@@ -2445,6 +2469,7 @@ const FigureView = memo(function FigureView({
           source={item.source}
           placements={item.placements ?? EMPTY_PLACEMENTS}
           onPlacementsChange={onPlacementsChange}
+          onSourceChange={entered && onSource ? onSourceChange : undefined}
           embedded
           chrome={entered}
           drawIn={drawIn}

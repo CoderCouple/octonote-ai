@@ -28,7 +28,7 @@ import type { Diagnostic } from '../dsl/types';
 import { loadEraserIcons, loadFullIconCatalog, loadVendorIcons, onIconCatalogChange, type IconSet } from '../icons/resolve';
 import type { IconResolver } from '../icons/types';
 import { snapBox, type SnapResult } from '../canvas/model';
-import { arrangeLayout, canResizeNode, placementKey, type NodePlacement, type ViewPlacements } from '../layout/arrange';
+import { arrangeLayout, canResizeNode, placementKey, renamePlacements, type NodePlacement, type ViewPlacements } from '../layout/arrange';
 import { GROUP_METRICS, NODE_METRICS, layoutView, type DiagramLayout, type TextMeasurer, type Typography } from '../layout/layout';
 import { labelSizeOf, textAlignOf, textSizeOf } from '../layout/style';
 import { themeCssVariables, themes, type ColorScheme, type Theme } from '../theme/tokens';
@@ -964,24 +964,7 @@ export function OctoDiagram({
     pendingRename.current = null;
     if (focus === rename.from) setFocus(rename.to);
     setCollapsedGroups((all) => (all.has(rename.from) ? new Set([...all].map((id) => (id === rename.from ? rename.to : id))) : all));
-    if (placementsProp === undefined) {
-      setOwnPlacements((all) => {
-        let changed = false;
-        const next: ViewPlacements = {};
-        for (const [level, nodes] of Object.entries(all)) {
-          const key = level === rename.from ? rename.to : level;
-          const moved = { ...nodes };
-          if (moved[rename.from]) {
-            moved[rename.to] = moved[rename.from]!;
-            delete moved[rename.from];
-            changed = true;
-          }
-          if (key !== level) changed = true;
-          next[key] = moved;
-        }
-        return changed ? next : all;
-      });
-    }
+    if (placementsProp === undefined) setOwnPlacements((all) => renamePlacements(all, rename));
   }, [diagram]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyAction = useCallback(

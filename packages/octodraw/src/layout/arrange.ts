@@ -22,6 +22,28 @@ export type NodePlacements = Record<string, NodePlacement>;
 /** Placements per drill-down level: key '' is the top level, otherwise the focused group's id. */
 export type ViewPlacements = Record<string, NodePlacements>;
 
+/**
+ * Hand placements after a box is renamed in the code: its own placement and
+ * a drill level keyed by it move to the new name. Returns `all` unchanged
+ * when nothing refers to the old name.
+ */
+export function renamePlacements(all: ViewPlacements, rename: { from: string; to: string }): ViewPlacements {
+  let changed = false;
+  const next: ViewPlacements = {};
+  for (const [level, nodes] of Object.entries(all)) {
+    const key = level === rename.from ? rename.to : level;
+    const moved = { ...nodes };
+    if (moved[rename.from]) {
+      moved[rename.to] = moved[rename.from]!;
+      delete moved[rename.from];
+      changed = true;
+    }
+    if (key !== level) changed = true;
+    next[key] = moved;
+  }
+  return changed ? next : all;
+}
+
 const PAD = 24;
 
 export const placementKey = (focus: string | null | undefined) => focus ?? '';
