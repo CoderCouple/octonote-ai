@@ -7,13 +7,14 @@ import type { IconResolver } from '../icons/types';
 import type { ViewPlacements } from '../layout/arrange';
 import { collectFontCss, copyBlob, copyText, downloadBlob, svgToPdf, svgToPng } from '../export/browser';
 import { OctoDiagram, useResolvedScheme, type CopyFormat, type ExportFormat, type OctoDiagramHandle, type OctoDiagramProps } from '../react/OctoDiagram';
-import { swatchFor } from '../react/theme';
 import { themeCssVariables, themes as builtInThemes, type ColorScheme, type Theme } from '../theme/tokens';
 import { CommentLayer, type DraftThread } from './Comments';
 import { renderCanvasSvg } from './export';
 import { InsertPalette, type InsertChoice } from './InsertPalette';
 import { moveSlide, presentationSlides, setSlideHidden, setSlideNotes } from './present';
-import { CODE_FONT_SIZE, CodeView, FrameView, IconView, ImageView, linePath, LineView, PenView, shapeColors, shapeTextPadding, ShapeView, STICKY_FONT_SIZE, StickyView, TEXT_LINE_HEIGHT, textFont, TextView, type ItemContext } from './items';
+import { CODE_FONT_SIZE, CodeView, cssFont, FrameView, IconView, ImageView, linePath, LineView, PenView, shapeLabel, shapePaint, shapeTextPadding, ShapeView, stickyLabel, stickyTextColor, StickyView, TEXT_LINE_HEIGHT, textFont, textLabel, TextView, type ItemContext } from './items';
+import { Glyph, SELECTION_BAR_CSS, SelectionBar, type BarMenu } from './SelectionBar';
+import { ContextMenu, type MenuEntry } from './ContextMenu';
 import {
   addComment,
   addItems,
@@ -78,6 +79,13 @@ import {
   type ShapeKind,
   type TextItem,
   safeLink,
+  copyStyle,
+  lineRoute,
+  pasteStyle,
+  patchItems,
+  STYLE_KEYS,
+  type CanvasStyle,
+  type ItemPatch,
 } from './model';
 import { renderSourceSvg } from '../export/source';
 import { CANVAS_TEMPLATES, FIGURE_TEMPLATES, FIGURE_TITLE, figureLabel, figureTitle, type CanvasTemplate } from './templates';
@@ -181,34 +189,70 @@ const ZOOM_MIN = 0.1;
 /** Room kept free under a slide for the slide strip (px). */
 const STRIP_ROOM = 112;
 const ZOOM_MAX = 4;
-const COLORS = [undefined, 'blue', 'green', 'red', 'orange', 'purple', 'yellow', 'gray'] as const;
 const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 const HANDLE_ANGLE: Record<Handle, number> = { n: 0, ne: 45, e: 90, se: 135, s: 180, sw: 225, w: 270, nw: 315 };
 const CURSORS = ['ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize'];
 /** The resize cursor for a handle on an item turned by `rotation` degrees. */
 const resizeCursor = (handle: Handle, rotation: number) => CURSORS[Math.round((((HANDLE_ANGLE[handle] + rotation) % 180) + 180) % 180 / 45) % 4]!;
 const TOOL_KEYS: Record<string, CanvasTool> = { v: 'select', h: 'hand', r: 'rectangle', o: 'ellipse', d: 'diamond', s: 'sticky', a: 'arrow', l: 'line', p: 'pen', t: 'text', c: 'comment' };
-const FONT_SIZES = [
-  ['S', 14],
-  ['M', 20],
-  ['L', 32],
-  ['XL', 48],
-] as const;
 const DEVICE_SIZES: Record<DeviceKind, [number, number]> = { phone: [300, 620], tablet: [620, 820], browser: [960, 620], desktop: [960, 640] };
 const DEFAULT_USER: CommentAuthor = { id: 'me', name: 'You' };
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const isTyping = (target: EventTarget | null) => target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 
 let measureContext: CanvasRenderingContext2D | null | undefined;
-function measureTextBox(text: string, fontSize: number, font: string, weight: number): { w: number; h: number } {
+function measureTextBox(text: string, fontSize: number, font: string, weight: number, italic = false): { w: number; h: number } {
   if (measureContext === undefined) measureContext = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
   const lines = (text || ' ').split('\n');
   let width = lines.reduce((max, l) => Math.max(max, l.length * fontSize * 0.55), 0);
   if (measureContext) {
-    measureContext.font = `${weight} ${fontSize}px ${font}`;
+    measureContext.font = `${italic ? 'italic ' : ''}${weight} ${fontSize}px ${font}`;
     width = lines.reduce((max, l) => Math.max(max, measureContext!.measureText(l).width), 0);
   }
   return { w: Math.ceil(width) + 6, h: Math.ceil(lines.length * fontSize * TEXT_LINE_HEIGHT) + 2 };
+}
+
+/** The box a text item needs for its text in its own style. */
+function measureTextItem(theme: Theme, item: TextItem, text = item.text): { w: number; h: number } {
+  const label = textLabel(theme, item);
+  return measureTextBox(text, label.size, label.family, label.weight, label.italic);
+}
+
+/** Text items among `ids` resized to fit their text (after a style change). */
+function fitTexts(theme: Theme, doc: CanvasDocument, ids: string[]): CanvasDocument {
+  let next = doc;
+  for (const id of ids) {
+    const item = getItem(next, id);
+    if (item?.type !== 'text') continue;
+    const size = measureTextItem(theme, item);
+    if (size.w !== item.w || size.h !== item.h) next = updateItem(next, id, size);
+  }
+  return next;
+}
+
+/** Fields a style patch may set beyond each type's style keys. */
+const PATCH_EXTRA: Partial<Record<CanvasItem['type'], string[]>> = { shape: ['shape'], line: ['route', 'bend'] };
+const ALWAYS_PATCHABLE = ['link', 'locked'];
+/** A patch limited to the fields an item's type has (so a mixed selection only changes what applies). */
+function patchFor(item: CanvasItem, patch: ItemPatch | undefined): ItemPatch | undefined {
+  if (!patch) return undefined;
+  const allowed = new Set<string>([...STYLE_KEYS[item.type], ...(PATCH_EXTRA[item.type] ?? []), ...ALWAYS_PATCHABLE]);
+  const own = Object.fromEntries(Object.entries(patch).filter(([key]) => allowed.has(key)));
+  return Object.keys(own).length ? (own as ItemPatch) : undefined;
+}
+
+/** The last copied items (JSON) and style, kept here too when the system clipboard can't be read. */
+let lastCopied: string | null = null;
+let copiedStyle: CanvasStyle | null = null;
+
+interface ContextMenuState {
+  /** Screen position inside the canvas. */
+  x: number;
+  y: number;
+  /** Canvas point (for pasting where the menu was opened). */
+  at: Point;
+  /** Opened on an item (the selection) or on empty canvas. */
+  onItems: boolean;
 }
 
 /** An infinite canvas of shapes, text, pen strokes, arrows, icons and diagram figures. */
@@ -242,7 +286,11 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const [draftComment, setDraftComment] = useState<DraftThread | null>(null);
   const [showResolved, setShowResolved] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [figureExportOpen, setFigureExportOpen] = useState(false);
+  /** The selection bar's open sub-menu. */
+  const [barMenu, setBarMenu] = useState<BarMenu | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  /** Bumped when a style is copied, so "Paste style" turns on. */
+  const [, setStyleEpoch] = useState(0);
   /** A small container (phone, narrow host pane): opened figures go full screen. */
   const [compact, setCompact] = useState(false);
   const [rootSize, setRootSize] = useState({ w: 0, h: 0 });
@@ -272,7 +320,6 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const [entered, setEntered] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [arrangeOpen, setArrangeOpen] = useState(false);
   const [panning, setPanning] = useState(false);
   const spaceHeld = useRef(false);
   // Until the user moves the camera, keep everything in view as figures size themselves.
@@ -346,6 +393,8 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const stopFollowing = () => {
     if (followingRef.current != null) stopFollowingRef.current?.();
   };
+  const selectionKey = selection.join(',');
+  useEffect(() => setBarMenu(null), [selectionKey]);
   // Drop selected ids that no longer exist (undo, remote edits).
   useEffect(() => {
     const alive = selection.filter((id) => getItem(doc, id));
@@ -423,10 +472,11 @@ export function OctoCanvas(props: OctoCanvasProps) {
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (event: WheelEvent) => {
-      if ((event.target as Element).closest('.occ-palette-backdrop, .occ-menu')) return;
+      if ((event.target as Element).closest('.occ-palette-backdrop, .occ-menu, .occ-pop, .occ-ctx')) return;
       event.preventDefault();
       cameraTouched.current = true;
       stopFollowing();
+      setContextMenu(null);
       const rect = el.getBoundingClientRect();
       if (event.ctrlKey || event.metaKey) {
         const c = camRef.current;
@@ -712,7 +762,9 @@ export function OctoCanvas(props: OctoCanvasProps) {
           const line = getItem(base, g.id) as LineItem | undefined;
           if (!line || line.locked) return;
           const bend = bendThrough(base, line, p, 4 / camRef.current.k);
-          setPreview(resolveLines(updateItem(base, g.id, withLineBox({ ...line, bend }, lineEnds(base, { ...line, bend })))));
+          // Dragging the middle of a line marked straight curves it.
+          const bent = { ...line, bend, route: line.route === 'straight' ? undefined : line.route };
+          setPreview(resolveLines(updateItem(base, g.id, withLineBox(bent, lineEnds(base, bent)))));
           break;
         }
       }
@@ -826,9 +878,9 @@ export function OctoCanvas(props: OctoCanvasProps) {
       }
     }
     if (editing) setEditing(null);
-    setArrangeOpen(false);
+    setBarMenu(null);
+    setContextMenu(null);
     setExportOpen(false);
-    setFigureExportOpen(false);
     if (openComment) setOpenComment(null);
     if (draftComment) setDraftComment(null);
     rootRef.current?.focus({ preventScroll: true });
@@ -925,6 +977,24 @@ export function OctoCanvas(props: OctoCanvasProps) {
     begin({ kind: 'marquee', start: p, base: event.shiftKey ? selection : [] });
   };
 
+  const onContextMenu = (event: React.MouseEvent) => {
+    const target = event.target as Element;
+    if (readOnly || target.closest('.occ-chrome, .occ-editor, .occ-palette-backdrop, .occ-comments, .occ-focus')) return;
+    if (entered && target.closest(`[data-item-id="${entered}"] .occ-figure-body`)) return;
+    event.preventDefault();
+    const rect = rootRef.current!.getBoundingClientRect();
+    const id = target.closest('[data-item-id]')?.getAttribute('data-item-id');
+    const hit = id ? getItem(doc, id) : undefined;
+    if (hit && !selection.includes(hit.id)) setSelection([hit.id]);
+    setBarMenu(null);
+    setEditing(null);
+    setContextMenu({ x: event.clientX - rect.left, y: event.clientY - rect.top, at: toWorld(event.clientX, event.clientY), onItems: !!hit });
+  };
+  const closeContextMenu = () => {
+    setContextMenu(null);
+    rootRef.current?.focus({ preventScroll: true });
+  };
+
   const onDoubleClick = (event: React.MouseEvent) => {
     const target = event.target as Element;
     if (target.closest('.occ-chrome, .occ-editor') || tool !== 'select') return;
@@ -962,30 +1032,44 @@ export function OctoCanvas(props: OctoCanvasProps) {
   };
   const arrange = (move: LayerMove) => {
     commit(reorderItems(doc, selection, move));
-    setArrangeOpen(false);
+    setBarMenu(null);
   };
   const rotateSelected = (degrees: number | 'reset') => {
-    setArrangeOpen(false);
+    setBarMenu(null);
     if (degrees !== 'reset') return commit(rotateItems(doc, selection, degrees));
     let next = doc;
     for (const id of selection) if (getItem(next, id)?.rotation) next = updateItem(next, id, { rotation: undefined });
     commit(resolveLines(next));
   };
-  const recolor = (color: string | undefined) => {
-    let next = doc;
-    for (const id of selection) if (getItem(next, id)?.type !== 'figure') next = updateItem(next, id, { color });
-    commit(next);
+  /** One style change to the selection (one undo step); each item only takes the fields it has. */
+  const applyStyle = (patch: (item: CanvasItem) => ItemPatch | undefined) => {
+    const current = docRef.current;
+    const ids = selectionRef.current;
+    const next = fitTexts(theme, patchItems(current, ids, (item) => patchFor(item, patch(item))), ids);
+    if (next !== current) commit(next);
   };
-  const formatText = (patch: Partial<Pick<TextItem, 'fontSize' | 'bold' | 'align'>>) => {
-    let next = doc;
-    for (const id of selection) {
-      const item = getItem(next, id);
-      if (item?.type !== 'text') continue;
-      const merged = { ...item, ...patch };
-      next = updateItem(next, id, { ...patch, ...measureTextBox(merged.text, merged.fontSize, theme.font.sans, merged.bold ? 700 : theme.text.node.weight) });
-    }
-    commit(next);
+  const copySelectionStyle = () => {
+    const first = docRef.current.items.find((i) => selectionRef.current.includes(i.id));
+    if (first) copiedStyle = copyStyle(first);
+    setBarMenu(null);
+    setStyleEpoch((n) => n + 1);
   };
+  const pasteSelectionStyle = () => {
+    if (!copiedStyle || !selectionRef.current.length) return;
+    const ids = selectionRef.current;
+    const next = fitTexts(theme, pasteStyle(docRef.current, ids, copiedStyle), ids);
+    if (next !== docRef.current) commit(next);
+    setBarMenu(null);
+  };
+  /** Locks the selection, or unlocks it when everything in it is locked. */
+  const toggleLock = () => {
+    const picked = docRef.current.items.filter((i) => selectionRef.current.includes(i.id));
+    if (!picked.length) return;
+    const lock = !picked.every((i) => i.locked);
+    commit(patchItems(docRef.current, selectionRef.current, () => ({ locked: lock || undefined })));
+    setBarMenu(null);
+  };
+  const setLink = (link: string | undefined) => applyStyle(() => ({ link }));
   /** Replaces hand-drawn boxes and the arrows between them with a diagram figure. */
   const toFigure = () => {
     const source = selectionToSource(doc, selection);
@@ -1017,15 +1101,64 @@ export function OctoCanvas(props: OctoCanvasProps) {
     }
     if (thread && mentioned.length) props.onMention?.({ thread, message, mentioned });
   };
-  const patchLines = (patch: Partial<Pick<LineItem, 'startArrow' | 'endArrow' | 'dashed'>>) => {
-    let next = doc;
-    for (const id of selection) if (getItem(next, id)?.type === 'line') next = updateItem(next, id, patch);
-    commit(next);
+
+  /** The selection as clipboard JSON; comments pinned to the copied items travel with them. */
+  const clipboardJson = () => {
+    const picked = new Set(selectionRef.current);
+    const items = docRef.current.items.filter((i) => picked.has(i.id));
+    const comments = (docRef.current.comments ?? []).filter((t) => t.item && picked.has(t.item));
+    return JSON.stringify(comments.length ? { version: 1, items, comments } : { version: 1, items });
   };
-  const patchShapes = (patch: Partial<Pick<ShapeItem, 'dashed' | 'fill' | 'align' | 'valign'>>) => {
-    let next = doc;
-    for (const id of selection) if (getItem(next, id)?.type === 'shape') next = updateItem(next, id, patch);
-    commit(next);
+  /** Pasted text: canvas items (centred on `at` when given), diagram code as a figure, other text as a text item. */
+  const pasteText = (text: string, at?: Point) => {
+    try {
+      const parsed: unknown = JSON.parse(text);
+      if (isCanvasDocument(parsed)) {
+        const box = at ? boundsOf(parsed.items) : undefined;
+        const dx = box && at ? Math.round(at.x - (box.x + box.w / 2)) : 24;
+        const dy = box && at ? Math.round(at.y - (box.y + box.h / 2)) : 24;
+        const { items, comments } = cloneWithComments(parsed, dx, dy);
+        if (!comments.length) insert(items);
+        else {
+          commit(resolveLines({ ...addItems(docRef.current, items), comments: [...(docRef.current.comments ?? []), ...comments] }));
+          setSelection(items.map((i) => i.id));
+        }
+        return;
+      }
+    } catch {
+      // Not JSON.
+    }
+    const c = at ?? viewportCenter();
+    const looksLikeDiagram = /[>{[]/.test(text) && text.split('\n').length > 1;
+    if (looksLikeDiagram) insert([newFigure(text)]);
+    else {
+      const size = measureTextBox(text, 20, theme.font.sans, theme.text.node.weight);
+      insert([{ ...newText(c), text, ...size, x: c.x - size.w / 2, y: c.y - size.h / 2 }]);
+    }
+  };
+  const pasteTextRef = useRef(pasteText);
+  pasteTextRef.current = pasteText;
+  /** Copy (or cut) from a menu: the system clipboard when allowed, and kept here for "Paste". */
+  const copySelection = (cut = false) => {
+    if (!selectionRef.current.length) return;
+    const json = clipboardJson();
+    lastCopied = json;
+    void copyText(json).catch(() => {});
+    if (cut) {
+      commit(removeItems(docRef.current, selectionRef.current));
+      setSelection([]);
+    }
+  };
+  /** Paste from a menu: the system clipboard if the browser lets us read it, else what was last copied here. */
+  const pasteFromMenu = async (at?: Point) => {
+    let text = '';
+    try {
+      text = (await navigator.clipboard?.readText?.()) ?? '';
+    } catch {
+      // Reading the clipboard needs permission; fall back to our own copy.
+    }
+    if (!text.trim()) text = lastCopied ?? '';
+    if (text.trim()) pasteTextRef.current(text, at);
   };
 
   // Clipboard: canvas items as JSON; pasted diagram code becomes a figure, other text a text item.
@@ -1034,14 +1167,12 @@ export function OctoCanvas(props: OctoCanvasProps) {
       const root = rootRef.current;
       return !!root && root.contains(document.activeElement) && !isTyping(event.target) && !editing && !entered && !readOnlyRef.current;
     };
-    const selectedItems = () => docRef.current.items.filter((i) => selectionRef.current.includes(i.id));
     const onCopy = (event: ClipboardEvent) => {
       if (!active(event) || !selectionRef.current.length) return;
       event.preventDefault();
-      // Comments pinned to the copied items travel with them.
-      const picked = new Set(selectionRef.current);
-      const comments = (docRef.current.comments ?? []).filter((t) => t.item && picked.has(t.item));
-      event.clipboardData?.setData('text/plain', JSON.stringify(comments.length ? { version: 1, items: selectedItems(), comments } : { version: 1, items: selectedItems() }));
+      const json = clipboardJson();
+      lastCopied = json;
+      event.clipboardData?.setData('text/plain', json);
       if (event.type === 'cut') {
         commit(removeItems(docRef.current, selectionRef.current));
         setSelection([]);
@@ -1058,27 +1189,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
       const text = event.clipboardData?.getData('text/plain') ?? '';
       if (!text.trim()) return;
       event.preventDefault();
-      try {
-        const parsed: unknown = JSON.parse(text);
-        if (isCanvasDocument(parsed)) {
-          const { items, comments } = cloneWithComments(parsed, 24, 24);
-          if (!comments.length) insert(items);
-          else {
-            commit(resolveLines({ ...addItems(docRef.current, items), comments: [...(docRef.current.comments ?? []), ...comments] }));
-            setSelection(items.map((i) => i.id));
-          }
-          return;
-        }
-      } catch {
-        // Not JSON.
-      }
-      const c = viewportCenter();
-      const looksLikeDiagram = /[>{[]/.test(text) && text.split('\n').length > 1;
-      if (looksLikeDiagram) insert([newFigure(text)]);
-      else {
-        const size = measureTextBox(text, 20, theme.font.sans, theme.text.node.weight);
-        insert([{ ...newText(c), text, ...size, x: c.x - size.w / 2, y: c.y - size.h / 2 }]);
-      }
+      pasteTextRef.current(text);
     };
     document.addEventListener('copy', onCopy);
     document.addEventListener('cut', onCopy);
@@ -1150,6 +1261,35 @@ export function OctoCanvas(props: OctoCanvasProps) {
       event.preventDefault();
       return;
     }
+    // A menu open: Escape closes it first (before clearing the selection).
+    if (event.key === 'Escape' && (barMenu || contextMenu)) {
+      event.preventDefault();
+      setBarMenu(null);
+      setContextMenu(null);
+      return;
+    }
+    // Physical keys: Option changes the character (⌥C is "ç" on a Mac) and Shift turns "]" into "}".
+    if (mod && event.altKey && event.code === 'KeyC') {
+      event.preventDefault();
+      if (selection.length) copySelectionStyle();
+      return;
+    }
+    if (mod && event.altKey && event.code === 'KeyV') {
+      event.preventDefault();
+      pasteSelectionStyle();
+      return;
+    }
+    if (mod && event.shiftKey && event.code === 'KeyL') {
+      event.preventDefault();
+      toggleLock();
+      return;
+    }
+    if (event.code === 'BracketRight' || event.code === 'BracketLeft' || event.key === ']' || event.key === '[') {
+      event.preventDefault();
+      const up = event.code === 'BracketRight' || event.key === ']';
+      if (selection.length) arrange(mod && event.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward');
+      return;
+    }
     if (mod && key === 'z') {
       event.preventDefault();
       (event.shiftKey ? onRedo : onUndo)?.();
@@ -1168,9 +1308,6 @@ export function OctoCanvas(props: OctoCanvasProps) {
     } else if (event.key === '/' && !mod) {
       event.preventDefault();
       setPaletteOpen(true);
-    } else if (event.key === ']' || event.key === '[') {
-      event.preventDefault();
-      if (selection.length) arrange(event.key === ']' ? (mod ? 'front' : 'forward') : mod ? 'back' : 'backward');
     } else if (mod && (event.key === '=' || event.key === '+' || event.key === '-')) {
       event.preventDefault();
       zoomAt(cam.k * (event.key === '-' ? 1 / 1.25 : 1.25));
@@ -1217,8 +1354,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
         setSelection([]);
         return;
       }
-      const size = measureTextBox(value, item.fontSize, theme.font.sans, theme.text.node.weight);
-      commit(updateItem(docRef.current, item.id, { text: value, ...size }));
+      commit(updateItem(docRef.current, item.id, { text: value, ...measureTextItem(theme, item, value) }));
     } else if ((item.type === 'shape' || item.type === 'line') && value !== (item.text ?? '')) {
       commit(updateItem(docRef.current, item.id, { text: value || undefined }));
     } else if (item.type === 'sticky' && value !== item.text) {
@@ -1481,6 +1617,50 @@ export function OctoCanvas(props: OctoCanvasProps) {
     void ('download' in action ? handle.download(action.download, `${name}.${action.download === 'json' ? 'json' : action.download}`) : handle.copy(action.copy));
   };
   const gridSize = 24 * k;
+  const contextEntries = (): MenuEntry[] => {
+    if (!contextMenu) return [];
+    const at = contextMenu.at;
+    if (!contextMenu.onItems || !selectedItems.length) {
+      return [
+        { label: 'Paste', kbd: '⌘V', onSelect: () => void pasteFromMenu(at) },
+        { label: 'Select all', kbd: '⌘A', disabled: !doc.items.length, onSelect: () => setSelection(doc.items.map((i) => i.id)) },
+        { label: 'Zoom to fit', kbd: '⇧1', onSelect: zoomToFit },
+      ];
+    }
+    const allLocked = selectedItems.every((i) => i.locked);
+    return [
+      { label: 'Cut', kbd: '⌘X', onSelect: () => copySelection(true) },
+      { label: 'Copy', kbd: '⌘C', onSelect: () => copySelection() },
+      { label: 'Paste', kbd: '⌘V', onSelect: () => void pasteFromMenu(at) },
+      { label: 'Duplicate', kbd: '⌘D', onSelect: duplicateSelected },
+      'sep',
+      { label: 'Copy style', kbd: '⌥⌘C', onSelect: copySelectionStyle },
+      { label: 'Paste style', kbd: '⌥⌘V', disabled: !copiedStyle, onSelect: pasteSelectionStyle },
+      'sep',
+      {
+        label: 'Arrange',
+        submenu: [
+          { label: 'Bring to front', kbd: '⇧⌘]', onSelect: () => arrange('front') },
+          { label: 'Bring forward', kbd: '⌘]', onSelect: () => arrange('forward') },
+          { label: 'Send backward', kbd: '⌘[', onSelect: () => arrange('backward') },
+          { label: 'Send to back', kbd: '⇧⌘[', onSelect: () => arrange('back') },
+          ...(rotatable
+            ? (['sep', { label: 'Rotate 90°', kbd: '⇧R', onSelect: () => rotateSelected(90) }, ...(selectedItems.some((i) => i.rotation) ? [{ label: 'Reset rotation', onSelect: () => rotateSelected('reset') }] : [])] as MenuEntry[])
+            : []),
+        ],
+      },
+      'sep',
+      ...(single ? [{ label: 'Add comment', onSelect: () => commentOn(single) }] : []),
+      ...(single ? [{ label: single.link ? 'Edit link…' : 'Add link…', onSelect: () => setBarMenu('link') }] : []),
+      { label: allLocked ? 'Unlock' : 'Lock', kbd: '⇧⌘L', onSelect: toggleLock },
+      ...(canConvert ? [{ label: 'Turn into a diagram', onSelect: toFigure }] : []),
+      'sep',
+      { label: 'Export selection as PNG', onSelect: () => void downloadExport('png') },
+      { label: 'Copy as PNG', onSelect: () => void downloadExport('png', 'copy') },
+      'sep',
+      { label: 'Delete', kbd: '⌫', danger: true, onSelect: removeSelected },
+    ];
+  };
 
   return (
     <div
@@ -1499,6 +1679,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
       }}
       onPointerLeave={props.onPresenceChange ? () => reportCursor(null) : undefined}
       onDoubleClick={onDoubleClick}
+      onContextMenu={onContextMenu}
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
       onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
@@ -1523,7 +1704,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
         ...style,
       }}
     >
-      <style>{CSS}</style>
+      <style>{CSS + SELECTION_BAR_CSS}</style>
       {props.ghosts && props.ghosts.length > 0 && <style>{`${props.ghosts.map((id) => `.occ-world [data-item-id="${id.replace(/["\\]/g, '')}"]`).join(',')} { opacity: 0.3; filter: grayscale(1); }`}</style>}
       <div className={`occ-world${camGliding ? ' occ-world-glide' : ''}`} style={{ transform: `translate(${cam.x}px, ${cam.y}px) scale(${k})`, clipPath: presentClip }}>
         {shown.items.map((item) => {
@@ -1649,7 +1830,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
                     <circle key={which} data-handle={which} data-for={single.id} className="occ-handle occ-handle-point" cx={g[which].x} cy={g[which].y} r={(handle * 0.6) / k} fill={theme.color.raised} stroke={theme.color.accent} strokeWidth={1.5 / k} />
                   ))}
                   {/* Drag the middle to bend the line (back near the straight line to straighten it). */}
-                  {!single.locked && (
+                  {!single.locked && lineRoute(single) !== 'elbow' && (
                     <circle data-handle="bend" data-for={single.id} className="occ-handle occ-handle-bend" cx={g.mid.x} cy={g.mid.y} r={(handle * 0.45) / k} fill={theme.color.accent} stroke={theme.color.raised} strokeWidth={1.5 / k}>
                       <title>Drag to curve</title>
                     </circle>
@@ -1706,27 +1887,27 @@ export function OctoCanvas(props: OctoCanvasProps) {
           cam={cam}
           items={selectedItems}
           theme={theme}
-          arrangeOpen={arrangeOpen}
-          onArrangeToggle={() => (setFigureExportOpen(false), setArrangeOpen((o) => !o))}
+          menu={barMenu}
+          onMenu={setBarMenu}
+          clearance={rotatable ? 30 : 0}
+          onStyle={applyStyle}
           onArrange={arrange}
           onRotate={rotatable ? rotateSelected : undefined}
-          onExportFigure={single?.type === 'figure' ? (action) => (setFigureExportOpen(false), exportFigure(single.id, action)) : undefined}
-          exportOpen={figureExportOpen}
-          onExportToggle={() => (setArrangeOpen(false), setFigureExportOpen((o) => !o))}
-          clearance={rotatable ? 30 : 0}
-          onColor={recolor}
-          onLine={patchLines}
-          onShape={patchShapes}
-          onDuplicate={duplicateSelected}
-          onDelete={removeSelected}
+          onExportFigure={single?.type === 'figure' ? (action) => (setBarMenu(null), exportFigure(single.id, action)) : undefined}
           onOpenFigure={single?.type === 'figure' && onOpenFigure ? () => onOpenFigure(single.id) : undefined}
           onAskAi={single?.type === 'figure' && onAskAi ? () => onAskAi(single.id) : undefined}
           onEnter={single?.type === 'figure' ? () => enterFigure(single.id) : undefined}
-          onFormatText={formatText}
           onToFigure={canConvert ? toFigure : undefined}
           onComment={single ? () => commentOn(single) : undefined}
+          onDuplicate={() => (setBarMenu(null), duplicateSelected())}
+          onDelete={() => (setBarMenu(null), removeSelected())}
+          onLock={toggleLock}
+          onLink={setLink}
+          onCopyStyle={copySelectionStyle}
+          onPasteStyle={copiedStyle ? pasteSelectionStyle : undefined}
         />
       )}
+      {contextMenu && !readOnly && <ContextMenu x={contextMenu.x} y={contextMenu.y} bounds={rootSize} entries={contextEntries()} onClose={closeContextMenu} />}
 
       {!readOnly && <CommentLayer
         doc={doc}
@@ -2255,7 +2436,7 @@ const FigureView = memo(function FigureView({
   const ref = useCallback((handle: OctoDiagramHandle | null) => register(item.id, handle), [register, item.id]);
   const onPlacementsChange = useCallback((next: ViewPlacements) => onPlacements(item.id, next), [onPlacements, item.id]);
   return (
-    <div data-item-id={item.id} className={`occ-item occ-figure${entered ? ' occ-figure-entered' : ''}${selected ? ' occ-figure-selected' : ''}`} style={{ position: 'absolute', left: item.x, top: item.y, width: item.w, height: item.h }}>
+    <div data-item-id={item.id} className={`occ-item occ-figure${entered ? ' occ-figure-entered' : ''}${selected ? ' occ-figure-selected' : ''}`} style={{ position: 'absolute', left: item.x, top: item.y, width: item.w, height: item.h, opacity: item.opacity }}>
       <div className="occ-figure-tab">{title}</div>
       <div className="occ-figure-body" style={{ pointerEvents: entered ? 'auto' : 'none' }}>
         <OctoDiagram
@@ -2315,10 +2496,10 @@ function TextEditor({ item, theme, onDone }: { item: CanvasItem; theme: Theme; o
     done.current = true;
     onDone(v);
   };
-  const fontSize = item.type === 'text' ? item.fontSize : item.type === 'line' ? theme.text.edge.size : item.type === 'sticky' ? STICKY_FONT_SIZE : item.type === 'code' ? CODE_FONT_SIZE : theme.text.node.size;
+  const fontSize = item.type === 'text' ? item.fontSize : item.type === 'line' ? theme.text.edge.size : item.type === 'sticky' ? stickyLabel(theme, item).size : item.type === 'code' ? CODE_FONT_SIZE : item.type === 'shape' ? shapeLabel(theme, item).size : theme.text.node.size;
   let box: Box = item;
   if (item.type === 'text') {
-    const size = measureTextBox(value, item.fontSize, theme.font.sans, item.bold ? 700 : theme.text.node.weight);
+    const size = measureTextItem(theme, item, value);
     box = { x: item.x, y: item.y, w: Math.max(size.w, 40), h: size.h };
   } else if (item.type === 'code') {
     box = { x: item.x + 14, y: item.y + 14, w: item.w - 28, h: Math.max(item.h - 28, value.split('\n').length * CODE_FONT_SIZE * 1.5 + 4) };
@@ -2361,8 +2542,8 @@ function TextEditor({ item, theme, onDone }: { item: CanvasItem; theme: Theme; o
         // Turn with the item, about the item's centre.
         transform: item.rotation ? `rotate(${item.rotation}deg)` : undefined,
         transformOrigin: `${item.x + item.w / 2 - box.x}px ${item.y + item.h / 2 - box.y}px`,
-        font: item.type === 'code' ? `400 ${fontSize}px/1.5 ${theme.font.mono}` : item.type === 'text' ? textFont(theme, item) : `${item.type === 'sticky' ? 500 : theme.text.node.weight} ${fontSize}px/${TEXT_LINE_HEIGHT} ${theme.font.sans}`,
-        color: item.type === 'shape' ? shapeColors(theme, item.color, item.fill).text : theme.color.text,
+        font: item.type === 'code' ? `400 ${fontSize}px/1.5 ${theme.font.mono}` : item.type === 'text' ? textFont(theme, item) : item.type === 'shape' ? cssFont(shapeLabel(theme, item)) : item.type === 'sticky' ? cssFont(stickyLabel(theme, item)) : `${theme.text.node.weight} ${fontSize}px/${TEXT_LINE_HEIGHT} ${theme.font.sans}`,
+        color: item.type === 'shape' ? shapePaint(theme, item).text : item.type === 'sticky' ? stickyTextColor(theme, item) : theme.color.text,
         textAlign: item.type === 'text' ? (item.align ?? 'left') : item.type === 'shape' ? (item.align ?? 'center') : item.type === 'code' ? 'left' : 'center',
         ...editorPadding(item, box, fontSize * TEXT_LINE_HEIGHT * Math.max(1, value.split('\n').length)),
       }}
@@ -2401,237 +2582,6 @@ function ToolRail({ tool, onTool, onInsert }: { tool: CanvasTool; onTool: (t: Ca
         <Glyph d="M12 5v14M5 12h14" />
       </button>
     </div>
-  );
-}
-
-const FILL_NEXT = { tint: 'solid', solid: 'none', none: 'tint' } as const;
-const FILL_LABEL = { tint: 'tint', solid: 'solid', none: 'none' } as const;
-const ALIGN_NEXT = { left: 'center', center: 'right', right: 'left' } as const;
-const VALIGN_NEXT = { top: 'middle', middle: 'bottom', bottom: 'top' } as const;
-
-function SelectionBar(props: {
-  box: Box;
-  cam: Camera;
-  items: CanvasItem[];
-  theme: Theme;
-  arrangeOpen: boolean;
-  onArrangeToggle: () => void;
-  onArrange: (move: LayerMove) => void;
-  onRotate?: (degrees: number | 'reset') => void;
-  onExportFigure?: (action: { download: ExportFormat } | { copy: CopyFormat }) => void;
-  exportOpen?: boolean;
-  onExportToggle?: () => void;
-  /** Leave room above the selection for the rotate handle. */
-  clearance?: number;
-  onColor: (color: string | undefined) => void;
-  onLine: (patch: Partial<Pick<LineItem, 'startArrow' | 'endArrow' | 'dashed'>>) => void;
-  onShape: (patch: Partial<Pick<ShapeItem, 'dashed' | 'fill' | 'align' | 'valign'>>) => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
-  onOpenFigure?: () => void;
-  onAskAi?: () => void;
-  onEnter?: () => void;
-  onFormatText: (patch: Partial<Pick<TextItem, 'fontSize' | 'bold' | 'align'>>) => void;
-  onToFigure?: () => void;
-  onComment?: () => void;
-}) {
-  const { box, cam, items, theme } = props;
-  const texts = items.filter((i): i is TextItem => i.type === 'text');
-  const text = texts[0];
-  const left = cam.x + (box.x + box.w / 2) * cam.k;
-  const top = cam.y + box.y * cam.k;
-  const gap = 12 + (props.clearance ?? 0);
-  const below = top - gap < 52;
-  const colorable = items.some((i) => i.type !== 'figure');
-  const lines = items.filter((i): i is LineItem => i.type === 'line');
-  const shapes = items.filter((i): i is ShapeItem => i.type === 'shape');
-  const shape = shapes[0];
-  const current = items.find((i) => i.type !== 'figure')?.color;
-  return (
-    <div className="occ-selbar occ-chrome" style={{ left, top: below ? cam.y + (box.y + box.h) * cam.k + 12 : top - gap, transform: below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)' }} onPointerDown={(e) => e.stopPropagation()}>
-      {props.onOpenFigure && (
-        <button type="button" className="occ-bar-btn" onClick={props.onOpenFigure} title="Edit this figure's code">
-          <Glyph d="M16 18l6-6-6-6M8 6l-6 6 6 6" /> Code
-        </button>
-      )}
-      {props.onEnter && (
-        <button type="button" className="occ-bar-btn" onClick={props.onEnter} title="Work inside the figure: drill down, collapse, flows (Enter)">
-          Open
-        </button>
-      )}
-      {props.onAskAi && (
-        <button type="button" className="occ-bar-btn" onClick={props.onAskAi} title="Ask the assistant to change this figure">
-          <Glyph d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" /> Ask AI
-        </button>
-      )}
-      {props.onExportFigure && (
-        <span className="occ-menu-anchor">
-          <button type="button" className="occ-bar-btn" onClick={props.onExportToggle} aria-expanded={props.exportOpen} title="Export this figure" aria-label="Export this figure">
-            <Glyph d="M12 4v11M7 10l5 5 5-5M5 20h14" />
-          </button>
-          {props.exportOpen && (
-            <div className="occ-menu" role="menu">
-              <div className="occ-menu-label">Download</div>
-              {(
-                [
-                  ['png', 'PNG image'],
-                  ['svg', 'SVG vector'],
-                  ['pdf', 'PDF document'],
-                  ['json', 'Eraser JSON'],
-                  ['xml', 'Eraser XML'],
-                ] as [ExportFormat, string][]
-              ).map(([format, label]) => (
-                <button key={format} type="button" role="menuitem" onClick={() => props.onExportFigure!({ download: format })}>
-                  {label}
-                </button>
-              ))}
-              <div className="occ-menu-sep" />
-              <div className="occ-menu-label">Copy</div>
-              {(
-                [
-                  ['png', 'PNG image'],
-                  ['svg', 'SVG vector'],
-                  ['json', 'Eraser JSON'],
-                ] as [CopyFormat, string][]
-              ).map(([format, label]) => (
-                <button key={format} type="button" role="menuitem" onClick={() => props.onExportFigure!({ copy: format })}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </span>
-      )}
-      {props.onToFigure && (
-        <button type="button" className="occ-bar-btn" onClick={props.onToFigure} title="Turn these boxes and arrows into a diagram figure (with code)">
-          <Glyph d="M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4a2 2 0 0 1 2 2V14" /> To diagram
-        </button>
-      )}
-      {text && (
-        <span className="occ-bar-group" role="group" aria-label="Text">
-          {FONT_SIZES.map(([label, size]) => (
-            <button key={label} type="button" className="occ-bar-btn occ-bar-small" aria-pressed={text.fontSize === size} onClick={() => props.onFormatText({ fontSize: size })} title={`Font size ${size}`}>
-              {label}
-            </button>
-          ))}
-          <button type="button" className="occ-bar-btn occ-bar-small" aria-pressed={!!text.bold} onClick={() => props.onFormatText({ bold: !text.bold })} title="Bold" style={{ fontWeight: 700 }}>
-            B
-          </button>
-          {(['left', 'center', 'right'] as const).map((align) => (
-            <button key={align} type="button" className="occ-bar-btn occ-bar-small" aria-pressed={(text.align ?? 'left') === align} onClick={() => props.onFormatText({ align })} title={`Align ${align}`} aria-label={`Align ${align}`}>
-              <Glyph d={align === 'left' ? 'M4 6h16M4 12h10M4 18h13' : align === 'center' ? 'M4 6h16M7 12h10M5.5 18h13' : 'M4 6h16M10 12h10M7 18h13'} />
-            </button>
-          ))}
-        </span>
-      )}
-      {colorable && (
-        <span className="occ-swatches" role="group" aria-label="Color">
-          {COLORS.map((c) => {
-            const swatch = swatchFor(theme, c);
-            return (
-              <button
-                key={c ?? 'none'}
-                type="button"
-                className="occ-swatch"
-                aria-pressed={current === c}
-                aria-label={c ?? 'Default'}
-                title={c ?? 'Default'}
-                onClick={() => props.onColor(c)}
-                style={{ background: swatch?.stroke ?? theme.node.stroke }}
-              />
-            );
-          })}
-        </span>
-      )}
-      {lines.length > 0 && (
-        <span className="occ-bar-group">
-          <button type="button" className="occ-bar-btn" aria-pressed={lines.every((l) => l.startArrow)} onClick={() => props.onLine({ startArrow: !lines.every((l) => l.startArrow) })} title="Arrow at start">
-            <Glyph d="M19 12H5M10 7l-5 5 5 5" />
-          </button>
-          <button type="button" className="occ-bar-btn" aria-pressed={lines.every((l) => l.endArrow)} onClick={() => props.onLine({ endArrow: !lines.every((l) => l.endArrow) })} title="Arrow at end">
-            <Glyph d="M5 12h14M14 7l5 5-5 5" />
-          </button>
-          <button type="button" className="occ-bar-btn" aria-pressed={lines.every((l) => l.dashed)} onClick={() => props.onLine({ dashed: !lines.every((l) => l.dashed) })} title="Dashed">
-            <Glyph d="M4 12h3M10.5 12h3M17 12h3" />
-          </button>
-        </span>
-      )}
-      {shape && (
-        <span className="occ-bar-group" role="group" aria-label="Shape">
-          <button type="button" className="occ-bar-btn" onClick={() => props.onShape({ fill: FILL_NEXT[shape.fill ?? 'tint'] })} title={`Fill: ${FILL_LABEL[shape.fill ?? 'tint']} (click to change)`} aria-label={`Fill: ${FILL_LABEL[shape.fill ?? 'tint']}`}>
-            <svg width={14} height={14} viewBox="0 0 24 24" aria-hidden="true">
-              <rect x={4} y={4} width={16} height={16} rx={3} fill={shape.fill === 'none' ? 'none' : 'currentColor'} fillOpacity={shape.fill === 'solid' ? 1 : 0.25} stroke="currentColor" strokeWidth={2} />
-            </svg>
-          </button>
-          <button type="button" className="occ-bar-btn" aria-pressed={shapes.every((s) => s.dashed)} onClick={() => props.onShape({ dashed: !shapes.every((s) => s.dashed) || undefined })} title="Dashed outline">
-            <Glyph d="M4 4h4M12 4h4M20 4v4M20 12v4M20 20h-4M12 20H8M4 20v-4M4 12V8" />
-          </button>
-          {shape.text && (
-            <>
-              <button type="button" className="occ-bar-btn occ-bar-small" onClick={() => props.onShape({ align: ALIGN_NEXT[shape.align ?? 'center'] })} title={`Text ${shape.align ?? 'center'} (click to change)`} aria-label={`Text alignment: ${shape.align ?? 'center'}`}>
-                <Glyph d={(shape.align ?? 'center') === 'left' ? 'M4 6h16M4 12h10M4 18h13' : shape.align === 'right' ? 'M4 6h16M10 12h10M7 18h13' : 'M4 6h16M7 12h10M5.5 18h13'} />
-              </button>
-              <button type="button" className="occ-bar-btn occ-bar-small" onClick={() => props.onShape({ valign: VALIGN_NEXT[shape.valign ?? 'middle'] })} title={`Text ${shape.valign ?? 'middle'} (click to change)`} aria-label={`Vertical text position: ${shape.valign ?? 'middle'}`}>
-                <Glyph d={(shape.valign ?? 'middle') === 'top' ? 'M4 4h16M12 8v12M8 12l4-4 4 4' : shape.valign === 'bottom' ? 'M4 20h16M12 4v12M8 12l4 4 4-4' : 'M4 12h16M12 3v5M12 16v5'} />
-              </button>
-            </>
-          )}
-        </span>
-      )}
-      <span className="occ-bar-group occ-menu-anchor">
-        <button type="button" className="occ-bar-btn" onClick={props.onArrangeToggle} aria-expanded={props.arrangeOpen} title="Layer order and rotation">
-          <Glyph d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5" /> Arrange
-        </button>
-        {props.arrangeOpen && (
-          <div className="occ-menu" role="menu">
-            {(
-              [
-                ['front', 'Bring to front', '⌘]'],
-                ['forward', 'Bring forward', ']'],
-                ['backward', 'Send backward', '['],
-                ['back', 'Send to back', '⌘['],
-              ] as [LayerMove, string, string][]
-            ).map(([move, label, keys]) => (
-              <button key={move} type="button" role="menuitem" onClick={() => props.onArrange(move)}>
-                {label} <kbd>{keys}</kbd>
-              </button>
-            ))}
-            {props.onRotate && (
-              <>
-                <div className="occ-menu-sep" />
-                <button type="button" role="menuitem" onClick={() => props.onRotate!(90)}>
-                  Rotate 90° <kbd>⇧R</kbd>
-                </button>
-                {items.some((i) => i.rotation) && (
-                  <button type="button" role="menuitem" onClick={() => props.onRotate!('reset')}>
-                    Reset rotation
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </span>
-      {props.onComment && (
-        <button type="button" className="occ-bar-btn" onClick={props.onComment} title="Comment" aria-label="Comment">
-          <Glyph d="M4 5h16v11H9l-5 4z" />
-        </button>
-      )}
-      <button type="button" className="occ-bar-btn" onClick={props.onDuplicate} title="Duplicate (⌘D)" aria-label="Duplicate">
-        <Glyph d="M8 8h12v12H8zM4 16V4h12" />
-      </button>
-      <button type="button" className="occ-bar-btn occ-danger" onClick={props.onDelete} title="Delete (⌫)" aria-label="Delete">
-        <Glyph d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
-      </button>
-    </div>
-  );
-}
-
-function Glyph({ d }: { d: string }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={d} />
-    </svg>
   );
 }
 

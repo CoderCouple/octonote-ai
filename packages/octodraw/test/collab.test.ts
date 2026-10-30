@@ -153,6 +153,28 @@ describe('collaboration (Yjs)', () => {
     expect(assignZ(['a', 'new', 'b'], (id) => z[id])).toEqual([0, 1, 2]);
   });
 
+  it('round-trips the style fields and merges two people styling one item', () => {
+    const styled = doc(
+      { ...shape('s'), strokeColor: 'blue', fillColor: '#ffeecc', textColor: 'red', strokeWidth: 2.5, strokeStyle: 'dotted', opacity: 0.5, fontSize: 18, bold: true, italic: true, font: 'serif' } as CanvasItem,
+      { id: 'n', type: 'sticky', x: 0, y: 0, w: 200, h: 200, text: 'N', textColor: 'gray', fontSize: 20, font: 'hand' },
+      { id: 'l', type: 'line', x: 0, y: 0, w: 200, h: 100, start: { x: 0, y: 0 }, end: { x: 200, y: 100 }, startHead: 'dot', endHead: 'diamond', route: 'elbow', strokeWidth: 4, opacity: 0.25 },
+    );
+    const ydoc = new Y.Doc();
+    writeCanvas(ydoc, styled);
+    expect(readCanvas(ydoc)).toEqual(styled);
+    const { a, b, sync } = pair();
+    writeCanvas(a, styled);
+    sync();
+    writeCanvas(a, updateItem(readCanvas(a), 's', { opacity: 0.8 }));
+    writeCanvas(b, updateItem(readCanvas(b), 's', { strokeStyle: 'dashed', font: 'mono' }));
+    writeCanvas(b, updateItem(readCanvas(b), 'l', { endHead: 'open', route: undefined }));
+    sync();
+    expect(readCanvas(a)).toEqual(readCanvas(b));
+    expect(readCanvas(a).items[0]).toMatchObject({ opacity: 0.8, strokeStyle: 'dashed', font: 'mono', fillColor: '#ffeecc' });
+    expect(readCanvas(a).items[2]).toMatchObject({ endHead: 'open', startHead: 'dot' });
+    expect('route' in readCanvas(a).items[2]!).toBe(false);
+  });
+
   it('seedCanvas fills only an empty doc', () => {
     const ydoc = new Y.Doc();
     expect(seedCanvas(ydoc, doc(shape('a')))).toBe(true);

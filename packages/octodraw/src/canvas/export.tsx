@@ -3,9 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { resolveIcon, type IconSet } from '../icons/resolve';
 import type { IconResolver } from '../icons/types';
 import { Icon } from '../react/DiagramSvg';
-import { lineColor } from '../react/theme';
 import type { Theme } from '../theme/tokens';
-import { CODE_FONT_SIZE, DASH, DeviceOutline, inkColor, linePath, penPath, shapeColors, shapePath, shapeTextPadding, STICKY_FONT_SIZE, stickyColors, TEXT_LINE_HEIGHT } from './items';
+import { BASE_STROKE, CODE_FONT_SIZE, DeviceOutline, inkColor, lineMarkers, linePaint, linePath, penPath, shapeColors, shapeLabel, shapePaint, shapePath, shapeTextPadding, stickyColors, stickyLabel, stickyTextColor, strokeWidthFor, TEXT_LINE_HEIGHT, textLabel, type LabelStyle } from './items';
 import { boundsOf, lineGeometry, type CanvasDocument, type CanvasItem } from './model';
 import { FIGURE_TITLE, figureLabel } from './templates';
 
@@ -25,10 +24,10 @@ export interface CanvasSvgOptions {
   ids?: Iterable<string>;
 }
 
-function TextLines({ text, x, y, size, lineHeight, anchor, font, weight, fill }: { text: string; x: number; y: number; size: number; lineHeight: number; anchor: 'start' | 'middle' | 'end'; font: string; weight: number; fill: string }) {
+function TextLines({ text, x, y, size, lineHeight, anchor, font, weight, fill, italic }: { text: string; x: number; y: number; size: number; lineHeight: number; anchor: 'start' | 'middle' | 'end'; font: string; weight: number; fill: string; italic?: boolean }) {
   const lines = text.split('\n');
   return (
-    <text x={x} y={y} fontSize={size} fontFamily={font} fontWeight={weight} fill={fill} textAnchor={anchor} style={{ whiteSpace: 'pre' }}>
+    <text x={x} y={y} fontSize={size} fontFamily={font} fontWeight={weight} fontStyle={italic ? 'italic' : undefined} fill={fill} textAnchor={anchor} style={{ whiteSpace: 'pre' }}>
       {lines.map((line, i) => (
         <tspan key={i} x={x} dy={i === 0 ? size * 0.8 : size * lineHeight}>
           {line || ' '}
@@ -43,8 +42,9 @@ function itemSvg(item: CanvasItem, doc: CanvasDocument, o: CanvasSvgOptions): Re
   const font = theme.font.sans;
   switch (item.type) {
     case 'shape': {
-      const { fill, stroke, text } = shapeColors(theme, item.color, item.fill);
-      const size = theme.text.node.size;
+      const paint = shapePaint(theme, item);
+      const label = shapeLabel(theme, item);
+      const size = label.size;
       const textHeight = (item.text ?? '').split('\n').length * size * TEXT_LINE_HEIGHT;
       const pad = shapeTextPadding(item);
       const align = item.align ?? 'center';
@@ -53,8 +53,8 @@ function itemSvg(item: CanvasItem, doc: CanvasDocument, o: CanvasSvgOptions): Re
       const y = valign === 'top' ? pad.y : valign === 'bottom' ? item.h - pad.y - textHeight : item.h / 2 - textHeight / 2;
       return (
         <g transform={`translate(${item.x} ${item.y})`}>
-          <path d={shapePath(item.shape, item.w, item.h)} fill={fill} stroke={stroke} strokeWidth={1.25} strokeDasharray={item.dashed ? DASH : undefined} />
-          {item.text && <TextLines text={item.text} x={x} y={y} size={size} lineHeight={TEXT_LINE_HEIGHT} anchor={align === 'left' ? 'start' : align === 'right' ? 'end' : 'middle'} font={font} weight={theme.text.node.weight} fill={text} />}
+          <path d={shapePath(item.shape, item.w, item.h)} fill={paint.fill} stroke={paint.stroke} strokeWidth={paint.strokeWidth} strokeDasharray={paint.strokeDasharray} strokeLinecap={paint.strokeLinecap} />
+          {item.text && <TextLines text={item.text} x={x} y={y} lineHeight={TEXT_LINE_HEIGHT} anchor={align === 'left' ? 'start' : align === 'right' ? 'end' : 'middle'} {...labelProps(label)} fill={paint.text} />}
         </g>
       );
     }
@@ -63,34 +63,31 @@ function itemSvg(item: CanvasItem, doc: CanvasDocument, o: CanvasSvgOptions): Re
       const x = item.align === 'center' ? item.w / 2 : item.align === 'right' ? item.w : 0;
       return (
         <g transform={`translate(${item.x} ${item.y})`}>
-          <TextLines text={item.text} x={x} y={(item.fontSize * (TEXT_LINE_HEIGHT - 1)) / 2} size={item.fontSize} lineHeight={TEXT_LINE_HEIGHT} anchor={anchor} font={font} weight={item.bold ? 700 : theme.text.node.weight} fill={inkColor(theme, item.color)} />
+          <TextLines text={item.text} x={x} y={(item.fontSize * (TEXT_LINE_HEIGHT - 1)) / 2} lineHeight={TEXT_LINE_HEIGHT} anchor={anchor} {...labelProps(textLabel(theme, item))} fill={inkColor(theme, item.color)} />
         </g>
       );
     }
     case 'sticky': {
       const { fill } = stickyColors(theme, item.color);
       const lines = item.text.split('\n').length;
+      const label = stickyLabel(theme, item);
       return (
         <g transform={`translate(${item.x} ${item.y})`}>
           <rect width={item.w} height={item.h} rx={3} fill={fill} />
-          <TextLines text={item.text} x={item.w / 2} y={item.h / 2 - (lines * STICKY_FONT_SIZE * TEXT_LINE_HEIGHT) / 2} size={STICKY_FONT_SIZE} lineHeight={TEXT_LINE_HEIGHT} anchor="middle" font={font} weight={500} fill={theme.color.text} />
+          <TextLines text={item.text} x={item.w / 2} y={item.h / 2 - (lines * label.size * TEXT_LINE_HEIGHT) / 2} lineHeight={TEXT_LINE_HEIGHT} anchor="middle" {...labelProps(label)} fill={stickyTextColor(theme, item)} />
         </g>
       );
     }
     case 'pen':
-      return <path transform={`translate(${item.x} ${item.y})`} d={penPath(item.points, item.w, item.h)} fill="none" stroke={inkColor(theme, item.color)} strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" />;
+      return <path transform={`translate(${item.x} ${item.y})`} d={penPath(item.points, item.w, item.h)} fill="none" stroke={inkColor(theme, item.color)} strokeWidth={strokeWidthFor(BASE_STROKE.pen, item.strokeWidth)} strokeLinecap="round" strokeLinejoin="round" />;
     case 'line': {
       const geometry = lineGeometry(doc, item);
-      const color = lineColor(theme, item.color) ?? theme.color.edge;
-      const marker = `occ-export-arrow-${item.id}`;
+      const paint = linePaint(theme, item);
+      const markers = lineMarkers(item, 'occ-export-arrow', paint.color, paint.strokeWidth);
       return (
         <g>
-          <defs>
-            <marker id={marker} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
-              <path d="M0 0L10 5L0 10z" fill={color} />
-            </marker>
-          </defs>
-          <path d={linePath(geometry)} fill="none" stroke={color} strokeWidth={1.5} strokeDasharray={item.dashed ? DASH : undefined} markerStart={item.startArrow ? `url(#${marker})` : undefined} markerEnd={item.endArrow ? `url(#${marker})` : undefined} />
+          <defs>{markers.defs}</defs>
+          <path d={linePath(geometry)} fill="none" stroke={paint.color} strokeWidth={paint.strokeWidth} strokeDasharray={paint.strokeDasharray} strokeLinecap={paint.strokeLinecap} strokeLinejoin={geometry.points ? 'round' : undefined} markerStart={markers.markerStart} markerEnd={markers.markerEnd} />
           {item.text && (
             <text x={geometry.mid.x} y={geometry.mid.y + 4} fontSize={theme.text.edge.size} fontFamily={font} fill={theme.color.textMuted} textAnchor="middle" stroke={theme.color.canvas} strokeWidth={4} paintOrder="stroke">
               {item.text}
@@ -108,7 +105,7 @@ function itemSvg(item: CanvasItem, doc: CanvasDocument, o: CanvasSvgOptions): Re
     case 'frame':
       return (
         <g transform={`translate(${item.x} ${item.y})`}>
-          <DeviceOutline device={item.device} w={item.w} h={item.h} title={item.title} theme={theme} />
+          <DeviceOutline device={item.device} w={item.w} h={item.h} title={item.title} theme={theme} color={item.color} />
         </g>
       );
     case 'code':
@@ -136,6 +133,8 @@ function itemSvg(item: CanvasItem, doc: CanvasDocument, o: CanvasSvgOptions): Re
   }
 }
 
+const labelProps = (label: LabelStyle) => ({ size: label.size, font: label.family, weight: label.weight, italic: label.italic });
+
 /** Renders canvas items to a standalone SVG string. */
 export function renderCanvasSvg(doc: CanvasDocument, options: CanvasSvgOptions): { svg: string; width: number; height: number } {
   const padding = options.padding ?? 32;
@@ -145,7 +144,7 @@ export function renderCanvasSvg(doc: CanvasDocument, options: CanvasSvgOptions):
   const box = boundsOf(items.map((i) => (i.type === 'figure' ? { ...i, y: i.y - FIGURE_TITLE.space, h: i.h + FIGURE_TITLE.space } : i))) ?? { x: 0, y: 0, w: 1, h: 1 };
   const width = Math.ceil(box.w + padding * 2);
   const height = Math.ceil(box.h + padding * 2);
-  const body = renderToStaticMarkup(createElement('g', { transform: `translate(${padding - box.x} ${padding - box.y})` }, ...items.map((item) => createElement('g', { key: item.id, transform: item.rotation ? `rotate(${item.rotation} ${item.x + item.w / 2} ${item.y + item.h / 2})` : undefined }, itemSvg(item, doc, options)))));
+  const body = renderToStaticMarkup(createElement('g', { transform: `translate(${padding - box.x} ${padding - box.y})` }, ...items.map((item) => createElement('g', { key: item.id, transform: item.rotation ? `rotate(${item.rotation} ${item.x + item.w / 2} ${item.y + item.h / 2})` : undefined, opacity: item.opacity }, itemSvg(item, doc, options)))));
   const fill = options.background ?? options.theme.color.canvas;
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,

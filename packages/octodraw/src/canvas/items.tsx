@@ -3,8 +3,30 @@ import { resolveIcon, type IconSet } from '../icons/resolve';
 import type { IconResolver } from '../icons/types';
 import { Icon } from '../react/DiagramSvg';
 import { lineColor, swatchFor } from '../react/theme';
-import type { Theme } from '../theme/tokens';
-import { lineGeometry, safeLink, type LineGeometry, type CanvasDocument, type CanvasItem, type CodeItem, type DeviceKind, type FrameItem, type IconItem, type ImageItem, type LineItem, type PenItem, type ShapeItem, type StickyItem, type TextItem } from './model';
+import { PALETTE_NAMES, type Theme } from '../theme/tokens';
+import {
+  DEFAULT_STROKE_WIDTH,
+  lineGeometry,
+  lineHeads,
+  safeLink,
+  strokeStyleOf,
+  type ArrowHead,
+  type CanvasDocument,
+  type CanvasItem,
+  type CodeItem,
+  type DeviceKind,
+  type FontFamily,
+  type FrameItem,
+  type IconItem,
+  type ImageItem,
+  type LineGeometry,
+  type LineItem,
+  type PenItem,
+  type ShapeItem,
+  type StickyItem,
+  type StrokeStyle,
+  type TextItem,
+} from './model';
 
 // Renderers for canvas items. Each is an absolutely positioned element in
 // canvas units (the world layer applies the camera transform), tagged with
@@ -18,7 +40,7 @@ export interface ItemContext {
 
 export const TEXT_LINE_HEIGHT = 1.3;
 
-const placed = (item: CanvasItem, extra?: CSSProperties): CSSProperties => ({ position: 'absolute', left: item.x, top: item.y, width: item.w, height: item.h, transform: item.rotation ? `rotate(${item.rotation}deg)` : undefined, ...extra });
+const placed = (item: CanvasItem, extra?: CSSProperties): CSSProperties => ({ position: 'absolute', left: item.x, top: item.y, width: item.w, height: item.h, transform: item.rotation ? `rotate(${item.rotation}deg)` : undefined, opacity: item.opacity, ...extra });
 
 /** Fill, outline, glyph and label colors of a shape (or icon) in a color and fill style. */
 export function shapeColors(theme: Theme, color: string | undefined, fill: ShapeItem['fill'] = 'tint') {
@@ -31,18 +53,120 @@ export function shapeColors(theme: Theme, color: string | undefined, fill: Shape
   return { fill: swatch?.nodeFill ?? theme.node.fill, stroke, icon, text: theme.color.text };
 }
 
+const isPaletteName = (color: string) => (PALETTE_NAMES as readonly string[]).includes(color.toLowerCase().replace(/^grey$/, 'gray'));
+
 /** The dash pattern lines and dashed shapes share. */
 export const DASH = '6 5';
+
+/** Default stroke width of each kind of item (what `strokeWidth` 1.5 draws). */
+export const BASE_STROKE = { shape: 1.25, line: 1.5, pen: 2.25 } as const;
+
+/** Drawn width of an outline: `strokeWidth` is a multiple of the type's default (1.5 = default). */
+export const strokeWidthFor = (base: number, strokeWidth: number | undefined) => (strokeWidth ? (base * strokeWidth) / DEFAULT_STROKE_WIDTH : base);
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+/** Dash array for a stroke style at a drawn width (dashes grow with thick strokes; dots are round-capped). */
+export function dashFor(style: StrokeStyle, width: number, base: number): string | undefined {
+  if (style === 'dashed') {
+    const scale = Math.max(1, width / base);
+    return scale === 1 ? DASH : `${round2(6 * scale)} ${round2(5 * scale)}`;
+  }
+  if (style === 'dotted') return `${round2(0.5 * width)} ${round2(4.5 * width)}`;
+  return undefined;
+}
+
+/** SVG stroke attributes for an item's outline style. */
+export function strokeProps(item: { strokeWidth?: number; strokeStyle?: StrokeStyle; dashed?: boolean }, base: number) {
+  const style = strokeStyleOf(item);
+  const width = strokeWidthFor(base, item.strokeWidth);
+  return { strokeWidth: width, strokeDasharray: dashFor(style, width, base), strokeLinecap: style === 'dotted' ? ('round' as const) : undefined };
+}
+
+/** A serif stack for `font: 'serif'` (the theme has sans, mono and hand-drawn faces). */
+export const SERIF_FONT = 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
+
+/** The CSS font family of a label typeface. */
+export function fontFamily(theme: Theme, font: FontFamily | undefined): string {
+  return font === 'serif' ? SERIF_FONT : font === 'mono' ? theme.font.mono : font === 'hand' ? theme.font.rough : theme.font.sans;
+}
+
+export interface LabelStyle {
+  size: number;
+  weight: number;
+  italic: boolean;
+  family: string;
+}
+
+/** Size, weight, slant and family of a label (defaults: the item type's own). */
+export function labelStyle(theme: Theme, item: { fontSize?: number; bold?: boolean; italic?: boolean; font?: FontFamily }, defaults: { size: number; weight: number }): LabelStyle {
+  return { size: item.fontSize ?? defaults.size, weight: item.bold ? 700 : defaults.weight, italic: !!item.italic, family: fontFamily(theme, item.font) };
+}
+
+/** CSS `font` shorthand of a label style. */
+export const cssFont = (s: LabelStyle) => `${s.italic ? 'italic ' : ''}${s.weight} ${s.size}px/${TEXT_LINE_HEIGHT} ${s.family}`;
+
+/** Fill, outline (colour, width, dash) and label colour of a shape, per-part colours applied. */
+export function shapePaint(theme: Theme, item: ShapeItem) {
+  const base = shapeColors(theme, item.color, item.fill);
+  const filled = item.fillColor ? shapeColors(theme, item.fillColor, item.fill) : base;
+  // A palette border follows the fill style like `color` does; a raw CSS colour is used as is.
+  const stroke = item.strokeColor ? (isPaletteName(item.strokeColor) ? shapeColors(theme, item.strokeColor, item.fill).stroke : item.strokeColor) : base.stroke;
+  const text = item.textColor ? (lineColor(theme, item.textColor) ?? theme.color.text) : filled.text;
+  return { fill: filled.fill, stroke, text, ...strokeProps(item, BASE_STROKE.shape) };
+}
+
+export const shapeLabel = (theme: Theme, item: ShapeItem) => labelStyle(theme, item, { size: theme.text.node.size, weight: theme.text.node.weight });
 
 /** Inner padding of a shape's label (rectangles hug their edges, round shapes keep their label off the curve). */
 export const shapeTextPadding = (item: Pick<ShapeItem, 'shape' | 'w' | 'h'>) => (item.shape === 'rectangle' ? { x: 8, y: 8 } : { x: item.w * 0.15, y: item.h * 0.15 });
 
-/** SVG path of a line: M…L for straight lines, M…Q for bent ones. */
+/** SVG path of a line: M…L for straight lines, M…Q for bent ones, M…L…L…L for elbows. */
 export function linePath(g: LineGeometry): string {
+  if (g.points) return g.points.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join('');
   return g.control ? `M${g.start.x} ${g.start.y}Q${g.control.x} ${g.control.y} ${g.end.x} ${g.end.y}` : `M${g.start.x} ${g.start.y}L${g.end.x} ${g.end.y}`;
 }
 
 export const inkColor = (theme: Theme, color: string | undefined) => lineColor(theme, color) ?? theme.color.text;
+
+/** Width, dash and colour of a line's stroke. */
+export function linePaint(theme: Theme, item: LineItem) {
+  return { color: lineColor(theme, item.color) ?? theme.color.edge, ...strokeProps(item, BASE_STROKE.line) };
+}
+
+/** Arrowhead size: 10 at the default width, larger for thick lines. */
+export const headSize = (width: number) => (width <= BASE_STROKE.line ? 10 : round2(10 + (width - BASE_STROKE.line) * 3));
+
+/** An arrowhead marker (points along the line; `orient="auto-start-reverse"` turns the start one around). */
+export function ArrowMarker({ id, head, color, size }: { id: string; head: ArrowHead; color: string; size: number }) {
+  if (head === 'none') return null;
+  return (
+    <marker id={id} viewBox="0 0 10 10" refX="9" refY="5" markerWidth={size} markerHeight={size} markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      {head === 'arrow' && <path d="M0 0L10 5L0 10z" fill={color} />}
+      {head === 'open' && <path d="M1.5 1.5L9 5L1.5 8.5" fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />}
+      {head === 'dot' && <circle cx={5} cy={5} r={4} fill={color} />}
+      {head === 'diamond' && <path d="M0 5L5 0.5L10 5L5 9.5z" fill={color} />}
+    </marker>
+  );
+}
+
+/** Markers and marker references for a line's two ends. */
+export function lineMarkers(item: LineItem, prefix: string, color: string, width: number) {
+  const heads = lineHeads(item);
+  const size = headSize(width);
+  const startId = `${prefix}-${item.id}-s`;
+  const endId = `${prefix}-${item.id}-e`;
+  return {
+    defs: (
+      <>
+        <ArrowMarker id={startId} head={heads.start} color={color} size={size} />
+        <ArrowMarker id={endId} head={heads.end} color={color} size={size} />
+      </>
+    ),
+    markerStart: heads.start !== 'none' ? `url(#${startId})` : undefined,
+    markerEnd: heads.end !== 'none' ? `url(#${endId})` : undefined,
+  };
+}
 
 export function shapePath(shape: ShapeItem['shape'], w: number, h: number): string {
   if (shape === 'ellipse') return `M0 ${h / 2}A${w / 2} ${h / 2} 0 1 0 ${w} ${h / 2}A${w / 2} ${h / 2} 0 1 0 0 ${h / 2}Z`;
@@ -52,21 +176,21 @@ export function shapePath(shape: ShapeItem['shape'], w: number, h: number): stri
 }
 
 export const ShapeView = memo(function ShapeView({ item, ctx, hideText }: { item: ShapeItem; ctx: ItemContext; hideText?: boolean }) {
-  const { fill, stroke, text } = shapeColors(ctx.theme, item.color, item.fill);
+  const paint = shapePaint(ctx.theme, item);
   const pad = shapeTextPadding(item);
   const align = item.align ?? 'center';
   const valign = item.valign ?? 'middle';
   return (
     <div data-item-id={item.id} className="occ-item" style={placed(item)}>
       <svg width={item.w} height={item.h} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-        <path d={shapePath(item.shape, item.w, item.h)} fill={fill} stroke={stroke} strokeWidth={1.25} strokeDasharray={item.dashed ? DASH : undefined} vectorEffect="non-scaling-stroke" />
+        <path d={shapePath(item.shape, item.w, item.h)} fill={paint.fill} stroke={paint.stroke} strokeWidth={paint.strokeWidth} strokeDasharray={paint.strokeDasharray} strokeLinecap={paint.strokeLinecap} vectorEffect="non-scaling-stroke" />
       </svg>
       {item.text && !hideText && (
         <div
           className="occ-shape-text"
           style={{
-            font: `${ctx.theme.text.node.weight} ${ctx.theme.text.node.size}px/${TEXT_LINE_HEIGHT} ${ctx.theme.font.sans}`,
-            color: text,
+            font: cssFont(shapeLabel(ctx.theme, item)),
+            color: paint.text,
             padding: `${pad.y}px ${pad.x}px`,
             textAlign: align,
             justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
@@ -116,18 +240,21 @@ export const TextView = memo(function TextView({ item, ctx, hidden }: { item: Te
   );
 });
 
-export const textFont = (theme: Theme, item: Pick<TextItem, 'fontSize' | 'bold'>) => `${item.bold ? 700 : theme.text.node.weight} ${item.fontSize}px/${TEXT_LINE_HEIGHT} ${theme.font.sans}`;
+export const textLabel = (theme: Theme, item: Pick<TextItem, 'fontSize' | 'bold' | 'italic' | 'font'>) => labelStyle(theme, item, { size: item.fontSize, weight: theme.text.node.weight });
+export const textFont = (theme: Theme, item: Pick<TextItem, 'fontSize' | 'bold' | 'italic' | 'font'>) => cssFont(textLabel(theme, item));
 
 export const STICKY_FONT_SIZE = 16;
 export const stickyColors = (theme: Theme, color: string | undefined) => {
   const swatch = swatchFor(theme, color ?? 'yellow')!;
   return { fill: swatch.nodeFill, edge: swatch.stroke };
 };
+export const stickyLabel = (theme: Theme, item: StickyItem) => labelStyle(theme, item, { size: STICKY_FONT_SIZE, weight: 500 });
+export const stickyTextColor = (theme: Theme, item: StickyItem) => (item.textColor ? (lineColor(theme, item.textColor) ?? theme.color.text) : theme.color.text);
 
 export const StickyView = memo(function StickyView({ item, ctx, hideText }: { item: StickyItem; ctx: ItemContext; hideText?: boolean }) {
   const { fill } = stickyColors(ctx.theme, item.color);
   return (
-    <div data-item-id={item.id} className="occ-item occ-sticky" style={placed(item, { background: fill, color: ctx.theme.color.text, font: `500 ${STICKY_FONT_SIZE}px/${TEXT_LINE_HEIGHT} ${ctx.theme.font.sans}` })}>
+    <div data-item-id={item.id} className="occ-item occ-sticky" style={placed(item, { background: fill, color: stickyTextColor(ctx.theme, item), font: cssFont(stickyLabel(ctx.theme, item)) })}>
       {!hideText && item.text}
       <LinkBadge item={item} ctx={ctx} />
     </div>
@@ -153,8 +280,8 @@ export const CodeView = memo(function CodeView({ item, ctx, hideText }: { item: 
 });
 
 /** Device outlines; the inside stays transparent so content drawn in it shows through. */
-export function DeviceOutline({ device, w, h, title, theme }: { device: DeviceKind; w: number; h: number; title?: string; theme: Theme }) {
-  const stroke = theme.color.borderStrong;
+export function DeviceOutline({ device, w, h, title, theme, color }: { device: DeviceKind; w: number; h: number; title?: string; theme: Theme; color?: string }) {
+  const stroke = lineColor(theme, color) ?? theme.color.borderStrong;
   const chrome = theme.color.surface;
   const common = { fill: 'none', stroke, strokeWidth: 1.5, vectorEffect: 'non-scaling-stroke' as const };
   if (device === 'phone' || device === 'tablet') {
@@ -202,7 +329,7 @@ export const FrameView = memo(function FrameView({ item, ctx }: { item: FrameIte
     <svg data-item-id={item.id} className="occ-item occ-frame" style={placed(item, { overflow: 'visible' })} width={item.w} height={item.h}>
       {/* A wider invisible outline so the thin frame is easy to grab. */}
       <rect width={item.w} height={item.h} rx={12} fill="none" stroke="transparent" strokeWidth={14} style={{ pointerEvents: 'stroke' }} />
-      <DeviceOutline device={item.device} w={item.w} h={item.h} title={item.title} theme={ctx.theme} />
+      <DeviceOutline device={item.device} w={item.w} h={item.h} title={item.title} theme={ctx.theme} color={item.color} />
     </svg>
   );
 });
@@ -227,7 +354,7 @@ export const PenView = memo(function PenView({ item, ctx }: { item: PenItem; ctx
   return (
     <svg data-item-id={item.id} className="occ-item occ-stroke" style={placed(item, { overflow: 'visible' })} width={item.w} height={item.h}>
       <path d={d} fill="none" stroke="transparent" strokeWidth={12} strokeLinecap="round" />
-      <path d={d} fill="none" stroke={inkColor(ctx.theme, item.color)} strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" />
+      <path d={d} fill="none" stroke={inkColor(ctx.theme, item.color)} strokeWidth={strokeWidthFor(BASE_STROKE.pen, item.strokeWidth)} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 });
@@ -235,25 +362,23 @@ export const PenView = memo(function PenView({ item, ctx }: { item: PenItem; ctx
 export function LineView({ item, doc, ctx }: { item: LineItem; doc: CanvasDocument; ctx: ItemContext }) {
   const geometry = lineGeometry(doc, item);
   const d = linePath(geometry);
-  const color = lineColor(ctx.theme, item.color) ?? ctx.theme.color.edge;
-  const marker = `occ-arrow-${item.id}`;
+  const paint = linePaint(ctx.theme, item);
+  const markers = lineMarkers(item, 'occ-arrow', paint.color, paint.strokeWidth);
   const { mid } = geometry;
   return (
-    <svg data-item-id={item.id} className="occ-item occ-stroke" style={{ position: 'absolute', left: 0, top: 0, width: 1, height: 1, overflow: 'visible' }}>
-      <defs>
-        <marker id={marker} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
-          <path d="M0 0L10 5L0 10z" fill={color} />
-        </marker>
-      </defs>
-      <path d={d} fill="none" stroke="transparent" strokeWidth={12} />
+    <svg data-item-id={item.id} className="occ-item occ-stroke" style={{ position: 'absolute', left: 0, top: 0, width: 1, height: 1, overflow: 'visible', opacity: item.opacity }}>
+      <defs>{markers.defs}</defs>
+      <path d={d} fill="none" stroke="transparent" strokeWidth={Math.max(12, paint.strokeWidth + 8)} />
       <path
         d={d}
         fill="none"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeDasharray={item.dashed ? DASH : undefined}
-        markerStart={item.startArrow ? `url(#${marker})` : undefined}
-        markerEnd={item.endArrow ? `url(#${marker})` : undefined}
+        stroke={paint.color}
+        strokeWidth={paint.strokeWidth}
+        strokeDasharray={paint.strokeDasharray}
+        strokeLinecap={paint.strokeLinecap}
+        strokeLinejoin={geometry.points ? 'round' : undefined}
+        markerStart={markers.markerStart}
+        markerEnd={markers.markerEnd}
       />
       {item.text && (
         <foreignObject x={mid.x - 80} y={mid.y - 12} width={160} height={24} style={{ overflow: 'visible' }}>

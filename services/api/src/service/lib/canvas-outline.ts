@@ -8,7 +8,9 @@
  * Line ends attached to an item are recomputed with octodraw's own rule
  * (`octodrawLineEnds`: aimed at the end's anchor or the item's centre — on a
  * bent line at the control point — and clipped to the outline); bends (same
- * convention as the card), dashed outlines and fills carry over. Rotation, pen strokes, icons and images are left out.
+ * convention as the card), dashed and dotted outlines, arrowheads and fills
+ * carry over (elbow lines are drawn straight, stroke widths and opacity at the
+ * card's defaults). Rotation, pen strokes, icons and images are left out.
  */
 import { octodrawLineEnds, type OctodrawItem } from "@octonote/content/server";
 
@@ -64,9 +66,15 @@ interface Item {
   end?: { x?: number; y?: number; item?: string; anchor?: { x?: number; y?: number } };
   startArrow?: boolean;
   endArrow?: boolean;
+  startHead?: string;
+  endHead?: string;
   dashed?: boolean;
+  strokeStyle?: string;
+  route?: string;
   bend?: number;
   fill?: string;
+  fillColor?: string;
+  strokeColor?: string;
   rotation?: number;
 }
 
@@ -107,6 +115,12 @@ function sizeKey(fontSize: unknown): string {
 
 const num = (v: unknown, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
 
+/** Octodraw outline style → the card's dash key (legacy `dashed` = dashed). */
+const dashKey = (it: Item) => (it.strokeStyle === "dashed" || it.strokeStyle === "dotted" ? it.strokeStyle : it.strokeStyle === "solid" ? "solid" : it.dashed ? "dashed" : "solid");
+
+/** Octodraw arrowhead (new `startHead`/`endHead`, else the legacy boolean) → the card's: "none" or the head name. */
+const headKey = (head: unknown, legacy: unknown) => (typeof head === "string" ? head : legacy ? "arrow" : "none");
+
 /** Octodraw fill → the card's fill key (undefined = octodraw's default tint). */
 const fillKey = (fill: unknown) => (fill === "none" ? "none" : fill === "solid" ? "solid" : "semi");
 
@@ -115,7 +129,7 @@ function toShape(it: Item): OutlineShape | null {
   const url = typeof it.link === "string" && it.link ? { url: it.link } : {};
   switch (it.type) {
     case "shape":
-      return { ...box, ...url, kind: "geo", geo: it.shape === "ellipse" || it.shape === "diamond" ? it.shape : "rectangle", label: String(it.text ?? ""), color: cardColor(it.color), fill: fillKey(it.fill), dash: it.dashed ? "dashed" : "solid", size: "s" };
+      return { ...box, ...url, kind: "geo", geo: it.shape === "ellipse" || it.shape === "diamond" ? it.shape : "rectangle", label: String(it.text ?? ""), color: cardColor(it.color ?? it.fillColor ?? it.strokeColor), fill: fillKey(it.fill), dash: dashKey(it), size: "s" };
     case "sticky":
       // The card paints an uncoloured ("black") note yellow, like octodraw's default sticky.
       return { ...box, ...url, kind: "note", geo: "rectangle", label: String(it.text ?? ""), color: it.color && it.color !== "yellow" ? cardColor(it.color) : "black", fill: "solid", dash: "solid", size: "s" };
@@ -159,7 +173,8 @@ export function canvasOutline(document: unknown): CanvasOutline | null {
       const anchor = a && Number.isFinite(Number(a.x)) && Number.isFinite(Number(a.y)) ? { x: Math.min(1, Math.max(0, Number(a.x))), y: Math.min(1, Math.max(0, Number(a.y))) } : undefined;
       return { x: num(e?.x), y: num(e?.y), ...(e?.item && targets.has(e.item) ? { item: e.item } : {}), ...(anchor ? { anchor } : {}) };
     };
-    const bend = num(it.bend);
+    // Elbow and explicitly straight lines are drawn straight on the card.
+    const bend = it.route === "elbow" || it.route === "straight" ? 0 : num(it.bend);
     const line = { id: String(it.id), type: "line", x: 0, y: 0, w: 0, h: 0, start: end(it.start), end: end(it.end), ...(bend ? { bend } : {}) };
     const { start: from, end: to } = octodrawLineEnds(line as never, targets);
     arrows.push({
@@ -171,9 +186,9 @@ export function canvasOutline(document: unknown): CanvasOutline | null {
       bend,
       label: String(it.text ?? ""),
       color: cardColor(it.color),
-      dash: it.dashed ? "dashed" : "solid",
-      start: it.startArrow ? "arrow" : "none",
-      end: it.endArrow ? "arrow" : "none",
+      dash: dashKey(it),
+      start: headKey(it.startHead, it.startArrow),
+      end: headKey(it.endHead, it.endArrow),
     });
   }
 

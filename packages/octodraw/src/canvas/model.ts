@@ -20,6 +20,36 @@ interface ItemBase {
   rotation?: number;
   /** http(s) link the item opens (e.g. a mermaid `click` target); see `safeLink`. */
   link?: string;
+  /** 0.1–1; undefined = fully opaque. */
+  opacity?: number;
+}
+
+/** Outline dash: solid, dashed (`DASH`) or dotted (round dots). */
+export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
+/** Typeface of a label: the theme's sans / mono / hand-drawn (`rough`) faces or a serif stack. */
+export type FontFamily = 'sans' | 'serif' | 'mono' | 'hand';
+export type ArrowHead = 'none' | 'arrow' | 'open' | 'dot' | 'diamond';
+/** straight; curved (a quadratic through `bend`); elbow (orthogonal, three segments through the midpoint). */
+export type LineRoute = 'straight' | 'curved' | 'elbow';
+
+/** Stroke width presets; 1.5 draws exactly today's default width of each item type. */
+export const STROKE_WIDTHS = [1, 1.5, 2.5, 4] as const;
+/** The `strokeWidth` value that equals an item type's default width. */
+export const DEFAULT_STROKE_WIDTH = 1.5;
+
+/** Outline styling (shapes, lines, pen strokes). */
+interface StrokeFields {
+  /** Multiple of the default width: 1.5 = the type's default (see `STROKE_WIDTHS`). */
+  strokeWidth?: number;
+  /** Replaces the legacy `dashed` flag (still read as 'dashed'). */
+  strokeStyle?: StrokeStyle;
+}
+
+/** Label styling (shapes, text, stickies). */
+interface LabelFields {
+  bold?: boolean;
+  italic?: boolean;
+  font?: FontFamily;
 }
 
 /** The item's link if it is a plain http(s) URL, else undefined (never javascript: etc.). */
@@ -32,31 +62,40 @@ export type ShapeFill = 'tint' | 'none' | 'solid';
 export type HorizontalAlign = 'left' | 'center' | 'right';
 export type VerticalAlign = 'top' | 'middle' | 'bottom';
 
-export interface ShapeItem extends ItemBase {
+export interface ShapeItem extends ItemBase, StrokeFields, LabelFields {
   type: 'shape';
   shape: ShapeKind;
   text?: string;
+  /** Per-part colours (palette name or CSS colour); each overrides `color` for its part. */
+  strokeColor?: string;
+  fillColor?: string;
+  textColor?: string;
+  /** Label size; undefined = the theme's node text size. */
+  fontSize?: number;
   /** Label placement inside the shape (default center / middle). */
   align?: HorizontalAlign;
   valign?: VerticalAlign;
-  /** Dashed outline (the same dash lines use). */
+  /** Legacy dashed outline; read as strokeStyle 'dashed'. */
   dashed?: boolean;
   /** 'tint' (default): the color's pale fill; 'none': outline only; 'solid': the color's strong fill. */
   fill?: ShapeFill;
 }
 
-export interface TextItem extends ItemBase {
+export interface TextItem extends ItemBase, LabelFields {
   type: 'text';
   text: string;
   fontSize: number;
-  bold?: boolean;
   align?: 'left' | 'center' | 'right';
 }
 
 /** A sticky note: a square of colored paper with text (yellow by default). */
-export interface StickyItem extends ItemBase {
+export interface StickyItem extends ItemBase, LabelFields {
   type: 'sticky';
   text: string;
+  /** Text colour (palette name or CSS colour); `color` is the paper. */
+  textColor?: string;
+  /** Undefined = `STICKY_FONT_SIZE`. */
+  fontSize?: number;
 }
 
 export interface ImageItem extends ItemBase {
@@ -69,6 +108,7 @@ export interface ImageItem extends ItemBase {
 export type DeviceKind = 'phone' | 'tablet' | 'browser' | 'desktop';
 
 /** A device outline (phone, tablet, browser window, monitor) to sketch screens in. */
+/** `color` tints the device outline. */
 export interface FrameItem extends ItemBase {
   type: 'frame';
   device: DeviceKind;
@@ -81,7 +121,7 @@ export interface CodeItem extends ItemBase {
   language?: string;
 }
 
-export interface PenItem extends ItemBase {
+export interface PenItem extends ItemBase, Pick<StrokeFields, 'strokeWidth'> {
   type: 'pen';
   /** Points normalized to the item box (0–1), so resizing scales the stroke. */
   points: [number, number][];
@@ -101,13 +141,19 @@ export interface Endpoint {
   anchor?: Point;
 }
 
-export interface LineItem extends ItemBase {
+export interface LineItem extends ItemBase, StrokeFields {
   type: 'line';
   start: Endpoint;
   end: Endpoint;
+  /** Legacy arrowhead flags, read when `startHead` / `endHead` are unset (true → 'arrow'). */
   startArrow?: boolean;
   endArrow?: boolean;
+  startHead?: ArrowHead;
+  endHead?: ArrowHead;
+  /** Legacy dashed flag; read as strokeStyle 'dashed'. */
   dashed?: boolean;
+  /** Undefined: curved when `bend` is set, else straight. */
+  route?: LineRoute;
   text?: string;
   /**
    * Curvature: signed distance (canvas units) from the chord midpoint to the
@@ -431,13 +477,31 @@ export interface LineGeometry {
   end: Point;
   /** Quadratic Bézier control point; absent for straight lines. */
   control?: Point;
+  /** Elbow lines: the whole orthogonal path, start and end included. */
+  points?: Point[];
   /** The curve's midpoint (where the label sits). */
   mid: Point;
 }
 
-/** Point at t (0–1) along a line, straight or curved. */
+/** Point at t (0–1) along a line, straight, curved or elbow (by length along the path). */
 export function pointOnLine(g: LineGeometry, t: number): Point {
   const u = 1 - t;
+  if (g.points) {
+    const pts = g.points;
+    const lengths = pts.slice(1).map((p, i) => Math.hypot(p.x - pts[i]!.x, p.y - pts[i]!.y));
+    let left = lengths.reduce((a, b) => a + b, 0) * t;
+    for (let i = 0; i < lengths.length; i++) {
+      const len = lengths[i]!;
+      if (left <= len || i === lengths.length - 1) {
+        const f = len ? Math.min(1, left / len) : 0;
+        const a = pts[i]!;
+        const b = pts[i + 1]!;
+        return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
+      }
+      left -= len;
+    }
+    return g.end;
+  }
   if (!g.control) return { x: g.start.x * u + g.end.x * t, y: g.start.y * u + g.end.y * t };
   return { x: u * u * g.start.x + 2 * u * t * g.control.x + t * t * g.end.x, y: u * u * g.start.y + 2 * u * t * g.control.y + t * t * g.end.y };
 }
@@ -452,6 +516,29 @@ function geometryOf(start: Point, end: Point, bend: number | undefined): LineGeo
   return g;
 }
 
+/** The bend a line is drawn with (none for straight and elbow routes). */
+export const lineBend = (line: Pick<LineItem, 'bend' | 'route'>): number | undefined => (line.route === 'elbow' || line.route === 'straight' ? undefined : line.bend);
+
+/** The route a line is drawn with (legacy lines: curved when bent). */
+export const lineRoute = (line: Pick<LineItem, 'bend' | 'route'>): LineRoute => (line.route === 'elbow' ? 'elbow' : lineBend(line) ? 'curved' : 'straight');
+
+/** Arrowheads at both ends (legacy `startArrow` / `endArrow` read as 'arrow'). */
+export const lineHeads = (line: Pick<LineItem, 'startArrow' | 'endArrow' | 'startHead' | 'endHead'>): { start: ArrowHead; end: ArrowHead } => ({
+  start: line.startHead ?? (line.startArrow ? 'arrow' : 'none'),
+  end: line.endHead ?? (line.endArrow ? 'arrow' : 'none'),
+});
+
+/** An item's outline style (the legacy `dashed` flag reads as 'dashed'). */
+export const strokeStyleOf = (item: { strokeStyle?: StrokeStyle; dashed?: boolean }): StrokeStyle => item.strokeStyle ?? (item.dashed ? 'dashed' : 'solid');
+
+/** Elbow path between two ends: horizontal, vertical, horizontal through the middle (or vertical first). */
+function elbowGeometry(start: Point, end: Point, horizontal: boolean): LineGeometry {
+  const points = horizontal
+    ? [start, { x: (start.x + end.x) / 2, y: start.y }, { x: (start.x + end.x) / 2, y: end.y }, end]
+    : [start, { x: start.x, y: (start.y + end.y) / 2 }, { x: end.x, y: (start.y + end.y) / 2 }, end];
+  return { start, end, points, mid: { x: (points[1]!.x + points[2]!.x) / 2, y: (points[1]!.y + points[2]!.y) / 2 } };
+}
+
 /**
  * The drawn geometry of a line. Attached ends sit on their item's outline,
  * aimed at the other end (its anchor or item centre) — or, on a bent line,
@@ -464,18 +551,31 @@ export function lineGeometry(doc: CanvasDocument, line: LineItem): LineGeometry 
   const t = target(line.end);
   const aim = (e: Endpoint, item: CanvasItem | undefined): Point => (!item ? { x: e.x, y: e.y } : e.anchor ? anchorPoint(item, e.anchor) : centerOf(item));
   const place = (e: Endpoint, item: CanvasItem | undefined, from: Point): Point => (!item ? { x: e.x, y: e.y } : e.anchor ? anchoredEnd(item, anchorPoint(item, e.anchor), from) : outlinePoint(item, from));
+  if (line.route === 'elbow') {
+    // Ends leave their items sideways (or up/down) toward the other end, so the path stays orthogonal.
+    const a = aim(line.start, s);
+    const b = aim(line.end, t);
+    const horizontal = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y);
+    const out = (e: Endpoint, item: CanvasItem | undefined, self: Point, other: Point): Point => {
+      if (!item) return { x: e.x, y: e.y };
+      const far = horizontal ? { x: self.x + Math.sign(other.x - self.x || 1) * 1e5, y: self.y } : { x: self.x, y: self.y + Math.sign(other.y - self.y || 1) * 1e5 };
+      return e.anchor ? anchoredEnd(item, self, far) : outlinePoint(item, far);
+    };
+    return elbowGeometry(out(line.start, s, a, b), out(line.end, t, b, a), horizontal);
+  }
+  const bend = lineBend(line);
   let start = place(line.start, s, aim(line.end, t));
   let end = place(line.end, t, aim(line.start, s));
-  let control = bendControl(start, end, line.bend);
+  let control = bendControl(start, end, bend);
   if (control && (s || t)) {
     // Aim attached ends at the control point; two passes settle it closely enough.
     for (let i = 0; i < 2; i++) {
       start = place(line.start, s, control);
       end = place(line.end, t, control);
-      control = bendControl(start, end, line.bend) ?? control;
+      control = bendControl(start, end, bend) ?? control;
     }
   }
-  return geometryOf(start, end, line.bend);
+  return geometryOf(start, end, bend);
 }
 
 /** The drawn end points of a line (see `lineGeometry`). */
@@ -484,7 +584,7 @@ export function lineEnds(doc: CanvasDocument, line: LineItem): { start: Point; e
   return { start, end };
 }
 
-/** Bounds of a line between two points, including its curve. */
+/** Bounds of a line between two points, including its curve (an elbow path stays inside its ends' box: pass no bend). */
 export function lineBounds(start: Point, end: Point, bend: number | undefined): Box {
   const g = geometryOf(start, end, bend);
   if (!g.control) return boxFromPoints(start, end);
@@ -508,11 +608,13 @@ export function lineBounds(start: Point, end: Point, bend: number | undefined): 
 
 /** A line with its box fitted to its ends (and curve). */
 export function withLineBox(line: LineItem, ends: { start: Point; end: Point } = line): LineItem {
-  return { ...line, ...lineBounds(ends.start, ends.end, line.bend) };
+  return { ...line, ...lineBounds(ends.start, ends.end, lineBend(line)) };
 }
 
 /** Distance from a point to a line's drawn path (curves sampled finely). */
 export function distanceToLine(p: Point, g: LineGeometry): number {
+  const pts = g.points;
+  if (pts) return Math.min(...pts.slice(1).map((q, i) => distanceToSegment(p, pts[i]!, q)));
   if (!g.control) return distanceToSegment(p, g.start, g.end);
   let best = Infinity;
   let prev = g.start;
@@ -636,7 +738,7 @@ export function penFromPoints(points: Point[], color?: string): PenItem {
 }
 
 /** Builds a line between two endpoints. */
-export function lineBetween(start: Endpoint, end: Endpoint, options: Partial<Pick<LineItem, 'startArrow' | 'endArrow' | 'dashed' | 'color' | 'bend'>> = {}): LineItem {
+export function lineBetween(start: Endpoint, end: Endpoint, options: Partial<Pick<LineItem, 'startArrow' | 'endArrow' | 'startHead' | 'endHead' | 'dashed' | 'strokeStyle' | 'strokeWidth' | 'route' | 'color' | 'bend'>> = {}): LineItem {
   return withLineBox({ id: newItemId(), type: 'line', x: 0, y: 0, w: 0, h: 0, start, end, endArrow: true, ...options });
 }
 
@@ -645,16 +747,44 @@ const isFiniteNumber = (v: unknown) => typeof v === 'number' && Number.isFinite(
 const oneOf = (values: readonly string[]) => (v: unknown) => typeof v === 'string' && values.includes(v);
 const isPoint = (v: unknown) => !!v && typeof v === 'object' && isFiniteNumber((v as Point).x) && isFiniteNumber((v as Point).y);
 
+const isBoolean = (v: unknown) => typeof v === 'boolean';
+/** A palette name or a plain CSS colour (no `;`, braces or quotes, so it can't break out of a style). */
+export const isColorValue = (v: unknown): v is string => typeof v === 'string' && v.length <= 64 && /^(#[0-9a-f]{3,8}|[a-z]+|(rgba?|hsla?|oklch|oklab|lab|lch|color)\([^;{}<>"'\\]*\))$/i.test(v.trim());
+const inRange = (min: number, max: number) => (v: unknown) => isFiniteNumber(v) && (v as number) >= min && (v as number) <= max;
+const HEADS = ['none', 'arrow', 'open', 'dot', 'diamond'] as const;
+
 /** Checks an item's optional styling fields (the rest of an item is trusted, as before). */
 function validItem(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false;
   const item = value as Record<string, unknown>;
+  const common =
+    optional(item.opacity, inRange(0.1 - 1e-9, 1)) &&
+    optional(item.strokeColor, isColorValue) &&
+    optional(item.fillColor, isColorValue) &&
+    optional(item.textColor, isColorValue) &&
+    optional(item.strokeWidth, inRange(0.25, 16)) &&
+    optional(item.strokeStyle, oneOf(['solid', 'dashed', 'dotted'])) &&
+    optional(item.bold, isBoolean) &&
+    optional(item.italic, isBoolean) &&
+    optional(item.font, oneOf(['sans', 'serif', 'mono', 'hand'])) &&
+    optional(item.dashed, isBoolean);
+  if (!common) return false;
+  if ((item.type === 'shape' || item.type === 'sticky') && !optional(item.fontSize, inRange(1, 1000))) return false;
   if (item.type === 'shape') {
-    return optional(item.align, oneOf(['left', 'center', 'right'])) && optional(item.valign, oneOf(['top', 'middle', 'bottom'])) && optional(item.dashed, (v) => typeof v === 'boolean') && optional(item.fill, oneOf(['tint', 'none', 'solid']));
+    return optional(item.align, oneOf(['left', 'center', 'right'])) && optional(item.valign, oneOf(['top', 'middle', 'bottom'])) && optional(item.fill, oneOf(['tint', 'none', 'solid']));
   }
   if (item.type === 'line') {
     const end = (e: unknown) => !e || typeof e !== 'object' || optional((e as Endpoint).anchor, isPoint);
-    return optional(item.bend, isFiniteNumber) && end(item.start) && end(item.end);
+    return (
+      optional(item.bend, isFiniteNumber) &&
+      end(item.start) &&
+      end(item.end) &&
+      optional(item.startArrow, isBoolean) &&
+      optional(item.endArrow, isBoolean) &&
+      optional(item.startHead, oneOf(HEADS)) &&
+      optional(item.endHead, oneOf(HEADS)) &&
+      optional(item.route, oneOf(['straight', 'curved', 'elbow']))
+    );
   }
   return true;
 }
@@ -764,13 +894,17 @@ export function selectionToSource(doc: CanvasDocument, ids: Iterable<string>): s
     const props: string[] = [];
     if (item.type === 'icon') props.push(`icon: ${item.name}`);
     if (item.type === 'shape' && item.shape !== 'rectangle') props.push(`shape: ${item.shape === 'ellipse' ? 'oval' : 'diamond'}`);
-    if (item.color && !item.color.startsWith('#')) props.push(`color: ${item.color}`);
+    const color = item.color ?? (item.type === 'shape' ? (item.fillColor ?? item.strokeColor) : undefined);
+    if (color && /^[a-z]+$/i.test(color)) props.push(`color: ${color}`);
     lines.push(props.length ? `${quoteName(name)} [${props.join(', ')}]` : quoteName(name));
   }
   const edges = picked.filter((i): i is LineItem => i.type === 'line' && !!i.start.item && !!i.end.item && names.has(i.start.item) && names.has(i.end.item));
   if (edges.length) lines.push('');
   for (const edge of edges) {
-    const connector = edge.dashed ? (edge.endArrow ? '-->' : '--') : edge.startArrow && edge.endArrow ? '<>' : edge.endArrow ? '>' : edge.startArrow ? '<' : '-';
+    const heads = lineHeads(edge);
+    const startArrow = heads.start !== 'none';
+    const endArrow = heads.end !== 'none';
+    const connector = strokeStyleOf(edge) !== 'solid' ? (endArrow ? '-->' : '--') : startArrow && endArrow ? '<>' : endArrow ? '>' : startArrow ? '<' : '-';
     const label = edge.text ? `: ${edge.text}` : '';
     lines.push(`${quoteName(names.get(edge.start.item!)!)} ${connector} ${quoteName(names.get(edge.end.item!)!)}${label}`);
   }
@@ -883,4 +1017,114 @@ export function resizeRotatedBox(box: Box, degrees: number, handle: Handle, dx: 
   const cx = box.x + box.w / 2 + shift.x;
   const cy = box.y + box.h / 2 + shift.y;
   return { x: cx - next.w / 2, y: cy - next.h / 2, w: next.w, h: next.h };
+}
+
+// ---- styles ----
+
+export type StyleKey = 'color' | 'strokeColor' | 'fillColor' | 'textColor' | 'strokeWidth' | 'strokeStyle' | 'fill' | 'opacity' | 'fontSize' | 'bold' | 'italic' | 'font' | 'align' | 'valign' | 'startHead' | 'endHead';
+
+/** The style fields each item type has (what "Copy style" takes and "Paste style" sets). */
+export const STYLE_KEYS: Record<CanvasItemType, readonly StyleKey[]> = {
+  shape: ['color', 'strokeColor', 'fillColor', 'textColor', 'strokeWidth', 'strokeStyle', 'fill', 'opacity', 'fontSize', 'bold', 'italic', 'font', 'align', 'valign'],
+  text: ['color', 'opacity', 'fontSize', 'bold', 'italic', 'font', 'align'],
+  sticky: ['color', 'textColor', 'opacity', 'fontSize', 'bold', 'italic', 'font'],
+  line: ['color', 'strokeWidth', 'strokeStyle', 'opacity', 'startHead', 'endHead'],
+  pen: ['color', 'strokeWidth', 'opacity'],
+  icon: ['color', 'opacity'],
+  frame: ['color', 'opacity'],
+  image: ['opacity'],
+  code: ['opacity'],
+  figure: ['opacity'],
+};
+
+/**
+ * A copied style: every style key of the source item's type as an own
+ * property, unset ones as undefined (so pasting clears them on the target).
+ */
+export type CanvasStyle = Partial<Record<StyleKey, unknown>>;
+
+/** The style of an item, legacy fields (`dashed`, `startArrow`, `endArrow`) read into their new names. */
+export function copyStyle(item: CanvasItem): CanvasStyle {
+  const record = item as unknown as Record<string, unknown>;
+  const style: CanvasStyle = {};
+  for (const key of STYLE_KEYS[item.type]) style[key] = record[key];
+  if (item.type === 'shape' || item.type === 'line') style.strokeStyle = item.strokeStyle ?? (item.dashed ? 'dashed' : undefined);
+  if (item.type === 'line') {
+    const heads = lineHeads(item);
+    style.startHead = heads.start;
+    style.endHead = heads.end;
+  }
+  return style;
+}
+
+/** Legacy fields a patch replaces: setting `strokeStyle` drops `dashed`, a head drops its boolean. */
+export function withoutLegacy(patch: ItemPatch): ItemPatch {
+  const next = { ...patch };
+  if ('strokeStyle' in next) next.dashed = undefined;
+  if ('startHead' in next) next.startArrow = undefined;
+  if ('endHead' in next) next.endArrow = undefined;
+  return next;
+}
+
+/** Applies a copied style to items: the keys both the source and each target type have. */
+export function pasteStyle(doc: CanvasDocument, ids: Iterable<string>, style: CanvasStyle): CanvasDocument {
+  const keys = Object.keys(style) as StyleKey[];
+  return patchItems(doc, ids, (item) => {
+    const own = STYLE_KEYS[item.type];
+    const patch: Record<string, unknown> = {};
+    for (const key of keys) {
+      if (!own.includes(key)) continue;
+      // A text item always has a size.
+      if (key === 'fontSize' && item.type === 'text' && typeof style.fontSize !== 'number') continue;
+      patch[key] = style[key];
+    }
+    return Object.keys(patch).length ? (patch as ItemPatch) : undefined;
+  });
+}
+
+/** Which colour of an item a picker sets: the border, the fill (a sticky's paper) or the text. */
+export type ColorPart = 'stroke' | 'fill' | 'text';
+
+/**
+ * The patch that sets one colour part. A shape coloured with `color` first
+ * gets that colour as explicit border and fill, so changing one part keeps the
+ * others looking the same. Stickies: fill = the paper (`color`), text = `textColor`.
+ * Other items have one colour.
+ */
+export function colorPartPatch(item: CanvasItem, part: ColorPart, value: string | undefined): ItemPatch {
+  if (item.type === 'shape') {
+    const base: ItemPatch = item.color ? { color: undefined, strokeColor: item.strokeColor ?? item.color, fillColor: item.fillColor ?? item.color } : {};
+    return { ...base, [part === 'stroke' ? 'strokeColor' : part === 'fill' ? 'fillColor' : 'textColor']: value };
+  }
+  if (item.type === 'sticky') return part === 'text' ? { textColor: value } : { color: value };
+  return { color: value };
+}
+
+/** One colour for the whole item (a mixed selection's picker): shapes drop their per-part colours. */
+export function wholeColorPatch(item: CanvasItem, value: string | undefined): ItemPatch {
+  if (item.type === 'shape') return { color: value, strokeColor: undefined, fillColor: undefined, textColor: undefined };
+  return { color: value };
+}
+
+/** The patch that changes a line's route (curved starts from a gentle bend; the bend is kept for switching back). */
+export function routePatch(line: LineItem, route: LineRoute): ItemPatch {
+  if (route === 'straight') return { route: undefined, bend: undefined };
+  if (route === 'elbow') return { route: 'elbow' };
+  const chord = Math.hypot(line.end.x - line.start.x, line.end.y - line.start.y);
+  return { route: 'curved', bend: line.bend || Math.round(Math.max(16, chord * 0.2)) };
+}
+
+/** Applies a patch to items (each gets `patchFor(item)`; undefined skips it), legacy fields replaced, then re-fits lines. */
+export function patchItems(doc: CanvasDocument, ids: Iterable<string>, patchFor: (item: CanvasItem) => ItemPatch | undefined): CanvasDocument {
+  const set = new Set(ids);
+  let changed = false;
+  const items = doc.items.map((item) => {
+    if (!set.has(item.id)) return item;
+    const patch = patchFor(item);
+    if (!patch) return item;
+    changed = true;
+    const next = { ...item, ...withoutLegacy(patch) } as CanvasItem;
+    return next.type === 'line' ? withLineBox(next, lineEnds(doc, next)) : next;
+  });
+  return changed ? resolveLines({ ...doc, items }) : doc;
 }

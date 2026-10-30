@@ -11,9 +11,14 @@
  * octodraw-side extension (not yet in model.ts): `link` on items — the URL a
  * box links to (mermaid `click`).
  *
- * Optional style fields (bend, anchor, align/valign, dashed, fill);
- * octodraw treats a missing field as its default
- * (straight, centre-aimed, centred text, solid stroke, tinted fill). The line
+ * Optional style fields (bend, anchor, align/valign, dashed, fill, and since
+ * the selection-bar redesign opacity, strokeColor/fillColor/textColor,
+ * strokeWidth, strokeStyle, fontSize/bold/italic/font, startHead/endHead,
+ * route); octodraw treats a missing field as its default (straight,
+ * centre-aimed, centred text, solid stroke, tinted fill, opaque).
+ * `dashed` / `startArrow` / `endArrow` are legacy: octodraw still reads them
+ * (as strokeStyle 'dashed' / head 'arrow') and drops them when it writes the
+ * new fields. The line
  * maths below mirrors model.ts (`anchorPoint`, `anchoredEnd`, `bendControl`,
  * `lineGeometry`, `lineBounds`); flowchart-to-octodraw.test.ts checks
  * straight lines against the real functions.
@@ -35,12 +40,37 @@ interface ItemBase {
   rotation?: number;
   /** Where the item links to (http(s) only). Proposed octodraw extension. */
   link?: string;
+  /** 0.1–1; undefined = opaque. */
+  opacity?: number;
 }
 
-export interface ShapeItem extends ItemBase {
+export type StrokeStyle = "solid" | "dashed" | "dotted";
+export type FontFamily = "sans" | "serif" | "mono" | "hand";
+export type ArrowHead = "none" | "arrow" | "open" | "dot" | "diamond";
+/** undefined: curved when `bend` is set, else straight. elbow = orthogonal through the midpoint. */
+export type LineRoute = "straight" | "curved" | "elbow";
+
+interface StrokeFields {
+  /** Multiple of the type's default width: 1.5 = default (presets 1, 1.5, 2.5, 4). */
+  strokeWidth?: number;
+  strokeStyle?: StrokeStyle;
+}
+
+interface LabelFields {
+  bold?: boolean;
+  italic?: boolean;
+  font?: FontFamily;
+}
+
+export interface ShapeItem extends ItemBase, StrokeFields, LabelFields {
   type: "shape";
   shape: ShapeKind;
   text?: string;
+  /** Per-part colours (palette name or CSS colour) overriding `color`. */
+  strokeColor?: string;
+  fillColor?: string;
+  textColor?: string;
+  fontSize?: number;
   /** Label placement inside the box; undefined = center / middle. */
   align?: "left" | "center" | "right";
   valign?: "top" | "middle" | "bottom";
@@ -49,17 +79,18 @@ export interface ShapeItem extends ItemBase {
   fill?: "tint" | "none" | "solid";
 }
 
-export interface TextItem extends ItemBase {
+export interface TextItem extends ItemBase, LabelFields {
   type: "text";
   text: string;
   fontSize: number;
-  bold?: boolean;
   align?: "left" | "center" | "right";
 }
 
-export interface StickyItem extends ItemBase {
+export interface StickyItem extends ItemBase, LabelFields {
   type: "sticky";
   text: string;
+  textColor?: string;
+  fontSize?: number;
 }
 
 export interface ImageItem extends ItemBase {
@@ -84,6 +115,7 @@ export interface CodeItem extends ItemBase {
 
 export interface PenItem extends ItemBase {
   type: "pen";
+  strokeWidth?: number;
   /** Points normalized to the item box (0–1). */
   points: [number, number][];
 }
@@ -97,13 +129,16 @@ export interface Endpoint {
   anchor?: Point;
 }
 
-export interface LineItem extends ItemBase {
+export interface LineItem extends ItemBase, StrokeFields {
   type: "line";
   start: Endpoint;
   end: Endpoint;
   startArrow?: boolean;
   endArrow?: boolean;
+  startHead?: ArrowHead;
+  endHead?: ArrowHead;
   dashed?: boolean;
+  route?: LineRoute;
   text?: string;
   /**
    * Signed distance (canvas units) from the chord midpoint to the curve

@@ -1,5 +1,8 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
+import { SelectionBar, type BarMenu } from '../src/canvas/SelectionBar';
 import { readCanvas, writeCanvas } from '../src/collab/sync';
 import { diffDocuments } from '../src/canvas/versions';
 import {
@@ -19,6 +22,14 @@ import {
   renderCanvasSvg,
   resizeItems,
   resolveLines,
+  colorPartPatch,
+  lineHeads,
+  lineRoute,
+  patchItems,
+  pointOnLine,
+  routePatch,
+  strokeStyleOf,
+  wholeColorPatch,
   type CanvasDocument,
   type LineItem,
   type ShapeItem,
@@ -237,5 +248,195 @@ describe('new fields in collaboration, versions and validation', () => {
     expect(isCanvasDocument(bad({ bend: Number.NaN }, 'l'))).toBe(false);
     expect(isCanvasDocument(bad({ start: { x: 0, y: 0, item: 'a', anchor: { x: 'left', y: 0 } } }, 'l'))).toBe(false);
     expect(isCanvasDocument({ version: 1, items: [null] })).toBe(false);
+  });
+});
+
+describe('stroke, colour, text and line-end styling', () => {
+  const doc: CanvasDocument = {
+    version: 1,
+    items: [
+      shape('a', 0, 0, { strokeColor: 'blue', fillColor: '#ffeecc', textColor: 'red', strokeWidth: 2.5, strokeStyle: 'dotted', opacity: 0.5, fontSize: 18, bold: true, italic: true, font: 'serif' }),
+      { id: 'n', type: 'sticky', x: 0, y: 100, w: 200, h: 200, text: 'N', textColor: 'gray', fontSize: 20, font: 'hand' },
+      { id: 't', type: 'text', x: 0, y: 400, w: 50, h: 20, text: 'T', fontSize: 20, italic: true, font: 'mono' },
+      { ...lineBetween({ x: 0, y: 0 }, { x: 200, y: 100 }, { startHead: 'dot', endHead: 'diamond', route: 'elbow', strokeWidth: 4, strokeStyle: 'dashed' }), id: 'l', opacity: 0.25 },
+      { id: 'p', type: 'pen', x: 0, y: 0, w: 10, h: 10, points: [[0, 0], [1, 1]], strokeWidth: 1 },
+    ],
+  };
+  const bad = (patch: Record<string, unknown>, id = 'a') => ({ ...doc, items: doc.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) });
+
+  it('validation accepts the new fields and rejects bad values', () => {
+    expect(isCanvasDocument(doc)).toBe(true);
+    expect(isCanvasDocument(bad({ opacity: 0 }))).toBe(false);
+    expect(isCanvasDocument(bad({ opacity: 1.5 }))).toBe(false);
+    expect(isCanvasDocument(bad({ opacity: '0.5' }))).toBe(false);
+    expect(isCanvasDocument(bad({ strokeWidth: 'thick' }))).toBe(false);
+    expect(isCanvasDocument(bad({ strokeWidth: 0 }))).toBe(false);
+    expect(isCanvasDocument(bad({ strokeStyle: 'wavy' }))).toBe(false);
+    expect(isCanvasDocument(bad({ font: 'comic' }))).toBe(false);
+    expect(isCanvasDocument(bad({ italic: 'yes' }))).toBe(false);
+    expect(isCanvasDocument(bad({ fontSize: -4 }))).toBe(false);
+    expect(isCanvasDocument(bad({ strokeColor: 'red;background:url(x)' }))).toBe(false);
+    expect(isCanvasDocument(bad({ fillColor: '"><script>' }))).toBe(false);
+    expect(isCanvasDocument(bad({ textColor: 'rgb(1, 2, 3)' }))).toBe(true);
+    expect(isCanvasDocument(bad({ fontSize: 'big' }, 'n'))).toBe(false);
+    expect(isCanvasDocument(bad({ startHead: 'triangle' }, 'l'))).toBe(false);
+    expect(isCanvasDocument(bad({ endHead: true }, 'l'))).toBe(false);
+    expect(isCanvasDocument(bad({ route: 'zigzag' }, 'l'))).toBe(false);
+    expect(isCanvasDocument(bad({ startArrow: 'yes' }, 'l'))).toBe(false);
+  });
+
+  it('reads the legacy fields', () => {
+    const legacy: LineItem = { ...lineBetween({ x: 0, y: 0 }, { x: 10, y: 0 }, { startArrow: true, dashed: true }), id: 'x' };
+    expect(lineHeads(legacy)).toEqual({ start: 'arrow', end: 'arrow' });
+    expect(strokeStyleOf(legacy)).toBe('dashed');
+    expect(strokeStyleOf({ dashed: true, strokeStyle: 'dotted' })).toBe('dotted');
+    expect(lineHeads({ ...legacy, startHead: 'none' })).toEqual({ start: 'none', end: 'arrow' });
+    expect(lineRoute(legacy)).toBe('straight');
+    expect(lineRoute({ bend: 20 })).toBe('curved');
+    expect(lineRoute({ bend: 20, route: 'straight' })).toBe('straight');
+    expect(lineRoute({ bend: 20, route: 'elbow' })).toBe('elbow');
+  });
+
+  it('writes the new fields and drops the legacy ones', () => {
+    const legacy: LineItem = { ...lineBetween({ x: 0, y: 0 }, { x: 10, y: 0 }, { startArrow: true, dashed: true }), id: 'x' };
+    const d = patchItems(addItems(emptyDocument(), [legacy]), ['x'], () => ({ strokeStyle: 'dotted', startHead: 'open' }));
+    const line = d.items[0] as LineItem;
+    expect(line).toMatchObject({ strokeStyle: 'dotted', startHead: 'open', endArrow: true });
+    expect(line.dashed).toBeUndefined();
+    expect(line.startArrow).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(line))).not.toHaveProperty('dashed');
+  });
+
+  it('draws elbow lines as three orthogonal segments through the midpoint', () => {
+    const line: LineItem = { ...lineBetween({ x: 0, y: 0 }, { x: 200, y: 100 }, { route: 'elbow' }), id: 'e' };
+    const d = addItems(emptyDocument(), [line]);
+    const g = lineGeometry(d, line);
+    expect(g.points).toEqual([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 200, y: 100 }]);
+    expect(g.mid).toEqual({ x: 100, y: 50 });
+    expect(pointOnLine(g, 0.5)).toEqual({ x: 100, y: 50 });
+    expect(pointOnLine(g, 1)).toEqual({ x: 200, y: 100 });
+    expect({ x: line.x, y: line.y, w: line.w, h: line.h }).toEqual({ x: 0, y: 0, w: 200, h: 100 });
+    expect(itemAt(d, { x: 100, y: 50 })?.id).toBe('e');
+    expect(itemAt(d, { x: 50, y: 50 })).toBeUndefined();
+    // Taller than wide: vertical first.
+    const tall = lineGeometry(d, { ...line, end: { x: 100, y: 300 } });
+    expect(tall.points).toEqual([{ x: 0, y: 0 }, { x: 0, y: 150 }, { x: 100, y: 150 }, { x: 100, y: 300 }]);
+    // The bend is ignored (and kept for switching back to curved).
+    expect(lineGeometry(d, { ...line, bend: 40 }).control).toBeUndefined();
+  });
+
+  it('leaves attached items sideways on an elbow', () => {
+    const a = shape('a', 0, 0);
+    const b = shape('b', 300, 200);
+    const l: LineItem = { ...lineBetween({ x: 0, y: 0, item: 'a' }, { x: 0, y: 0, item: 'b' }, { route: 'elbow' }), id: 'l' };
+    const d = resolveLines(addItems(emptyDocument(), [a, b, l]));
+    const g = lineGeometry(d, d.items[2] as LineItem);
+    close(g.start.x, 104);
+    close(g.start.y, 25);
+    close(g.end.x, 296);
+    close(g.end.y, 225);
+    expect(g.points![1]).toEqual({ x: 200, y: 25 });
+    // Anchored ends keep their height.
+    const anchored = { ...(d.items[2] as LineItem), start: { x: 0, y: 0, item: 'a', anchor: { x: 0.5, y: 0.2 } } };
+    const ga = lineGeometry(d, anchored);
+    close(ga.start.x, 104);
+    close(ga.start.y, 10);
+  });
+
+  it('switches routes with routePatch', () => {
+    const line: LineItem = { ...lineBetween({ x: 0, y: 0 }, { x: 200, y: 0 }), id: 'r' };
+    const d = addItems(emptyDocument(), [line]);
+    const curved = patchItems(d, ['r'], (i) => routePatch(i as LineItem, 'curved')).items[0] as LineItem;
+    expect(curved.route).toBe('curved');
+    expect(curved.bend).toBe(40);
+    close(curved.h, 40);
+    const elbow = patchItems({ ...d, items: [curved] }, ['r'], (i) => routePatch(i as LineItem, 'elbow')).items[0] as LineItem;
+    expect(lineRoute(elbow)).toBe('elbow');
+    expect(elbow.bend).toBe(40);
+    close(elbow.h, 0);
+    const straight = patchItems({ ...d, items: [elbow] }, ['r'], (i) => routePatch(i as LineItem, 'straight')).items[0] as LineItem;
+    expect(straight.route).toBeUndefined();
+    expect(straight.bend).toBeUndefined();
+  });
+
+  it('splits a shape colour into border and fill before changing one part', () => {
+    const s = shape('s', 0, 0, { color: 'blue' });
+    const patch = colorPartPatch(s, 'fill', 'green');
+    expect(patch).toEqual({ color: undefined, strokeColor: 'blue', fillColor: 'green' });
+    const recolored = { ...s, ...patch };
+    const svg = renderCanvasSvg(addItems(emptyDocument(), [recolored]), { theme: lightTheme, padding: 0 }).svg;
+    expect(svg).toContain(`stroke="${lightTheme.palette.blue.stroke}"`);
+    expect(svg).toContain(`fill="${lightTheme.palette.green.nodeFill}"`);
+    // Explicit parts keep the original look.
+    const same = (item: ShapeItem) => renderCanvasSvg(addItems(emptyDocument(), [item]), { theme: lightTheme, padding: 0 }).svg;
+    expect(same({ ...s, ...colorPartPatch(s, 'text', undefined) })).toBe(same(s));
+    expect(same({ ...s, fill: 'solid', ...colorPartPatch({ ...s, fill: 'solid' }, 'text', undefined) })).toBe(same({ ...s, fill: 'solid' }));
+    expect(colorPartPatch({ id: 'n', type: 'sticky', x: 0, y: 0, w: 1, h: 1, text: '' }, 'fill', 'pink')).toEqual({ color: 'pink' });
+    expect(colorPartPatch({ id: 'n', type: 'sticky', x: 0, y: 0, w: 1, h: 1, text: '' }, 'text', 'red')).toEqual({ textColor: 'red' });
+    expect(wholeColorPatch({ ...s, ...patch }, 'red')).toEqual({ color: 'red', strokeColor: undefined, fillColor: undefined, textColor: undefined });
+  });
+
+  it('the selection bar shows only what the selection can use', () => {
+    const bar = (items: CanvasDocument['items'], menu: BarMenu | null = null) =>
+      renderToStaticMarkup(
+        createElement(SelectionBar, {
+          box: { x: 0, y: 200, w: 100, h: 50 },
+          cam: { x: 0, y: 0, k: 1 },
+          items,
+          theme: lightTheme,
+          menu,
+          onMenu: () => {},
+          onStyle: () => {},
+          onArrange: () => {},
+          onDuplicate: () => {},
+          onDelete: () => {},
+          onLock: () => {},
+          onLink: () => {},
+          onCopyStyle: () => {},
+        }),
+      );
+    const [s, n, t, l, p] = doc.items as [ShapeItem, CanvasDocument['items'][number], CanvasDocument['items'][number], LineItem, CanvasDocument['items'][number]];
+    const shapes = bar([s]);
+    for (const label of ['Shape', 'Colour', 'Stroke and opacity', 'Text', 'Arrange: layer order and rotation', 'More']) expect(shapes).toContain(`aria-label="${label}"`);
+    expect(shapes).not.toContain('aria-label="Line route"');
+    const lines = bar([l]);
+    for (const label of ['Colour', 'Stroke and opacity', 'Line route', 'Start arrowhead', 'End arrowhead']) expect(lines).toContain(`aria-label="${label}"`);
+    expect(lines).not.toContain('aria-label="Text"');
+    const texts = bar([t]);
+    expect(texts).toContain('aria-label="Text"');
+    expect(texts).toContain('aria-label="Opacity"');
+    expect(texts).not.toContain('aria-label="Shape"');
+    // Mixed: only the shared controls.
+    const mixed = bar([s, l, p]);
+    expect(mixed).toContain('aria-label="Colour"');
+    expect(mixed).toContain('aria-label="Stroke and opacity"');
+    expect(mixed).not.toContain('aria-label="Text"');
+    expect(mixed).not.toContain('aria-label="Line route"');
+    // Sub-menus: tabs for shapes, Mixed values, previews.
+    const color = bar([s], 'color');
+    expect(color).toContain('>Border<');
+    expect(color).toContain('>Fill<');
+    expect(bar([n], 'color')).toContain('>Paper<');
+    const text = bar([s, t], 'text');
+    expect(text).toContain('Mixed');
+    expect(text).toContain('aria-label="Italic"');
+    expect(bar([s], 'text')).toContain('18px');
+    expect(bar([l], 'end')).toContain('aria-checked="true"');
+    expect(bar([s, l], 'stroke')).toContain('aria-label="Line width"');
+    expect(bar([t], 'stroke')).not.toContain('aria-label="Line width"');
+  });
+
+  it('keeps old documents drawing exactly as before', () => {
+    const old: CanvasDocument = {
+      version: 1,
+      items: [shape('a', 0, 0, { text: 'A', dashed: true, color: 'blue' }), { ...lineBetween({ x: 0, y: 100 }, { x: 200, y: 100 }, { startArrow: true }), id: 'l' }, { id: 'n', type: 'sticky', x: 0, y: 200, w: 100, h: 100, text: 'N' }],
+    };
+    const svg = renderCanvasSvg(old, { theme: lightTheme, padding: 0 }).svg;
+    expect(svg).toContain('stroke-width="1.25" stroke-dasharray="6 5"');
+    expect(svg).toContain('stroke-width="1.5"');
+    expect(svg).not.toContain('opacity=');
+    expect(svg).not.toContain('font-style');
+    expect(svg).toContain('<path d="M0 0L10 5L0 10z"');
+    expect(svg.match(/<marker /g)).toHaveLength(2);
   });
 });

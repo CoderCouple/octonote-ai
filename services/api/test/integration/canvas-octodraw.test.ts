@@ -98,6 +98,20 @@ describe("assistant card outline", () => {
     expect(a.x2).toBeGreaterThan(300);
   });
 
+  it("carries the newer style fields: stroke styles, arrowheads, per-part colours, routes", () => {
+    const doc = {
+      version: 1,
+      items: [
+        { id: "a", type: "shape", shape: "rectangle", x: 0, y: 0, w: 100, h: 100, strokeStyle: "dotted", fillColor: "green", strokeWidth: 4, opacity: 0.5 },
+        { id: "b", type: "shape", shape: "rectangle", x: 300, y: 0, w: 100, h: 100, strokeStyle: "solid", dashed: true },
+        { id: "l", type: "line", x: 0, y: 0, w: 0, h: 0, bend: 40, route: "elbow", startHead: "dot", endHead: "none", endArrow: true, strokeStyle: "dashed", start: { x: 0, y: 0, item: "a" }, end: { x: 0, y: 0, item: "b" } },
+      ],
+    };
+    const o = canvasOutline(doc)!;
+    expect(o.shapes.map((s) => [s.dash, s.color])).toEqual([["dotted", "green"], ["solid", "black"]]);
+    expect(o.arrows[0]).toMatchObject({ dash: "dashed", start: "dot", end: "none", bend: 0 });
+  });
+
   it("draws nothing for an empty canvas", () => {
     expect(canvasOutline({ version: 1, items: [] })).toBeNull();
     expect(canvasOutline(null)).toBeNull();

@@ -22,9 +22,13 @@ import {
   reorderItems,
   resizeBox,
   resizeItem,
+  copyStyle,
+  pasteStyle,
+  STYLE_KEYS,
   type CanvasDocument,
   type LineItem,
   type ShapeItem,
+  type TextItem,
 } from '../src/index';
 
 const shape = (id: string, x: number, y: number, w = 100, h = 50, kind: ShapeItem['shape'] = 'rectangle'): ShapeItem => ({ id, type: 'shape', shape: kind, x, y, w, h });
@@ -193,6 +197,49 @@ describe('copy and paste with comments', () => {
     expect(comments[0]!.id).not.toBe('t1');
     expect(comments[0]!.messages[0]).toMatchObject({ text: 'hi' });
     expect(comments[0]!.messages[0]!.id).not.toBe('m1');
+  });
+});
+
+describe('copy and paste style', () => {
+  const styledShape: ShapeItem = { ...shape('a', 0, 0), strokeColor: 'blue', fillColor: 'green', strokeWidth: 4, strokeStyle: 'dotted', fill: 'solid', opacity: 0.5, fontSize: 24, italic: true, font: 'serif', align: 'left' };
+  const plain = shape('b', 300, 0);
+  const text: TextItem = { id: 't', type: 'text', x: 0, y: 200, w: 40, h: 26, text: 'Hi', fontSize: 20, color: 'red' };
+  const line: LineItem = { ...lineBetween({ x: 0, y: 300 }, { x: 200, y: 300 }, { startArrow: true, dashed: true, color: 'purple' }), id: 'l' };
+  const base = addItems(emptyDocument(), [styledShape, plain, text, line]);
+
+  it('copies every style field of the type, unset ones included', () => {
+    const style = copyStyle(plain);
+    expect(Object.keys(style).sort()).toEqual([...STYLE_KEYS.shape].sort());
+    expect(Object.values(style).every((v) => v === undefined)).toBe(true);
+    // Legacy fields come out under their new names.
+    expect(copyStyle(line)).toMatchObject({ strokeStyle: 'dashed', startHead: 'arrow', endHead: 'arrow', color: 'purple' });
+  });
+
+  it('pastes a shape style onto a shape and clears what the source lacks', () => {
+    const pasted = pasteStyle(base, ['b'], copyStyle(styledShape));
+    const { id: _a, x: _ax, ...wanted } = styledShape;
+    expect(getItem(pasted, 'b')).toMatchObject({ ...wanted, id: 'b', x: 300 });
+    const cleared = pasteStyle(pasted, ['b'], copyStyle(shape('c', 0, 0)));
+    expect(JSON.parse(JSON.stringify(getItem(cleared, 'b')))).toEqual({ id: 'b', type: 'shape', shape: 'rectangle', x: 300, y: 0, w: 100, h: 50 });
+  });
+
+  it('pastes only the fields the target has', () => {
+    // Line → shape: colour, width, dash and opacity; never arrowheads.
+    const fromLine = getItem(pasteStyle(base, ['a'], copyStyle(line)), 'a') as ShapeItem & Record<string, unknown>;
+    expect(fromLine).toMatchObject({ color: 'purple', strokeStyle: 'dashed', fill: 'solid', fillColor: 'green' });
+    expect(fromLine.strokeWidth).toBeUndefined();
+    expect(fromLine.startHead).toBeUndefined();
+    // Shape → text: the label style; a text item keeps its size when the source has none.
+    const toText = getItem(pasteStyle(base, ['t'], copyStyle(styledShape)), 't') as TextItem & Record<string, unknown>;
+    expect(toText).toMatchObject({ fontSize: 24, italic: true, font: 'serif', align: 'left', opacity: 0.5 });
+    expect(toText.color).toBeUndefined();
+    expect(toText.fillColor).toBeUndefined();
+    expect((getItem(pasteStyle(base, ['t'], copyStyle(plain)), 't') as TextItem).fontSize).toBe(20);
+    // Shape → line: width and dash replace the legacy flag.
+    const toLine = getItem(pasteStyle(base, ['l'], copyStyle(styledShape)), 'l') as LineItem;
+    expect(toLine).toMatchObject({ strokeWidth: 4, strokeStyle: 'dotted', opacity: 0.5, startArrow: true });
+    expect(toLine.dashed).toBeUndefined();
+    expect(toLine.color).toBeUndefined();
   });
 });
 

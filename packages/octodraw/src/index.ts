@@ -109,8 +109,23 @@ export {
   rotateItems,
   rotatedBounds,
   rotatePoint,
+  copyStyle,
+  pasteStyle,
+  patchItems,
+  colorPartPatch,
+  wholeColorPatch,
+  routePatch,
+  withoutLegacy,
+  lineHeads,
+  lineRoute,
+  lineBend,
+  strokeStyleOf,
+  isColorValue,
+  STROKE_WIDTHS,
+  DEFAULT_STROKE_WIDTH,
+  STYLE_KEYS,
 } from './canvas/model';
-export type { LineGeometry, ShapeFill, HorizontalAlign, VerticalAlign } from './canvas/model';
+export type { LineGeometry, ShapeFill, HorizontalAlign, VerticalAlign, ArrowHead, LineRoute, StrokeStyle, FontFamily, CanvasStyle, ColorPart, StyleKey } from './canvas/model';
 export type { Box, CanvasDocument, CanvasItem, CanvasPeer, PresentationSettings, CanvasItemType, CodeItem, CommentAuthor, CommentMessage, CommentThread, DeviceKind, Endpoint, FigureItem, FrameItem, Handle, IconItem, ImageItem, ItemPatch, LayerMove, LineItem, PenItem, ShapeItem, ShapeKind, SnapResult, StickyItem, TextItem } from './canvas/model';
 export { renderCanvasSvg } from './canvas/export';
 export type { CanvasSvgOptions } from './canvas/export';
