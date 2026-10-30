@@ -1,6 +1,7 @@
 import type { DiagramView } from '../view/view';
 import { DEFAULT_TYPOGRAPHY, estimateTextWidth, GROUP_METRICS, type DiagramLayout, type LayoutNode, type LayoutOptions, type Point } from './layout';
 import { placeLegend, routeEdges } from './route';
+import { groupHeaderExtra } from './style';
 
 // Hand placement on top of the automatic layout: nodes the user moved (or
 // groups they resized) keep that geometry, everything else stays where the
@@ -65,7 +66,7 @@ export function arrangeLayout(view: DiagramView, auto: DiagramLayout, placements
     if (!children.length) continue;
     const boxes = children.flatMap((c) => [c, ...(c.labelBox ? [c.labelBox] : [])]);
     const left = Math.min(g.x, ...boxes.map((b) => b.x - G.padding));
-    const top = Math.min(g.y, ...boxes.map((b) => b.y - G.headerHeight));
+    const top = Math.min(g.y, ...boxes.map((b) => b.y - G.headerHeight - groupHeaderExtra(g.properties)));
     const right = Math.max(g.x + g.width, ...boxes.map((b) => b.x + b.width + G.padding));
     const bottom = Math.max(g.y + g.height, ...boxes.map((b) => b.y + b.height + G.padding));
     Object.assign(g, { x: left, y: top, width: right - left, height: bottom - top });

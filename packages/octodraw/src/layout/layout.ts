@@ -2,6 +2,8 @@ import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk-api';
 import type { Direction, Properties } from '../dsl/types';
 import type { DiagramView, ViewEdge, ViewNode, ViewNodeKind } from '../view/view';
+import { straightRoute } from './straight';
+import { edgeFont as edgeFontFor, edgeStyle, edgeStyleFields, groupFont, groupHeaderExtra, iconSizeOf, nodeFonts } from './style';
 
 // Positions a drill-down view with ELK's layered algorithm. Only the nodes in
 // the current view are laid out, so drilling into a large diagram stays cheap.
@@ -11,6 +13,8 @@ export type TextMeasurer = (text: string, font: TextFont) => number;
 export interface TextFont {
   size: number;
   weight: number;
+  /** A box's own `typeface` (clean / mono / rough), when it differs from the diagram's; measurers may use it. */
+  typeface?: string;
 }
 
 export interface Typography {
@@ -70,6 +74,10 @@ export interface LayoutNode {
 
 export type NodeVariant = 'card' | 'icon';
 
+/** Arrowhead drawn at an end of a line: filled triangle, open chevron or round dot. */
+export type ArrowHeadKind = 'arrow' | 'open' | 'dot';
+export type LineStyle = 'solid' | 'dashed' | 'dotted';
+
 export interface LayoutEdge {
   id: string;
   from: string;
@@ -78,6 +86,21 @@ export interface LayoutEdge {
   startArrow: boolean;
   endArrow: boolean;
   dashed: boolean;
+  /** `line: dotted` (wins over `dashed`). */
+  dotted?: boolean;
+  /**
+   * Explicit arrowheads from `startArrow` / `endArrow`. When unset, the ends
+   * follow the connector: a filled triangle at the end, and at the start a
+   * filled triangle (`<`) or an open chevron (`<>`).
+   */
+  startHead?: ArrowHeadKind;
+  endHead?: ArrowHeadKind;
+  /** `strokeWidth`; unset draws the theme's edge width. */
+  strokeWidth?: number;
+  /** `labelSize`: the label's font size; unset uses the theme's edge text. */
+  labelSize?: number;
+  /** `routing: straight`: a straight line between the two outlines instead of a routed path. */
+  routing?: 'straight';
   color?: string;
   label?: { text: string; x: number; y: number; width: number; height: number };
   /** How many source connections were merged into this edge. */
@@ -193,7 +216,8 @@ export async function layoutView(view: DiagramView, options: LayoutOptions): Pro
 
 async function layoutViewElk(view: DiagramView, options: LayoutOptions): Promise<DiagramLayout> {
   const measure = options.measureText ?? estimateTextWidth;
-  const { node: LABEL_FONT, description: DESCRIPTION_FONT, group: GROUP_FONT, edge: EDGE_FONT } = options.typography ?? DEFAULT_TYPOGRAPHY;
+  const typography = options.typography ?? DEFAULT_TYPOGRAPHY;
+  const { edge: EDGE_FONT } = typography;
   const wrap = options.wrap ?? true;
   const lines = new Map<string, string[]>();
   const descriptions = new Map<string, string[]>();
@@ -204,15 +228,16 @@ async function layoutViewElk(view: DiagramView, options: LayoutOptions): Promise
 
   const toElk = (node: ViewNode): ElkNode => {
     const { label, properties } = node.source;
+    const { node: LABEL_FONT, description: DESCRIPTION_FONT } = nodeFonts(typography, properties);
     if (node.kind === 'group') {
       const title = groupTitle(label, properties.description);
       lines.set(node.id, [title]);
       descriptions.set(node.id, []);
-      const headerWidth = measure(title, GROUP_FONT) + (properties.icon ? 28 : 0);
+      const headerWidth = measure(title, groupFont(typography, properties)) + (properties.icon ? 28 : 0);
       return {
         id: node.id,
         layoutOptions: {
-          'elk.padding': `[top=${G.headerHeight},left=${G.padding},bottom=${G.padding + 6},right=${G.padding}]`,
+          'elk.padding': `[top=${G.headerHeight + groupHeaderExtra(properties)},left=${G.padding},bottom=${G.padding + 6},right=${G.padding}]`,
           'elk.nodeSize.constraints': 'MINIMUM_SIZE',
           'elk.nodeSize.minimum': `(${Math.ceil(headerWidth + G.padding * 2)}, 60)`,
         },
@@ -220,7 +245,8 @@ async function layoutViewElk(view: DiagramView, options: LayoutOptions): Promise
       };
     }
     if (variants.get(node.id) === 'icon') {
-      const max = wrap ? I.maxLabelWidth : Infinity;
+      const size = iconSizeOf(properties.iconSize) ?? I.size;
+      const max = wrap ? Math.max(I.maxLabelWidth, size) : Infinity;
       const text = wrapText(label, LABEL_FONT, max, measure);
       const description = properties.description ? wrapText(properties.description, DESCRIPTION_FONT, max, measure) : [];
       lines.set(node.id, text);
@@ -230,8 +256,8 @@ async function layoutViewElk(view: DiagramView, options: LayoutOptions): Promise
       // The label sits outside, under the icon; ELK reserves room for it in the node's margins.
       return {
         id: node.id,
-        width: I.size,
-        height: I.size,
+        width: size,
+        height: size,
         labels: [{ text: label, width: Math.ceil(width), height: Math.ceil(height) }],
         layoutOptions: { 'elk.nodeLabels.placement': 'OUTSIDE V_BOTTOM H_CENTER', 'elk.spacing.labelNode': String(I.labelGap) },
       };
@@ -254,12 +280,13 @@ async function layoutViewElk(view: DiagramView, options: LayoutOptions): Promise
 
   const edges: ElkExtendedEdge[] = view.edges.map((edge) => {
     const text = edgeLabel(edge);
+    const font = edgeFontFor(EDGE_FONT, edge);
     return {
       id: edge.id,
       sources: [edge.from],
       targets: [edge.to],
       labels: text
-        ? [{ text, width: Math.ceil(measure(text, EDGE_FONT) + 8), height: Math.ceil(EDGE_FONT.size * EDGE_FONT.lineHeight + 4) }]
+        ? [{ text, width: Math.ceil(measure(text, font) + 8), height: Math.ceil(font.size * font.lineHeight + 4) }]
         : [],
     };
   });
@@ -307,7 +334,7 @@ async function layoutViewElk(view: DiagramView, options: LayoutOptions): Promise
       variant,
       labelBox:
         variant === 'icon' && elkLabel
-          ? { x: x + (elkLabel.x ?? 0), y: y + (elkLabel.y ?? I.size + I.labelGap), width: elkLabel.width ?? 0, height: elkLabel.height ?? 0 }
+          ? { x: x + (elkLabel.x ?? 0), y: y + (elkLabel.y ?? (elkNode.height ?? I.size) + I.labelGap), width: elkLabel.width ?? 0, height: elkLabel.height ?? 0 }
           : undefined,
       id: elkNode.id,
       kind: viewNode.kind,
@@ -327,8 +354,10 @@ async function layoutViewElk(view: DiagramView, options: LayoutOptions): Promise
   for (const child of result.children ?? []) visit(child, { x: 0, y: 0 }, 0, null);
 
   const viewEdges = new Map(view.edges.map((edge) => [edge.id, edge]));
+  const placed = new Map(nodes.map((n) => [n.id, n]));
   const layoutEdges: LayoutEdge[] = (result.edges ?? []).map((elkEdge) => {
     const edge = viewEdges.get(elkEdge.id)!;
+    const style = edgeStyle(edge);
     // ELK reports edge coordinates relative to the edge's container node.
     const origin = offsets.get((elkEdge as ElkExtendedEdge & { container?: string }).container ?? '__root__') ?? { x: 0, y: 0 };
     const points: Point[] = [];
@@ -338,14 +367,21 @@ async function layoutViewElk(view: DiagramView, options: LayoutOptions): Promise
       }
     }
     const label = elkEdge.labels?.[0];
+    if (style.routing === 'straight') {
+      // A straight line between the outlines; the label sits on its middle.
+      const straight = straightRoute(placed.get(edge.from)!, placed.get(edge.to)!);
+      points.splice(0, points.length, ...straight);
+      if (label) {
+        label.x = (straight[0]!.x + straight[1]!.x) / 2 - (label.width ?? 0) / 2 - origin.x;
+        label.y = (straight[0]!.y + straight[1]!.y) / 2 - (label.height ?? 0) / 2 - origin.y;
+      }
+    }
     return {
       id: edge.id,
       from: edge.from,
       to: edge.to,
       points,
-      startArrow: edge.startArrow,
-      endArrow: edge.endArrow,
-      dashed: edge.dashed,
+      ...edgeStyleFields(style),
       color: edge.color,
       count: edge.groupFan ? 1 : edge.sources.length,
       label:

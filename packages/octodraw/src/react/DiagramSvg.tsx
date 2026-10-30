@@ -3,7 +3,8 @@ import type { GlobalSettings } from '../dsl/types';
 import { resolveIcon } from '../icons/resolve';
 import type { IconSet } from '../icons/resolve';
 import type { IconResolver, ResolvedIcon } from '../icons/types';
-import { GROUP_METRICS, LEGEND_METRICS, NODE_METRICS, type DiagramLayout, type LayoutEdge, type LayoutLegend, type LayoutNode, type Point } from '../layout/layout';
+import { GROUP_METRICS, LEGEND_METRICS, NODE_METRICS, type ArrowHeadKind, type DiagramLayout, type LayoutEdge, type LayoutLegend, type LayoutNode, type Point } from '../layout/layout';
+import { groupFont, lineStyleOf, nodeFonts, strokeWidthOf, textAlignOf } from '../layout/style';
 import type { Emphasis } from '../maps/maps';
 import type { Theme } from '../theme/tokens';
 import { lineColor, resolvePaints, swatchFor, type Paint } from './theme';
@@ -54,6 +55,20 @@ export interface DiagramSvgProps {
   iconEpoch?: number;
   /** Prefer Eraser's artwork ('eraser', default) or the open-source catalog ('open'). */
   iconSet?: IconSet;
+  /**
+   * An arrow was clicked. When set, every arrow gets an invisible wide hit
+   * path (`data-edge-id`) and a hover highlight.
+   */
+  onSelectEdge?: (edgeId: string) => void;
+  /** Arrow drawn as selected: accent colour and small handles at both ends. */
+  selectedEdge?: string | null;
+  /**
+   * An icon node's label (the text under the icon, `data-node-label-id`) was
+   * clicked. Without it, a click on the label selects the node.
+   */
+  onSelectLabel?: (nodeId: string) => void;
+  /** Icon node whose label is drawn as selected (accent outline around the text). */
+  selectedLabel?: string | null;
 }
 
 const DRAW_STAGGER_MS = 240;
@@ -69,12 +84,12 @@ interface EdgeAnimation {
 }
 
 /** Renders a laid-out view as SVG content (no outer <svg>, so callers control pan and zoom). */
-export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, settings, theme, drillable, onDrill, onToggleCollapse, onLink, onSelect, selected, emphasis, icons, hovered, animation = 'smooth', revealCount, drawPace, iconSet = 'eraser', zoom = 1 }: DiagramSvgProps) {
+export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, settings, theme, drillable, onDrill, onToggleCollapse, onLink, onSelect, selected, emphasis, icons, hovered, animation = 'smooth', revealCount, drawPace, iconSet = 'eraser', zoom = 1, onSelectEdge, selectedEdge, onSelectLabel, selectedLabel }: DiagramSvgProps) {
   // Paints come from the full layout so colors don't change as elements reveal.
   const { paints, fills } = useMemo(() => resolvePaints(theme, fullLayout.nodes, settings.colorMode), [theme, fullLayout.nodes, settings.colorMode]);
   const layout = useMemo(() => revealed(fullLayout, revealCount), [fullLayout, revealCount]);
   const groups = layout.nodes.filter((n) => n.kind === 'group');
-  const ctx: RenderContext = { theme, icons, iconSet, onDrill, onLink, onSelect, shadow: settings.styleMode === 'shadow', watercolor: settings.styleMode === 'watercolor' };
+  const ctx: RenderContext = { theme, icons, iconSet, onDrill, onLink, onSelect, onSelectLabel, shadow: settings.styleMode === 'shadow', watercolor: settings.styleMode === 'watercolor' };
   const nodeState = (id: string) => (emphasis && !emphasis.nodes.has(id) ? 'od-dim' : undefined);
   const edgeState = (id: string): EdgeState => (emphasis?.current?.edges.has(id) ? 'current' : emphasis && !emphasis.edges.has(id) ? 'dim' : 'normal');
   const rings = layout.nodes.filter((n) => n.kind !== 'group' && (n.id === selected || emphasis?.current?.nodes.has(n.id)));
@@ -143,11 +158,12 @@ export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, setting
 
   return (
     <g fontFamily={fontFamilyFor(theme, settings.typeface)}>
+      {onSelectEdge && <style>{EDGE_HIT_CSS}</style>}
       {ctx.watercolor && <WatercolorDefs />}
       {groups.map((node) => positioned(node, (local) => <GroupShape node={local} paint={paints.get(node.id)!} ctx={ctx} drillable={drillable.has(node.id)} />))}
       {layout.edges.map((edge) => {
         const anim = edgeAnimations.get(edge)!;
-        return <EdgePath key={anim.key} edge={edge} theme={theme} anim={anim} state={edgeState(edge.id)} />;
+        return <EdgePath key={anim.key} edge={edge} theme={theme} anim={anim} state={edgeState(edge.id)} selected={edge.id === selectedEdge} onSelect={onSelectEdge} zoom={zoom} />;
       })}
       {layout.nodes
         .filter((n) => n.kind !== 'group')
@@ -165,6 +181,12 @@ export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, setting
         const anim = edgeAnimations.get(edge)!;
         return <EdgeLabel key={anim.key} edge={edge} theme={theme} background={labelBackground(edge)} anim={anim} dimmed={edgeState(edge.id) === 'dim'} />;
       })}
+      {layout.edges.filter((e) => e.id === selectedEdge).map((edge) => (
+        <EdgeHandles key={`handles-${edge.id}`} edge={edge} theme={theme} zoom={zoom} />
+      ))}
+      {layout.nodes.filter((n) => n.id === selectedLabel && n.labelBox).map((node) => (
+        <LabelOutline key={`label-${node.id}`} box={node.labelBox!} theme={theme} zoom={zoom} />
+      ))}
       {rings.map((node) => (
         <FocusRing key={`ring-${node.id}`} node={node} theme={theme} current={!!emphasis?.current?.nodes.has(node.id)} />
       ))}
@@ -212,6 +234,7 @@ interface RenderContext {
   onDrill?: (id: string) => void;
   onLink?: (href: string, nodeId: string) => void;
   onSelect?: (nodeId: string) => void;
+  onSelectLabel?: (nodeId: string) => void;
   shadow: boolean;
   /** styleMode watercolor: soft painted washes instead of flat fills. */
   watercolor?: boolean;
@@ -291,7 +314,8 @@ function GroupShape({ node, paint, ctx, drillable }: { node: LayoutNode; paint: 
   const { theme } = ctx;
   const G = GROUP_METRICS;
   const icon = node.properties.icon ? resolveIcon(node.properties.icon, ctx.icons, ctx.iconSet) : undefined;
-  const font = theme.text.group;
+  const font = groupFont(theme.text, node.properties);
+  const border = borderStyle(node, theme.stroke.hairline);
   const rect = <rect x={node.x} y={node.y} width={node.width} height={node.height} rx={theme.radius.md} />;
   return (
     <g data-node-id={node.id} {...drillHandlers(node.id, drillable, ctx.onDrill)} {...selectHandlers(node.id, ctx.onSelect)}>
@@ -301,11 +325,11 @@ function GroupShape({ node, paint, ctx, drillable }: { node: LayoutNode; paint: 
           {rect}
         </Wash>
       )}
-      <g fill={ctx.watercolor ? 'none' : paint.fill} stroke={paint.stroke} strokeWidth={theme.stroke.hairline} strokeOpacity={ctx.watercolor ? 0.35 : undefined}>
+      <g fill={ctx.watercolor ? 'none' : paint.fill} stroke={paint.stroke} strokeWidth={border.width} strokeOpacity={ctx.watercolor ? 0.35 : undefined} strokeDasharray={border.dash} strokeLinecap={border.cap}>
         {rect}
       </g>
       {node.properties.icon && <Icon name={node.properties.icon} resolved={icon} x={node.x + 14} y={node.y + G.headerTop - 1} size={18} tint={icon?.tint ?? paint.icon} theme={theme} />}
-      <text x={node.x + (node.properties.icon ? 40 : 16)} y={node.y + G.headerTop + font.size * 0.8} fontSize={font.size} fontWeight={font.weight} fill={paint.text}>
+      <text x={node.x + (node.properties.icon ? 40 : 16)} y={node.y + G.headerTop + font.size * 0.8} fontSize={font.size} fontWeight={font.weight} fill={textColor(theme, node) ?? paint.text}>
         {node.lines[0]}
       </text>
     </g>
@@ -320,16 +344,19 @@ function NodeShape({ node, paint, ctx, drillable }: { node: LayoutNode; paint: P
   const iconName = node.properties.icon ?? (collapsed ? 'group' : undefined);
   const icon = iconName ? resolveIcon(iconName, ctx.icons, ctx.iconSet) : undefined;
 
-  const label = theme.text.node;
-  const desc = theme.text.description;
+  const { node: label, description: desc } = nodeFonts(theme.text, node.properties);
   const labelLine = label.size * label.lineHeight;
   const descLine = desc.size * desc.lineHeight;
   const blockHeight = node.lines.length * labelLine + node.description.length * descLine;
   const top = node.y + (node.height - blockHeight) / 2;
-  // Text is centered in the space to the right of the icon.
+  // Text is centered in the space to the right of the icon (or aligned by `textAlign`).
   const textLeft = node.x + N.paddingX + (iconName ? N.iconSize + N.iconGap : 0);
-  const cx = (textLeft + node.x + node.width - N.paddingX) / 2;
+  const textRight = node.x + node.width - N.paddingX;
+  const align = textAlignOf(node.properties.textAlign) ?? 'center';
+  const cx = align === 'left' ? textLeft : align === 'right' ? textRight : (textLeft + textRight) / 2;
+  const anchor = align === 'left' ? 'start' : align === 'right' ? 'end' : 'middle';
   const shape = nodeOutline(node.properties.shape, node, theme);
+  const border = borderStyle(node, theme.stroke.hairline, external ? '5 4' : undefined);
 
   const link = node.properties.link;
   return (
@@ -341,7 +368,7 @@ function NodeShape({ node, paint, ctx, drillable }: { node: LayoutNode; paint: P
     >
       {collapsed && (
         // A second card peeking out behind signals "there is more inside".
-        <rect x={node.x + 6} y={node.y + 6} width={node.width} height={node.height} rx={theme.radius.lg} fill={paint.fill} stroke={paint.stroke} strokeWidth={theme.stroke.hairline} />
+        <rect x={node.x + 6} y={node.y + 6} width={node.width} height={node.height} rx={theme.radius.lg} fill={paint.fill} stroke={paint.stroke} strokeWidth={border.width} strokeDasharray={border.dash} strokeLinecap={border.cap} />
       )}
       {ctx.shadow && !external && !collapsed && <OffsetShadow theme={theme}>{shape.body}</OffsetShadow>}
       {ctx.watercolor && !external && (
@@ -349,16 +376,16 @@ function NodeShape({ node, paint, ctx, drillable }: { node: LayoutNode; paint: P
           {shape.body}
         </Wash>
       )}
-      <g fill={ctx.watercolor && !external ? 'none' : paint.fill} stroke={paint.stroke} strokeWidth={theme.stroke.hairline} strokeOpacity={ctx.watercolor && !external ? 0.4 : undefined} strokeDasharray={external ? '5 4' : undefined}>
+      <g fill={ctx.watercolor && !external ? 'none' : paint.fill} stroke={paint.stroke} strokeWidth={border.width} strokeOpacity={ctx.watercolor && !external ? 0.4 : undefined} strokeDasharray={border.dash} strokeLinecap={border.cap}>
         {shape.body}
       </g>
       {shape.detail && (
-        <g fill="none" stroke={paint.stroke} strokeWidth={theme.stroke.hairline}>
+        <g fill="none" stroke={paint.stroke} strokeWidth={border.width} strokeDasharray={border.dash} strokeLinecap={border.cap}>
           {shape.detail}
         </g>
       )}
       {iconName && <Icon name={iconName} resolved={icon} x={node.x + N.paddingX} y={shape.contentCenterY - N.iconSize / 2} size={N.iconSize} tint={icon?.tint ?? paint.icon} theme={theme} />}
-      <text textAnchor="middle" fontSize={label.size} fontWeight={label.weight} fill={paint.text}>
+      <text textAnchor={anchor} fontSize={label.size} fontWeight={label.weight} fill={textColor(theme, node) ?? paint.text}>
         {node.lines.map((line, i) => (
           <tspan key={i} x={cx} y={top + shape.contentOffsetY + labelLine * i + label.size * 0.95}>
             {line}
@@ -366,7 +393,7 @@ function NodeShape({ node, paint, ctx, drillable }: { node: LayoutNode; paint: P
         ))}
       </text>
       {node.description.length > 0 && (
-        <text textAnchor="middle" fontSize={desc.size} fontWeight={desc.weight} fill={paint.muted}>
+        <text textAnchor={anchor} fontSize={desc.size} fontWeight={desc.weight} fill={paint.muted}>
           {node.description.map((line, i) => (
             <tspan key={i} x={cx} y={top + shape.contentOffsetY + node.lines.length * labelLine + descLine * i + desc.size * 1.05}>
               {line}
@@ -384,25 +411,15 @@ function IconNodeShape({ node, paint, ctx }: { node: LayoutNode; paint: Paint; c
   const { theme } = ctx;
   const iconName = node.properties.icon!;
   const icon = resolveIcon(iconName, ctx.icons, ctx.iconSet);
-  const label = theme.text.node;
-  const desc = theme.text.description;
+  const { node: label, description: desc } = nodeFonts(theme.text, node.properties);
   const box = node.labelBox ?? { x: node.x - 40, y: node.y + node.height + 8, width: node.width + 80, height: label.size * label.lineHeight };
   const cx = node.x + node.width / 2;
   const labelLine = label.size * label.lineHeight;
   const descLine = desc.size * desc.lineHeight;
   const link = node.properties.link;
-  return (
-    <g data-node-id={node.id} {...selectHandlers(node.id, ctx.onSelect)} fontFamily={node.properties.typeface ? fontFamilyFor(theme, node.properties.typeface) : undefined}>
-      {/* Invisible hit area so the whole icon + label hovers and selects as one. */}
-      <rect x={Math.min(node.x, box.x)} y={node.y} width={Math.max(node.width, box.width)} height={box.y + box.height - node.y} fill="transparent" />
-      {ctx.watercolor && (
-        <Wash color={paint.icon} theme={theme} strength={0.8}>
-          <circle cx={cx} cy={node.y + node.height / 2} r={node.width * 0.68} />
-        </Wash>
-      )}
-      <Icon name={iconName} resolved={icon} x={node.x} y={node.y} size={node.width} tint={icon?.tint ?? paint.icon} theme={theme} strokeWidth={0.85} />
-      {link && <LinkBadge x={node.x + node.width - 6} y={node.y - 8} theme={theme} href={link} onOpen={() => ctx.onLink?.(link, node.id)} />}
-      <text textAnchor="middle" fontSize={label.size} fontWeight={label.weight} fill={paint.text}>
+  const text = (
+    <>
+      <text textAnchor="middle" fontSize={label.size} fontWeight={label.weight} fill={textColor(theme, node) ?? paint.text}>
         {node.lines.map((line, i) => (
           <tspan key={i} x={cx} y={box.y + labelLine * i + label.size * 0.95}>
             {line}
@@ -417,6 +434,28 @@ function IconNodeShape({ node, paint, ctx }: { node: LayoutNode; paint: Paint; c
             </tspan>
           ))}
         </text>
+      )}
+    </>
+  );
+  return (
+    <g data-node-id={node.id} {...selectHandlers(node.id, ctx.onSelect)} fontFamily={node.properties.typeface ? fontFamilyFor(theme, node.properties.typeface) : undefined}>
+      {/* Invisible hit area so the whole icon + label hovers and selects as one. */}
+      <rect x={Math.min(node.x, box.x)} y={node.y} width={Math.max(node.width, box.width)} height={box.y + box.height - node.y} fill="transparent" />
+      {ctx.watercolor && (
+        <Wash color={paint.icon} theme={theme} strength={0.8}>
+          <circle cx={cx} cy={node.y + node.height / 2} r={node.width * 0.68} />
+        </Wash>
+      )}
+      <Icon name={iconName} resolved={icon} x={node.x} y={node.y} size={node.width} tint={icon?.tint ?? paint.icon} theme={theme} strokeWidth={0.85} />
+      {link && <LinkBadge x={node.x + node.width - 6} y={node.y - 8} theme={theme} href={link} onOpen={() => ctx.onLink?.(link, node.id)} />}
+      {ctx.onSelect || ctx.onSelectLabel ? (
+        // Interactive: the label is its own target, so a host can select it apart from the icon.
+        <g data-node-label-id={node.id} {...selectHandlers(node.id, ctx.onSelectLabel)}>
+          {ctx.onSelectLabel && <rect x={box.x} y={box.y} width={box.width} height={box.height} fill="transparent" />}
+          {text}
+        </g>
+      ) : (
+        text
       )}
     </g>
   );
@@ -486,6 +525,35 @@ function nodeOutline(shape: string | undefined, n: LayoutNode, theme: Theme): Ou
       return plain(<rect x={x} y={y} width={w} height={h} rx={theme.radius.lg} />);
   }
 }
+
+/** `textColor`: a palette name (its ink shade) or a CSS colour; undefined keeps the paint's text colour. */
+function textColor(theme: Theme, node: LayoutNode): string | undefined {
+  return lineColor(theme, node.properties.textColor?.trim() || undefined);
+}
+
+interface Border {
+  width: number;
+  dash?: string;
+  cap?: 'round';
+}
+
+/** A box's or group's outline from `border` and `strokeWidth`; `fallbackDash` keeps today's look (dashed external boxes). */
+function borderStyle(node: LayoutNode, defaultWidth: number, fallbackDash?: string): Border {
+  const width = strokeWidthOf(node.properties.strokeWidth) ?? defaultWidth;
+  const style = lineStyleOf(node.properties.border);
+  if (!style) return { width, dash: fallbackDash };
+  return { width, ...dashFor(style, width, '5 4') };
+}
+
+/** Dash pattern for a line style: dashed grows with thick lines; dotted is round dots spaced by the width. */
+function dashFor(style: 'solid' | 'dashed' | 'dotted', width: number, dashed: string): { dash?: string; cap?: 'round' } {
+  if (style === 'solid') return {};
+  if (style === 'dotted') return { dash: `${round2(0.5 * width)} ${round2(3.5 * width)}`, cap: 'round' };
+  const k = Math.max(1, width);
+  return { dash: k === 1 ? dashed : dashed.split(' ').map((n) => round2(Number(n) * k)).join(' ') };
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Font family for a typeface setting: clean (default), mono, or the hand-drawn rough face. */
 export function fontFamilyFor(theme: Theme, typeface: string | undefined): string {
@@ -595,65 +663,151 @@ function LinkBadge({ x, y, theme, href, onOpen }: { x: number; y: number; theme:
 
 type EdgeState = 'normal' | 'dim' | 'current';
 
-function EdgePath({ edge, theme, anim, state = 'normal' }: { edge: LayoutEdge; theme: Theme; anim: EdgeAnimation; state?: EdgeState }) {
-  const color = state === 'current' ? theme.color.accent : (lineColor(theme, edge.color) ?? theme.color.edge);
+// Hover highlight for selectable arrows (only emitted when the host passes onSelectEdge).
+const EDGE_HIT_CSS = '.od-edge-hit{cursor:pointer}.od-edge-hover{opacity:0;transition:opacity 120ms}.od-edge:hover .od-edge-hover{opacity:0.45}';
+
+/** On-screen width of an arrow's invisible click target. */
+const EDGE_HIT_WIDTH = 12;
+
+interface EdgeEnd {
+  kind: ArrowHeadKind;
+  /** How far the line stops short of the tip so the head stays crisp. */
+  trim: number;
+}
+
+/**
+ * The heads at each end. Without `startArrow`/`endArrow` properties the ends
+ * follow the connector exactly as before (filled triangle; `<>` gets an open
+ * chevron at the start; the line stops at the head's base). Explicit heads are
+ * sized to the line width and trimmed for their own shape.
+ */
+function edgeEnds(edge: LayoutEdge, width: number): { start?: EdgeEnd; end?: EdgeEnd; length: number } {
+  const length = edge.strokeWidth !== undefined ? ARROW_LENGTH + Math.max(0, edge.strokeWidth - 1) * 2.5 : ARROW_LENGTH;
+  const end = (explicit: ArrowHeadKind | undefined, implied: ArrowHeadKind): EdgeEnd => {
+    if (!explicit) return { kind: implied, trim: ARROW_LENGTH - 1 };
+    const trim = explicit === 'arrow' ? length - 1 : explicit === 'open' ? width * 0.75 : dotRadius(length);
+    return { kind: explicit, trim };
+  };
+  return {
+    length,
+    end: edge.endArrow ? end(edge.endHead, 'arrow') : undefined,
+    start: edge.startArrow ? end(edge.startHead, edge.endArrow ? 'open' : 'arrow') : undefined,
+  };
+}
+
+const dotRadius = (length: number) => length * 0.36;
+
+function EdgePath({ edge, theme, anim, state = 'normal', selected = false, onSelect, zoom = 1 }: { edge: LayoutEdge; theme: Theme; anim: EdgeAnimation; state?: EdgeState; selected?: boolean; onSelect?: (edgeId: string) => void; zoom?: number }) {
+  const color = state === 'current' || selected ? theme.color.accent : (lineColor(theme, edge.color) ?? theme.color.edge);
   const { points } = edge;
   if (points.length < 2) return null;
-  const width = state === 'current' ? theme.stroke.strong + 0.5 : edge.count > 1 ? theme.stroke.strong : theme.stroke.edge;
+  const base = edge.strokeWidth ?? (edge.count > 1 ? theme.stroke.strong : theme.stroke.edge);
+  const width = state === 'current' ? Math.max(theme.stroke.strong + 0.5, base) : base;
+  const ends = edgeEnds(edge, width);
   // Stop the line at the arrowhead's base so the tip stays crisp.
   const trimmed = points.map((p) => ({ ...p }));
-  if (edge.endArrow) trimmed[trimmed.length - 1] = toward(points.at(-1)!, points.at(-2)!, ARROW_LENGTH - 1);
-  if (edge.startArrow) trimmed[0] = toward(points[0]!, points[1]!, ARROW_LENGTH - 1);
-  // Solid lines draw on from source to target; dashed ones (whose dash pattern
-  // would clash with the draw trick) fade in instead.
-  const draws = anim.kind === 'draw' && !edge.dashed;
+  if (ends.end) trimmed[trimmed.length - 1] = toward(points.at(-1)!, points.at(-2)!, ends.end.trim);
+  if (ends.start) trimmed[0] = toward(points[0]!, points[1]!, ends.start.trim);
+  const dash = edge.dotted ? dashFor('dotted', width, '6 5') : edge.dashed ? (edge.strokeWidth !== undefined ? dashFor('dashed', width, '6 5') : { dash: '6 5' }) : {};
+  // Solid lines draw on from source to target; dashed and dotted ones (whose
+  // dash pattern would clash with the draw trick) fade in instead.
+  const draws = anim.kind === 'draw' && !edge.dashed && !edge.dotted;
   const lineClass = draws ? 'od-draw' : anim.kind !== 'none' ? 'od-fade' : undefined;
   const drawMs = anim.duration ?? EDGE_DRAW_MS;
   const headDelay = anim.delay + (draws ? drawMs - Math.min(80, drawMs / 3) : 0);
   const headClass = anim.kind !== 'none' ? 'od-fade' : undefined;
+  const d = roundedPath(trimmed, 6);
+  const scale = 1 / Math.max(zoom, 0.05);
+  const className = [state === 'dim' ? 'od-dim' : '', onSelect ? 'od-edge' : ''].join(' ').trim() || undefined;
   return (
-    <g className={state === 'dim' ? 'od-dim' : undefined}>
-      {state === 'current' && <path className="od-march" d={roundedPath(trimmed, 6)} fill="none" stroke={theme.color.accent} strokeWidth={width} strokeDasharray="8 7" strokeLinecap="round" />}
+    <g className={className}>
+      {state === 'current' && <path className="od-march" d={d} fill="none" stroke={theme.color.accent} strokeWidth={width} strokeDasharray="8 7" strokeLinecap="round" />}
+      {onSelect && !selected && <path className="od-edge-hover" d={roundedPath(points, 6)} fill="none" stroke={theme.color.accent} strokeWidth={width + 3 * scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       <path
         className={lineClass}
         style={draws && drawMs !== EDGE_DRAW_MS ? { ...animationStyle(anim.delay), animationDuration: `${drawMs}ms` } : animationStyle(anim.delay)}
         pathLength={draws ? 1 : undefined}
-        d={roundedPath(trimmed, 6)}
+        d={d}
         fill="none"
         stroke={color}
-        strokeWidth={width}
-        strokeDasharray={edge.dashed ? '6 5' : undefined}
+        strokeWidth={selected ? Math.max(width, theme.stroke.default) : width}
+        strokeDasharray={dash.dash}
+        strokeLinecap={dash.cap}
         strokeOpacity={state === 'current' ? 0.25 : undefined}
       />
-      {edge.endArrow && <ArrowHead tip={points.at(-1)!} from={points.at(-2)!} color={color} className={headClass} delay={headDelay} />}
-      {edge.startArrow && <ArrowHead tip={points[0]!} from={points[1]!} color={color} className={headClass} delay={draws ? anim.delay : headDelay} open={edge.endArrow} />}
+      {ends.end && <ArrowHead tip={points.at(-1)!} from={points.at(-2)!} color={color} className={headClass} delay={headDelay} kind={ends.end.kind} length={ends.length} strokeWidth={edge.endHead ? Math.max(1.25, width) : undefined} />}
+      {ends.start && <ArrowHead tip={points[0]!} from={points[1]!} color={color} className={headClass} delay={draws ? anim.delay : headDelay} kind={ends.start.kind} length={ends.length} strokeWidth={edge.startHead ? Math.max(1.25, width) : undefined} />}
+      {onSelect && (
+        <path
+          className="od-edge-hit"
+          data-edge-id={edge.id}
+          d={roundedPath(points, 6)}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={EDGE_HIT_WIDTH * scale}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          pointerEvents="stroke"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(edge.id);
+          }}
+        />
+      )}
     </g>
   );
+}
+
+/** Small handles at both ends of the selected arrow, drawn above the boxes. */
+function EdgeHandles({ edge, theme, zoom }: { edge: LayoutEdge; theme: Theme; zoom: number }) {
+  if (edge.points.length < 2) return null;
+  const scale = 1 / Math.max(zoom, 0.05);
+  return (
+    <g className="od-edge-handles" pointerEvents="none">
+      {[edge.points[0]!, edge.points.at(-1)!].map((p, i) => (
+        <circle key={i} data-edge-handle={i === 0 ? 'start' : 'end'} cx={p.x} cy={p.y} r={4 * scale} fill={theme.color.raised} stroke={theme.color.accent} strokeWidth={1.5 * scale} />
+      ))}
+    </g>
+  );
+}
+
+/** Accent outline around a selected icon-node label. */
+function LabelOutline({ box, theme, zoom }: { box: { x: number; y: number; width: number; height: number }; theme: Theme; zoom: number }) {
+  const scale = 1 / Math.max(zoom, 0.05);
+  const pad = 3;
+  return <rect className="od-label-selected" x={box.x - pad} y={box.y - pad} width={box.width + pad * 2} height={box.height + pad * 2} rx={theme.radius.sm} fill="none" stroke={theme.color.accent} strokeWidth={1.5 * scale} pointerEvents="none" />;
 }
 
 const ARROW_LENGTH = 8;
 
 /**
- * Small filled triangle, as in Eraser's diagrams. The start of a two-way arrow
- * gets an open chevron instead (`open`), which is how Eraser draws `<>`.
+ * Arrowheads. `arrow` (default) is a small filled triangle, as in Eraser's
+ * diagrams; `open` a chevron, which is how Eraser draws the start of `<>`
+ * (also via the legacy `open` flag); `dot` a filled circle sitting just
+ * outside the outline.
  */
-function ArrowHead({ tip, from, color, className, delay = 0, open = false }: { tip: Point; from: Point; color: string; className?: string; delay?: number; open?: boolean }) {
-  const length = dist(from, tip) || 1;
-  const ux = (tip.x - from.x) / length;
-  const uy = (tip.y - from.y) / length;
-  const bx = tip.x - ux * ARROW_LENGTH;
-  const by = tip.y - uy * ARROW_LENGTH;
-  const half = ARROW_LENGTH * 0.45;
+function ArrowHead({ tip, from, color, className, delay = 0, open = false, kind, length = ARROW_LENGTH, strokeWidth = 1.25 }: { tip: Point; from: Point; color: string; className?: string; delay?: number; open?: boolean; kind?: ArrowHeadKind; length?: number; strokeWidth?: number }) {
+  const shape = kind ?? (open ? 'open' : 'arrow');
+  const span = dist(from, tip) || 1;
+  const ux = (tip.x - from.x) / span;
+  const uy = (tip.y - from.y) / span;
+  if (shape === 'dot') {
+    const r = dotRadius(length);
+    return <circle className={className} style={animationStyle(delay)} cx={tip.x - ux * r} cy={tip.y - uy * r} r={r} fill={color} />;
+  }
+  const bx = tip.x - ux * length;
+  const by = tip.y - uy * length;
+  const half = length * 0.45;
   const points = `${bx - uy * half},${by + ux * half} ${tip.x},${tip.y} ${bx + uy * half},${by - ux * half}`;
-  if (open) {
-    return <polyline className={className} style={animationStyle(delay)} points={points} fill="none" stroke={color} strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round" />;
+  if (shape === 'open') {
+    return <polyline className={className} style={animationStyle(delay)} points={points} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />;
   }
   return <polygon className={className} style={animationStyle(delay)} points={points} fill={color} />;
 }
 
 function EdgeLabel({ edge, theme, background, anim, dimmed }: { edge: LayoutEdge; theme: Theme; background: string; anim: EdgeAnimation; dimmed?: boolean }) {
   const label = edge.label!;
-  const font = theme.text.edge;
+  const font = edge.labelSize !== undefined ? { ...theme.text.edge, size: edge.labelSize } : theme.text.edge;
   const color = lineColor(theme, edge.color) ?? theme.color.text;
   const delay = anim.delay + (anim.kind === 'draw' ? (anim.duration ?? EDGE_DRAW_MS) / 2 : 0);
   return (

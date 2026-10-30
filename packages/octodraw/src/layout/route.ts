@@ -10,6 +10,8 @@ import {
   type LayoutOptions,
   type Point,
 } from './layout';
+import { outlineFor, straightRoute } from './straight';
+import { edgeFont as edgeFontFor, edgeStyle, edgeStyleFields, groupHeaderExtra } from './style';
 
 // Edge routing (Eraser's corridor router) and legend placement on final node
 // geometry. Kept apart from the ELK-based placement so hand-placed nodes can
@@ -97,24 +99,28 @@ export function routeEdges(
       containerId: n.parent,
       isContainer: n.kind === 'group',
       ...(n.variant === 'card' && outlineFor(n.properties.shape) ? { outline: outlineFor(n.properties.shape) } : {}),
-      ...(n.kind === 'group' ? { textPlacement: { relativeX: 0, relativeY: 0, width: Math.min(n.width, 320), height: GROUP_METRICS.headerHeight - 12 } } : {}),
+      ...(n.kind === 'group' ? { textPlacement: { relativeX: 0, relativeY: 0, width: Math.min(n.width, 320), height: GROUP_METRICS.headerHeight + groupHeaderExtra(n.properties) - 12 } } : {}),
     });
     // Icon labels are obstacles too, so lines don't run through the text.
     if (n.labelBox) entities.push({ id: `${n.id}::label`, ...n.labelBox, containerId: n.parent });
   }
 
   const labels = new Map<string, string>();
-  const connections: NewConnection[] = view.edges.map((edge) => {
+  const styles = new Map(view.edges.map((edge) => [edge, edgeStyle(edge)]));
+  const fonts = new Map(view.edges.map((edge) => [edge, edgeFontFor(edgeFont, edge)]));
+  // `routing: straight` arrows skip the router.
+  const connections: NewConnection[] = view.edges.filter((edge) => styles.get(edge)!.routing !== 'straight').map((edge) => {
     const text = edgeLabel(edge);
+    const font = fonts.get(edge)!;
     if (text) labels.set(edge.id, text);
     return {
       id: edge.id,
       from: edge.from,
       to: edge.to,
-      fromArrowhead: edge.startArrow,
-      toArrowhead: edge.endArrow,
+      fromArrowhead: styles.get(edge)!.startArrow,
+      toArrowhead: styles.get(edge)!.endArrow,
       ...(text
-        ? { textPlacement: { x: 0, y: 0, width: Math.ceil(measure(text, edgeFont) + 10), height: Math.ceil(edgeFont.size * edgeFont.lineHeight + 4) } }
+        ? { textPlacement: { x: 0, y: 0, width: Math.ceil(measure(text, font) + 10), height: Math.ceil(font.size * font.lineHeight + 4) } }
         : {}),
     };
   });
@@ -124,12 +130,13 @@ export function routeEdges(
     const manager = new LayoutManager({ entities, connections: [] });
     routeCorridorConnectionBatch({ layoutManager: manager, connectionsToRoute: connections, options: { labels: true, repair: true } });
     for (const edge of view.edges) {
+      if (styles.get(edge)!.routing === 'straight') continue;
       const c = manager.getConnectionById(edge.id);
       if (!c) continue;
       const points = c.points.map((p) => toPoint(p, c.x, c.y));
       const text = labels.get(edge.id);
       const tp = c.textPlacement;
-      routed.set(edge.id, { points, label: text ? (tp ? { text, x: tp.x, y: tp.y, width: tp.width, height: tp.height } : midLabel(text, points, edgeFont, measure)) : undefined });
+      routed.set(edge.id, { points, label: text ? (tp ? { text, x: tp.x, y: tp.y, width: tp.width, height: tp.height } : midLabel(text, points, fonts.get(edge)!, measure)) : undefined });
     }
   } catch (error) {
     // The router is young (0.x); never let it take the diagram down.
@@ -137,45 +144,23 @@ export function routeEdges(
   }
 
   return view.edges.map((edge) => {
-    const r = routed.get(edge.id) ?? straight(nodes.get(edge.from)!, nodes.get(edge.to)!);
-    const text = labels.get(edge.id);
+    const style = styles.get(edge)!;
+    const r = style.routing === 'straight' ? { points: straightRoute(nodes.get(edge.from)!, nodes.get(edge.to)!), label: undefined } : (routed.get(edge.id) ?? straight(nodes.get(edge.from)!, nodes.get(edge.to)!));
+    const text = edgeLabel(edge);
     return {
       id: edge.id,
       from: edge.from,
       to: edge.to,
       points: r.points,
-      startArrow: edge.startArrow,
-      endArrow: edge.endArrow,
-      dashed: edge.dashed,
+      ...edgeStyleFields(style),
       color: edge.color,
       count: edge.groupFan ? 1 : edge.sources.length,
-      label: r.label ?? (text ? midLabel(text, r.points, edgeFont, measure) : undefined),
+      label: r.label ?? (text ? midLabel(text, r.points, fonts.get(edge)!, measure) : undefined),
     };
   });
 
   function straight(a: LayoutNode, b: LayoutNode) {
     return { points: [center(a), center(b)], label: undefined };
-  }
-}
-
-/** True outlines (0–100 frame) so arrows attach to the drawn shape, not its bounding box. */
-function outlineFor(shape: string | undefined): LayoutEntity['outline'] {
-  switch (shape) {
-    case 'diamond':
-      return { kind: 'polygon', vertices: [[50, 0], [100, 50], [50, 100], [0, 50]] };
-    case 'triangle':
-      return { kind: 'polygon', vertices: [[50, 0], [100, 100], [0, 100]] };
-    case 'hexagon':
-      return { kind: 'polygon', vertices: [[12, 0], [88, 0], [100, 50], [88, 100], [12, 100], [0, 50]] };
-    case 'parallelogram':
-      return { kind: 'polygon', vertices: [[12, 0], [100, 0], [88, 100], [0, 100]] };
-    case 'trapezoid':
-      return { kind: 'polygon', vertices: [[12, 0], [88, 0], [100, 100], [0, 100]] };
-    case 'ellipse':
-    case 'circle':
-      return { kind: 'ellipse' };
-    default:
-      return undefined;
   }
 }
 

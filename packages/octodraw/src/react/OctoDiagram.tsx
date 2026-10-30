@@ -344,7 +344,7 @@ export function OctoDiagram({
         direction: diagram.settings.direction,
         wrap: diagram.settings.wrap !== 'off',
         typography,
-        measureText: canvasMeasurer(fontFamilyFor(theme, diagram.settings.typeface)),
+        measureText: canvasMeasurer(fontFamilyFor(theme, diagram.settings.typeface), theme),
       })
         .then((next) => {
           if (cancelled) return;
@@ -371,7 +371,7 @@ export function OctoDiagram({
     // The automatic layout may still be for the previous view; only arrange when it matches.
     const ids = new Set(autoLayout.nodes.map((n) => n.id));
     if (!view.edges.every((e) => ids.has(e.from) && ids.has(e.to))) return autoLayout;
-    return arrangeLayout(view, autoLayout, current, { typography, measureText: canvasMeasurer(fontFamilyFor(theme, diagram.settings.typeface)) });
+    return arrangeLayout(view, autoLayout, current, { typography, measureText: canvasMeasurer(fontFamilyFor(theme, diagram.settings.typeface), theme) });
     // `view` is read for its edges only; autoLayout changes whenever the view does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLayout, movable, placements, viewKey, dragPlacement, typography, theme, diagram.settings.typeface]);
@@ -1500,13 +1500,13 @@ function useFontEpoch(): number {
 
 let measureContext: CanvasRenderingContext2D | null | undefined;
 
-/** Measures text with a canvas so node sizes match what the SVG renders. */
-function canvasMeasurer(fontFamily: string): TextMeasurer | undefined {
+/** Measures text with a canvas so node sizes match what the SVG renders (a box's own `typeface` included). */
+function canvasMeasurer(fontFamily: string, theme?: Theme): TextMeasurer | undefined {
   if (measureContext === undefined) measureContext = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
   const ctx = measureContext;
   if (!ctx) return undefined;
   return (text, font) => {
-    ctx.font = `${font.weight} ${font.size}px ${fontFamily}`;
+    ctx.font = `${font.weight} ${font.size}px ${font.typeface && theme ? fontFamilyFor(theme, font.typeface) : fontFamily}`;
     return ctx.measureText(text).width;
   };
 }

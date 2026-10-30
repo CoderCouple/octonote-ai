@@ -22,6 +22,7 @@ import {
   type Point,
 } from './layout';
 import { placeLegend, routeEdges } from './route';
+import { groupFont, groupHeaderExtra, iconSizeOf, nodeFonts } from './style';
 
 // Eraser-style layout. Instead of one compound ELK run (which reorders nodes
 // inside groups and can't keep declaration order), each group is arranged on
@@ -41,6 +42,8 @@ interface Measured extends Footprint {
   description: string[];
   /** Icon nodes: the text block under the icon. */
   label?: Footprint;
+  /** Icon nodes: the icon's side (`iconSize`, default 50). */
+  iconSize?: number;
 }
 
 /** Children of one container, positioned relative to its content origin. */
@@ -63,35 +66,40 @@ export async function layoutViewEraser(view: DiagramView, options: LayoutOptions
 
   // --- 1. Measure leaves ----------------------------------------------------
   const measured = new Map<string, Measured>();
-  const textBlock = (label: string, description: string | undefined, max: number) => {
-    const lines = wrapText(label, type.node, max, measure);
-    const desc = description ? wrapText(description, type.description, max, measure) : [];
+  // Each box is measured with its own text size and typeface (nodeFonts), as DiagramSvg draws it.
+  const textBlock = (label: string, description: string | undefined, max: number, fonts: ReturnType<typeof nodeFonts>) => {
+    const { node: font, description: descFont } = fonts;
+    const lines = wrapText(label, font, max, measure);
+    const desc = description ? wrapText(description, descFont, max, measure) : [];
     return {
       lines,
       description: desc,
-      width: Math.max(...lines.map((l) => measure(l, type.node)), ...desc.map((l) => measure(l, type.description))),
-      height: lines.length * type.node.size * type.node.lineHeight + desc.length * type.description.size * type.description.lineHeight,
+      width: Math.max(...lines.map((l) => measure(l, font)), ...desc.map((l) => measure(l, descFont))),
+      height: lines.length * font.size * font.lineHeight + desc.length * descFont.size * descFont.lineHeight,
     };
   };
   for (const node of view.nodes.values()) {
     if (node.kind === 'group') continue;
     const { label, properties } = node.source;
     const variant = variants.get(node.id) ?? 'card';
+    const fonts = nodeFonts(type, properties);
     if (variant === 'icon') {
-      const text = textBlock(label, properties.description, wrap ? I.maxLabelWidth : Infinity);
+      const size = iconSizeOf(properties.iconSize) ?? I.size;
+      const text = textBlock(label, properties.description, wrap ? Math.max(I.maxLabelWidth, size) : Infinity, fonts);
       measured.set(node.id, {
         variant,
         lines: text.lines,
         description: text.description,
         label: { width: Math.ceil(text.width), height: Math.ceil(text.height) },
+        ...(size !== I.size ? { iconSize: size } : {}),
         // Footprint includes the label so siblings keep clear of it.
-        width: Math.ceil(Math.max(I.size, text.width)),
-        height: Math.ceil(I.size + I.labelGap + text.height),
+        width: Math.ceil(Math.max(size, text.width)),
+        height: Math.ceil(size + I.labelGap + text.height),
       });
       continue;
     }
     const descriptionText = properties.description ?? (node.kind === 'collapsed' ? `${node.hiddenCount} ${node.hiddenCount === 1 ? 'item' : 'items'} inside` : undefined);
-    const text = textBlock(label, descriptionText, wrap ? N.maxTextWidth : Infinity);
+    const text = textBlock(label, descriptionText, wrap ? N.maxTextWidth : Infinity, fonts);
     const hasIcon = !!properties.icon || node.kind === 'collapsed';
     const sizing = SHAPE_SIZING[properties.shape ?? ''];
     const width = Math.max(N.minWidth, Math.ceil(text.width + N.paddingX * 2 + (hasIcon ? N.iconSize + N.iconGap : 0)));
@@ -131,8 +139,8 @@ export async function layoutViewEraser(view: DiagramView, options: LayoutOptions
         const inner = await arrange(id, node.children);
         const title = groupTitle(node.source.label, node.source.properties.description);
         titles.set(id, title);
-        const titleWidth = measure(title, type.group) + (node.source.properties.icon ? 28 : 0) + G.padding * 2;
-        footprints.set(id, { width: Math.ceil(Math.max(inner.width + G.padding * 2, titleWidth)), height: Math.ceil(inner.height + G.headerHeight + G.padding) });
+        const titleWidth = measure(title, groupFont(type, node.source.properties)) + (node.source.properties.icon ? 28 : 0) + G.padding * 2;
+        footprints.set(id, { width: Math.ceil(Math.max(inner.width + G.padding * 2, titleWidth)), height: Math.ceil(inner.height + G.headerHeight + groupHeaderExtra(node.source.properties) + G.padding) });
       } else {
         footprints.set(id, measured.get(id)!);
       }
@@ -210,14 +218,15 @@ export async function layoutViewEraser(view: DiagramView, options: LayoutOptions
         const inner = arrangements.get(id)!;
         // Center the contents horizontally when the title made the group wider.
         const innerX = x + G.padding + Math.max(0, (fp.width - G.padding * 2 - inner.width) / 2);
-        place(id, innerX, y + G.headerHeight, depth + 1);
+        place(id, innerX, y + G.headerHeight + groupHeaderExtra(node.source.properties), depth + 1);
         continue;
       }
       const m = measured.get(id)!;
       if (m.variant === 'icon') {
-        const iconX = x + (fp.width - I.size) / 2;
-        const leaf = layoutNode(node, { x: iconX, y, width: I.size, height: I.size }, m.lines, m.description, 'icon', container, depth);
-        leaf.labelBox = { x: x + (fp.width - m.label!.width) / 2, y: y + I.size + I.labelGap, width: m.label!.width, height: m.label!.height };
+        const size = m.iconSize ?? I.size;
+        const iconX = x + (fp.width - size) / 2;
+        const leaf = layoutNode(node, { x: iconX, y, width: size, height: size }, m.lines, m.description, 'icon', container, depth);
+        leaf.labelBox = { x: x + (fp.width - m.label!.width) / 2, y: y + size + I.labelGap, width: m.label!.width, height: m.label!.height };
         nodes.push(leaf);
       } else {
         nodes.push(layoutNode(node, { x, y, width: fp.width, height: fp.height }, m.lines, m.description, 'card', container, depth));

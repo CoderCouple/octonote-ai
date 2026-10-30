@@ -1,0 +1,218 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`output is unchanged without the new properties > 01-food-delivery.eraser 1`] = `
+{
+  "elk layout": "8140cdc80d2bd4c2",
+  "elk light": "46f8f2c46a91e3c1",
+  "eraser dark": "020b49c5e975a19b",
+  "eraser layout": "3691462cb6f1763f",
+  "eraser light": "f30e940e6b506955",
+}
+`;
+
+exports[`output is unchanged without the new properties > 02-ecommerce-aws.eraser 1`] = `
+{
+  "elk layout": "73119fe561407088",
+  "elk light": "22cb224f04fa0e31",
+  "eraser dark": "9a15cf0e995d73f7",
+  "eraser layout": "d5f1a75c9c231e2b",
+  "eraser light": "bf0a898503eb83dc",
+}
+`;
+
+exports[`output is unchanged without the new properties > 03-ci-cd-pipeline.eraser 1`] = `
+{
+  "elk layout": "baa6e830c3d0f2f9",
+  "elk light": "1a3244f312d39b73",
+  "eraser dark": "77fdb0128b70f3d6",
+  "eraser layout": "ccf0e0f6366c401b",
+  "eraser light": "0e62a868ee788cb8",
+}
+`;
+
+exports[`output is unchanged without the new properties > 04-kubernetes-cluster.eraser 1`] = `
+{
+  "elk layout": "c16369071fad34a7",
+  "elk light": "8f316b351ccb781a",
+  "eraser dark": "18b7484ebdf0d2f1",
+  "eraser layout": "eef80c00909af8d5",
+  "eraser light": "42b7a7cbfecf44f2",
+}
+`;
+
+exports[`output is unchanged without the new properties > 05-data-platform.eraser 1`] = `
+{
+  "elk layout": "ff73914c91d552fd",
+  "elk light": "eb81412d385f916f",
+  "eraser dark": "6e6bfabb16ec8055",
+  "eraser layout": "0f412abcf32cf142",
+  "eraser light": "acdc65bacf70e827",
+}
+`;
+
+exports[`output is unchanged without the new properties > 06-auth-flowchart.eraser 1`] = `
+{
+  "elk layout": "3d0b45a90eabb305",
+  "elk light": "2e8f287486e4a67d",
+  "eraser dark": "b2209114c84eb635",
+  "eraser layout": "7b78bac02fd06ce7",
+  "eraser light": "6a6b28c46a81746b",
+}
+`;
+
+exports[`output is unchanged without the new properties > 07-service-mesh.eraser 1`] = `
+{
+  "elk layout": "3e776fa0fda8566f",
+  "elk light": "181333fa373a3055",
+  "eraser dark": "08b0bbfe47c15e6b",
+  "eraser layout": "b3557888433f6da8",
+  "eraser light": "eeb1ddf0c21d115a",
+}
+`;
+
+exports[`output is unchanged without the new properties > 08-gcp-analytics.eraser 1`] = `
+{
+  "elk layout": "43cbbb3aa0ee977c",
+  "elk light": "c8866803a22f0b0d",
+  "eraser dark": "a251204baeae2428",
+  "eraser layout": "e6882ac69a00b595",
+  "eraser light": "d6d877b859f3d14b",
+}
+`;
+
+exports[`output is unchanged without the new properties > 09-azure-enterprise.eraser 1`] = `
+{
+  "elk layout": "c41ed37e43ea7923",
+  "elk light": "851a917fc270a649",
+  "eraser dark": "15bd2eb90c698a6c",
+  "eraser layout": "56045c83c0560c10",
+  "eraser light": "41be0eb10ed19a3a",
+}
+`;
+
+exports[`output is unchanged without the new properties > 10-ml-platform.eraser 1`] = `
+{
+  "elk layout": "22cc2d928b1f06b2",
+  "elk light": "922c732753c74ad4",
+  "eraser dark": "bfcecf4c24c97b6d",
+  "eraser layout": "ad863d1c75c1d217",
+  "eraser light": "d6e7948901e9f402",
+}
+`;
+
+exports[`output is unchanged without the new properties > 11-realtime-chat.eraser 1`] = `
+{
+  "elk layout": "adbe34b2dbb3b04b",
+  "elk light": "b4becae9c7dd6b11",
+  "eraser dark": "5c74b1d12af33252",
+  "eraser layout": "bfcb55ce155efc68",
+  "eraser light": "8e6415446c6699f6",
+}
+`;
+
+exports[`output is unchanged without the new properties > 12-payments-ledger.eraser 1`] = `
+{
+  "elk layout": "0b874d73c83f4bbb",
+  "elk light": "a9a021f6bc730777",
+  "eraser dark": "f11d0bf92d81b312",
+  "eraser layout": "b7829750f3b537ef",
+  "eraser light": "356bb92d64ee3241",
+}
+`;
+
+exports[`output is unchanged without the new properties > 13-iot-telemetry.eraser 1`] = `
+{
+  "elk layout": "7cfa52b2e76f37c8",
+  "elk light": "759815eff78c09a2",
+  "eraser dark": "3c80add950335036",
+  "eraser layout": "da87f442b74c8cb6",
+  "eraser light": "be76100ee5af5ed1",
+}
+`;
+
+exports[`output is unchanged without the new properties > 14-multi-region.eraser 1`] = `
+{
+  "elk layout": "b63e453ed5ad987b",
+  "elk light": "2111671967114497",
+  "eraser dark": "5a4efe25acb2f438",
+  "eraser layout": "73812715bcfb44fd",
+  "eraser light": "5c6c35b42c571584",
+}
+`;
+
+exports[`output is unchanged without the new properties > 15-saas-multitenant.eraser 1`] = `
+{
+  "elk layout": "e45c2ca295ab11c0",
+  "elk light": "830914e31fe26f9a",
+  "eraser dark": "9689e3691202e504",
+  "eraser layout": "74f727d76e81771b",
+  "eraser light": "64673ef4d56d3386",
+}
+`;
+
+exports[`output is unchanged without the new properties > 16-customer-onboarding.eraser 1`] = `
+{
+  "elk layout": "7af8824cf9e77112",
+  "elk light": "680c901b16759a57",
+  "eraser dark": "21899c131745224c",
+  "eraser layout": "47c7570bbe4ca3b1",
+  "eraser light": "917ffcc1258320f9",
+}
+`;
+
+exports[`output is unchanged without the new properties > 17-video-streaming.eraser 1`] = `
+{
+  "elk layout": "d8087be9c69bb715",
+  "elk light": "a80cef974bab71e7",
+  "eraser dark": "b1d2d9ac70471cce",
+  "eraser layout": "e936acaa0ba9e25f",
+  "eraser light": "89d38335970c3978",
+}
+`;
+
+exports[`output is unchanged without the new properties > 18-observability.eraser 1`] = `
+{
+  "elk layout": "7b6b460ea445e733",
+  "elk light": "5ed6470b00b6dadb",
+  "eraser dark": "be9214365acab614",
+  "eraser layout": "a1f7388a904f2e36",
+  "eraser light": "798c29f1b174acc0",
+}
+`;
+
+exports[`output is unchanged without the new properties > 19-monolith-migration.eraser 1`] = `
+{
+  "elk layout": "e1dcd0d5a653dfc2",
+  "elk light": "89c5d4836d38a77a",
+  "eraser dark": "3972ec175ce4a79a",
+  "eraser layout": "67bac3b8b434b69f",
+  "eraser light": "79d595f887fbfc54",
+}
+`;
+
+exports[`output is unchanged without the new properties > 20-llm-agent.eraser 1`] = `
+{
+  "elk layout": "a5813b72d4fcadfe",
+  "elk light": "6a81a5b419ae49b5",
+  "eraser dark": "7fd82372966c85a3",
+  "eraser layout": "14a1d49094ef75a7",
+  "eraser light": "a349d4183e567bcf",
+}
+`;
+
+exports[`output is unchanged without the new properties > figure templates 1`] = `
+{
+  "architecture": "1d9ebf91f951c883",
+  "bpmn": "44ac08cf8d51980c",
+  "cicd": "89148b2240ec6b40",
+  "cloud": "7163325a0794eec7",
+  "data-pipeline": "ac88a60161e9cb49",
+  "erd": "556b6d01f4981bbe",
+  "flowchart": "caa8f4bfa3ddea09",
+  "microservices": "ca030c4442846f7a",
+  "network": "d1e8bc6f372d8555",
+  "org-chart": "544f7c4ff1b41d62",
+  "sequence": "d4e1c0ff0d9695da",
+  "state-machine": "2aa9bc694fc92f36",
+}
+`;
