@@ -1822,7 +1822,8 @@ export function OctoCanvas(props: OctoCanvasProps) {
             );
           })}
           {selectedItems.map((item) =>
-            item.type === 'line' ? null : (
+            // While an item is being typed in, the editor's own outline is the only box (no second, item-sized one).
+            item.type === 'line' || editing === item.id ? null : (
               <rect key={item.id} x={item.x} y={item.y} width={item.w} height={item.h} transform={turn(item)} fill="none" stroke={theme.color.accent} strokeWidth={1.5 / k} rx={item.type === 'figure' ? 8 : 2} />
             ),
           )}
