@@ -1009,7 +1009,12 @@ export function OctoDiagram({
 
   const [editing, setEditing] = useState(false);
   const selectionKey = selection ? `${selection.kind}:${selection.ids.join('|')}` : '';
-  useEffect(() => setEditing(false), [selectionKey]);
+  // Something just added (a BPMN lane or task) is selected with its name editor open.
+  const pendingEdit = useRef<string | null>(null);
+  useEffect(() => {
+    setEditing(pendingEdit.current !== null && pendingEdit.current === selectionKey);
+    pendingEdit.current = null;
+  }, [selectionKey]);
   const [toolbarNotice, setToolbarNotice] = useState<string | null>(null);
   useEffect(() => {
     if (!toolbarNotice) return;
@@ -1048,6 +1053,7 @@ export function OctoDiagram({
       }
       setToolbarNotice(null);
       if (result.renamed) pendingRename.current = result.renamed;
+      if (result.edit && result.selection) pendingEdit.current = `${result.selection.kind}:${result.selection.ids.join('|')}`;
       onSourceChange(result.source, result.renamed ? { label: result.label, renamed: result.renamed } : { label: result.label });
       if (!sameSelection(result.selection, selectionRef.current)) setSelection(result.selection);
       return result;

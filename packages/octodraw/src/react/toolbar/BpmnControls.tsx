@@ -143,6 +143,9 @@ export function BpmnMoreMenu({ ui, FieldEditor }: { ui: BpmnToolbarUi; FieldEdit
     const what = band === 'pool' ? 'pool' : 'lane';
     return (
       <>
+        <CommandRow icon={<AddLaneGlyph />} label={band === 'pool' ? 'Add lane' : 'Add lane below'} onClick={() => act({ type: 'addLane' })} />
+        <CommandRow icon={<AddTaskGlyph />} label="Add task" onClick={() => act({ type: 'addTask' })} />
+        <MenuSeparator />
         <CommandRow icon={<UngroupGlyph />} label={`Delete ${what}, keep contents`} onClick={() => act({ type: 'delete', keepContents: true })} />
         <CommandRow icon={<TrashGlyph size={16} />} label={`Delete ${what} and contents`} hint="⌫" danger onClick={() => act({ type: 'delete' })} />
       </>
@@ -256,6 +259,22 @@ export function TriggerGlyph({ trigger }: { trigger: EventTrigger }) {
     </Svg>
   );
 }
+
+/** A band split in two with a plus on the lower half. */
+const AddLaneGlyph = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="2" y="3" width="20" height="18" rx="2" {...S} strokeWidth={1.75} />
+    <path d="M2 11h20M7 3v18M14.5 13.5v5M12 16h5" {...S} strokeWidth={1.75} />
+  </svg>
+);
+
+/** A rounded task with a plus. */
+const AddTaskGlyph = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="2" y="5" width="20" height="14" rx="3.5" {...S} strokeWidth={1.75} />
+    <path d="M12 9v6M9 12h6" {...S} strokeWidth={1.75} />
+  </svg>
+);
 
 /** A task with an event on its bottom edge. */
 const BoundaryGlyph = () => (

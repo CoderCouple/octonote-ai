@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  addChild,
+  addGroup,
   applyEdits,
   declareNode,
   deleteEdge,
@@ -398,5 +400,123 @@ describe('corpus round trip', () => {
       expect(parseDiagram(reversed).edges.find((e) => e.id === id)).toMatchObject({ from: edge.to, to: edge.from });
       expect(counts(reversed)).toEqual(base);
     }
+  });
+});
+
+describe('addChild', () => {
+  const parentOf = (source: string, id: string) => parseDiagram(source).nodes.get(id)?.parent;
+
+  it('appends at the end, indented like the other children', () => {
+    const src = 'Pool {\n    A\n    B\n}\nA > B';
+    const out = edited(src, addChild(src, 'Pool', 'Task 1'));
+    expect(out).toBe('Pool {\n    A\n    B\n    Task 1\n}\nA > B');
+    expect(parentOf(out, 'Task 1')).toBe('Pool');
+  });
+
+  it('inserts at the start', () => {
+    const src = 'Pool {\n  A\n}';
+    expect(edited(src, addChild(src, 'Pool', 'Z', { position: 'start' }))).toBe('Pool {\n  Z\n  A\n}');
+  });
+
+  it('indents one level deeper than the group line when it is empty', () => {
+    const src = 'Outer {\n  Inner {\n  }\n}';
+    expect(edited(src, addChild(src, 'Inner', 'X'))).toBe('Outer {\n  Inner {\n    X\n  }\n}');
+    const empty = 'Outer {\n  Inner {}\n}';
+    const out = edited(empty, addChild(empty, 'Inner', 'X'));
+    expect(out).toBe('Outer {\n  Inner {\n    X\n  }\n}');
+    expect(parentOf(out, 'X')).toBe('Inner');
+  });
+
+  it('expands a one-line group', () => {
+    const src = 'G { A, B }\nA > B';
+    const out = edited(src, addChild(src, 'G', 'C'));
+    expect(out).toBe('G {\n  A, B\n  C\n}\nA > B');
+    expect(parentOf(out, 'C')).toBe('G');
+    expect(edited(src, addChild(src, 'G', 'C', { position: 'start' }))).toBe('G {\n  C\n  A, B\n}\nA > B');
+  });
+
+  it('handles children written on the brace lines', () => {
+    const src = 'G { A\n  B }';
+    const end = edited(src, addChild(src, 'G', 'C'));
+    expect(end).toBe('G { A\n  B\n  C\n}');
+    const start = edited(src, addChild(src, 'G', 'Z', { position: 'start' }));
+    expect(start).toBe('G {\n  Z\n  A\n  B }');
+    expect(parseDiagram(start).nodes.get('G')!.children).toEqual(['Z', 'A', 'B']);
+  });
+
+  it('inserts after a child, after its closing brace for a group', () => {
+    const src = 'Pool {\n  L1 {\n    A\n  }\n  L2 {\n  }\n}';
+    const out = edited(src, addGroup(src, 'Pool', 'L1b', {}, { after: 'L1' }));
+    expect(out).toBe('Pool {\n  L1 {\n    A\n  }\n  L1b {}\n  L2 {\n  }\n}');
+    expect(parseDiagram(out).nodes.get('Pool')!.children).toEqual(['L1', 'L1b', 'L2']);
+    expect(edited(src, addChild(src, 'L1', 'B', { after: 'A' }))).toBe('Pool {\n  L1 {\n    A\n    B\n  }\n  L2 {\n  }\n}');
+  });
+
+  it('keeps comments and blank lines', () => {
+    const src = 'Pool { // the shop\n  A // first\n\n  // more later\n}';
+    expect(edited(src, addChild(src, 'Pool', 'B'))).toBe('Pool { // the shop\n  A // first\n\n  // more later\n  B\n}');
+  });
+
+  it('refuses with a reason', () => {
+    expect(addChild('A\nB', 'A', 'C').reason).toMatch(/isn't a group/);
+    expect(addChild('A', 'Nope', 'C').reason).toMatch(/no 'Nope'/);
+    expect(addChild('G {\n  A', 'G', 'C').reason).toMatch(/closing/);
+    expect(addChild('G {\n  A [color: red\n}', 'G', 'C').reason).toMatch(/error/);
+    expect(addChild('G {\n}', 'G', '').reason).toMatch(/blank/);
+    expect(addChild('G {\n}', 'G', 'A\nB').reason).toMatch(/one line/);
+    expect(addChild('G {\n}', 'G', 'A [color: red').reason).toMatch(/doesn't parse/);
+    expect(addChild('G {\n  A\n}\nB', 'G', 'C', { after: 'B' }).reason).toMatch(/isn't in 'G'/);
+    expect(addChild('G { A\n}', 'G', 'C', { after: 'A' }).reason).toMatch(/own line/);
+    expect(addChild('G {\n  A, B\n}', 'G', 'C', { after: 'A' }).source).toBe('G {\n  A, B\n  C\n}');
+  });
+});
+
+describe('addGroup', () => {
+  it('adds an empty group with properties', () => {
+    const src = 'Pool {\n  A\n}';
+    const out = edited(src, addGroup(src, 'Pool', 'Lane 2', { color: 'blue' }));
+    expect(out).toBe('Pool {\n  A\n  Lane 2 [color: blue] {}\n}');
+    expect(parseDiagram(out).nodes.get('Lane 2')).toMatchObject({ kind: 'group', parent: 'Pool' });
+  });
+
+  it('adds a top-level group at the end or start', () => {
+    const src = 'direction right\nA > B\n\n';
+    expect(edited(src, addGroup(src, null, 'G'))).toBe('direction right\nA > B\nG {}\n\n');
+    expect(edited(src, addGroup(src, null, 'G', {}, { position: 'start' }))).toBe('direction right\nG {}\nA > B\n\n');
+  });
+
+  it('quotes names that need it', () => {
+    const out = edited('G {\n}', addGroup('G {\n}', 'G', 'a, b'));
+    expect(out).toBe('G {\n  "a, b" {}\n}');
+    expect(parseDiagram(out).nodes.get('a, b')?.kind).toBe('group');
+  });
+
+  it('wraps the existing contents first with wrapExisting', () => {
+    const src = 'Shop {\n  A [type: activity]\n  B\n  A > B\n}';
+    const out = edited(src, addGroup(src, 'Shop', 'Lane 2', {}, { wrapExisting: 'Lane 1' }));
+    expect(out).toBe('Shop {\n  Lane 1 {\n    A [type: activity]\n    B\n    A > B\n  }\n  Lane 2 {}\n}');
+    const d = parseDiagram(out);
+    expect(d.nodes.get('Shop')!.children).toEqual(['Lane 1', 'Lane 2']);
+    expect(d.nodes.get('A')!.parent).toBe('Lane 1');
+    const one = 'Shop { A, B }';
+    expect(edited(one, addGroup(one, 'Shop', 'Lane 2', {}, { wrapExisting: 'Lane 1' }))).toBe('Shop {\n  Lane 1 {\n    A, B\n  }\n  Lane 2 {}\n}');
+  });
+
+  it('refuses with a reason', () => {
+    expect(addGroup('G {\n  A\n}', 'G', 'A').reason).toMatch(/already exists/);
+    expect(addGroup('G {\n}', 'G', ' ').reason).toMatch(/blank/);
+    expect(addGroup('G {\n}', 'G', 'legend').reason).toMatch(/reserved/);
+    expect(addGroup('G {\n}', 'G', 'X', { 'bad key': 'x' }).reason).toMatch(/property name/);
+    expect(addGroup('G { A\n}', 'G', 'L2', {}, { wrapExisting: 'L1' }).reason).toMatch(/own lines/);
+    expect(addGroup('G {\n  A\n}', 'G', 'L', {}, { wrapExisting: 'L' }).reason).toMatch(/different names/);
+  });
+
+  it('works through applyEdits', () => {
+    const src = 'Pool {\n  A [type: event]\n}';
+    const out = edited(src, applyEdits(src, [
+      { type: 'addGroup', parentId: 'Pool', name: 'Lane 2', wrapExisting: 'Lane 1' },
+      { type: 'addChild', groupId: 'Lane 2', line: 'Task 1' },
+    ]));
+    expect(out).toBe('Pool {\n  Lane 1 {\n    A [type: event]\n  }\n  Lane 2 {\n    Task 1\n  }\n}');
   });
 });

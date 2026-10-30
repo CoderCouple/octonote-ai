@@ -228,3 +228,130 @@ describe('BPMN toolbar actions', () => {
     }
   });
 });
+
+describe('BPMN: add lane / add task', () => {
+  /** Runs an action expected to select something new with its name editor open. */
+  function add(source: string, action: ToolbarAction, selection: DiagramSelection) {
+    const result = runToolbarAction(source, action, selection, ctxOf(source));
+    if (!result.ok) throw new Error(`refused: ${result.reason ?? 'no change'}`);
+    expect(result.edit).toBe(true);
+    run(source, action, selection); // parses cleanly, stays BPMN, lays out
+    return { source: result.source, id: result.selection!.ids[0]! };
+  }
+  const band = (source: string, id: string) => layoutBpmn(parseDiagram(source)).bands.find((b) => b.id === id);
+
+  it('a pool with lanes gets an empty lane at its end, drawn with a height', () => {
+    const { source, id } = add(SRC, { type: 'addLane' }, node('Shop'));
+    expect(id).toBe('Lane 3');
+    expect(source).toContain('    Packed [type: gateway, gateway: parallel]\n  }\n  Lane 3 {}\n}');
+    const d = parseDiagram(source);
+    expect(d.nodes.get('Shop')!.children).toEqual(['Sales', 'Warehouse', 'Lane 3']);
+    const lane = band(source, 'Lane 3')!;
+    expect(lane.kind).toBe('lane');
+    expect(lane.height).toBeGreaterThanOrEqual(60);
+    expect(band(source, 'Shop')!.height).toBeGreaterThan(band(SRC, 'Shop')!.height);
+  });
+
+  it('a lane gets a sibling right below it', () => {
+    const { source, id } = add(SRC, { type: 'addLane' }, node('Sales'));
+    expect(id).toBe('Lane 3');
+    expect(parseDiagram(source).nodes.get('Shop')!.children).toEqual(['Sales', 'Lane 3', 'Warehouse']);
+    const bands = layoutBpmn(parseDiagram(source)).bands.filter((b) => b.kind === 'lane').map((b) => b.id);
+    expect(bands).toEqual(['Sales', 'Lane 3', 'Warehouse']);
+  });
+
+  it('a pool without lanes: its steps move into "Lane 1", the new lane is empty', () => {
+    const { source, id } = add(SRC, { type: 'addLane' }, node('Customer'));
+    expect(id).toBe('Lane 2');
+    expect(source).toContain('Customer [color: blue] {\n  Lane 1 {\n    Order placed [type: event, event: message]\n    Receive goods\n    Done [type: event]\n  }\n  Lane 2 {}\n}');
+    const lanes = layoutBpmn(parseDiagram(source)).bands.filter((b) => b.kind === 'lane').map((b) => b.id);
+    expect(lanes.slice(0, 2)).toEqual(['Lane 1', 'Lane 2']);
+    // A connection from Shop into Customer is still a message flow.
+    const d = parseDiagram(source);
+    expect(connectionKind(d, d.edges.find((e) => e.from === 'Packed' && e.to === 'Receive goods')!)).toBe('message');
+  });
+
+  it('an empty pool gets its first lane; names never clash', () => {
+    const src = 'Lane 1 [type: event]\nP {}\nLane 1 > X';
+    const { source, id } = add(src, { type: 'addLane' }, node('P'));
+    expect(id).toBe('Lane 2');
+    expect(source).toContain('P {\n  Lane 2 {}\n}');
+    expect(band(source, 'Lane 2')?.height).toBeGreaterThan(0);
+  });
+
+  it('add task: a default activity inside the pool or lane (a pool with lanes: its first lane)', () => {
+    const inLane = add(SRC, { type: 'addTask' }, node('Warehouse'));
+    expect(inLane.id).toBe('Task 1');
+    const d = parseDiagram(inLane.source);
+    expect(d.nodes.get('Task 1')).toMatchObject({ kind: 'node', parent: 'Warehouse' });
+    expect(d.nodes.get('Task 1')!.properties.type).toBeUndefined();
+    expect(parseDiagram(add(SRC, { type: 'addTask' }, node('Shop')).source).nodes.get('Task 1')!.parent).toBe('Sales');
+    expect(parseDiagram(add(SRC, { type: 'addTask' }, node('Customer')).source).nodes.get('Task 1')!.parent).toBe('Customer');
+    // Into the lane just added, then a second task gets the next free name.
+    const lane = add(SRC, { type: 'addLane' }, node('Shop'));
+    const one = add(lane.source, { type: 'addTask' }, node(lane.id));
+    expect(one.source).toContain('  Lane 3 {\n    Task 1\n  }');
+    expect(layoutBpmn(parseDiagram(one.source)).elements.find((e) => e.id === 'Task 1')).toMatchObject({ type: 'activity' });
+    expect(add(one.source, { type: 'addTask' }, node(lane.id)).id).toBe('Task 2');
+  });
+
+  it('only for one pool or lane', () => {
+    const refuse = (action: ToolbarAction, selection: DiagramSelection) => runToolbarAction(SRC, action, selection, ctxOf(SRC));
+    expect(refuse({ type: 'addLane' }, node('Pack'))).toMatchObject({ ok: false, reason: expect.stringMatching(/pool or lane/) });
+    expect(refuse({ type: 'addTask' }, node('Sales', 'Warehouse'))).toMatchObject({ ok: false, reason: expect.stringMatching(/pool or lane/) });
+  });
+
+  it('the AI example: lanes and tasks round-trip', () => {
+    const lane = add(AI_EXAMPLE, { type: 'addLane' }, node('Warehouse'));
+    expect(parseDiagram(lane.source).nodes.get('Shop')!.children).toEqual(['Sales', 'Warehouse', 'Lane 3']);
+    const task = add(lane.source, { type: 'addTask' }, node('Lane 3'));
+    const renamed = run(task.source, { type: 'editText', text: 'Restock' }, node(task.id));
+    expect(renamed).toContain('  Lane 3 {\n    Restock\n  }');
+  });
+});
+
+describe('BPMN: deletes keep the diagram BPMN', () => {
+  const typed = (source: string) => [...parseDiagram(source).nodes.values()].filter((n) => /^(activity|event|gateway)$/.test(n.properties.type ?? '')).map((n) => n.id);
+
+  it('deleting the last typed element writes `type: activity` on another element, preferring one in a pool', () => {
+    const src = 'Lose [type: activity]\nP {\n  A\n  B\n}\nLoose\nA > B';
+    const out = run(src, { type: 'delete' }, node('Lose'));
+    expect(typed(out)).toEqual(['A']);
+    expect(out).toContain('  A [type: activity]');
+  });
+
+  it('works for the Delete key path on several elements and for pools / lanes with contents', () => {
+    const src = 'P {\n  L1 {\n    Start [type: event]\n    Pick\n  }\n  L2 {\n    Check [type: gateway]\n    Ship\n  }\n}\nStart > Pick > Check > Ship';
+    const many = run(src, { type: 'delete' }, node('Start', 'Check'));
+    expect(typed(many)).toEqual(['Pick']);
+    const lane = run(src, { type: 'delete' }, node('L1'));
+    expect(lane).toContain('Check [type: gateway]');
+    const both = run(run(src, { type: 'delete' }, node('Check')), { type: 'delete' }, node('L1'));
+    expect(typed(both)).toEqual(['Ship']);
+    const keep = run(src, { type: 'delete', keepContents: true }, node('L2'));
+    expect(typed(keep)).toEqual(['Start', 'Check']);
+  });
+
+  it('refuses when nothing plain is left to carry the type', () => {
+    const src = 'P {\n  A [type: event]\n  Doc [type: data]\n}\nA > Doc';
+    const result = runToolbarAction(src, { type: 'delete' }, node('A'), ctxOf(src));
+    expect(result).toMatchObject({ ok: false, reason: expect.stringMatching(/at least one activity, event or gateway/) });
+    expect(runToolbarAction(src, { type: 'delete' }, node('P'), ctxOf(src))).toMatchObject({ ok: false });
+  });
+
+  it('every single delete in the examples keeps the code BPMN', () => {
+    for (const src of EXAMPLES) {
+      for (const n of parseDiagram(src).nodes.values()) {
+        for (const keepContents of n.kind === 'group' ? [false, true] : [false]) {
+          const result = runToolbarAction(src, { type: 'delete', keepContents }, node(n.id), ctxOf(src));
+          if (!result.ok) {
+            expect(result.reason, n.id).toMatch(/at least one/);
+            continue;
+          }
+          expect(detectDiagramType(result.source), n.id).toBe('bpmn');
+          expect(errors(result.source), n.id).toEqual([]);
+        }
+      }
+    }
+  });
+});

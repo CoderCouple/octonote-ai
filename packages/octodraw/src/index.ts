@@ -1,6 +1,8 @@
 export { parseDiagram, parseDiagramWithSpans } from './dsl/parse';
 export type * from './dsl/types';
 export {
+  addChild,
+  addGroup,
   applyEdits,
   CONNECTORS,
   declareNode,
@@ -13,7 +15,7 @@ export {
   setEdgeProperty,
   setNodeProperty,
 } from './dsl/edit';
-export type { DiagramEdit, EditResult } from './dsl/edit';
+export type { AddGroupOptions, DiagramEdit, EditResult, InsertOptions } from './dsl/edit';
 export { buildView, canDrillInto } from './view/view';
 export type * from './view/view';
 export { estimateTextWidth, layoutView, wrapText, DEFAULT_TYPOGRAPHY } from './layout/layout';

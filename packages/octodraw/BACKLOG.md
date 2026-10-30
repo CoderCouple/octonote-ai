@@ -46,8 +46,9 @@ ROADMAP.md; this is the checklist of loose ends.
 - [ ] Code edits in the editor aren't canvas undo steps (they're "silent"); Monaco's own undo covers them.
 
 ## BPMN element toolbar
-- [ ] No "Add lane" in a pool's ⋯ menu (edit.ts has no insert-into-group edit yet).
-- [ ] Deleting the last element typed activity/event/gateway turns the code back into a flow diagram (`detectDiagramType`); type changes guard against it, deletes don't.
+- [ ] No "Add pool", and only tasks can be added (events/gateways: add a task, then change its Type); new tasks aren't connected to anything.
+- [ ] "Add lane below" is refused when the lane's block shares a line with other code (`P { A {} B {} }`); "Add lane" on a lane-less pool is refused when its braces share lines with its steps (`P { A` … `}`).
+- [ ] Add-into-group only for flow/BPMN code (`addChild` / `addGroup`); ERD and sequence have no equivalent.
 - [ ] Text size / typeface / text colour aren't offered (the BPMN renderer doesn't draw them); description and link are stored but not drawn.
 - [ ] Boundary events can be selected but not dragged off their task; "Attach to task…" is the only way to move them.
 

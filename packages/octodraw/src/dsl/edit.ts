@@ -1,5 +1,5 @@
 import { parseDiagramWithSpans, stripComment } from './parse';
-import type { ColumnSpan, Connector, Diagram, DiagramSpans, EdgeSpan, NameSpan, PropertiesSpan, StatementSpan } from './types';
+import type { ColumnSpan, Connector, Diagram, DiagramSpans, EdgeSpan, GroupSpan, NameSpan, PropertiesSpan, StatementSpan } from './types';
 
 // Pure rewrites of diagram code, used by the element toolbar: each one changes
 // only the target's own line(s) and keeps indentation, comments, blank lines and
@@ -22,7 +22,24 @@ export type DiagramEdit =
   | { type: 'setEdgeLabel'; edgeId: string; label: string | null }
   | { type: 'setEdgeConnector'; edgeId: string; connector: Connector }
   | { type: 'reverseEdge'; edgeId: string }
-  | { type: 'deleteEdge'; edgeId: string };
+  | { type: 'deleteEdge'; edgeId: string }
+  | ({ type: 'addChild'; groupId: string; line: string } & InsertOptions)
+  | ({ type: 'addGroup'; parentId: string | null; name: string; properties?: Record<string, string> } & AddGroupOptions);
+
+/** Where a new line goes inside a group: first, last (default) or right after one of its children. */
+export interface InsertOptions {
+  position?: 'start' | 'end';
+  /** A child of the group (node or group name): the new line goes right after it (after its `}` for a group). */
+  after?: string;
+}
+
+export interface AddGroupOptions extends InsertOptions {
+  /**
+   * First move everything already inside the parent into a new group with this
+   * name (a pool without lanes getting its second lane: its steps go in "Lane 1").
+   */
+  wrapExisting?: string;
+}
 
 export const CONNECTORS: readonly Connector[] = ['>', '<', '<>', '-', '--', '-->'];
 
@@ -292,6 +309,59 @@ export function deleteEdge(source: string, edgeId: string): EditResult {
 }
 
 /**
+ * Adds one statement (`Task 3`, `A > B`, `Name [props]`) inside a group, at its
+ * end (default), its start or right after one of its children, indented like the
+ * group's other children (one level deeper than the group line when it is
+ * empty). A one-line group (`G { A, B }`) is expanded to several lines.
+ */
+export function addChild(source: string, groupId: string, line: string, options: InsertOptions = {}): EditResult {
+  const text = line.trim();
+  if (!text) return refuse(source, 'The new line is blank');
+  if (/[\r\n]/.test(text)) return refuse(source, 'Add one line at a time');
+  return insertInto(load(source), groupId, [text], options);
+}
+
+/**
+ * Adds an empty group `Name [props] {}` inside `parentGroupId` (or at the top
+ * level with `null`), placed like `addChild`. With `wrapExisting` the parent's
+ * current contents first move into a group of that name, so the new group isn't
+ * the one they are drawn in.
+ */
+export function addGroup(source: string, parentGroupId: string | null, name: string, properties: Record<string, string> = {}, options: AddGroupOptions = {}): EditResult {
+  const doc = load(source);
+  const head = groupHead(doc, name, properties);
+  if (typeof head !== 'string') return head;
+  if (options.wrapExisting === undefined) return insertInto(doc, parentGroupId, [`${head} {}`], options);
+  if (parentGroupId === null) return refuse(source, "Only a group's contents can be wrapped");
+  const wrapHead = groupHead(doc, options.wrapExisting, {});
+  if (typeof wrapHead !== 'string') return wrapHead;
+  if (options.wrapExisting.trim() === name.trim()) return refuse(source, 'The two groups need different names');
+  const block = findBlock(doc, parentGroupId, 'end');
+  if ('source' in block) return block;
+  if (doc.spans.groups.filter((g) => g.id === parentGroupId).length > 1) return refuse(source, `'${parentGroupId}' is written in several blocks`);
+  const { group, close } = block;
+  const unit = indentUnit(doc);
+  const lead = leadOf(lineOf(doc, group.line));
+  const indent = childIndent(doc, parentGroupId, group);
+  const edits = new LineEdits(doc);
+  if (close.line === group.line) {
+    const open = lineOf(doc, group.line);
+    const inner = open.slice(group.open.endColumn - 1, close.column - 1).trim();
+    const lines = [...(inner ? [`${indent}${wrapHead} {`, `${indent}${unit}${inner}`, `${indent}}`] : [`${indent}${wrapHead} {}`]), `${indent}${head} {}`];
+    edits.splice(group.line, group.open.endColumn, close.column, `\n${lines.join('\n')}\n${lead}`);
+  } else {
+    const afterOpen = stripComment(lineOf(doc, group.line).slice(group.open.endColumn - 1));
+    const beforeClose = lineOf(doc, close.line).slice(0, close.column - 1);
+    if (afterOpen.trim() || beforeClose.trim()) return refuse(source, `Put the braces of '${parentGroupId}' on their own lines first`);
+    for (let l = group.line + 1; l < close.line; l++) if (lineOf(doc, l).trim()) edits.splice(l, 1, 1, unit, false);
+    edits.insertAfter(group.line, `${indent}${wrapHead} {`);
+    edits.insertAfter(close.line - 1, `${indent}}`);
+    edits.insertAfter(close.line - 1, `${indent}${head} {}`);
+  }
+  return checked(doc, edits.result());
+}
+
+/**
  * Applies edits in order, re-reading the code between them, as one change. If any
  * edit is refused nothing is applied. Note that deleting a connection renumbers
  * the ones after it (`e3` becomes `e2`), and renames change node ids.
@@ -326,6 +396,10 @@ function applyEdit(source: string, edit: DiagramEdit): EditResult {
       return reverseEdge(source, edit.edgeId);
     case 'deleteEdge':
       return deleteEdge(source, edit.edgeId);
+    case 'addChild':
+      return addChild(source, edit.groupId, edit.line, edit);
+    case 'addGroup':
+      return addGroup(source, edit.parentId, edit.name, edit.properties, edit);
   }
 }
 
@@ -549,6 +623,123 @@ function indentUnit(doc: Doc): string {
     if (lead && (!unit || lead.length < unit.length)) unit = lead;
   }
   return unit ?? '  ';
+}
+
+// --- Inserting into groups --------------------------------------------------
+
+/** `Name [props]` for a new group, or why it can't be added. */
+function groupHead(doc: Doc, name: string, properties: Record<string, string>): string | EditResult {
+  const text = name.trim();
+  if (!text) return refuse(doc.source, 'A name cannot be blank');
+  if (text.includes('"') || /[\r\n]/.test(text)) return refuse(doc.source, 'Names cannot contain double quotes or line breaks');
+  if (doc.diagram.nodes.has(text)) return refuse(doc.source, `'${text}' already exists`);
+  if (text === 'legend') return refuse(doc.source, "'legend' is reserved");
+  const entries: string[] = [];
+  for (const [key, value] of Object.entries(properties)) {
+    if (!isKey(key)) return refuse(doc.source, `'${key}' isn't a property name`);
+    const formatted = formatValue(value);
+    if (formatted === undefined) return refuse(doc.source, 'Values cannot contain double quotes');
+    entries.push(`${key}: ${formatted}`);
+  }
+  const plain = needsQuotes(text) ? `"${text}"` : text;
+  return entries.length ? `${plain} [${entries.join(', ')}]` : plain;
+}
+
+const leadOf = (line: string) => /^\s*/.exec(line)![0];
+
+/** The group's block to insert into (the first one for `start`, else the last), checked for a `}` and errors. */
+function findBlock(doc: Doc, groupId: string, position: 'start' | 'end'): { group: GroupSpan; close: NonNullable<GroupSpan['close']> } | EditResult {
+  const node = doc.diagram.nodes.get(groupId);
+  if (!node) return refuse(doc.source, `There is no '${groupId}' in the code`);
+  const blocks = doc.spans.groups.filter((g) => g.id === groupId);
+  if (node.kind !== 'group' || !blocks.length) return refuse(doc.source, `'${groupId}' isn't a group`);
+  const group = position === 'start' ? blocks[0]! : blocks.at(-1)!;
+  if (!group.close) return refuse(doc.source, `'${groupId}' is missing its closing '}'`);
+  for (let l = group.line; l <= group.close.line; l++) if (hasError(doc, l)) return refuse(doc.source, `Line ${l} has an error`);
+  return { group, close: group.close };
+}
+
+/** Indentation of the group's children: as the first one written on its own line, else one level deeper than the group. */
+function childIndent(doc: Doc, groupId: string, group: GroupSpan): string {
+  const first = doc.spans.statements.find((s) => s.group === groupId && s.line > group.line && !lineOf(doc, s.line).slice(0, s.range.column - 1).trim());
+  return first ? leadOf(lineOf(doc, first.line)) : leadOf(lineOf(doc, group.line)) + indentUnit(doc);
+}
+
+/** Where a child is written: from its declaration to its `}` (a group block) or the end of the declaration. */
+function childEnd(doc: Doc, groupId: string | null, child: string): { line: number; endColumn: number; startsLine: boolean; startLine: number } | undefined {
+  const block = doc.spans.groups.filter((g) => g.id === child && doc.spans.statements[g.statement]!.group === groupId).at(-1);
+  const stmt = block ? doc.spans.statements[block.statement] : doc.spans.statements.filter((s) => s.kind === 'declaration' && s.group === groupId && s.lists[0]!.some((n) => n.name === child)).at(-1);
+  if (!stmt) return undefined;
+  const startsLine = !lineOf(doc, stmt.line).slice(0, stmt.range.column - 1).trim();
+  if (block) return block.close ? { line: block.close.line, endColumn: block.close.endColumn, startsLine, startLine: stmt.line } : undefined;
+  return { line: stmt.line, endColumn: stmt.range.endColumn, startsLine, startLine: stmt.line };
+}
+
+function insertInto(doc: Doc, groupId: string | null, lines: string[], options: InsertOptions): EditResult {
+  const edits = new LineEdits(doc);
+  const position = options.position ?? 'end';
+  if (options.after !== undefined) {
+    const sibling = doc.diagram.nodes.get(options.after);
+    if (!sibling || (sibling.parent ?? null) !== groupId) return refuse(doc.source, `'${options.after}' isn't in ${groupId === null ? 'the top level' : `'${groupId}'`}`);
+    if (groupId !== null) {
+      const block = findBlock(doc, groupId, 'end');
+      if ('source' in block) return block;
+    }
+    const end = childEnd(doc, groupId, options.after);
+    if (!end) return refuse(doc.source, `Couldn't find where '${options.after}' is written`);
+    const rest = stripComment(lineOf(doc, end.line).slice(end.endColumn - 1));
+    if (!end.startsLine || rest.trim()) return refuse(doc.source, `Put '${options.after}' on its own line first`);
+    const indent = leadOf(lineOf(doc, end.startLine));
+    for (const text of lines) edits.insertAfter(end.line, indent + text);
+    return checked(doc, edits.result());
+  }
+
+  if (groupId === null) {
+    const at = position === 'start' && doc.spans.statements.length ? doc.spans.statements[0]!.line - 1 : lastContentLine(doc);
+    const out = [...doc.lines.slice(0, at), ...lines, ...doc.lines.slice(at)];
+    return checked(doc, { source: out.join(doc.eol), changed: true });
+  }
+
+  const block = findBlock(doc, groupId, position);
+  if ('source' in block) return block;
+  const { group, close } = block;
+  const lead = leadOf(lineOf(doc, group.line));
+  const indent = childIndent(doc, groupId, group);
+  const added = lines.map((l) => indent + l);
+  const openLine = lineOf(doc, group.line);
+  if (close.line === group.line) {
+    // `G { A, B }` → one child per line.
+    const inner = openLine.slice(group.open.endColumn - 1, close.column - 1).trim();
+    const body = inner ? (position === 'start' ? [...added, indent + inner] : [indent + inner, ...added]) : added;
+    edits.splice(group.line, group.open.endColumn, close.column, `\n${body.join('\n')}\n${lead}`);
+  } else if (position === 'start') {
+    const after = openLine.slice(group.open.endColumn - 1);
+    if (!stripComment(after).trim()) for (const text of added) edits.insertAfter(group.line, text);
+    else {
+      const start = group.open.endColumn + (after.length - after.trimStart().length);
+      edits.splice(group.line, group.open.endColumn, start, `\n${added.join('\n')}\n${indent}`);
+    }
+  } else {
+    const before = lineOf(doc, close.line).slice(0, close.column - 1);
+    if (!before.trim()) for (const text of added) edits.insertAfter(close.line - 1, text);
+    else edits.splice(close.line, before.trimEnd().length + 1, close.column, `\n${added.join('\n')}\n${lead}`);
+  }
+  return checked(doc, edits.result());
+}
+
+/** Number of lines up to the last one with any text. */
+function lastContentLine(doc: Doc): number {
+  let last = doc.lines.length;
+  while (last > 0 && !doc.lines[last - 1]!.trim()) last--;
+  return last;
+}
+
+/** Refuses an insert that would add parse errors. */
+function checked(doc: Doc, result: EditResult): EditResult {
+  if (result.reason || !result.changed) return result;
+  const count = (d: Diagram) => d.diagnostics.filter((x) => x.severity === 'error').length;
+  if (count(parseDiagramWithSpans(result.source).diagram) > count(doc.diagram)) return refuse(doc.source, "The new line doesn't parse");
+  return result;
 }
 
 /** Column splices on original lines, applied together; lines an edit leaves blank are removed. */

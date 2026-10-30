@@ -81,6 +81,8 @@ export type ToolbarResult =
       /** The selection to keep after the change (renames re-target it; deletes clear it). */
       selection: DiagramSelection | null;
       renamed?: { from: string; to: string };
+      /** Start editing the new selection's text (something just added). */
+      edit?: boolean;
     }
   /** Refused (`reason`), or nothing would change (no reason). */
   | { ok: false; reason?: string };
@@ -319,6 +321,8 @@ export interface PlannedEdits {
   label: string;
   selection: DiagramSelection | null;
   renamed?: { from: string; to: string };
+  /** Start editing the new selection's text (a just-added lane or task). */
+  edit?: boolean;
 }
 
 /** The code edits for a toolbar action on a selection, or a reason it can't be done. */
@@ -427,7 +431,7 @@ export function runToolbarAction(source: string, action: ToolbarAction, selectio
   const result = applyEdits(source, plan.edits);
   if (result.reason) return { ok: false, reason: result.reason };
   if (!result.changed) return { ok: false };
-  return { ok: true, source: result.source, label: plan.label, selection: plan.selection, ...(plan.renamed ? { renamed: plan.renamed } : {}) };
+  return { ok: true, source: result.source, label: plan.label, selection: plan.selection, ...(plan.renamed ? { renamed: plan.renamed } : {}), ...(plan.edit ? { edit: true } : {}) };
 }
 
 /** Shift-click: adds an element of the same kind or removes it; another kind starts over. */

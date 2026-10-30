@@ -42,7 +42,11 @@ export type BpmnControl =
 export type BpmnAction =
   | { type: 'bpmnType'; value: BpmnType }
   /** Boundary event: sits on this task's edge (null detaches it). */
-  | { type: 'attach'; task: string | null };
+  | { type: 'attach'; task: string | null }
+  /** On a pool: a new empty lane at its end; on a lane: a new lane right below it. Selects it for naming. */
+  | { type: 'addLane' }
+  /** On a pool or lane: a new task (activity) inside it. Selects it for naming. */
+  | { type: 'addTask' };
 
 /** What a BPMN connection is: a sequence flow, a message flow (between pools) or a data association. */
 export type ConnectionKind = 'sequence' | 'message' | 'association';
@@ -81,6 +85,16 @@ export function bandKind(diagram: Diagram, id: string): 'pool' | 'lane' | null {
   if (!node || node.kind !== 'group') return null;
   return node.parent ? 'lane' : 'pool';
 }
+
+/** The first `${base} N` (N from `from`) that isn't a name in the diagram yet. */
+export function freeName(diagram: Diagram, base: string, from = 1, taken: readonly string[] = []): string {
+  for (let n = Math.max(1, from); ; n++) {
+    const name = `${base} ${n}`;
+    if (!diagram.nodes.has(name) && !taken.includes(name)) return name;
+  }
+}
+
+const TYPED = /^(activity|event|gateway)$/i;
 
 /** The controls for a BPMN selection, left to right. */
 export function bpmnControls(selection: DiagramSelection | null, ctx: ToolbarContext): ToolbarControl[] {
@@ -208,7 +222,43 @@ export function bpmnActionToEdits(action: ToolbarAction, selection: DiagramSelec
         if (!action.keepContents) for (const c of diagram.nodes.get(id)?.children ?? []) walk(c);
       };
       for (const n of nodes) walk(n.id);
-      return { ...base, edits: [...detachFrom(diagram, deleted, deleted), ...base.edits] };
+      const edits = [...detachFrom(diagram, deleted, deleted), ...base.edits];
+      // Detection needs one activity, event or gateway written as such: when the last one goes, write another element's type out.
+      const left = [...diagram.nodes.values()].filter((n) => isElement(n) && !deleted.has(n.id));
+      if (!left.some((n) => TYPED.test(n.properties.type?.trim() ?? ''))) {
+        const plain = left.filter((n) => bpmnTypeOf(n) === 'activity');
+        const keep = plain.find((n) => poolOf(diagram, n.id) !== null) ?? plain[0];
+        if (!keep) return { reason: 'A process needs at least one activity, event or gateway; this would delete the last one' };
+        edits.push({ type: 'setNodeProperty', nodeId: keep.id, key: 'type', value: 'activity' });
+      }
+      return { ...base, edits };
+    }
+    case 'addLane': {
+      const band = nodes.length === 1 ? bandKind(diagram, nodes[0]!.id) : null;
+      if (!band) return { reason: 'Select one pool or lane to add a lane' };
+      const target = nodes[0]!;
+      const parentId = band === 'pool' ? target.id : target.parent!;
+      const parent = diagram.nodes.get(parentId)!;
+      const lanes = parent.children.filter((c) => diagram.nodes.get(c)?.kind === 'group');
+      const direct = parent.children.filter((c) => diagram.nodes.get(c)?.kind !== 'group');
+      if (band === 'pool' && !lanes.length && direct.length) {
+        // A pool's steps are drawn in its first lane: put them in "Lane 1" so the new lane is the empty one.
+        const first = freeName(diagram, 'Lane', 1);
+        const name = freeName(diagram, 'Lane', 2, [first]);
+        return { edits: [{ type: 'addGroup', parentId, name, wrapExisting: first }], label: 'Add lane', selection: { kind: 'node', ids: [name] }, edit: true };
+      }
+      const name = freeName(diagram, 'Lane', lanes.length + 1);
+      const edit: DiagramEdit = band === 'pool' ? { type: 'addGroup', parentId, name } : { type: 'addGroup', parentId, name, after: target.id };
+      return { edits: [edit], label: 'Add lane', selection: { kind: 'node', ids: [name] }, edit: true };
+    }
+    case 'addTask': {
+      const band = nodes.length === 1 ? bandKind(diagram, nodes[0]!.id) : null;
+      if (!band) return { reason: 'Select one pool or lane to add a task' };
+      const target = nodes[0]!;
+      // Steps written straight in a pool with lanes are drawn in its first lane, so write them there.
+      const firstLane = band === 'pool' ? target.children.find((c) => diagram.nodes.get(c)?.kind === 'group') : undefined;
+      const name = freeName(diagram, 'Task', 1);
+      return { edits: [{ type: 'addChild', groupId: firstLane ?? target.id, line: name }], label: 'Add task', selection: { kind: 'node', ids: [name] }, edit: true };
     }
     default:
       return undefined;
