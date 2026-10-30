@@ -18,6 +18,8 @@ const BLOCK_HEADER = 34;
 const SECTION_GAP = 30;
 const BLOCK_END = 18;
 const ACTIVATION_W = 10;
+/** Participant header placement and label sizes (for overlays such as the inline name editor). */
+export const SEQUENCE_METRICS = { top: TOP, header: HEADER_H, nameSize: 14, labelSize: 12.5, iconWidth: 26 } as const;
 
 export interface SeqParticipantLayout {
   participant: Participant;
@@ -184,9 +186,13 @@ export interface SequenceSvgProps {
   /** The selected participant: its messages stay bright, the rest dims. */
   focus?: string | null;
   onSelect?: (participant: string) => void;
+  /** Messages drawn selected (accent colour), by id (`m<index>`). */
+  selectedMessages?: ReadonlySet<string>;
+  /** Makes messages clickable (a wide invisible hit line, `data-edge-id`). */
+  onSelectMessage?: (id: string) => void;
 }
 
-export function SequenceSvg({ layout, theme, icons, iconSet, reveal, current, styleMode, focus, onSelect }: SequenceSvgProps) {
+export function SequenceSvg({ layout, theme, icons, iconSet, reveal, current, styleMode, focus, onSelect, selectedMessages, onSelectMessage }: SequenceSvgProps) {
   const watercolor = styleMode === 'watercolor';
   const shadow = styleMode !== 'plain' && !watercolor;
   const headTop = TOP;
@@ -236,13 +242,26 @@ export function SequenceSvg({ layout, theme, icons, iconSet, reveal, current, st
         <rect key={i} x={a.x - ACTIVATION_W / 2} y={a.y1} width={ACTIVATION_W} height={Math.max(8, a.y2 - a.y1)} rx={2} fill={theme.color.surface} stroke={theme.color.text} strokeWidth={1} />
       ))}
       {layout.messages.slice(0, shownMessages).map((m, i) => {
-        const color = step(i) === 'od-seq-current' ? theme.color.accent : m.color ? (swatchFor(theme, m.color)?.ink ?? m.color) : theme.color.edge;
+        const id = `m${i}`;
+        const picked = selectedMessages?.has(id) ?? false;
+        const color = step(i) === 'od-seq-current' || picked ? theme.color.accent : m.color ? (swatchFor(theme, m.color)?.ink ?? m.color) : theme.color.edge;
         const text = [m.number, m.label].filter(Boolean).join('. ');
+        const hit = onSelectMessage
+          ? {
+              'data-edge-id': id,
+              style: { cursor: 'pointer' },
+              onClick: (e: { stopPropagation: () => void }) => {
+                e.stopPropagation();
+                onSelectMessage(id);
+              },
+            }
+          : {};
         if (m.self) {
           const d = `M${m.from},${m.y} H${m.from + 44} V${m.y + 26} H${m.from + 6}`;
           return (
-            <g key={i} className={step(i)}>
-              <path d={d} fill="none" stroke={color} strokeWidth={theme.stroke.edge * 1.2} strokeDasharray={m.dashed ? '5 4' : undefined} />
+            <g key={i} className={step(i)} strokeWidth={picked ? 2 : undefined} {...hit}>
+              {onSelectMessage && <path d={d} fill="none" stroke="transparent" strokeWidth={16} pointerEvents="stroke" />}
+              <path d={d} fill="none" stroke={color} strokeWidth={theme.stroke.edge * (picked ? 2 : 1.2)} strokeDasharray={m.dashed ? '5 4' : undefined} />
               {m.endArrow && <Head x={m.from + 6} y={m.y + 26} dir={-1} color={color} />}
               {text && (
                 <text x={m.from + 52} y={m.y + 16} fontSize={12.5} fill={theme.color.text}>
@@ -254,8 +273,9 @@ export function SequenceSvg({ layout, theme, icons, iconSet, reveal, current, st
         }
         const dir = m.to > m.from ? 1 : -1;
         return (
-          <g key={i} className={step(i)} strokeWidth={step(i) === 'od-seq-current' ? 2 : undefined}>
-            <line x1={m.from} x2={m.to - dir * 2} y1={m.y} y2={m.y} stroke={color} strokeWidth={theme.stroke.edge * 1.2} strokeDasharray={m.dashed ? '5 4' : undefined} />
+          <g key={i} className={step(i)} strokeWidth={step(i) === 'od-seq-current' ? 2 : undefined} {...hit}>
+            {onSelectMessage && <line x1={m.from} x2={m.to} y1={m.y} y2={m.y} stroke="transparent" strokeWidth={16} pointerEvents="stroke" />}
+            <line x1={m.from} x2={m.to - dir * 2} y1={m.y} y2={m.y} stroke={color} strokeWidth={theme.stroke.edge * (picked ? 2 : 1.2)} strokeDasharray={m.dashed ? '5 4' : undefined} />
             {m.endArrow && <Head x={m.to} y={m.y} dir={dir} color={color} />}
             {m.startArrow && <Head x={m.from} y={m.y} dir={-dir} color={color} />}
             {text && (

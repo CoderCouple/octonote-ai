@@ -88,9 +88,41 @@ export interface ElementToolbarProps {
   onCancelEdit: () => void;
   /** A one-line message above the bar (why an edit was refused). */
   notice: string | null;
+  /**
+   * Controls for another diagram type (ERD, sequence): the bar, its placement,
+   * menus and the inline editor stay the same; the delegate decides what is in it.
+   */
+  delegate?: ToolbarDelegate;
 }
 
-type Pop = ToolbarControl | 'align' | 'textSize' | 'typeface';
+/** What a toolbar delegate gets to build its buttons and menus with. */
+export interface ToolbarDelegateApi {
+  /** The open menu's id, if any. */
+  open: string | null;
+  /** A button with a caret that opens the menu `id`. */
+  menuButton: (id: string, label: string, content: ReactNode, title?: string) => ReactNode;
+  /** A plain button (no menu); `ref` lets it own a menu anyway (⋯ More). */
+  button: (id: string, label: string, content: ReactNode, onClick: () => void, options?: { title?: string; menu?: boolean; className?: string }) => ReactNode;
+  /** Opens (or closes) the menu `id`. */
+  toggle: (id: string) => void;
+  /** Closes the open menu and returns focus to its button. */
+  close: () => void;
+  mixedText: ReactNode;
+  onStartEdit: () => void;
+}
+
+export interface ToolbarDelegate {
+  /** The controls, left to right (separators follow Edit / the count and come before ⋯ / Delete). */
+  controls: readonly string[];
+  /** The bar's accessible name. */
+  label: string;
+  /** The hint under the inline text editor. */
+  editHint: string;
+  render: (control: string, api: ToolbarDelegateApi) => ReactNode;
+  menu: (id: string, api: ToolbarDelegateApi) => ReactNode;
+}
+
+type Pop = ToolbarControl | 'align' | 'textSize' | 'typeface' | (string & {});
 type Placement = { at: 'bottom' } | { at: 'lifted'; bottom: number } | { at: 'top' };
 
 const GAP = 20;
@@ -120,9 +152,9 @@ const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  * the diagram. Every control turns into a code edit through `onAction`.
  */
 export function ElementToolbar(props: ElementToolbarProps) {
-  const { selection, ctx, theme, icons, iconSet, container, avoid, onAction, editing, notice } = props;
-  const target = selectionTarget(selection, ctx);
-  const controls = toolbarControls(selection, ctx);
+  const { selection, ctx, theme, icons, iconSet, container, avoid, onAction, editing, notice, delegate } = props;
+  const target = delegate ? null : selectionTarget(selection, ctx);
+  const controls = delegate ? [] : toolbarControls(selection, ctx);
   const [open, setOpen] = useState<Pop | null>(null);
   const bar = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
@@ -220,17 +252,6 @@ export function ElementToolbar(props: ElementToolbarProps) {
     el.style.visibility = 'visible';
   });
 
-  if (!target) return null;
-  const nodes = selectedNodes(selection, ctx);
-  const edges = selectedEdges(selection, ctx);
-  const single = nodes[0];
-  const act = (action: ToolbarAction, keepOpen = false) => {
-    const done = onAction(action);
-    if (done && !keepOpen) close();
-    return done;
-  };
-  const set = (key: string, value: string | null, keepOpen = false) => act({ type: 'set', key, value }, keepOpen);
-
   const toggle = (id: Pop) => setOpen((o) => (o === id ? null : id));
   const ref = (id: Pop) => (el: HTMLButtonElement | null) => {
     if (el) buttons.current.set(id, el);
@@ -243,6 +264,103 @@ export function ElementToolbar(props: ElementToolbarProps) {
     </button>
   );
   const mixedText = <span className="od-etb-mixed">Mixed</span>;
+
+  /** The docked bar with its note, the inline editor and the open menu. */
+  const frame = (barItems: ReactNode, editingBar: ReactNode, menuNode: ReactNode, label: string, editHint: string) => {
+    const wrapClass = `od-etb-wrap od-etb-${placement.at}`;
+    const wrapStyle = placement.at === 'lifted' ? { bottom: placement.bottom } : undefined;
+    return (
+      <>
+        <style>{TOOLBAR_CSS}</style>
+        {editing && <InlineEditor key={selectionKey} editing={editing} draft={draft} onCommit={props.onCommitEdit} onCancel={props.onCancelEdit} barRef={bar} popRef={pop} />}
+        <div className={wrapClass} style={wrapStyle}>
+          {(notice || editing || selection.ids.length > 1) && (
+            <div className={`od-etb-note${notice ? ' od-etb-note-warn' : ''}`} role={notice ? 'alert' : 'status'}>
+              {notice ?? (!editing ? (
+                <span>Shift-click to add or remove · one change applies to all {selection.ids.length}</span>
+              ) : (
+                <>
+                  <span><kbd>Enter</kbd> save</span>
+                  <span><kbd>Esc</kbd> cancel</span>
+                  <span>{editHint}</span>
+                </>
+              ))}
+            </div>
+          )}
+          <div
+            ref={bar}
+            className="od-etb"
+            role="toolbar"
+            aria-label={editing ? 'Editing text' : label}
+            // Presses on the bar never reach the diagram (no deselect, no pan).
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
+            {editing ? editingBar : barItems}
+          </div>
+        </div>
+        {open && menuNode && (
+          <div ref={pop} className={`od-etb-anchor od-etb-anchor-${placement.at === 'top' ? 'below' : 'above'}`} style={{ visibility: 'hidden' }} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            {menuNode}
+          </div>
+        )}
+      </>
+    );
+  };
+  const separated = (list: readonly string[], render: (control: string) => ReactNode) => {
+    // Separators: after Edit / the count, before More / Delete, and around the arrowheads.
+    const out: ReactNode[] = [];
+    list.forEach((control, i) => {
+      const prev = list[i - 1];
+      if (prev && (prev === 'editText' || prev === 'count' || control === 'more' || control === 'delete' || control === 'startArrow')) out.push(<div key={`sep-${i}`} className="od-etb-sep" />);
+      out.push(render(control));
+    });
+    return out;
+  };
+
+  if (delegate) {
+    const api: ToolbarDelegateApi = {
+      open,
+      menuButton,
+      button: (id, label, content, onClick, options = {}) => (
+        <button
+          key={id}
+          ref={options.menu ? ref(id) : undefined}
+          type="button"
+          className={`od-etb-btn${options.className ? ` ${options.className}` : ''}`}
+          aria-label={label}
+          title={options.title ?? label}
+          aria-haspopup={options.menu ? 'menu' : undefined}
+          aria-expanded={options.menu ? open === id : undefined}
+          onClick={onClick}
+        >
+          {content}
+        </button>
+      ),
+      toggle,
+      close: () => close(),
+      mixedText,
+      onStartEdit: props.onStartEdit,
+    };
+    const doneBar = (
+      <button type="button" className="od-etb-btn od-etb-done" onClick={() => props.onCommitEdit(draft.current)}>
+        Done
+      </button>
+    );
+    return frame(separated(delegate.controls, (c) => delegate.render(c, api)), doneBar, open ? delegate.menu(open, api) : null, delegate.label, delegate.editHint);
+  }
+
+  if (!target) return null;
+  const nodes = selectedNodes(selection, ctx);
+  const edges = selectedEdges(selection, ctx);
+  const single = nodes[0];
+  const act = (action: ToolbarAction, keepOpen = false) => {
+    const done = onAction(action);
+    if (done && !keepOpen) close();
+    return done;
+  };
+  const set = (key: string, value: string | null, keepOpen = false) => act({ type: 'set', key, value }, keepOpen);
 
   const isEdge = selection.kind === 'edge';
   const isLabel = selection.kind === 'label';
@@ -340,13 +458,7 @@ export function ElementToolbar(props: ElementToolbarProps) {
     }
   };
 
-  // Separators: after Edit text / the count, before More / Delete, and around the arrowheads.
-  const items: ReactNode[] = [];
-  controls.forEach((control, i) => {
-    const prev = controls[i - 1];
-    if (prev && (prev === 'editText' || prev === 'count' || control === 'more' || control === 'delete' || control === 'startArrow')) items.push(<div key={`sep-${i}`} className="od-etb-sep" />);
-    items.push(render(control));
-  });
+  const items = separated(controls, (c) => render(c as ToolbarControl));
 
   const editingItems = editing && (
     <>
@@ -517,45 +629,12 @@ export function ElementToolbar(props: ElementToolbarProps) {
     }
   };
 
-  const wrapClass = `od-etb-wrap od-etb-${placement.at}`;
-  const wrapStyle = placement.at === 'lifted' ? { bottom: placement.bottom } : undefined;
-  return (
-    <>
-      <style>{TOOLBAR_CSS}</style>
-      {editing && <InlineEditor key={selectionKey} editing={editing} draft={draft} onCommit={props.onCommitEdit} onCancel={props.onCancelEdit} barRef={bar} popRef={pop} />}
-      <div className={wrapClass} style={wrapStyle}>
-        {(notice || editing || selection.ids.length > 1) && (
-          <div className={`od-etb-note${notice ? ' od-etb-note-warn' : ''}`} role={notice ? 'alert' : 'status'}>
-            {notice ?? (!editing ? (
-              <span>Shift-click to add or remove · one change applies to all {selection.ids.length}</span>
-            ) : (
-              <>
-                <span><kbd>Enter</kbd> save</span>
-                <span><kbd>Esc</kbd> cancel</span>
-                <span>{isEdge ? "Sets the arrow's label" : editRenames(selection, ctx) ? 'Renames it everywhere in the code' : 'Sets its label'}</span>
-              </>
-            ))}
-          </div>
-        )}
-        <div
-          ref={bar}
-          className="od-etb"
-          role="toolbar"
-          aria-label={editing ? 'Editing text' : target === 'boxes' ? `${selection.ids.length} boxes` : target === 'arrows' ? `${selection.ids.length} arrows` : TARGET_NAMES[target]}
-          // Presses on the bar never reach the diagram (no deselect, no pan).
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => e.stopPropagation()}
-        >
-          {editing ? editingItems : items}
-        </div>
-      </div>
-      {open && (
-        <div ref={pop} className={`od-etb-anchor od-etb-anchor-${placement.at === 'top' ? 'below' : 'above'}`} style={{ visibility: 'hidden' }} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-          {menu(open)}
-        </div>
-      )}
-    </>
+  return frame(
+    items,
+    editingItems,
+    open ? menu(open) : null,
+    target === 'boxes' ? `${selection.ids.length} boxes` : target === 'arrows' ? `${selection.ids.length} arrows` : TARGET_NAMES[target],
+    isEdge ? "Sets the arrow's label" : editRenames(selection, ctx) ? 'Renames it everywhere in the code' : 'Sets its label',
   );
 }
 
@@ -612,7 +691,7 @@ function MoreMenu({ selection, ctx, target, single, edges, act, set, onOpenGroup
 }
 
 /** A one-line field inside a menu (description, link): Enter saves, Escape goes back. */
-function FieldEditor({ label, placeholder, initial, onSave, onBack }: { label: string; placeholder: string; initial: string; onSave: (value: string) => boolean; onBack: () => void }) {
+export function FieldEditor({ label, placeholder, initial, onSave, onBack }: { label: string; placeholder: string; initial: string; onSave: (value: string) => boolean; onBack: () => void }) {
   const [value, setValue] = useState(initial);
   return (
     <div className="od-etb-fieldrow">

@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { parseDiagram } from '../src';
+import { parseDiagram, parseErd, parseSequence } from '../src';
+import { CARDINALITIES, erdCardinalityValue, erdControls, erdEditableText, erdPropertyValue, pruneErdSelection, runErdAction, type ErdToolbarAction } from '../src/react/toolbar/erd';
+import {
+  directionOptions,
+  messageDirectionValue,
+  messageLineValue,
+  messagesDeletedWith,
+  pruneSequenceSelection,
+  runSequenceAction,
+  sequenceControls,
+  sequenceEditableText,
+  sequenceMessages,
+  sequencePropertyValue,
+  type SequenceToolbarAction,
+} from '../src/react/toolbar/sequence';
 import {
   actionToEdits,
   editableText,
@@ -221,5 +235,130 @@ describe('selection helpers', () => {
     expect(pruneSelection(edge('e3'), nodes, new Set(['e0']))).toBeNull();
     const same = node('A');
     expect(pruneSelection(same, nodes, new Set())).toBe(same);
+  });
+});
+
+// --- ERD and sequence diagrams ----------------------------------------------------
+
+describe('ERD toolbar', () => {
+  const src = 'notation crows-feet\nusers [icon: user, color: blue] {\n  id string pk\n}\nteams [color: blue] {\n  id string pk\n}\nusers.teamId > teams.id\nusers.id < posts.authorId: writes';
+  const diagram = parseErd(src);
+  const runErd = (source: string, action: ErdToolbarAction, selection: DiagramSelection) => {
+    const result = runErdAction(source, action, selection, parseErd(source));
+    if (!result.ok) throw new Error(`refused: ${result.reason ?? 'no change'}`);
+    expect(parseErd(result.source).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    return result;
+  };
+
+  it('shows table, relationship and multi-selection controls', () => {
+    expect(erdControls(node('users'), diagram)).toEqual(['editText', 'icon', 'color', 'keyColumns', 'more']);
+    expect(erdControls(node('users', 'teams'), diagram)).toEqual(['count', 'icon', 'color', 'keyColumns', 'delete']);
+    expect(erdControls(edge('r0'), diagram)).toEqual(['editText', 'cardinality', 'color', 'more']);
+    expect(erdControls(edge('r0', 'r1'), diagram)).toEqual(['count', 'cardinality', 'color', 'delete']);
+    expect(erdControls(edge('r9'), diagram)).toEqual([]);
+    expect(erdControls(node('nope'), diagram)).toEqual([]);
+  });
+
+  it('reports common and mixed values', () => {
+    expect(erdPropertyValue(node('users', 'teams'), diagram, 'color')).toEqual({ value: 'blue', mixed: false });
+    expect(erdPropertyValue(node('users', 'teams'), diagram, 'icon')).toEqual({ value: undefined, mixed: true });
+    expect(erdCardinalityValue(edge('r0'), diagram)).toEqual({ value: '>', mixed: false });
+    expect(erdCardinalityValue(edge('r0', 'r1'), diagram).mixed).toBe(true);
+    expect(erdEditableText(node('users'), diagram)).toBe('users');
+    expect(erdEditableText(edge('r1'), diagram)).toBe('writes');
+    expect(CARDINALITIES.map((c) => c.value)).toEqual(['-', '<', '>', '<>']);
+  });
+
+  it('colours several tables in one change, and Default removes the colour', () => {
+    const out = runErd(src, { type: 'set', key: 'color', value: 'green' }, node('users', 'teams'));
+    expect(out.label).toBe('Colour');
+    expect(out.source).toContain('users [icon: user, color: green] {');
+    expect(out.source).toContain('teams [color: green] {');
+    expect(runErd(src, { type: 'set', key: 'color', value: null }, node('teams')).source).toContain('\nteams {');
+  });
+
+  it('changes cardinality, colour and label of relationships', () => {
+    expect(runErd(src, { type: 'cardinality', value: '<>' }, edge('r0', 'r1')).source).toContain('users.teamId <> teams.id\nusers.id <> posts.authorId: writes');
+    expect(runErd(src, { type: 'set', key: 'color', value: 'red' }, edge('r0')).source).toContain('users.teamId > teams.id [color: red]');
+    expect(runErd(src, { type: 'editText', text: 'belongs to' }, edge('r0')).source).toContain('users.teamId > teams.id: belongs to');
+  });
+
+  it('renames a table, re-targeting the selection, and refuses taken names', () => {
+    const out = runErd(src, { type: 'editText', text: 'groups' }, node('teams'));
+    expect(out).toMatchObject({ selection: node('groups'), renamed: { from: 'teams', to: 'groups' } });
+    expect(out.source).toContain('users.teamId > groups.id');
+    expect(runErdAction(src, { type: 'editText', text: 'users' }, node('teams'), diagram)).toEqual({ ok: false, reason: "'users' already exists" });
+    expect(runErdAction(src, { type: 'editText', text: 'my teams' }, node('teams'), diagram).ok).toBe(false);
+  });
+
+  it('deletes relationships from the last one back, and tables with their relationships', () => {
+    const rels = runErd(src, { type: 'delete' }, edge('r0', 'r1'));
+    expect(rels.selection).toBeNull();
+    expect(parseErd(rels.source).relationships).toEqual([]);
+    expect(parseErd(rels.source).entities.has('posts')).toBe(true);
+    const tables = runErd(src, { type: 'delete' }, node('teams'));
+    expect(parseErd(tables.source).relationships.length).toBe(1);
+    expect(tables.label).toBe('Delete table');
+  });
+
+  it('prunes tables and relationships that left the code', () => {
+    expect(pruneErdSelection(node('users', 'gone'), diagram)).toEqual(node('users'));
+    expect(pruneErdSelection(edge('r5'), diagram)).toBeNull();
+  });
+});
+
+describe('sequence toolbar', () => {
+  const src = 'Client [icon: monitor] > Server: Request\nServer --> Client: Response\nServer > DB [color: blue]: Query';
+  const diagram = parseSequence(src);
+  const runSeq = (source: string, action: SequenceToolbarAction, selection: DiagramSelection) => {
+    const result = runSequenceAction(source, action, selection, parseSequence(source));
+    if (!result.ok) throw new Error(`refused: ${result.reason ?? 'no change'}`);
+    expect(parseSequence(result.source).diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    return result;
+  };
+
+  it('shows participant, message and multi-selection controls', () => {
+    expect(sequenceControls(node('Client'), diagram)).toEqual(['editText', 'icon', 'color', 'more']);
+    expect(sequenceControls(node('Client', 'DB'), diagram)).toEqual(['count', 'icon', 'color', 'delete']);
+    expect(sequenceControls(edge('m0'), diagram)).toEqual(['editText', 'color', 'line', 'direction', 'more']);
+    expect(sequenceControls(edge('m0', 'm1'), diagram)).toEqual(['count', 'color', 'line', 'delete']);
+    expect(sequenceControls(edge('m7'), diagram)).toEqual([]);
+  });
+
+  it('reports line, direction and names the direction options after the participants', () => {
+    expect(messageLineValue(edge('m0'), diagram)).toEqual({ value: 'call', mixed: false });
+    expect(messageLineValue(edge('m0', 'm1'), diagram).mixed).toBe(true);
+    expect(messageDirectionValue(edge('m1'), diagram)).toEqual({ value: 'forward', mixed: false });
+    expect(directionOptions(sequenceMessages(diagram)[0]!, diagram).map((o) => o.label)).toEqual(['Client → Server', 'Server → Client', 'Both ways']);
+    expect(sequencePropertyValue(node('DB'), diagram, 'color')).toEqual({ value: 'blue', mixed: false });
+    expect(sequenceEditableText(edge('m2'), diagram)).toBe('Query');
+    expect(messagesDeletedWith(node('Server'), diagram)).toBe(3);
+  });
+
+  it('colours messages and participants, switches line and direction', () => {
+    expect(runSeq(src, { type: 'set', key: 'color', value: 'red' }, edge('m0', 'm1')).source).toBe('Client [icon: monitor] > Server: Request [color: red]\nServer --> Client: Response [color: red]\nServer > DB [color: blue]: Query');
+    expect(runSeq(src, { type: 'set', key: 'color', value: 'red' }, node('Server')).source).toBe('Client [icon: monitor] > Server: Request\nServer [color: red]\nServer --> Client: Response\nServer > DB [color: blue]: Query');
+    expect(runSeq(src, { type: 'line', value: 'return' }, edge('m0')).source.split('\n')[0]).toBe('Client [icon: monitor] --> Server: Request');
+    expect(runSeq(src, { type: 'direction', value: 'back' }, edge('m0')).source.split('\n')[0]).toBe('Client [icon: monitor] < Server: Request');
+    expect(runSequenceAction(src, { type: 'direction', value: 'both' }, edge('m1'), diagram)).toMatchObject({ ok: false, reason: expect.stringMatching(/return/) });
+  });
+
+  it('renames a participant and edits a message label', () => {
+    const out = runSeq(src, { type: 'editText', text: 'API' }, node('Server'));
+    expect(out).toMatchObject({ selection: node('API'), renamed: { from: 'Server', to: 'API' } });
+    expect(out.source).toBe('Client [icon: monitor] > API: Request\nAPI --> Client: Response\nAPI > DB [color: blue]: Query');
+    expect(runSeq(src, { type: 'editText', text: 'Fetch' }, edge('m0')).source.split('\n')[0]).toBe('Client [icon: monitor] > Server: Fetch');
+  });
+
+  it('deletes messages from the last one back, and participants with their messages', () => {
+    const msgs = runSeq(src, { type: 'delete' }, edge('m0', 'm2'));
+    expect(msgs.source).toBe('Client [icon: monitor]\nServer\nServer --> Client: Response\nDB [color: blue]');
+    const people = runSeq(src, { type: 'delete' }, node('DB'));
+    expect(people.source).toBe('Client [icon: monitor] > Server: Request\nServer --> Client: Response');
+  });
+
+  it('prunes participants and messages that left the code', () => {
+    expect(pruneSequenceSelection(edge('m2', 'm3'), diagram)).toEqual(edge('m2'));
+    expect(pruneSequenceSelection(node('Gone'), diagram)).toBeNull();
   });
 });

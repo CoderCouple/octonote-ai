@@ -736,7 +736,7 @@ export function splitOutsideQuotes(text: string, separator: string): { text: str
 }
 
 /** Positions of the entries of a `[raw]` block that spans 0-based columns `start`–`end`. */
-function propertiesSpan(raw: string, start: number, end: number): PropertiesSpan {
+export function propertiesSpan(raw: string, start: number, end: number): PropertiesSpan {
   const entries: PropertiesSpan['entries'] = [];
   const at = start + 1;
   for (const part of splitOutsideQuotes(raw, ',')) {
