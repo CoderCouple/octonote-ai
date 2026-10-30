@@ -6,6 +6,7 @@ import {
   getItem,
   isCanvasDocument,
   OctoCanvas,
+  OctoDiagram,
   themeCssVariables,
   themes,
   updateItem,
@@ -183,6 +184,29 @@ export function App() {
     },
     [change, liveDoc, preview],
   );
+
+  // ?diagram (or the "Edit figure" button) shows the active figure on its own with the
+  // element toolbar: each toolbar change rewrites the code as one undoable canvas change.
+  const [figureView, setFigureView] = useState(() => new URLSearchParams(location.search).has('diagram'));
+  const editFigure = useCallback(
+    (id: string, patch: Partial<Pick<FigureItem, 'source' | 'placements'>>) => {
+      if (!preview) change(updateItem(liveDoc, id, patch));
+    },
+    [change, liveDoc, preview],
+  );
+  useEffect(() => {
+    if (!figureView) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return;
+      // The code editor keeps its own undo.
+      if ((event.target as Element | null)?.closest?.('.code-pane')) return;
+      event.preventDefault();
+      if (event.shiftKey) redo();
+      else undo();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [figureView, undo, redo]);
 
   // Draw-in replays a figure like Eraser's AI output.
   const [drawIn, setDrawIn] = useState<{ id: string; nonce: number } | undefined>();
@@ -474,6 +498,24 @@ export function App() {
         {mode === 'both' && <div className="divider" role="separator" aria-orientation="vertical" aria-label="Resize code editor" onPointerDown={onDividerDown} onPointerMove={onDividerMove} onPointerUp={onDividerUp} onPointerCancel={onDividerUp} />}
 
         <section className="canvas-pane" aria-label="Canvas" hidden={mode === 'code'}>
+          {figureView && active ? (
+            <>
+              <OctoDiagram
+                key={active.id}
+                source={active.source}
+                colorScheme={scheme}
+                iconSet={iconSet}
+                placements={active.placements}
+                onPlacementsChange={(placements) => editFigure(active.id, { placements })}
+                onSourceChange={(next) => editFigure(active.id, { source: next })}
+                style={{ width: '100%', height: '100%' }}
+              />
+              <button type="button" className="reopen-code figure-toggle" onClick={() => setFigureView(false)} title="Back to the canvas">
+                <UiIcon name="chevronDown" size={14} />
+                Canvas
+              </button>
+            </>
+          ) : (
           <OctoCanvas
             ref={canvasRef}
             doc={doc}
@@ -499,6 +541,13 @@ export function App() {
             iconSet={iconSet}
             style={{ width: '100%', height: '100%' }}
           />
+          )}
+          {!figureView && active && !preview && (
+            <button type="button" className="reopen-code figure-toggle" onClick={() => setFigureView(true)} title="Edit the selected figure with the element toolbar">
+              <UiIcon name="code" size={14} />
+              Edit figure
+            </button>
+          )}
           {notice && <div className="canvas-toast" role="status">{notice}</div>}
           {storageNote && !notice && storageNote.startsWith('The canvas could not') && <div className="canvas-toast" role="alert">{storageNote}</div>}
           {preview && (

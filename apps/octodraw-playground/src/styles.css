@@ -148,3 +148,4 @@ button.live-avatar[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--od-color-a
 .assistant-settings-note { flex: none !important; font-size: 11px; color: var(--od-color-text-subtle); }
 .banner-legend { display: inline-flex; align-items: center; gap: 4px; color: var(--od-color-text-muted); font-size: 12px; }
 .banner-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-left: 6px; }
+.figure-toggle { left: var(--od-space-4); right: auto; bottom: var(--od-space-4); top: auto; z-index: 4; }

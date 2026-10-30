@@ -62,6 +62,8 @@ export interface DiagramSvgProps {
   onSelectEdge?: (edgeId: string) => void;
   /** Arrow drawn as selected: accent colour and small handles at both ends. */
   selectedEdge?: string | null;
+  /** Several arrows drawn as selected (shift-click); adds to `selectedEdge`. */
+  selectedEdges?: ReadonlySet<string>;
   /**
    * An icon node's label (the text under the icon, `data-node-label-id`) was
    * clicked. Without it, a click on the label selects the node.
@@ -84,7 +86,8 @@ interface EdgeAnimation {
 }
 
 /** Renders a laid-out view as SVG content (no outer <svg>, so callers control pan and zoom). */
-export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, settings, theme, drillable, onDrill, onToggleCollapse, onLink, onSelect, selected, emphasis, icons, hovered, animation = 'smooth', revealCount, drawPace, iconSet = 'eraser', zoom = 1, onSelectEdge, selectedEdge, onSelectLabel, selectedLabel }: DiagramSvgProps) {
+export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, settings, theme, drillable, onDrill, onToggleCollapse, onLink, onSelect, selected, emphasis, icons, hovered, animation = 'smooth', revealCount, drawPace, iconSet = 'eraser', zoom = 1, onSelectEdge, selectedEdge, selectedEdges, onSelectLabel, selectedLabel }: DiagramSvgProps) {
+  const edgeSelected = (id: string) => id === selectedEdge || !!selectedEdges?.has(id);
   // Paints come from the full layout so colors don't change as elements reveal.
   const { paints, fills } = useMemo(() => resolvePaints(theme, fullLayout.nodes, settings.colorMode), [theme, fullLayout.nodes, settings.colorMode]);
   const layout = useMemo(() => revealed(fullLayout, revealCount), [fullLayout, revealCount]);
@@ -163,7 +166,7 @@ export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, setting
       {groups.map((node) => positioned(node, (local) => <GroupShape node={local} paint={paints.get(node.id)!} ctx={ctx} drillable={drillable.has(node.id)} />))}
       {layout.edges.map((edge) => {
         const anim = edgeAnimations.get(edge)!;
-        return <EdgePath key={anim.key} edge={edge} theme={theme} anim={anim} state={edgeState(edge.id)} selected={edge.id === selectedEdge} onSelect={onSelectEdge} zoom={zoom} />;
+        return <EdgePath key={anim.key} edge={edge} theme={theme} anim={anim} state={edgeState(edge.id)} selected={edgeSelected(edge.id)} onSelect={onSelectEdge} zoom={zoom} />;
       })}
       {layout.nodes
         .filter((n) => n.kind !== 'group')
@@ -181,7 +184,7 @@ export const DiagramSvg = memo(function DiagramSvg({ layout: fullLayout, setting
         const anim = edgeAnimations.get(edge)!;
         return <EdgeLabel key={anim.key} edge={edge} theme={theme} background={labelBackground(edge)} anim={anim} dimmed={edgeState(edge.id) === 'dim'} />;
       })}
-      {layout.edges.filter((e) => e.id === selectedEdge).map((edge) => (
+      {layout.edges.filter((e) => edgeSelected(e.id)).map((edge) => (
         <EdgeHandles key={`handles-${edge.id}`} edge={edge} theme={theme} zoom={zoom} />
       ))}
       {layout.nodes.filter((n) => n.id === selectedLabel && n.labelBox).map((node) => (

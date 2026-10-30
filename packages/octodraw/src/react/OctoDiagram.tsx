@@ -29,10 +29,37 @@ import { loadEraserIcons, loadFullIconCatalog, loadVendorIcons, onIconCatalogCha
 import type { IconResolver } from '../icons/types';
 import { snapBox, type SnapResult } from '../canvas/model';
 import { arrangeLayout, canResizeNode, placementKey, type NodePlacement, type ViewPlacements } from '../layout/arrange';
-import { layoutView, type DiagramLayout, type TextMeasurer, type Typography } from '../layout/layout';
+import { GROUP_METRICS, NODE_METRICS, layoutView, type DiagramLayout, type TextMeasurer, type Typography } from '../layout/layout';
+import { labelSizeOf, textAlignOf, textSizeOf } from '../layout/style';
 import { themeCssVariables, themes, type ColorScheme, type Theme } from '../theme/tokens';
 import { buildView, canDrillInto } from '../view/view';
 import { DiagramSvg, fontFamilyFor, type DiagramAnimation } from './DiagramSvg';
+import { ElementToolbar, type ScreenRect, type ToolbarEditing } from './ElementToolbar';
+import {
+  editableText,
+  pruneSelection,
+  runToolbarAction,
+  sameSelection,
+  selectedEdges,
+  selectionTarget,
+  toggleInSelection,
+  toolbarControls,
+  type DiagramSelection,
+  type ToolbarAction,
+  type ToolbarContext,
+  type ToolbarResult,
+} from './toolbar/actions';
+
+/** What an element-toolbar change was, for the host's undo history. */
+export interface SourceChangeMeta {
+  /** Short name of the change ("Colour", "Rename", "Delete arrow"…). */
+  label: string;
+  /**
+   * Set when a box or group was renamed. Hand placements are keyed by name, so a
+   * host that stores placements (or comments) by node id moves them in the same step.
+   */
+  renamed?: { from: string; to: string };
+}
 
 export type ExportFormat = 'png' | 'svg' | 'pdf' | 'json' | 'xml';
 export type CopyFormat = 'png' | 'svg' | 'json' | 'xml' | 'link' | 'markdown' | 'html';
@@ -121,6 +148,17 @@ export interface OctoDiagramProps {
   /** Hand placements per drill-down level (controlled); stored by the host, not in the code. */
   placements?: ViewPlacements;
   onPlacementsChange?: (placements: ViewPlacements) => void;
+  /**
+   * Makes architecture / flow diagrams editable from an element toolbar: select a
+   * box, group, icon label or arrow (shift-click for several) and restyle,
+   * rename or delete it. Each toolbar action rewrites the code with the DSL edit
+   * functions and calls this once with the new code, so one action is one undo
+   * step for the host. Without it the diagram is read-only (no toolbar).
+   */
+  onSourceChange?: (next: string, meta: SourceChangeMeta) => void;
+  /** Controlled selection (boxes/groups, arrows by view edge id, or an icon node's label). Omit to let the component manage it. */
+  selection?: DiagramSelection | null;
+  onSelectionChange?: (selection: DiagramSelection | null) => void;
   className?: string;
   style?: CSSProperties;
 }
@@ -197,6 +235,9 @@ export function OctoDiagram({
   arrange = true,
   placements: placementsProp,
   onPlacementsChange,
+  onSourceChange,
+  selection: selectionProp,
+  onSelectionChange,
   className,
   style,
 }: OctoDiagramProps) {
@@ -804,6 +845,10 @@ export function OctoDiagram({
     if (!panned.current) select(null);
     panned.current = false;
   };
+  // Remembered for the click that follows (DiagramSvg reports clicks without the event).
+  const onPointerDownCapture = (event: ReactPointerEvent) => {
+    shiftClick.current = event.shiftKey;
+  };
 
   const zoomTo = (k: number) => {
     fitted.current = false;
@@ -816,13 +861,24 @@ export function OctoDiagram({
   };
 
   const onKeyDown = (event: ReactKeyboardEvent) => {
+    // Typing in a field (inline text editor, menu search, flow picker) isn't a shortcut.
+    const keyTarget = event.target as HTMLElement;
+    if (keyTarget !== event.currentTarget && (keyTarget.tagName === 'INPUT' || keyTarget.tagName === 'TEXTAREA' || keyTarget.tagName === 'SELECT' || keyTarget.isContentEditable)) return;
     if (event.key === 'Escape' && (anyMenuOpen || exportOpen)) {
       event.preventDefault();
       closeMenus();
-    } else if (event.key === 'Escape' && (selected || flow)) {
+    } else if (event.key === 'Escape' && (selection || flow)) {
       event.preventDefault();
-      if (selected) select(null);
+      if (selection) select(null);
       else stopFlow();
+    } else if (editable && selection && (event.key === 'Delete' || event.key === 'Backspace')) {
+      // With the toolbar, Delete / Backspace remove the selection (Backspace still goes up a level when nothing is selected).
+      event.preventDefault();
+      runAction({ type: 'delete' });
+      containerRef.current?.focus({ preventScroll: true });
+    } else if (editable && selection && event.key === 'Enter' && event.target === event.currentTarget && toolbarControls(selection, toolbarCtx).includes('editText')) {
+      event.preventDefault();
+      setEditing(true);
     } else if (event.key === 'Escape' && seqStep !== null) {
       event.preventDefault();
       setSeqStep(null);
@@ -848,15 +904,126 @@ export function OctoDiagram({
   const [zoomMenu, setZoomMenu] = useState(false);
   const setExportOpenRef = useRef<(open: boolean) => void>(() => {});
 
-  // --- Maps: selection, filters, flows ------------------------------------------
-  const [selected, setSelectedState] = useState<string | null>(null);
-  const select = useCallback(
-    (id: string | null) => {
-      setSelectedState(id);
-      onSelect?.(id);
+  // --- Selection ------------------------------------------------------------------
+  // Boxes and groups (`node`), arrows (`edge`, view edge ids) or an icon node's
+  // label; `selected` is the first box, which the details panel, ERD and sequence views use.
+  const [ownSelection, setOwnSelection] = useState<DiagramSelection | null>(null);
+  const selection = selectionProp !== undefined ? selectionProp : ownSelection;
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const setSelection = useCallback(
+    (next: DiagramSelection | null) => {
+      if (selectionProp === undefined) setOwnSelection(next);
+      onSelectionChange?.(next);
+      onSelect?.(next && next.kind !== 'edge' ? (next.ids[0] ?? null) : null);
     },
-    [onSelect],
+    [selectionProp, onSelectionChange, onSelect],
   );
+  const select = useCallback((id: string | null) => setSelection(id ? { kind: 'node', ids: [id] } : null), [setSelection]);
+  const selected = selection && selection.kind !== 'edge' ? (selection.ids[0] ?? null) : null;
+
+  // The element toolbar: flow diagrams only, and only when the host takes code changes.
+  const editable = !!onSourceChange && diagramType === 'flow' && !imported && !streaming && revealCount === undefined;
+  const shiftClick = useRef(false);
+  const pickNode = useCallback(
+    (id: string) => setSelection(editable && shiftClick.current ? toggleInSelection(selectionRef.current, 'node', id) : { kind: 'node', ids: [id] }),
+    [editable, setSelection],
+  );
+  const pickEdge = useCallback((id: string) => setSelection(shiftClick.current ? toggleInSelection(selectionRef.current, 'edge', id) : { kind: 'edge', ids: [id] }), [setSelection]);
+  const pickLabel = useCallback((id: string) => setSelection({ kind: 'label', ids: [id] }), [setSelection]);
+  const selectedEdgeSet = useMemo(() => new Set(selection?.kind === 'edge' ? selection.ids : []), [selection]);
+  const toolbarCtx = useMemo<ToolbarContext>(() => {
+    const sources = new Map(view.edges.map((e) => [e.id, e.sources]));
+    const iconNodes = new Set(layout?.nodes.filter((n) => n.variant === 'icon').map((n) => n.id));
+    return { diagram, edgeSources: (id) => sources.get(id) ?? diagram.edges.filter((e) => e.id === id), isIconNode: (id) => iconNodes.has(id) };
+  }, [diagram, view, layout]);
+  // Elements that left the view (deleted in the code, or after a drill) leave the selection.
+  useEffect(() => {
+    const current = selectionRef.current;
+    if (!current || diagramType !== 'flow' || imported) return;
+    const next = pruneSelection(current, new Set(view.nodes.keys()), new Set(view.edges.map((e) => e.id)));
+    if (next !== current) setSelection(next);
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [editing, setEditing] = useState(false);
+  const selectionKey = selection ? `${selection.kind}:${selection.ids.join('|')}` : '';
+  useEffect(() => setEditing(false), [selectionKey]);
+  const [toolbarNotice, setToolbarNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toolbarNotice) return;
+    const timer = window.setTimeout(() => setToolbarNotice(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toolbarNotice]);
+  useEffect(() => setToolbarNotice(null), [selectionKey]);
+
+  // A rename moves the box's own state (drill focus, collapsed, hand placements) once the new code arrives.
+  const pendingRename = useRef<{ from: string; to: string } | null>(null);
+  useEffect(() => {
+    const rename = pendingRename.current;
+    if (!rename || !diagram.nodes.has(rename.to)) return;
+    pendingRename.current = null;
+    if (focus === rename.from) setFocus(rename.to);
+    setCollapsedGroups((all) => (all.has(rename.from) ? new Set([...all].map((id) => (id === rename.from ? rename.to : id))) : all));
+    if (placementsProp === undefined) {
+      setOwnPlacements((all) => {
+        let changed = false;
+        const next: ViewPlacements = {};
+        for (const [level, nodes] of Object.entries(all)) {
+          const key = level === rename.from ? rename.to : level;
+          const moved = { ...nodes };
+          if (moved[rename.from]) {
+            moved[rename.to] = moved[rename.from]!;
+            delete moved[rename.from];
+            changed = true;
+          }
+          if (key !== level) changed = true;
+          next[key] = moved;
+        }
+        return changed ? next : all;
+      });
+    }
+  }, [diagram]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const applyAction = useCallback(
+    (action: ToolbarAction): ToolbarResult => {
+      if (!onSourceChange) return { ok: false };
+      const result = runToolbarAction(source, action, selectionRef.current, toolbarCtx);
+      if (!result.ok) {
+        if (result.reason) setToolbarNotice(result.reason);
+        return result;
+      }
+      setToolbarNotice(null);
+      if (result.renamed) pendingRename.current = result.renamed;
+      onSourceChange(result.source, result.renamed ? { label: result.label, renamed: result.renamed } : { label: result.label });
+      if (!sameSelection(result.selection, selectionRef.current)) setSelection(result.selection);
+      return result;
+    },
+    [onSourceChange, source, toolbarCtx, setSelection],
+  );
+  const runAction = useCallback(
+    (action: ToolbarAction) => {
+      const result = applyAction(action);
+      // Deleting removes the focused button; keep keyboard shortcuts working.
+      if (result.ok && !result.selection) containerRef.current?.focus({ preventScroll: true });
+      // Picking the value that is already set changes nothing but still counts (the menu closes).
+      return result.ok || !result.reason;
+    },
+    [applyAction],
+  );
+  const commitEdit = useCallback(
+    (text: string) => {
+      const result = applyAction({ type: 'editText', text });
+      if (!result.ok && result.reason) return false;
+      setEditing(false);
+      containerRef.current?.focus({ preventScroll: true });
+      return true;
+    },
+    [applyAction],
+  );
+  const cancelEdit = useCallback(() => {
+    setEditing(false);
+    containerRef.current?.focus({ preventScroll: true });
+  }, []);
   const facets = useMemo(() => facetValues(diagram), [diagram]);
   const hasFacets = FACETS.some((f) => facets[f.name].length > 0);
   const [filter, setFilter] = useState<MapFilter>({});
@@ -1028,6 +1195,12 @@ export function OctoDiagram({
   const current = view.focus ? diagram.nodes.get(view.focus) : undefined;
   const subtitle = current?.properties.description;
   const cssVars = useMemo(() => themeCssVariables(theme) as CSSProperties, [theme]);
+  const toolbarShown = editable && chrome && !!layout && selectionTarget(selection, toolbarCtx) !== null;
+  const selectionScreenBox = toolbarShown && layout && selection ? screenBoxOf(layout, selection, transform) : null;
+  const editingBox =
+    toolbarShown && editing && layout && selection
+      ? editorBox(layout, selection, transform, theme, diagram.settings.typeface, editableText(selection, toolbarCtx), selectedEdges(selection, toolbarCtx)[0]?.properties)
+      : null;
 
   return (
     <div
@@ -1042,7 +1215,9 @@ export function OctoDiagram({
       <svg
         width="100%"
         height="100%"
-        style={{ display: 'block', cursor: dragging ? 'grabbing' : 'default' }}
+        // Shift-click adds to the selection; it must not select the diagram's text.
+        style={{ display: 'block', cursor: dragging ? 'grabbing' : 'default', userSelect: editable ? 'none' : undefined }}
+        onPointerDownCapture={onPointerDownCapture}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -1069,10 +1244,11 @@ export function OctoDiagram({
           }}
         >
           {otherBody}
-          {layout && diagramType === 'flow' && <DiagramSvg layout={layout} settings={diagram.settings} theme={theme} drillable={drillable} onDrill={drillInto} onToggleCollapse={toggleCollapsed} onLink={onLinkClick ?? openExternalLink} onSelect={detailsPanel || onSelect ? select : undefined} selected={selected} emphasis={emphasis} icons={icons} hovered={hovered} animation={dragPlacement ? 'none' : animation} revealCount={revealCount} drawPace={drawPace} iconEpoch={iconEpoch} iconSet={iconSet} zoom={transform.k} />}
+          {layout && diagramType === 'flow' && <DiagramSvg layout={layout} settings={diagram.settings} theme={theme} drillable={drillable} onDrill={drillInto} onToggleCollapse={toggleCollapsed} onLink={onLinkClick ?? openExternalLink} onSelect={detailsPanel || onSelect || editable ? pickNode : undefined} selected={null} onSelectEdge={editable ? pickEdge : undefined} selectedEdges={selectedEdgeSet} onSelectLabel={editable ? pickLabel : undefined} selectedLabel={selection?.kind === 'label' ? selection.ids[0] : null} emphasis={emphasis} icons={icons} hovered={hovered} animation={dragPlacement ? 'none' : animation} revealCount={revealCount} drawPace={drawPace} iconEpoch={iconEpoch} iconSet={iconSet} zoom={transform.k} />}
           {snapGuides?.x && <line x1={snapGuides.x.at} y1={snapGuides.x.from - 8} x2={snapGuides.x.at} y2={snapGuides.x.to + 8} stroke={theme.palette.pink.solid} strokeWidth={1 / transform.k} pointerEvents="none" />}
           {snapGuides?.y && <line x1={snapGuides.y.from - 8} y1={snapGuides.y.at} x2={snapGuides.y.to + 8} y2={snapGuides.y.at} stroke={theme.palette.pink.solid} strokeWidth={1 / transform.k} pointerEvents="none" />}
-          {layout && diagramType === 'flow' && movable && selected && !dragPlacement && (() => {
+          {layout && diagramType === 'flow' && selection?.kind === 'node' && !dragPlacement && <SelectionOutlines layout={layout} ids={selection.ids} theme={theme} zoom={transform.k} />}
+          {layout && diagramType === 'flow' && movable && selected && selection?.kind === 'node' && selection.ids.length === 1 && !dragPlacement && (() => {
             const n = layout.nodes.find((node) => node.id === selected);
             if (!n || !canResizeNode(n)) return null;
             const size = 10 / transform.k;
@@ -1285,7 +1461,7 @@ export function OctoDiagram({
         </div>
       )}
 
-      {chrome && flows.length > 0 && (
+      {chrome && flows.length > 0 && !(toolbarShown && !flow) && (
         <div className={`od-player${flow ? ' od-player-active' : ''}`} role="group" aria-label="Flows">
           {flow ? (
             <>
@@ -1322,7 +1498,7 @@ export function OctoDiagram({
         </div>
       )}
 
-      {detailsPanel && selectedNode && (
+      {detailsPanel && selectedNode && !editable && selection?.kind === 'node' && selection.ids.length === 1 && (
         <aside className="od-panel" aria-label={`Details for ${selectedNode.label}`}>
           <header className="od-panel-header">
             <div>
@@ -1459,6 +1635,28 @@ export function OctoDiagram({
         );
       })()}
 
+      {toolbarShown && selection && (
+        <ElementToolbar
+          selection={selection}
+          ctx={toolbarCtx}
+          theme={theme}
+          icons={icons}
+          iconSet={iconSet}
+          container={containerRef}
+          avoid={selectionScreenBox}
+          onAction={runAction}
+          onOpenGroup={(id) => {
+            if (drillable.has(id)) drillInto(id);
+          }}
+          canOpenGroup={(id) => drillable.has(id)}
+          editing={editingBox}
+          onStartEdit={() => setEditing(true)}
+          onCommitEdit={commitEdit}
+          onCancelEdit={cancelEdit}
+          notice={toolbarNotice}
+        />
+      )}
+
       {toast && (
         <div className="od-toast" role="status">
           {toast}
@@ -1513,6 +1711,132 @@ function canvasMeasurer(fontFamily: string, theme?: Theme): TextMeasurer | undef
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+type Box = { x: number; y: number; width: number; height: number };
+
+function union(boxes: Box[]): Box | null {
+  if (!boxes.length) return null;
+  const x = Math.min(...boxes.map((b) => b.x));
+  const y = Math.min(...boxes.map((b) => b.y));
+  return { x, y, width: Math.max(...boxes.map((b) => b.x + b.width)) - x, height: Math.max(...boxes.map((b) => b.y + b.height)) - y };
+}
+
+const toScreen = (b: Box, t: Transform): ScreenRect => ({ x: b.x * t.k + t.x, y: b.y * t.k + t.y, width: b.width * t.k, height: b.height * t.k });
+
+/** The selection's box on screen (container coordinates), so the toolbar can stay clear of it. */
+function screenBoxOf(layout: DiagramLayout, selection: DiagramSelection, t: Transform): ScreenRect | null {
+  const boxes: Box[] = [];
+  for (const id of selection.ids) {
+    if (selection.kind === 'edge') {
+      const edge = layout.edges.find((e) => e.id === id);
+      if (!edge || !edge.points.length) continue;
+      const xs = edge.points.map((p) => p.x);
+      const ys = edge.points.map((p) => p.y);
+      boxes.push({ x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) });
+      if (edge.label) boxes.push(edge.label);
+    } else {
+      const node = layout.nodes.find((n) => n.id === id);
+      if (!node) continue;
+      if (selection.kind !== 'label') boxes.push(node);
+      if (node.labelBox) boxes.push(node.labelBox);
+    }
+  }
+  const box = union(boxes);
+  return box && toScreen(box, t);
+}
+
+/** Where the inline text editor goes: over the element's label, in screen space. */
+function editorBox(layout: DiagramLayout, selection: DiagramSelection, t: Transform, theme: Theme, typeface: string, initial: string, edgeProperties: Record<string, string> | undefined): ToolbarEditing | null {
+  const id = selection.ids[0];
+  if (!id) return null;
+  const k = t.k;
+  const family = (face: string | undefined) => fontFamilyFor(theme, face ?? typeface);
+  const fit = (size: number) => Math.max(11, size * k);
+  const minWidth = (text: string, size: number) => Math.max(80, (text.length + 4) * size * 0.6);
+  if (selection.kind === 'edge') {
+    const edge = layout.edges.find((e) => e.id === id);
+    if (!edge || edge.points.length < 2) return null;
+    const size = labelSizeOf(edgeProperties?.labelSize) ?? theme.text.edge.size;
+    let cx: number;
+    let cy: number;
+    if (edge.label) {
+      cx = edge.label.x + edge.label.width / 2;
+      cy = edge.label.y + edge.label.height / 2;
+    } else {
+      const i = Math.floor((edge.points.length - 1) / 2);
+      const a = edge.points[i]!;
+      const b = edge.points[i + 1]!;
+      cx = (a.x + b.x) / 2;
+      cy = (a.y + b.y) / 2;
+    }
+    const width = Math.max(minWidth(initial, fit(size)), (edge.label?.width ?? 0) * k + 16);
+    const height = fit(size) * 1.5 + 8;
+    return { rect: { x: cx * k + t.x - width / 2, y: cy * k + t.y - height / 2, width, height }, fontSize: fit(size), fontFamily: family(undefined), align: 'center', initial };
+  }
+  const node = layout.nodes.find((n) => n.id === id);
+  if (!node) return null;
+  const face = node.properties.typeface;
+  if (node.kind === 'group') {
+    const size = textSizeOf(node.properties.textSize) ?? theme.text.group.size;
+    const left = node.x + (node.properties.icon ? 40 : 16) - 6;
+    const height = size * 1.5 + 8;
+    const box = { x: left, y: node.y + GROUP_METRICS.headerTop + (size * 0.8) / 2 - height / 2 + 2, width: Math.max(160, Math.min(node.width - (left - node.x) - 12, 320)), height };
+    const rect = toScreen(box, t);
+    return { rect: { ...rect, width: Math.max(rect.width, minWidth(initial, fit(size))), height: Math.max(rect.height, fit(size) * 1.5 + 8) }, fontSize: fit(size), fontFamily: family(face), align: 'left', initial };
+  }
+  const size = textSizeOf(node.properties.textSize) ?? theme.text.node.size;
+  const fontSize = fit(size);
+  if (node.labelBox || node.variant === 'icon') {
+    const lb = node.labelBox ?? { x: node.x - 40, y: node.y + node.height + 8, width: node.width + 80, height: size * 1.4 };
+    const rect = toScreen(lb, t);
+    const width = Math.max(rect.width + 16, minWidth(initial, fontSize));
+    const height = fontSize * 1.5 + 8;
+    return { rect: { x: rect.x + rect.width / 2 - width / 2, y: rect.y - 4, width, height }, fontSize, fontFamily: family(face), align: 'center', initial };
+  }
+  const iconWidth = node.properties.icon ? NODE_METRICS.iconSize + NODE_METRICS.iconGap : 0;
+  const box = { x: node.x + NODE_METRICS.paddingX + iconWidth - 6, y: node.y, width: node.width - NODE_METRICS.paddingX * 2 - iconWidth + 12, height: node.height };
+  const rect = toScreen(box, t);
+  const width = Math.max(rect.width, minWidth(initial, fontSize));
+  const height = fontSize * 1.5 + 8;
+  return {
+    rect: { x: rect.x + rect.width / 2 - width / 2, y: rect.y + rect.height / 2 - height / 2, width, height },
+    fontSize,
+    fontFamily: family(face),
+    align: textAlignOf(node.properties.textAlign) ?? 'center',
+    initial,
+  };
+}
+
+/** 1.5px accent outline with four small corner handles around each selected box or group (handles are visual only). */
+function SelectionOutlines({ layout, ids, theme, zoom }: { layout: DiagramLayout; ids: string[]; theme: Theme; zoom: number }) {
+  const s = 1 / Math.max(zoom, 0.05);
+  const pad = 5 * s;
+  const handle = 8 * s;
+  return (
+    <g className="od-selection" pointerEvents="none">
+      {ids.map((id) => {
+        const n = layout.nodes.find((node) => node.id === id);
+        if (!n) return null;
+        const x = n.x - pad;
+        const y = n.y - pad;
+        const w = n.width + pad * 2;
+        const h = n.height + pad * 2;
+        return (
+          <g key={id} data-selected-id={id}>
+            <rect x={x} y={y} width={w} height={h} rx={n.kind === 'group' ? theme.radius.lg + pad : 2 * s} fill="none" stroke={theme.color.accent} strokeWidth={1.5 * s} />
+            {ids.length === 1 &&
+              [
+                [x, y],
+                [x + w, y],
+                [x, y + h],
+                [x + w, y + h],
+              ].map(([cx, cy], i) => <rect key={i} x={cx! - handle / 2} y={cy! - handle / 2} width={handle} height={handle} rx={2 * s} fill={theme.color.raised} stroke={theme.color.accent} strokeWidth={1.5 * s} />)}
+          </g>
+        );
+      })}
+    </g>
+  );
 }
 
 // Overlay chrome, styled from the theme's CSS variables (see themeCssVariables).
