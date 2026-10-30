@@ -20,8 +20,11 @@ import { detectDiagramType, type DiagramType } from '../dsl/detect';
 import { parseErd } from '../dsl/erd';
 import { parseSequence } from '../dsl/sequence';
 import { BpmnSvg, layoutBpmn } from '../bpmn/bpmn';
-import { arrangeErd, ErdSvg, layoutErd, type ErdLayout } from '../erd/erd';
-import { layoutSequence, SequenceSvg } from '../sequence/sequence';
+import { arrangeErd, ErdSvg, layoutErd, ERD_METRICS, type ErdLayout } from '../erd/erd';
+import { layoutSequence, SEQUENCE_METRICS, SequenceSvg, type SequenceLayout } from '../sequence/sequence';
+import { erdControls, erdEditableText, pruneErdSelection, runErdAction, type ErdToolbarAction } from './toolbar/erd';
+import { erdToolbarDelegate, sequenceToolbarDelegate } from './toolbar/ErdSequenceControls';
+import { pruneSequenceSelection, runSequenceAction, sequenceControls, sequenceEditableText, type SequenceToolbarAction } from './toolbar/sequence';
 import { parseDiagram } from '../dsl/parse';
 import { importEraserJson, looksLikeEraserJson } from '../eraser/importJson';
 import type { Diagnostic } from '../dsl/types';
@@ -871,12 +874,13 @@ export function OctoDiagram({
       event.preventDefault();
       if (selection) select(null);
       else stopFlow();
-    } else if (editable && selection && (event.key === 'Delete' || event.key === 'Backspace')) {
+    } else if ((editable || otherEditable) && selection && (event.key === 'Delete' || event.key === 'Backspace')) {
       // With the toolbar, Delete / Backspace remove the selection (Backspace still goes up a level when nothing is selected).
       event.preventDefault();
-      runAction({ type: 'delete' });
+      if (editable) runAction({ type: 'delete' });
+      else runOther({ type: 'delete' });
       containerRef.current?.focus({ preventScroll: true });
-    } else if (editable && selection && event.key === 'Enter' && event.target === event.currentTarget && toolbarControls(selection, toolbarCtx).includes('editText')) {
+    } else if ((editable || otherEditable) && selection && event.key === 'Enter' && event.target === event.currentTarget && (activeControls as readonly string[]).includes('editText')) {
       event.preventDefault();
       setEditing(true);
     } else if (event.key === 'Escape' && seqStep !== null) {
@@ -931,6 +935,21 @@ export function OctoDiagram({
   );
   const pickEdge = useCallback((id: string) => setSelection(shiftClick.current ? toggleInSelection(selectionRef.current, 'edge', id) : { kind: 'edge', ids: [id] }), [setSelection]);
   const pickLabel = useCallback((id: string) => setSelection({ kind: 'label', ids: [id] }), [setSelection]);
+  // ERD and sequence diagrams have their own toolbar: tables / relationships, participants / messages.
+  const otherEditable = !!onSourceChange && chrome && (diagramType === 'erd' || diagramType === 'sequence') && !imported && !streaming && revealCount === undefined;
+  const pickOther = useCallback(
+    (kind: 'node' | 'edge', id: string) => {
+      // The click that ends a drag or a pan isn't a selection.
+      if (panned.current) {
+        panned.current = false;
+        return;
+      }
+      setSelection(shiftClick.current ? toggleInSelection(selectionRef.current, kind, id) : { kind, ids: [id] });
+    },
+    [setSelection],
+  );
+  const pickTable = useCallback((id: string) => pickOther('node', id), [pickOther]);
+  const pickOtherEdge = useCallback((id: string) => pickOther('edge', id), [pickOther]);
   const selectedEdgeSet = useMemo(() => new Set(selection?.kind === 'edge' ? selection.ids : []), [selection]);
   const toolbarCtx = useMemo<ToolbarContext>(() => {
     const sources = new Map(view.edges.map((e) => [e.id, e.sources]));
@@ -944,6 +963,12 @@ export function OctoDiagram({
     const next = pruneSelection(current, new Set(view.nodes.keys()), new Set(view.edges.map((e) => e.id)));
     if (next !== current) setSelection(next);
   }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const current = selectionRef.current;
+    if (!current || (!erd && !sequence)) return;
+    const next = erd ? pruneErdSelection(current, erd) : pruneSequenceSelection(current, sequence!);
+    if (next !== current) setSelection(next);
+  }, [erd, sequence]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [editing, setEditing] = useState(false);
   const selectionKey = selection ? `${selection.kind}:${selection.ids.join('|')}` : '';
@@ -966,6 +991,15 @@ export function OctoDiagram({
     setCollapsedGroups((all) => (all.has(rename.from) ? new Set([...all].map((id) => (id === rename.from ? rename.to : id))) : all));
     if (placementsProp === undefined) setOwnPlacements((all) => renamePlacements(all, rename));
   }, [diagram]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A renamed table or participant keeps its collapsed state and hand placement.
+  useEffect(() => {
+    const rename = pendingRename.current;
+    const names = erd?.entities ?? sequence?.participants;
+    if (!rename || !names?.has(rename.to)) return;
+    pendingRename.current = null;
+    setErdCollapsed((all) => (all.has(rename.from) ? new Set([...all].map((id) => (id === rename.from ? rename.to : id))) : all));
+    if (placementsProp === undefined) setOwnPlacements((all) => renamePlacements(all, rename));
+  }, [erd, sequence]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyAction = useCallback(
     (action: ToolbarAction): ToolbarResult => {
@@ -993,16 +1027,45 @@ export function OctoDiagram({
     },
     [applyAction],
   );
+  const applyOther = useCallback(
+    (action: ErdToolbarAction | SequenceToolbarAction): ToolbarResult => {
+      if (!onSourceChange) return { ok: false };
+      const result: ToolbarResult = erd
+        ? runErdAction(source, action as ErdToolbarAction, selectionRef.current, erd)
+        : sequence
+          ? runSequenceAction(source, action as SequenceToolbarAction, selectionRef.current, sequence)
+          : { ok: false };
+      if (!result.ok) {
+        if (result.reason) setToolbarNotice(result.reason);
+        return result;
+      }
+      setToolbarNotice(null);
+      if (result.renamed) pendingRename.current = result.renamed;
+      onSourceChange(result.source, result.renamed ? { label: result.label, renamed: result.renamed } : { label: result.label });
+      if (!sameSelection(result.selection, selectionRef.current)) setSelection(result.selection);
+      return result;
+    },
+    [onSourceChange, source, erd, sequence, setSelection],
+  );
+  const runOther = useCallback(
+    (action: ErdToolbarAction | SequenceToolbarAction) => {
+      const result = applyOther(action);
+      if (result.ok && !result.selection) containerRef.current?.focus({ preventScroll: true });
+      return result.ok || !result.reason;
+    },
+    [applyOther],
+  );
   const commitEdit = useCallback(
     (text: string) => {
-      const result = applyAction({ type: 'editText', text });
+      const result = otherEditable ? applyOther({ type: 'editText', text }) : applyAction({ type: 'editText', text });
       if (!result.ok && result.reason) return false;
       setEditing(false);
       containerRef.current?.focus({ preventScroll: true });
       return true;
     },
-    [applyAction],
+    [applyAction, applyOther, otherEditable],
   );
+  const activeControls: readonly string[] = editable && selection ? toolbarControls(selection, toolbarCtx) : otherEditable && selection ? (erd ? erdControls(selection, erd) : sequence ? sequenceControls(selection, sequence) : []) : [];
   const cancelEdit = useCallback(() => {
     setEditing(false);
     containerRef.current?.focus({ preventScroll: true });
@@ -1074,8 +1137,10 @@ export function OctoDiagram({
   const interactive = !!(detailsPanel || onSelect);
   const otherBody =
     erd && arrangedErd ? (
-      <ErdSvg layout={arrangedErd} diagram={erd} theme={theme} icons={icons} iconSet={iconSet} reveal={revealCount} focus={selected} onSelect={
-          interactive
+      <ErdSvg layout={arrangedErd} diagram={erd} theme={theme} icons={icons} iconSet={iconSet} reveal={revealCount} focus={otherEditable ? null : selected} selectedLinks={otherEditable ? selectedEdgeSet : undefined} onSelectLink={otherEditable ? pickOtherEdge : undefined} onSelect={
+          otherEditable
+            ? pickTable
+            : interactive
             ? (name) => {
                 // The click that ends a table drag isn't a selection.
                 if (panned.current) {
@@ -1095,9 +1160,13 @@ export function OctoDiagram({
         iconSet={iconSet}
         reveal={revealCount}
         current={seqStep}
-        focus={selected}
+        focus={otherEditable ? null : selected}
+        selectedMessages={otherEditable ? selectedEdgeSet : undefined}
+        onSelectMessage={otherEditable ? pickOtherEdge : undefined}
         onSelect={
-          interactive
+          otherEditable
+            ? pickTable
+            : interactive
             ? (name) => {
                 if (panned.current) {
                   panned.current = false;
@@ -1184,6 +1253,43 @@ export function OctoDiagram({
     toolbarShown && editing && layout && selection
       ? editorBox(layout, selection, transform, theme, diagram.settings.typeface, editableText(selection, toolbarCtx), selectedEdges(selection, toolbarCtx)[0]?.properties)
       : null;
+  // ERD / sequence toolbar: tables and participants as boxes for outlines and placement.
+  const otherBoxes = otherEditable ? (erd && arrangedErd ? erdBoxLayout(arrangedErd) : sequenceLayout ? sequenceBoxLayout(sequenceLayout) : null) : null;
+  const otherDelegate =
+    otherEditable && selection && otherBoxes
+      ? erd
+        ? erdToolbarDelegate({
+            selection,
+            diagram: erd,
+            theme,
+            icons,
+            iconSet,
+            run: runOther,
+            keyColumns: {
+              on: selection.kind === 'node' && selection.ids.every((id) => erdCollapsed.has(id)),
+              toggle: () => {
+                const ids = selection.kind === 'node' ? selection.ids : [];
+                setErdCollapsed((all) => {
+                  const on = ids.every((id) => all.has(id));
+                  const next = new Set(all);
+                  for (const id of ids) {
+                    if (on) next.delete(id);
+                    else next.add(id);
+                  }
+                  return next;
+                });
+              },
+            },
+          })
+        : sequence
+          ? sequenceToolbarDelegate({ selection, diagram: sequence, theme, icons, iconSet, run: runOther, columns: sequenceLayout?.participants.map((p) => p.participant.name) })
+          : null
+      : null;
+  const otherScreenBox = otherDelegate && selection ? otherSelectionBox(selection, transform, arrangedErd, sequenceLayout) : null;
+  const otherEditingBox =
+    otherDelegate && editing && selection
+      ? otherEditorBox(selection, transform, theme, arrangedErd, sequenceLayout, erd ? erdEditableText(selection, erd) : sequence ? sequenceEditableText(selection, sequence) : '')
+      : null;
 
   return (
     <div
@@ -1199,7 +1305,7 @@ export function OctoDiagram({
         width="100%"
         height="100%"
         // Shift-click adds to the selection; it must not select the diagram's text.
-        style={{ display: 'block', cursor: dragging ? 'grabbing' : 'default', userSelect: editable ? 'none' : undefined }}
+        style={{ display: 'block', cursor: dragging ? 'grabbing' : 'default', userSelect: editable || otherEditable ? 'none' : undefined }}
         onPointerDownCapture={onPointerDownCapture}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -1231,6 +1337,7 @@ export function OctoDiagram({
           {snapGuides?.x && <line x1={snapGuides.x.at} y1={snapGuides.x.from - 8} x2={snapGuides.x.at} y2={snapGuides.x.to + 8} stroke={theme.palette.pink.solid} strokeWidth={1 / transform.k} pointerEvents="none" />}
           {snapGuides?.y && <line x1={snapGuides.y.from - 8} y1={snapGuides.y.at} x2={snapGuides.y.to + 8} y2={snapGuides.y.at} stroke={theme.palette.pink.solid} strokeWidth={1 / transform.k} pointerEvents="none" />}
           {layout && diagramType === 'flow' && selection?.kind === 'node' && !dragPlacement && <SelectionOutlines layout={layout} ids={selection.ids} theme={theme} zoom={transform.k} />}
+          {otherBoxes && selection?.kind === 'node' && !dragPlacement && <SelectionOutlines layout={otherBoxes} ids={selection.ids} theme={theme} zoom={transform.k} />}
           {layout && diagramType === 'flow' && movable && selected && selection?.kind === 'node' && selection.ids.length === 1 && !dragPlacement && (() => {
             const n = layout.nodes.find((node) => node.id === selected);
             if (!n || !canResizeNode(n)) return null;
@@ -1532,7 +1639,7 @@ export function OctoDiagram({
         </aside>
       )}
 
-      {detailsPanel && erd && selected && erd.entities.get(selected) && (() => {
+      {detailsPanel && !otherEditable && erd && selected && erd.entities.get(selected) && (() => {
         const entity = erd.entities.get(selected)!;
         const related = erd.relationships.filter((r) => r.from.entity === entity.name || r.to.entity === entity.name);
         const many = (r: (typeof related)[number], end: 'from' | 'to') => (end === 'from' ? r.connector === '>' || r.connector === '<>' : r.connector === '<' || r.connector === '<>');
@@ -1584,7 +1691,7 @@ export function OctoDiagram({
         );
       })()}
 
-      {detailsPanel && sequence && selected && sequence.participants.get(selected) && (() => {
+      {detailsPanel && !otherEditable && sequence && selected && sequence.participants.get(selected) && (() => {
         const participant = sequence.participants.get(selected)!;
         const messages = sequence.events.flatMap((e) => (e.type === 'message' && (e.from === participant.name || e.to === participant.name) ? [e] : []));
         const label = (name: string) => sequence.participants.get(name)?.label ?? name;
@@ -1617,6 +1724,25 @@ export function OctoDiagram({
           </aside>
         );
       })()}
+
+      {otherDelegate && selection && (
+        <ElementToolbar
+          selection={selection}
+          ctx={toolbarCtx}
+          theme={theme}
+          icons={icons}
+          iconSet={iconSet}
+          container={containerRef}
+          avoid={otherScreenBox}
+          onAction={() => false}
+          editing={otherEditingBox}
+          onStartEdit={() => setEditing(true)}
+          onCommitEdit={commitEdit}
+          onCancelEdit={cancelEdit}
+          notice={toolbarNotice}
+          delegate={otherDelegate}
+        />
+      )}
 
       {toolbarShown && selection && (
         <ElementToolbar
@@ -1789,6 +1915,88 @@ function editorBox(layout: DiagramLayout, selection: DiagramSelection, t: Transf
     align: textAlignOf(node.properties.textAlign) ?? 'center',
     initial,
   };
+}
+
+/** ERD tables as a box-only layout, for selection outlines. */
+function erdBoxLayout(layout: ErdLayout): DiagramLayout {
+  return { width: layout.width, height: layout.height, edges: [], nodes: layout.tables.map((t) => ({ id: t.entity.name, kind: 'node', x: t.x, y: t.y, width: t.width, height: t.height })) } as unknown as DiagramLayout;
+}
+
+/** Sequence participant headers as a box-only layout, for selection outlines. */
+function sequenceBoxLayout(layout: SequenceLayout): DiagramLayout {
+  const { top, header } = SEQUENCE_METRICS;
+  return { width: layout.width, height: layout.height, edges: [], nodes: layout.participants.map((p) => ({ id: p.participant.name, kind: 'node', x: p.x - p.width / 2, y: top, width: p.width, height: header })) } as unknown as DiagramLayout;
+}
+
+/** Layout-space box of a relationship or message (with its label). */
+function otherEdgeBox(id: string, erd: ErdLayout | null, seq: SequenceLayout | null): Box | null {
+  if (erd) {
+    const link = erd.links.find((l) => l.id === id);
+    if (!link) return null;
+    const xs = link.points.map((p) => p.x);
+    const ys = link.points.map((p) => p.y);
+    return { x: Math.min(...xs), y: Math.min(...ys) - (link.label ? 20 : 0), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) + (link.label ? 20 : 0) };
+  }
+  const m = seq?.messages[Number(id.slice(1))];
+  if (!m || !/^m\d+$/.test(id)) return null;
+  if (m.self) return { x: m.from, y: m.y - 4, width: 52 + (m.label?.length ?? 0) * 7, height: 34 };
+  return { x: Math.min(m.from, m.to), y: m.y - 22, width: Math.abs(m.to - m.from), height: 28 };
+}
+
+/** The selection's screen box for ERD / sequence diagrams (so the toolbar stays clear of it). */
+function otherSelectionBox(selection: DiagramSelection, t: Transform, erd: ErdLayout | null, seq: SequenceLayout | null): ScreenRect | null {
+  const boxes: Box[] = [];
+  for (const id of selection.ids) {
+    if (selection.kind === 'edge') {
+      const box = otherEdgeBox(id, erd, seq);
+      if (box) boxes.push(box);
+    } else if (erd) {
+      const table = erd.tables.find((x) => x.entity.name === id);
+      if (table) boxes.push(table);
+    } else if (seq) {
+      const p = seq.participants.find((x) => x.participant.name === id);
+      if (p) boxes.push({ x: p.x - p.width / 2, y: SEQUENCE_METRICS.top, width: p.width, height: SEQUENCE_METRICS.header });
+    }
+  }
+  const box = union(boxes);
+  return box && toScreen(box, t);
+}
+
+/** Where the inline editor goes for a table / participant name or a relationship / message label. */
+function otherEditorBox(selection: DiagramSelection, t: Transform, theme: Theme, erd: ErdLayout | null, seq: SequenceLayout | null, initial: string): ToolbarEditing | null {
+  const id = selection.ids[0];
+  if (!id) return null;
+  const k = t.k;
+  const fit = (size: number) => Math.max(11, size * k);
+  const minWidth = (size: number) => Math.max(120, (initial.length + 4) * size * 0.6);
+  const at = (cx: number, cy: number, size: number, width: number, align: 'left' | 'center' = 'center'): ToolbarEditing => {
+    const fontSize = fit(size);
+    const w = Math.max(width * k, minWidth(fontSize));
+    const h = fontSize * 1.5 + 8;
+    const x = align === 'left' ? cx * k + t.x - 6 : cx * k + t.x - w / 2;
+    return { rect: { x, y: cy * k + t.y - h / 2, width: w, height: h }, fontSize, fontFamily: theme.font.sans, align, initial };
+  };
+  if (selection.kind === 'edge') {
+    if (erd) {
+      const link = erd.links.find((l) => l.id === id);
+      if (!link) return null;
+      const pts = link.points;
+      return at((pts[0]!.x + pts.at(-1)!.x) / 2, Math.min(...pts.map((p) => p.y)) - 10, ERD_METRICS.labelSize, 120);
+    }
+    const m = seq?.messages[Number(id.slice(1))];
+    if (!m) return null;
+    if (m.self) return at(m.from + 52, m.y + 12, SEQUENCE_METRICS.labelSize, 160, 'left');
+    return at((m.from + m.to) / 2, m.y - 12, SEQUENCE_METRICS.labelSize, Math.abs(m.to - m.from) - 24);
+  }
+  if (erd) {
+    const table = erd.tables.find((x) => x.entity.name === id);
+    if (!table) return null;
+    const left = table.x + ERD_METRICS.paddingX + (table.entity.properties.icon ? ERD_METRICS.iconWidth : 0);
+    return at(left, table.y + ERD_METRICS.header / 2, ERD_METRICS.nameSize, table.width - (left - table.x) - 34, 'left');
+  }
+  const p = seq?.participants.find((x) => x.participant.name === id);
+  if (!p) return null;
+  return at(p.x, SEQUENCE_METRICS.top + SEQUENCE_METRICS.header / 2, SEQUENCE_METRICS.nameSize, p.width - 16);
 }
 
 /** 1.5px accent outline with four small corner handles around each selected box or group (handles are visual only). */

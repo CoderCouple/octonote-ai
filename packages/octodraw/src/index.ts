@@ -38,9 +38,9 @@ export { exportEraserJson, exportEraserXml } from './export/eraserJson';
 export { registerPdfFonts, type PdfFont, collectFontCss, embedSnippets, svgToPdf, svgToPng } from './export/browser';
 export { detectDiagramType } from './dsl/detect';
 export type { DiagramType } from './dsl/detect';
-export { parseErd } from './dsl/erd';
+export { ERD_KEYWORDS, parseErd, parseErdWithSpans } from './dsl/erd';
 export type * from './dsl/erd';
-export { parseSequence } from './dsl/sequence';
+export { parseSequence, parseSequenceWithSpans, SEQUENCE_KEYWORDS } from './dsl/sequence';
 export type * from './dsl/sequence';
 export { ErdSvg, layoutErd } from './erd/erd';
 export type { ErdLayout } from './erd/erd';
@@ -136,3 +136,36 @@ export type { CanvasChangeMeta } from './canvas/useCanvasHistory';
 export { CANVAS_TEMPLATES, FIGURE_TEMPLATES, figureTitle, type CanvasTemplate } from './canvas/templates';
 export { arrangeLayout, canResizeNode, placementKey } from './layout/arrange';
 export type { NodePlacement, NodePlacements, ViewPlacements } from './layout/arrange';
+export {
+  applyErdEdits,
+  deleteEntity,
+  deleteRelationship,
+  ERD_CONNECTORS,
+  erdNameProblem,
+  renameEntity,
+  setEntityProperty,
+  setRelationshipConnector,
+  setRelationshipLabel,
+  setRelationshipProperty,
+} from './dsl/edit-erd';
+export type { ErdEdit } from './dsl/edit-erd';
+export {
+  applySequenceEdits,
+  deleteMessage,
+  deleteParticipant,
+  messageDirectionOf,
+  messageLineOf,
+  participantMessageCount,
+  renameParticipant,
+  sequenceNameProblem,
+  setMessageDirection,
+  setMessageLabel,
+  setMessageLine,
+  setMessageProperty,
+  setParticipantProperty,
+} from './dsl/edit-sequence';
+export type { MessageDirection, MessageLine, SequenceEdit } from './dsl/edit-sequence';
+export { CARDINALITIES, erdActionToEdits, erdControls, erdTarget, runErdAction } from './react/toolbar/erd';
+export type { ErdControl, ErdTarget, ErdToolbarAction } from './react/toolbar/erd';
+export { runSequenceAction, sequenceActionToEdits, sequenceControls, sequenceTarget } from './react/toolbar/sequence';
+export type { SequenceControl, SequenceTarget, SequenceToolbarAction } from './react/toolbar/sequence';

@@ -15,6 +15,8 @@ import { Icon, Wash, WatercolorDefs } from '../react/DiagramSvg';
 const HEADER = 38;
 const ROW = 26;
 const PAD_X = 14;
+/** Table header height and side padding (for overlays such as the inline name editor). */
+export const ERD_METRICS = { header: HEADER, paddingX: PAD_X, iconWidth: 26, nameSize: 14, labelSize: 12 } as const;
 const MIN_WIDTH = 190;
 const GAP = 28;
 /** Relationship lines for tables at their current positions (after layout or hand placement). */
@@ -177,9 +179,13 @@ export interface ErdSvgProps {
   onSelect?: (table: string) => void;
   /** Collapse or expand a table (its header gets a toggle). */
   onToggle?: (table: string) => void;
+  /** Relationships drawn selected (accent colour), by id. */
+  selectedLinks?: ReadonlySet<string>;
+  /** Makes relationships clickable (a wide invisible hit line, `data-edge-id`). */
+  onSelectLink?: (id: string) => void;
 }
 
-export function ErdSvg({ layout, diagram, theme, icons, iconSet, reveal, focus, onSelect, onToggle }: ErdSvgProps) {
+export function ErdSvg({ layout, diagram, theme, icons, iconSet, reveal, focus, onSelect, onToggle, selectedLinks, onSelectLink }: ErdSvgProps) {
   const f = fontOf(theme);
   const crows = diagram.settings.notation === 'crows-feet';
   const tables = reveal === undefined ? layout.tables : layout.tables.slice(0, reveal);
@@ -194,11 +200,27 @@ export function ErdSvg({ layout, diagram, theme, icons, iconSet, reveal, focus, 
     <g fontFamily={f.family}>
       {watercolor && <WatercolorDefs />}
       {links.map((link) => {
-        const color = link.color ? (swatchFor(theme, link.color)?.ink ?? link.color) : theme.color.edge;
+        const picked = selectedLinks?.has(link.id) ?? false;
+        const color = picked ? theme.color.accent : link.color ? (swatchFor(theme, link.color)?.ink ?? link.color) : theme.color.edge;
         const pts = link.points;
+        const polyline = pts.map((p) => `${p.x},${p.y}`).join(' ');
         return (
-          <g key={link.id} className={dimLink(link)} stroke={color} fill="none" strokeWidth={theme.stroke.edge * (focus && !dimLink(link) ? 2 : 1.2)}>
-            <polyline points={pts.map((p) => `${p.x},${p.y}`).join(' ')} strokeLinejoin="round" />
+          <g key={link.id} className={dimLink(link)} stroke={color} fill="none" strokeWidth={theme.stroke.edge * ((focus && !dimLink(link)) || picked ? 2 : 1.2)}>
+            <polyline points={polyline} strokeLinejoin="round" />
+            {onSelectLink && (
+              <polyline
+                data-edge-id={link.id}
+                points={polyline}
+                stroke="transparent"
+                strokeWidth={14}
+                pointerEvents="stroke"
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectLink(link.id);
+                }}
+              />
+            )}
             <Cardinality at={pts[0]!} toward={pts[1]!} many={link.startMany} crows={crows} color={color} theme={theme} />
             <Cardinality at={pts.at(-1)!} toward={pts.at(-2)!} many={link.endMany} crows={crows} color={color} theme={theme} />
             {link.label && (

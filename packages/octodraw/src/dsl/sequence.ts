@@ -1,5 +1,5 @@
-import { findClosingBracket, splitOutsideQuotes, stripComment, unquote } from './parse';
-import type { Connector, Diagnostic, Legend, Properties, Severity, SourceRange } from './types';
+import { findClosingBracket, propertiesSpan, splitOutsideQuotes, stripComment, unquote } from './parse';
+import type { ColumnSpan, Connector, Diagnostic, Legend, NameSpan, Properties, PropertiesSpan, Severity, SourceRange } from './types';
 
 // Parser for Eraser's sequence diagram syntax:
 //
@@ -49,6 +49,60 @@ export interface SequenceDiagram {
   diagnostics: Diagnostic[];
 }
 
+// --- Source positions (`parseSequenceWithSpans`), for the element toolbar's code edits.
+// Columns are 1-based with an exclusive end, like `SourceRange`.
+
+export type SeqStatementKind = 'message' | 'activate' | 'deactivate' | 'declare';
+
+/** A message, activation or bare declaration line (one statement per line). */
+export interface SeqStatementSpan {
+  index: number;
+  kind: SeqStatementKind;
+  line: number;
+  /** The statement, trimmed, without its comment. */
+  range: ColumnSpan;
+  mentions: SeqMentionSpan[];
+  /** Index into `SequenceSpans.messages` for a message. */
+  message?: number;
+}
+
+/** One place a participant is written (`Name [props]`). */
+export interface SeqMentionSpan {
+  name: string;
+  line: number;
+  statement: number;
+  role: 'from' | 'to' | 'activate' | 'deactivate' | 'declare';
+  /** The name as written (a quoted name keeps its quotes). */
+  nameSpan: NameSpan;
+  props?: PropertiesSpan;
+  /** Name through its `]`. */
+  range: ColumnSpan;
+}
+
+export interface SeqMessageSpan {
+  /** `m<index among messages>`, the order of `SequenceLayout.messages`. */
+  id: string;
+  line: number;
+  statement: number;
+  /** Index into `SequenceDiagram.events`. */
+  event: number;
+  from: SeqMentionSpan;
+  to: SeqMentionSpan;
+  connector: ColumnSpan & { connector: Connector };
+  colon?: ColumnSpan;
+  /** The label after `:`, trimmed (without the message's `[props]`). */
+  label?: ColumnSpan;
+  props?: PropertiesSpan;
+}
+
+export interface SequenceSpans {
+  statements: SeqStatementSpan[];
+  messages: SeqMessageSpan[];
+}
+
+/** Words that start a non-participant line; a participant named like one needs quotes. */
+export const SEQUENCE_KEYWORDS = ['title', 'colorMode', 'styleMode', 'typeface', 'autoNumber', 'activate', 'deactivate', 'legend', 'loop', 'alt', 'opt', 'par', 'break', 'else', 'and'] as const;
+
 const SETTINGS = {
   colorMode: ['pastel', 'bold', 'outline'],
   styleMode: ['shadow', 'plain', 'watercolor'],
@@ -59,6 +113,16 @@ const PARTICIPANT_PROPERTIES = new Set(['icon', 'color', 'label', 'link', 'color
 const BLOCK_KINDS: readonly string[] = ['loop', 'alt', 'opt', 'par', 'break'];
 
 export function parseSequence(source: string): SequenceDiagram {
+  return parse(source);
+}
+
+/** `parseSequence` plus the exact positions of every participant mention, connector, label and `[props]`. */
+export function parseSequenceWithSpans(source: string): { diagram: SequenceDiagram; spans: SequenceSpans } {
+  const spans: SequenceSpans = { statements: [], messages: [] };
+  return { diagram: parse(source, spans), spans };
+}
+
+function parse(source: string, spans?: SequenceSpans): SequenceDiagram {
   const diagnostics: Diagnostic[] = [];
   const participants = new Map<string, Participant>();
   const events: SequenceEvent[] = [];
@@ -154,10 +218,18 @@ export function parseSequence(source: string): SequenceDiagram {
       return;
     }
 
-    const activation = /^(activate|deactivate)\s+(.+)$/.exec(trimmed);
+    const activation = /^(activate|deactivate)\s+(.+)$/d.exec(trimmed);
     if (activation) {
       const name = participant(activation[2]!, line, column + activation[1]!.length + 1);
-      if (name) events.push({ type: activation[1] as 'activate' | 'deactivate', participant: name, range });
+      if (name) {
+        events.push({ type: activation[1] as 'activate' | 'deactivate', participant: name, range });
+        if (spans) {
+          const kind = activation[1] as 'activate' | 'deactivate';
+          const stmt = statement(spans, kind, line, range);
+          const m = mention(activation[2]!, activation.indices![2]![0], column, line, stmt.index, kind);
+          if (m) stmt.mentions.push(m);
+        }
+      }
       return;
     }
 
@@ -198,6 +270,7 @@ export function parseSequence(source: string): SequenceDiagram {
       let label: string | undefined;
       let props: Properties = {};
       const colon = indexOutside(right, ':');
+      const colonAt = colon;
       if (colon >= 0) {
         let tail = right.slice(colon + 1).trim();
         right = right.slice(0, colon);
@@ -215,15 +288,81 @@ export function parseSequence(source: string): SequenceDiagram {
         return;
       }
       events.push({ type: 'message', from, to, connector: connector.token as Connector, label, properties: props, range });
+      if (spans) {
+        const stmt = statement(spans, 'message', line, range);
+        const rightAt = connector.index + connector.token.length;
+        const fromSpan = mention(trimmed.slice(0, connector.index), 0, column, line, stmt.index, 'from')!;
+        const toSpan = mention(colonAt >= 0 ? trimmed.slice(rightAt, rightAt + colonAt) : trimmed.slice(rightAt), rightAt, column, line, stmt.index, 'to')!;
+        stmt.mentions.push(fromSpan, toSpan);
+        stmt.message = spans.messages.length;
+        const span: SeqMessageSpan = {
+          id: `m${spans.messages.length}`,
+          line,
+          statement: stmt.index,
+          event: events.length - 1,
+          from: fromSpan,
+          to: toSpan,
+          connector: { column: column + connector.index, endColumn: column + rightAt, connector: connector.token as Connector },
+        };
+        if (colonAt >= 0) {
+          const at = rightAt + colonAt;
+          span.colon = { column: column + at, endColumn: column + at + 1 };
+          const tailRaw = trimmed.slice(at + 1);
+          let tail = tailRaw.trim();
+          const tailAt = at + 1 + (tailRaw.length - tailRaw.trimStart().length);
+          const propsAt = tail.endsWith(']') ? tail.lastIndexOf('[') : -1;
+          if (propsAt >= 0) {
+            span.props = propertiesSpan(tail.slice(propsAt + 1, -1), column - 1 + tailAt + propsAt, column - 1 + tailAt + tail.length);
+            tail = tail.slice(0, propsAt).trimEnd();
+          }
+          if (tail) span.label = { column: column + tailAt, endColumn: column + tailAt + tail.length };
+        }
+        spans.messages.push(span);
+      }
       return;
     }
 
     // Bare declaration: Name [props]
     if (!participant(trimmed, line, column)) report('error', "Expected a message ('A > B: text'), a block, or a participant", line, column, column + trimmed.length);
+    else if (spans) {
+      const stmt = statement(spans, 'declare', line, range);
+      const m = mention(trimmed, 0, column, line, stmt.index, 'declare');
+      if (m) stmt.mentions.push(m);
+    }
   });
 
   for (const open of stack) report('error', "Missing closing '}'", open.line, 1, 2);
   return { kind: 'sequence', settings, participants, events, legend, diagnostics };
+}
+
+function statement(spans: SequenceSpans, kind: SeqStatementKind, line: number, range: SourceRange): SeqStatementSpan {
+  const stmt: SeqStatementSpan = { index: spans.statements.length, kind, line, range: { column: range.column, endColumn: range.endColumn }, mentions: [] };
+  spans.statements.push(stmt);
+  return stmt;
+}
+
+/** The span of `Name [props]` written in `text`, which starts at 0-based offset `offset` of the trimmed line (at `column`). */
+function mention(text: string, offset: number, column: number, line: number, statement: number, role: SeqMentionSpan['role']): SeqMentionSpan | undefined {
+  const lead = text.length - text.trimStart().length;
+  const m = /^("[^"]*"|[^[]+?)\s*(?:\[(.*)\])?\s*$/d.exec(text.trim());
+  if (!m) return undefined;
+  const at = (i: number) => column + offset + lead + i;
+  const written = m[1]!.trim();
+  const [ns] = m.indices![1]!;
+  const span: SeqMentionSpan = {
+    name: unquote(written),
+    line,
+    statement,
+    role,
+    nameSpan: { name: unquote(written), quoted: written.startsWith('"'), column: at(ns), endColumn: at(ns + written.length) },
+    range: { column: at(ns), endColumn: at(ns + written.length) },
+  };
+  if (m[2] !== undefined) {
+    const [ps, pe] = m.indices![2]!;
+    span.props = propertiesSpan(m[2], at(ps - 1) - 1, at(pe + 1) - 1);
+    span.range = { column: at(ns), endColumn: at(pe + 1) };
+  }
+  return span;
 }
 
 /** First connector outside brackets and quotes; dashes only when surrounded by spaces. */

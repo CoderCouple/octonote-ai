@@ -1,5 +1,5 @@
-import { findClosingBracket, splitOutsideQuotes, stripComment, unquote } from './parse';
-import type { Diagnostic, Legend, Properties, Severity, SourceRange } from './types';
+import { findClosingBracket, propertiesSpan, splitOutsideQuotes, stripComment, unquote } from './parse';
+import type { ColumnSpan, Diagnostic, Legend, NameSpan, Properties, PropertiesSpan, Severity, SourceRange } from './types';
 
 // Parser for Eraser's entity relationship diagram syntax:
 //
@@ -65,6 +65,55 @@ export interface ErdDiagram {
   diagnostics: Diagnostic[];
 }
 
+// --- Source positions (`parseErdWithSpans`), for the element toolbar's code edits.
+// Columns are 1-based with an exclusive end, like `SourceRange`.
+
+/** One declaration of a table (`name [props] { … }`), every one including repeats. */
+export interface ErdEntitySpan {
+  entity: string;
+  line: number;
+  /** The whole statement on its line (name through `{`). */
+  range: ColumnSpan;
+  name: NameSpan;
+  props?: PropertiesSpan;
+  /** The `{`, when the table has a body. */
+  open?: ColumnSpan;
+  /** The matching `}` (same line for `name { }`); missing when never closed. */
+  close?: SourceRange;
+}
+
+/** One end of a relationship: `users.id` is entity `users`, column `id`. */
+export interface ErdEndSpan {
+  /** The table part as written (a quoted name keeps its quotes). */
+  entity: NameSpan;
+  column?: ColumnSpan & { name: string };
+  /** The whole reference. */
+  range: ColumnSpan;
+}
+
+export interface ErdRelationshipSpan {
+  /** The relationship's id (`r0`, `r1`, … in order). */
+  id: string;
+  line: number;
+  range: ColumnSpan;
+  from: ErdEndSpan;
+  to: ErdEndSpan;
+  /** The connector itself (no spaces). */
+  connector: ColumnSpan;
+  colon?: ColumnSpan;
+  /** The label after `:`, trimmed. */
+  label?: ColumnSpan;
+  props?: PropertiesSpan;
+}
+
+export interface ErdSpans {
+  entities: ErdEntitySpan[];
+  relationships: ErdRelationshipSpan[];
+}
+
+/** Words that start a setting line; a table can't be called one of these. */
+export const ERD_KEYWORDS = ['title', 'colorMode', 'styleMode', 'typeface', 'notation'] as const;
+
 const SETTINGS = {
   colorMode: ['pastel', 'bold', 'outline'],
   styleMode: ['shadow', 'plain', 'watercolor'],
@@ -74,6 +123,16 @@ const SETTINGS = {
 const ENTITY_PROPERTIES = new Set(['icon', 'color', 'label', 'colorMode', 'styleMode', 'typeface', 'link']);
 
 export function parseErd(source: string): ErdDiagram {
+  return parse(source);
+}
+
+/** `parseErd` plus the exact positions of names, `[props]`, connectors, labels and braces. */
+export function parseErdWithSpans(source: string): { diagram: ErdDiagram; spans: ErdSpans } {
+  const spans: ErdSpans = { entities: [], relationships: [] };
+  return { diagram: parse(source, spans), spans };
+}
+
+function parse(source: string, spans?: ErdSpans): ErdDiagram {
   const diagnostics: Diagnostic[] = [];
   const entities = new Map<string, ErdEntity>();
   const relationships: ErdRelationship[] = [];
@@ -81,6 +140,7 @@ export function parseErd(source: string): ErdDiagram {
   let legend: Legend | undefined;
   let open: { kind: 'entity'; entity: ErdEntity } | { kind: 'legend' } | undefined;
   let openLine = 0;
+  let openSpan: ErdEntitySpan | undefined;
 
   const report = (severity: Severity, message: string, line: number, column: number, endColumn: number) =>
     diagnostics.push({ severity, message, line, column, endColumn: Math.max(endColumn, column + 1) });
@@ -122,7 +182,9 @@ export function parseErd(source: string): ErdDiagram {
 
     if (trimmed === '}') {
       if (!open) report('error', "Unexpected '}'", line, column, column + 1);
+      if (openSpan) openSpan.close = { line, column, endColumn: column + 1 };
       open = undefined;
+      openSpan = undefined;
       return;
     }
 
@@ -157,7 +219,7 @@ export function parseErd(source: string): ErdDiagram {
     }
 
     // Relationship: ref <connector> ref [: label] [props]
-    const rel = /^("[^"]+"|[^\s<>[\]{}:-][^\s<>[\]{}:]*)\s*(<>|<|>|\s-\s)\s*("[^"]+"|[^\s<>[\]{}:]+)\s*(?::\s*([^[]*))?(?:\[(.*)\])?\s*$/.exec(trimmed);
+    const rel = /^("[^"]+"|[^\s<>[\]{}:-][^\s<>[\]{}:]*)\s*(<>|<|>|\s-\s)\s*("[^"]+"|[^\s<>[\]{}:]+)\s*(:\s*([^[]*))?(?:\[(.*)\])?\s*$/d.exec(trimmed);
     if (rel) {
       const end = (ref: string): ErdEnd => {
         const r = unquote(ref);
@@ -173,15 +235,16 @@ export function parseErd(source: string): ErdDiagram {
         from: end(rel[1]!),
         to: end(rel[3]!),
         connector,
-        label: rel[4]?.trim() || undefined,
-        properties: rel[5] !== undefined ? properties(rel[5], line, column, new Set(['color'])) : {},
+        label: rel[5]?.trim() || undefined,
+        properties: rel[6] !== undefined ? properties(rel[6], line, column, new Set(['color'])) : {},
         range: { line, column, endColumn: column + trimmed.length },
       });
+      if (spans) spans.relationships.push(relationshipSpan(rel, `r${relationships.length - 1}`, line, column, trimmed.length));
       return;
     }
 
     // Entity: name [props] [{ … }]
-    const decl = /^("[^"]+"|[^\s[{]+)\s*(?:\[(.*)\])?\s*(\{\s*(\})?)?\s*$/.exec(trimmed);
+    const decl = /^("[^"]+"|[^\s[{]+)\s*(?:\[(.*)\])?\s*(\{\s*(\})?)?\s*$/d.exec(trimmed);
     if (decl) {
       const name = unquote(decl[1]!);
       if (name === 'legend' && decl[3]) {
@@ -197,9 +260,29 @@ export function parseErd(source: string): ErdDiagram {
         Object.assign(e.properties, properties(decl[2], line, column + trimmed.indexOf('[') + 1, ENTITY_PROPERTIES));
         if (e.properties.label) e.label = e.properties.label;
       }
+      let span: ErdEntitySpan | undefined;
+      if (spans) {
+        const at = (i: number) => column + i;
+        const [ns, ne] = decl.indices![1]!;
+        span = { entity: name, line, range: { column, endColumn: column + trimmed.length }, name: { name, quoted: decl[1]!.startsWith('"'), column: at(ns), endColumn: at(ne) } };
+        if (decl[2] !== undefined) {
+          const [ps, pe] = decl.indices![2]!;
+          span.props = propertiesSpan(decl[2], at(ps - 1) - 1, at(pe + 1) - 1);
+        }
+        if (decl[3]) {
+          const [bs] = decl.indices![3]!;
+          span.open = { column: at(bs), endColumn: at(bs) + 1 };
+          if (decl[4]) {
+            const [cs] = decl.indices![4]!;
+            span.close = { line, column: at(cs), endColumn: at(cs) + 1 };
+          }
+        }
+        spans.entities.push(span);
+      }
       if (decl[3] && !decl[4]) {
         open = { kind: 'entity', entity: e };
         openLine = line;
+        openSpan = span;
       }
       return;
     }
@@ -209,4 +292,50 @@ export function parseErd(source: string): ErdDiagram {
 
   if (open) report('error', "Missing closing '}'", openLine || 1, 1, 2);
   return { kind: 'erd', settings, entities, relationships, legend, diagnostics };
+}
+
+function relationshipSpan(rel: RegExpExecArray, id: string, line: number, column: number, length: number): ErdRelationshipSpan {
+  const at = (i: number) => column + i;
+  const indices = rel.indices!;
+  const end = (group: 1 | 3): ErdEndSpan => {
+    const text = rel[group]!;
+    const [start, stop] = indices[group]!;
+    const range = { column: at(start), endColumn: at(stop) };
+    if (text.startsWith('"')) return { entity: { name: unquote(text), quoted: true, ...range }, range };
+    const dot = text.indexOf('.');
+    if (dot < 0) return { entity: { name: text, quoted: false, ...range }, range };
+    return {
+      entity: { name: text.slice(0, dot), quoted: false, column: at(start), endColumn: at(start + dot) },
+      column: { name: text.slice(dot + 1), column: at(start + dot + 1), endColumn: at(stop) },
+      range,
+    };
+  };
+  // `-` matches with the spaces around it.
+  const [cs, ce] = indices[2]!;
+  const raw = rel[2]!;
+  const lead = raw.length - raw.trimStart().length;
+  const span: ErdRelationshipSpan = {
+    id,
+    line,
+    range: { column, endColumn: column + length },
+    from: end(1),
+    to: end(3),
+    connector: { column: at(cs + lead), endColumn: at(ce - (raw.length - raw.trimEnd().length)) },
+  };
+  if (rel[4] !== undefined) {
+    const [ks] = indices[4]!;
+    span.colon = { column: at(ks), endColumn: at(ks) + 1 };
+    const label = rel[5]!;
+    const text = label.trim();
+    if (text) {
+      const [ls] = indices[5]!;
+      const start = ls + (label.length - label.trimStart().length);
+      span.label = { column: at(start), endColumn: at(start + text.length) };
+    }
+  }
+  if (rel[6] !== undefined) {
+    const [ps, pe] = indices[6]!;
+    span.props = propertiesSpan(rel[6], at(ps - 1) - 1, at(pe + 1) - 1);
+  }
+  return span;
 }
