@@ -25,6 +25,7 @@ import { AdminPromoController } from "../api/v1/controller/admin-promo.controlle
 import { AdminGuard } from "../auth/admin.guard";
 import { AdminService } from "../service/admin.service";
 import { AdminMetricsService } from "../service/admin-metrics.service";
+import { AdminExploreService } from "../service/admin-explore.service";
 import { AdminTrafficService } from "../service/admin-traffic.service";
 import { CRM_MAILER, ResendCrmMailer } from "../common/crm-mailer";
 import { AdminCrmService } from "../service/admin-crm.service";
@@ -94,6 +95,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     AdminCrmService,
     AdminMetricsService,
     AdminTrafficService,
+    AdminExploreService,
     AdminService,
     AdminGuard,
     { provide: CRM_MAILER, useFactory: () => new ResendCrmMailer() },

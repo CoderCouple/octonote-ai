@@ -9,6 +9,7 @@
 import {
   ArrowLeft,
   CalendarCheck,
+  ChartColumnBig,
   GraduationCap,
   Handshake,
   Inbox,
@@ -48,11 +49,15 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-const GROUPS: { label: string; items: { href: string; label: string; icon: LucideIcon }[] }[] = [
+const GROUPS: {
+  label: string;
+  items: { href: string; label: string; icon: LucideIcon }[];
+}[] = [
   {
     label: "Outreach",
     items: [
       { href: "/admin", label: "Overview", icon: LayoutDashboard },
+      { href: "/admin/explore", label: "Explore", icon: ChartColumnBig },
       { href: "/admin/inbox", label: "Inbox", icon: Inbox },
       { href: "/admin/followups", label: "Follow-ups", icon: CalendarCheck },
     ],
@@ -66,7 +71,10 @@ const GROUPS: { label: string; items: { href: string; label: string; icon: Lucid
       { href: "/admin/students", label: "Student emails", icon: GraduationCap },
     ],
   },
-  { label: "Records", items: [{ href: "/admin/audit", label: "Audit log", icon: ScrollText }] },
+  {
+    label: "Records",
+    items: [{ href: "/admin/audit", label: "Audit log", icon: ScrollText }],
+  },
 ];
 
 const ITEMS = GROUPS.flatMap((g) => g.items);
@@ -74,11 +82,23 @@ const ITEMS = GROUPS.flatMap((g) => g.items);
 function isActive(path: string, href: string) {
   return href === "/admin"
     ? path === "/admin"
-    : path === href || path.startsWith(`${href}/`) || (href === "/admin/users" && path.startsWith("/admin/workspaces"));
+    : path === href ||
+        path.startsWith(`${href}/`) ||
+        (href === "/admin/users" && path.startsWith("/admin/workspaces"));
 }
 
 /** Same pill as the app's NavMain: black in light mode, white in dark. */
-function NavButton({ href, label, icon: Icon, active }: { href: string; label: string; icon: LucideIcon; active: boolean }) {
+function NavButton({
+  href,
+  label,
+  icon: Icon,
+  active,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+}) {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -101,7 +121,13 @@ function NavButton({ href, label, icon: Icon, active }: { href: string; label: s
   );
 }
 
-function AdminSidebar({ email, mainOrigin }: { email: string; mainOrigin: string }) {
+function AdminSidebar({
+  email,
+  mainOrigin,
+}: {
+  email: string;
+  mainOrigin: string;
+}) {
   const path = usePathname();
   return (
     <Sidebar collapsible="icon">
@@ -118,7 +144,9 @@ function AdminSidebar({ email, mainOrigin }: { email: string; mainOrigin: string
                 <span className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-6 shrink-0 items-center justify-center rounded-md">
                   <ShieldCheck className="size-3.5" />
                 </span>
-                <span className="text-foreground-strong truncate text-sm font-semibold">Octonote Admin</span>
+                <span className="text-foreground-strong truncate text-sm font-semibold">
+                  Octonote Admin
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -127,10 +155,16 @@ function AdminSidebar({ email, mainOrigin }: { email: string; mainOrigin: string
       <SidebarContent className="pt-1">
         {GROUPS.map((g) => (
           <SidebarGroup key={g.label} className="px-3 py-1.5">
-            <SidebarGroupLabel className="text-muted-foreground h-7 px-2.5 text-xs">{g.label}</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-muted-foreground h-7 px-2.5 text-xs">
+              {g.label}
+            </SidebarGroupLabel>
             <SidebarMenu className="gap-0.5">
               {g.items.map((item) => (
-                <NavButton key={item.href} {...item} active={isActive(path, item.href)} />
+                <NavButton
+                  key={item.href}
+                  {...item}
+                  active={isActive(path, item.href)}
+                />
               ))}
             </SidebarMenu>
           </SidebarGroup>
@@ -159,8 +193,12 @@ function AdminSidebar({ email, mainOrigin }: { email: string; mainOrigin: string
                 {email.slice(0, 1)}
               </span>
               <span className="grid min-w-0 text-left leading-tight">
-                <span className="text-muted-foreground text-[11px]">Signed in as</span>
-                <span className="text-foreground truncate text-xs">{email}</span>
+                <span className="text-muted-foreground text-[11px]">
+                  Signed in as
+                </span>
+                <span className="text-foreground truncate text-xs">
+                  {email}
+                </span>
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -174,23 +212,42 @@ function AdminSidebar({ email, mainOrigin }: { email: string; mainOrigin: string
 /** Where you are: Admin › section › item (detail pages get a generic leaf name). */
 function crumbsFor(path: string): { label: string; href?: string }[] {
   if (path === "/admin") return [{ label: "Admin" }];
-  const section = ITEMS.find((i) => i.href !== "/admin" && isActive(path, i.href));
-  const crumbs: { label: string; href?: string }[] = [{ label: "Admin", href: "/admin" }];
+  const section = ITEMS.find(
+    (i) => i.href !== "/admin" && isActive(path, i.href),
+  );
+  const crumbs: { label: string; href?: string }[] = [
+    { label: "Admin", href: "/admin" },
+  ];
   if (!section) return crumbs;
   const detail = path.startsWith("/admin/workspaces/")
     ? "Workspace"
     : path.startsWith(`${section.href}/`)
       ? (DETAIL_LABELS[section.href] ?? "Details")
       : null;
-  crumbs.push(detail ? { label: section.label, href: section.href } : { label: section.label });
+  crumbs.push(
+    detail
+      ? { label: section.label, href: section.href }
+      : { label: section.label },
+  );
   if (detail) crumbs.push({ label: detail });
   return crumbs;
 }
 
-const DETAIL_LABELS: Record<string, string> = { "/admin/users": "Person", "/admin/partners": "Creator" };
+const DETAIL_LABELS: Record<string, string> = {
+  "/admin/users": "Person",
+  "/admin/partners": "Creator",
+};
 
 /** Sidebar + the slim top bar (toggle · breadcrumb), wrapping every admin page, as in the app. */
-export function AdminShell({ email, mainOrigin, children }: { email: string; mainOrigin: string; children: React.ReactNode }) {
+export function AdminShell({
+  email,
+  mainOrigin,
+  children,
+}: {
+  email: string;
+  mainOrigin: string;
+  children: React.ReactNode;
+}) {
   const crumbs = crumbsFor(usePathname() ?? "/admin");
   return (
     <SidebarProvider>

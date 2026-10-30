@@ -476,3 +476,154 @@ export interface AdminTraffic {
   countries: { country: string; visits: number }[];
   devices: { device: string; visits: number }[];
 }
+
+// =============================================================================
+// Admin → Explore: slice, dice, drill down and roll up (POST /admin/explore)
+// =============================================================================
+
+export type ExploreGranularity = "day" | "week" | "month";
+
+export interface ExploreDimension {
+  key: string;
+  label: string;
+  /** Clicking a value drills into it with this dimension next. */
+  drill?: string;
+}
+
+export interface ExploreDataset {
+  key: string;
+  label: string;
+  description: string;
+  measures: { key: string; label: string }[];
+  dimensions: ExploreDimension[];
+  /** Where the numbers come from. */
+  source: "posthog" | "database";
+  /** False when "Exclude staff" doesn't change anything (e.g. readers of published pages). */
+  staffAware: boolean;
+}
+
+/** `time` is a dimension of every dataset (bucketed by day, week or month). */
+export const EXPLORE_DATASETS: ExploreDataset[] = [
+  {
+    key: "traffic",
+    label: "Website traffic",
+    description: "Visits and page views on octonote.ai (PostHog). Published pages aren't tracked.",
+    source: "posthog",
+    staffAware: true,
+    measures: [
+      { key: "visits", label: "Visits" },
+      { key: "pageviews", label: "Page views" },
+      { key: "signup_clicks", label: "Sign-up clicks" },
+    ],
+    dimensions: [
+      { key: "time", label: "Time" },
+      { key: "section", label: "Site section", drill: "path" },
+      { key: "path", label: "Page" },
+      { key: "referrer", label: "Referrer", drill: "path" },
+      { key: "utm_source", label: "Campaign (utm_source)", drill: "path" },
+      { key: "country", label: "Country", drill: "device" },
+      { key: "device", label: "Device", drill: "browser" },
+      { key: "browser", label: "Browser", drill: "os" },
+      { key: "os", label: "Operating system" },
+    ],
+  },
+  {
+    key: "signups",
+    label: "Sign-ups",
+    description: "New accounts, by where they came from and what they did next.",
+    source: "database",
+    staffAware: true,
+    measures: [{ key: "signups", label: "Sign-ups" }],
+    dimensions: [
+      { key: "time", label: "Time" },
+      { key: "source", label: "Source", drill: "source_detail" },
+      { key: "source_detail", label: "Source detail" },
+      { key: "email_domain", label: "Email domain" },
+      { key: "student", label: "Student" },
+      { key: "activated", label: "Made something", drill: "returned" },
+      { key: "returned", label: "Came back later" },
+    ],
+  },
+  {
+    key: "activity",
+    label: "Active people",
+    description: "People using Octonote (one row per person, day and app).",
+    source: "database",
+    staffAware: true,
+    measures: [
+      { key: "people", label: "Active people" },
+      { key: "active_days", label: "Active person-days" },
+    ],
+    dimensions: [
+      { key: "time", label: "Time" },
+      { key: "app", label: "App (web, mobile, CLI)" },
+      { key: "student", label: "Student" },
+    ],
+  },
+  {
+    key: "items",
+    label: "Things created",
+    description: "Notes, canvases, projects and notebooks people created.",
+    source: "database",
+    staffAware: true,
+    measures: [{ key: "items", label: "Created" }],
+    dimensions: [
+      { key: "time", label: "Time" },
+      { key: "kind", label: "Kind", drill: "place" },
+      { key: "place", label: "Where it lives" },
+      { key: "published", label: "Published" },
+    ],
+  },
+  {
+    key: "reads",
+    label: "Published-page reads",
+    description: "Readers of published pages (our own count; owners and editors skipped, bots ignored).",
+    source: "database",
+    staffAware: false,
+    measures: [
+      { key: "views", label: "Views" },
+      { key: "visitors", label: "Daily visitors" },
+    ],
+    dimensions: [
+      { key: "time", label: "Time" },
+      { key: "kind", label: "Kind", drill: "item" },
+      { key: "item", label: "Page" },
+    ],
+  },
+];
+
+export const EXPLORE_RANGES = [7, 30, 90, 180] as const;
+
+export interface ExploreFilter {
+  dim: string;
+  /** Equals or not equals. */
+  op: "eq" | "neq";
+  value: string;
+}
+
+export interface ExploreQuery {
+  dataset: string;
+  measure: string;
+  groupBy: string;
+  /** A second dimension that splits each group (top values + "Other"). */
+  splitBy?: string | null;
+  granularity: ExploreGranularity;
+  days: number;
+  excludeStaff: boolean;
+  filters: ExploreFilter[];
+}
+
+export interface ExploreResult {
+  query: ExploreQuery;
+  generatedAt: string;
+  /** Groups in display order (time ascending, otherwise largest first). */
+  groups: string[];
+  /** Split values in display order ("Other" last); empty without a split. */
+  splits: string[];
+  /** One cell per group (and split); missing cells are zero. */
+  cells: { group: string; split: string | null; value: number }[];
+  total: number;
+  /** Groups beyond the limit were left out. */
+  truncated?: boolean;
+  error?: string;
+}

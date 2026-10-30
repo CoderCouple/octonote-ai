@@ -5,6 +5,8 @@ import type {
   AdminMetricRange,
   AdminMetrics,
   AdminTraffic,
+  ExploreQuery,
+  ExploreResult,
   AdminUserDetail,
   AdminUserRow,
   AdminWorkspaceDetail,
@@ -158,3 +160,7 @@ export const updateCrmFollowup = (
   body: CrmFollowupUpdate,
 ) =>
   clientApi.patch<CrmPersonDetail>(`/admin/crm/followups/${followupId}`, body);
+
+/** Explore: one measure grouped, split and filtered. */
+export const exploreAdmin = (q: ExploreQuery) =>
+  clientApi.post<ExploreResult>("/admin/explore", q);
