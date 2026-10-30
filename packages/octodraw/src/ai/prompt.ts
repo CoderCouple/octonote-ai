@@ -23,6 +23,12 @@ Edge:   A > B          arrow      A < B   reverse arrow   A <> B  both ends
         A > B, C: label [color: green]   (one source to several targets; label after the colon)
         Chains work: A > B > C. Edges may point at groups.
         Declare nodes before or inside groups; an edge to an undeclared name creates a plain node.
+Style (optional; leave out for the default look):
+        nodes and groups: textSize: small|medium|large|<px>, textAlign: left|center|right, textColor: <color>,
+          border: solid|dashed|dotted, strokeWidth: thin|medium|thick, typeface: clean|rough|mono, iconSize: small|medium|large (icon nodes)
+        edges (in the brackets after the label): line: solid|dashed|dotted, strokeWidth: thin|medium|thick, labelSize: small|medium|large,
+          routing: auto|straight, startArrow: none|arrow|open|dot, endArrow: none|arrow|open|dot
+        e.g. Gateway [icon: aws-api-gateway, color: blue, border: dashed]   Web > Gateway: HTTPS [line: dotted, endArrow: open]
 Extensions for maps (optional): team: <name>, tech: <name>, tags: "a, b" on nodes; collapsed: true on a group.
 Flows (optional walkthroughs over existing nodes):
         flow Place an order {
