@@ -13,6 +13,7 @@ import { ChangeEventsService } from "../../src/common/change-events.service";
 import type { CrmMail, CrmMailer, InboundEvent, ReceivedMail } from "../../src/common/crm-mailer";
 import type { EmailService, ShareEmailInput } from "../../src/common/email.service";
 import { SupportAccessService } from "../../src/service/support-access.service";
+import { NoteCommentsService } from "../../src/service/note-comments.service";
 import { PermissionsService } from "../../src/common/permissions.service";
 import { PlanLimitsService } from "../../src/common/plan-limits.service";
 import { BillingService } from "../../src/service/billing.service";
@@ -368,9 +369,10 @@ export async function createHarness() {
   const crm = new AdminCrmService(db, planLimits, adminAudit, crmMailer);
   const admin = new AdminService(db, supabase as never, planLimits, services.billing, adminAudit);
   const support = new SupportAccessService(db, adminAudit);
+  const noteComments = new NoteCommentsService(db, services.pages, permissions);
   const noteMarkdown = new NoteMarkdownService(services.pages);
   const canvasDiagrams = new CanvasDiagramService(services.canvases);
-  return { pg, db, email, support, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminTraffic, adminExplore, adminAudit, admin, partners, crm, crmMailer, productAnalytics, posthog, ...services };
+  return { pg, db, email, support, noteComments, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminTraffic, adminExplore, adminAudit, admin, partners, crm, crmMailer, productAnalytics, posthog, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

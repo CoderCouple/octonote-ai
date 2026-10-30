@@ -15,6 +15,7 @@ import { CliTokensController } from "../api/v1/controller/cli-tokens.controller"
 import { OAuthController } from "../api/v1/controller/oauth.controller";
 import { McpController } from "../api/v1/controller/mcp.controller";
 import { McpToolsService } from "../service/mcp-tools.service";
+import { NoteCommentsService } from "../service/note-comments.service";
 import { NoteMarkdownController } from "../api/v1/controller/note-markdown.controller";
 import { NoteMarkdownService } from "../service/note-markdown.service";
 import { AdminController } from "../api/v1/controller/admin.controller";
@@ -100,6 +101,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     NoteMarkdownService,
     CanvasDiagramService,
     McpToolsService,
+    NoteCommentsService,
     PromotionsService,
     PartnersService,
     AdminCrmService,

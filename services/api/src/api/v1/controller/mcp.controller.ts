@@ -7,6 +7,7 @@ import { ActivityService } from "../../../common/activity.service";
 import { apiBase } from "../../../common/api-base";
 import { SkipResponseInterceptor } from "../../../common/interceptor/skip-response-interceptor.decorator";
 import { McpToolsService, type Actor } from "../../../service/mcp-tools.service";
+import { NoteCommentsService } from "../../../service/note-comments.service";
 import { PREVIEW_MIME, PREVIEW_URI, previewHtml } from "../../../mcp/preview-view";
 import { mcpResource, OAuthService } from "../../../service/oauth.service";
 import { VERSION_INFO } from "./mcp-version";
@@ -16,7 +17,8 @@ const INSTRUCTIONS = `Octonote holds the user's notes (markdown documents), canv
 - Draw canvases from a mermaid flowchart or class diagram; they become real, editable shapes. Add \`click Node href "https://…"\` lines to make boxes link somewhere (e.g. code on GitHub).
 - Ids carry their kind: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook. Notebooks can be named by exact name.
 - Always give the user the link (url, and publicUrl once published).
-- Publish, share, change link access or delete ONLY when the user explicitly asked for it.`;
+- Publish, share, change link access or delete ONLY when the user explicitly asked for it.
+- Comments from the Octonote card: when the user asks you to apply their Octonote comments (ids look like cmt_…), call note_comment_get with those ids, then for each one call note_comment_apply with markdown that replaces exactly the selected part (keep what you weren't asked to change, keep the note's style), or note_comment_decline with a short reason. Don't use update_note for these. Afterwards reply in one short line; the card already shows the updated note.`;
 
 // Every tool states all three hints (directory reviews check them):
 // read-only; creates/edits (additive); overwrites or deletes; reaches beyond
@@ -36,6 +38,12 @@ function previewUiMeta() {
   }
   return { ui: { csp: { resourceDomains: domains, connectDomains: [] }, prefersBorder: true } };
 }
+
+/**
+ * Tools only the card calls (MCP Apps `visibility: ["app"]`; ChatGPT reads its
+ * own keys): hidden from the model, callable from the card's iframe.
+ */
+const APP_ONLY = { ui: { visibility: ["app"] }, "openai/visibility": "private", "openai/widgetAccessible": true } as const;
 
 /** Tools whose result renders as the inline card in MCP Apps hosts. */
 // Both forms of the card link, as the official ext-apps helper sets them: hosts
@@ -59,6 +67,7 @@ export class McpController {
     private readonly oauth: OAuthService,
     private readonly tools: McpToolsService,
     private readonly activity: ActivityService,
+    private readonly comments: NoteCommentsService,
   ) {}
 
   @All()
@@ -166,6 +175,15 @@ export class McpController {
           content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
           ...(preview ? { structuredContent: { preview } } : {}),
         };
+      } catch (err) {
+        return { isError: true, content: [{ type: "text" as const, text: errorText(err) }] };
+      }
+    };
+    /** For the card's own tools: the data also as structuredContent, which the card reads. */
+    const runData = (fn: () => Promise<Record<string, unknown>>) => async () => {
+      try {
+        const result = await fn();
+        return { content: [{ type: "text" as const, text: JSON.stringify(result) }], structuredContent: result };
       } catch (err) {
         return { isError: true, content: [{ type: "text" as const, text: errorText(err) }] };
       }
@@ -365,6 +383,92 @@ export class McpController {
         annotations: OVERWRITE,
       },
       async (args) => run(() => t.remove(actor.id, args))(),
+    );
+
+    // --- Comments from the card: the card saves and watches them, the assistant does them.
+    const c = this.comments;
+    const commentId = z.string().describe("Comment id (cmt_…)");
+    tool(
+      "note_comment_create",
+      {
+        title: "Save comments (card)",
+        description: "Used by the Octonote card: saves comments on selected parts of a note.",
+        inputSchema: {
+          noteId: z.string(),
+          comments: z
+            .array(z.object({ anchors: z.array(z.string()).min(1).max(200), quote: z.string().max(500).optional(), body: z.string().min(1).max(1000) }))
+            .min(1)
+            .max(20),
+        },
+        annotations: WRITE,
+        _meta: APP_ONLY,
+      },
+      async ({ noteId, comments }) => runData(async () => ({ comments: await c.create(actor.id, noteId, comments) }))(),
+    );
+    tool(
+      "note_comment_status",
+      {
+        title: "Comment status (card)",
+        description: "Used by the Octonote card: the state of its comments, and the note's HTML when it changed.",
+        inputSchema: { noteId: z.string(), ids: z.array(z.string()).max(50).optional(), since: z.string().nullable().optional() },
+        annotations: READ,
+        _meta: APP_ONLY,
+      },
+      async ({ noteId, ids, since }) => runData(async () => ({ ...(await c.status(actor.id, noteId, { ids, since })) }))(),
+    );
+    tool(
+      "note_comment_retry",
+      {
+        title: "Retry a comment (card)",
+        description: "Used by the Octonote card: reopens a failed or declined comment.",
+        inputSchema: { id: commentId },
+        annotations: WRITE,
+        _meta: APP_ONLY,
+      },
+      async ({ id }) => runData(async () => ({ comment: await c.retry(actor.id, id) }))(),
+    );
+    tool(
+      "note_comment_cancel",
+      {
+        title: "Cancel a comment (card)",
+        description: "Used by the Octonote card: withdraws a comment that isn't done yet.",
+        inputSchema: { id: commentId },
+        annotations: WRITE,
+        _meta: APP_ONLY,
+      },
+      async ({ id }) => runData(async () => ({ comment: await c.cancel(actor.id, id) }))(),
+    );
+    tool(
+      "note_comment_get",
+      {
+        title: "Read note comments",
+        description:
+          "Read comments the user left on parts of an Octonote note: what they asked for, the exact text they selected, its section, and the selected part as markdown (the neighbouring blocks too, for context). Give the comment ids from the user's message, or a note id for all its open comments. Then apply or decline each one.",
+        inputSchema: { ids: z.array(commentId).max(20).optional(), noteId: z.string().optional() },
+        annotations: WRITE,
+      },
+      async ({ ids, noteId }) => run(async () => ({ comments: await c.get(actor.id, { ids, noteId }) }))(),
+    );
+    tool(
+      "note_comment_apply",
+      {
+        title: "Apply a note comment",
+        description:
+          "Do what a comment asked: replace exactly the selected part of the note (the markdown note_comment_get returned) with new markdown. Return the whole replacement for that part, changed as asked; empty markdown removes it. The rest of the note is untouched.",
+        inputSchema: { id: commentId, markdown: z.string().describe("The new markdown for the selected part") },
+        annotations: OVERWRITE,
+      },
+      async ({ id, markdown }) => run(async () => ({ comment: await c.apply(actor.id, id, markdown) }))(),
+    );
+    tool(
+      "note_comment_decline",
+      {
+        title: "Decline a note comment",
+        description: "Don't make a comment's change (unclear, unsafe or impossible) and tell the user why in one sentence.",
+        inputSchema: { id: commentId, reason: z.string().max(500) },
+        annotations: WRITE,
+      },
+      async ({ id, reason }) => run(async () => ({ comment: await c.decline(actor.id, id, reason) }))(),
     );
     return server;
   }

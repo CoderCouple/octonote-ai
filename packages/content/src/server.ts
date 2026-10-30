@@ -63,3 +63,31 @@ export async function noteDocumentToHtml(document: unknown): Promise<string> {
   if (blocks.length === 0) return "";
   return (await serverEditor()).blocksToHTMLLossy(toStandardBlocks(blocks) as never);
 }
+
+/** Where a top-level block sits, for anchoring: its id, or `i:<index>` if it has none yet. */
+export function blockAnchor(block: NoteBlock, index: number): string {
+  return typeof block?.id === "string" && block.id ? block.id : `i:${index}`;
+}
+
+/**
+ * Like noteDocumentToHtml, but each top-level block is wrapped in
+ * `<div data-b="<anchor>">` (see blockAnchor) so a preview can tell which
+ * blocks a reader selected. Numbered lists keep counting across blocks.
+ */
+export async function noteDocumentToAnchoredHtml(document: unknown): Promise<string> {
+  const blocks =
+    document && typeof document === "object" && Array.isArray((document as NoteDocument).blocks)
+      ? (document as NoteDocument).blocks
+      : [];
+  const editor = await serverEditor();
+  let run = 0;
+  const out: string[] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i]!;
+    run = block.type === "numberedListItem" ? run + 1 : 0;
+    let html = await editor.blocksToHTMLLossy(toStandardBlocks([block]) as never);
+    if (run > 1) html = html.replace(/^<ol>/, `<ol start="${run}">`);
+    out.push(`<div data-b="${blockAnchor(block, i).replace(/"/g, "")}">${html}</div>`);
+  }
+  return out.join("");
+}

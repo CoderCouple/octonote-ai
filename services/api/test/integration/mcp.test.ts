@@ -36,7 +36,7 @@ beforeEach(async () => {
     h.settings,
     h.shares,
   );
-  const controller = new McpController(h.oauth, tools, h.activity);
+  const controller = new McpController(h.oauth, tools, h.activity, h.noteComments);
   app = Fastify();
   app.all("/mcp", (req, reply) => controller.handle(req, reply));
   await app.listen({ port: 0, host: "127.0.0.1" });
@@ -189,6 +189,50 @@ describe("mcp server", () => {
     expect(String(preview.html)).toContain("mermaid");
     // The model gets the short JSON result, not the card's HTML.
     expect(r.content[0]!.text).not.toContain("<h1");
+    await client.close();
+  });
+
+  it("runs the card's comment loop: the card saves, the assistant reads and applies", async () => {
+    const client = await connect(await tokenFor(alice.id));
+    const { tools } = await client.listTools();
+    const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
+    // Card-only tools are hidden from the model (MCP Apps + ChatGPT's own key).
+    for (const name of ["note_comment_create", "note_comment_status", "note_comment_retry", "note_comment_cancel"]) {
+      const meta = byName[name]!._meta as Record<string, unknown> & { ui?: { visibility?: string[] } };
+      expect(meta.ui?.visibility, name).toEqual(["app"]);
+      expect(meta["openai/visibility"], name).toBe("private");
+      expect(meta["openai/widgetAccessible"], name).toBe(true);
+    }
+    // The assistant's tools stay visible (no visibility = model and app).
+    for (const name of ["note_comment_get", "note_comment_apply", "note_comment_decline"]) {
+      expect((byName[name]!._meta as { ui?: unknown } | undefined)?.ui, name).toBeUndefined();
+    }
+
+    const made = (await client.callTool({ name: "create_note", arguments: { title: "Pitch", markdown: "Intro line.\n\nPrice is ten." } })) as unknown as {
+      structuredContent: { preview: { noteId: string; html: string; canComment: boolean; version: string } };
+    };
+    const preview = made.structuredContent.preview;
+    expect(preview.canComment).toBe(true);
+    const anchor = /data-b="([^"]+)"><p>Price/.exec(preview.html)![1]!;
+
+    const created = (await client.callTool({
+      name: "note_comment_create",
+      arguments: { noteId: preview.noteId, comments: [{ anchors: [anchor], quote: "ten", body: "Make it twelve" }] },
+    })) as unknown as { structuredContent: { comments: { id: string; status: string }[] } };
+    const id = created.structuredContent.comments[0]!.id;
+    expect(id).toMatch(/^cmt_/);
+
+    const got = (await call(client, "note_comment_get", { ids: [id] })).json;
+    expect(got.comments[0]).toMatchObject({ id, request: "Make it twelve", markdown: "Price is ten." });
+    expect((await call(client, "note_comment_apply", { id, markdown: "Price is twelve." })).json.comment.status).toBe("done");
+
+    const status = (await client.callTool({
+      name: "note_comment_status",
+      arguments: { noteId: preview.noteId, ids: [id], since: preview.version },
+    })) as unknown as { structuredContent: { comments: { status: string }[]; html?: string } };
+    expect(status.structuredContent.comments[0]!.status).toBe("done");
+    expect(status.structuredContent.html).toContain("Price is twelve.");
+    expect(status.structuredContent.html).toContain("Intro line.");
     await client.close();
   });
 

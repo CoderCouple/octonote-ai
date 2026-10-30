@@ -6,7 +6,7 @@
  * with the integration harness.
  */
 import { Injectable } from "@nestjs/common";
-import { noteDocumentToHtml } from "@octonote/content/server";
+import { noteDocumentToAnchoredHtml } from "@octonote/content/server";
 import { BadRequest, NotFound } from "../common/error/error-factory";
 import { WorkspaceMembersRepository } from "../db/repository/workspace-members.repository";
 import type { ResourceKind } from "../model/sharing.model";
@@ -47,8 +47,17 @@ export interface ItemPreview {
   title: string;
   url: string;
   publicUrl: string | null;
-  /** A note's content (or a project's note) as HTML. */
+  /**
+   * A note's content (or a project's note) as HTML, each top-level block
+   * wrapped in `<div data-b="…">` so the card can anchor comments.
+   */
   html?: string;
+  /** The note comments go to (a project's own note for projects). */
+  noteId?: string | null;
+  /** The note's updatedAt: the card's comment poll sends it back to get fresh HTML only on change. */
+  version?: string | null;
+  /** Whether this person may edit the note, so the card offers comments. */
+  canComment?: boolean;
   /** A canvas's (or a project's canvas's) PNG snapshot. */
   thumbnailUrl?: string | null;
   /** The canvas drawn as vectors, so the card can show it without a snapshot. */
@@ -197,12 +206,20 @@ export class McpToolsService {
       .then((s) => (s.published ? s.publicUrl : null))
       .catch(() => null);
     const html = async (document: unknown) => {
-      const out = await noteDocumentToHtml(document);
+      const out = await noteDocumentToAnchoredHtml(document);
       return out.length > PREVIEW_HTML_MAX ? `${out.slice(0, PREVIEW_HTML_MAX)}<p>…</p>` : out;
     };
+    const editable = (role: string) => role === "editor" || role === "owner";
     if (kind === "page") {
-      const { page } = await this.pages.getOne(id, userId);
-      return { ...ref(kind, id, page.title), publicUrl, html: await html(page.document) };
+      const { page, access } = await this.pages.getOne(id, userId);
+      return {
+        ...ref(kind, id, page.title),
+        publicUrl,
+        html: await html(page.document),
+        noteId: page.id,
+        version: page.updatedAt.toISOString(),
+        canComment: editable(access.role),
+      };
     }
     if (kind === "canvas") {
       const { canvas } = await this.canvases.getOne(id, userId);
@@ -210,12 +227,16 @@ export class McpToolsService {
     }
     if (kind === "project") {
       const p = await this.projects.getOne(id, userId);
-      const note = p.noteId ? (await this.pages.getOne(p.noteId, userId)).page : null;
+      const loaded = p.noteId ? await this.pages.getOne(p.noteId, userId) : null;
+      const note = loaded?.page ?? null;
       const canvas = p.canvasId ? (await this.canvases.getOne(p.canvasId, userId)).canvas : null;
       return {
         ...ref(kind, id, p.project.name),
         publicUrl,
         html: note ? await html(note.document) : "",
+        noteId: note?.id ?? null,
+        version: note?.updatedAt.toISOString() ?? null,
+        canComment: loaded ? editable(loaded.access.role) : false,
         thumbnailUrl: canvas?.thumbnailUrl ?? null,
         outline: canvas ? canvasOutline(canvas.document) : null,
       };

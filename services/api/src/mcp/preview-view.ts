@@ -6,6 +6,14 @@
  * render as HTML with mermaid diagrams and KaTeX math (both from jsdelivr,
  * declared in the resource's CSP); canvases show their snapshot.
  *
+ * Comments: when the person can edit the note and the host lets cards call
+ * tools, they can select text (or click an image, table or diagram), write
+ * what should change and send it. The card saves the comment
+ * (note_comment_create), asks the assistant in the chat (ui/message) and polls
+ * note_comment_status: a spinner while it works, a tick when done, and the
+ * updated note in place. Each block in the note HTML carries data-b="…" so a
+ * selection maps to blocks.
+ *
  * Note HTML is produced by our own server from the note's blocks, but it
  * holds user-written text, so it's still sanitised here (no scripts, no
  * event handlers, no javascript: links) before it's inserted.
@@ -25,8 +33,8 @@ export function previewHtml(): string {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="stylesheet" href="${CDN}/npm/katex@${KATEX_VERSION}/dist/katex.min.css" />
 <style>
-  :root { --bg:#ffffff; --ink:#37352f; --strong:#191919; --muted:#787774; --line:#e9e9e7; --tint:#f7f7f5; --link:#2f6fd6; color-scheme: light; }
-  :root[data-theme="dark"] { --bg:#191919; --ink:#d4d4d2; --strong:#f5f5f4; --muted:#9b9a97; --line:#2f2f2f; --tint:#232323; --link:#7aa7f0; color-scheme: dark; }
+  :root { --bg:#ffffff; --ink:#37352f; --strong:#191919; --muted:#787774; --line:#e9e9e7; --tint:#f7f7f5; --link:#2f6fd6; --ok:#0f9d58; --bad:#e03131; --mark:#f1ac4b; color-scheme: light; }
+  :root[data-theme="dark"] { --bg:#191919; --ink:#d4d4d2; --strong:#f5f5f4; --muted:#9b9a97; --line:#2f2f2f; --tint:#232323; --link:#7aa7f0; --ok:#34a853; --bad:#f87777; --mark:#c98a2c; color-scheme: dark; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   .card { padding: 14px 16px 16px; }
@@ -73,6 +81,36 @@ export function previewHtml(): string {
   .items .k { color: var(--muted); width: 64px; flex: none; font-size: 13px; }
   .items a { color: var(--strong); text-decoration: none; }
   .loading { color: var(--muted); padding: 18px 16px; font-size: 14px; }
+  .note [data-b] { border-radius: 6px; transition: background .15s, box-shadow .15s; }
+  .note { padding-left: 8px; margin-left: -8px; }
+  .note [data-b].c-on { background: color-mix(in srgb, var(--mark) 20%, var(--bg)); box-shadow: -5px 0 0 var(--mark); }
+  .note [data-b].c-hot { background: color-mix(in srgb, var(--mark) 32%, var(--bg)); }
+  .note [data-b].c-pick { background: color-mix(in srgb, var(--link) 12%, var(--bg)); box-shadow: -5px 0 0 var(--link); }
+  .cpop { position: fixed; z-index: 20; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.16); padding: 6px; }
+  .cpop textarea { display: block; width: 300px; max-width: calc(100vw - 40px); min-height: 70px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: 14px/1.45 Inter, system-ui, sans-serif; background: var(--bg); color: var(--ink); outline: none; }
+  .cpop textarea:focus { border-color: var(--link); }
+  .cpop .row { display: flex; gap: 6px; justify-content: flex-end; align-items: center; margin-top: 6px; }
+  .cpop .row .hint { margin-right: auto; }
+  .cpanel { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .cphead { display: flex; align-items: center; gap: 8px; font-weight: 650; color: var(--strong); font-size: 13.5px; padding: 2px 0 4px; }
+  .cphead .btn { margin-left: auto; }
+  .crow { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .crow:last-child { border-bottom: 0; }
+  .cst { width: 18px; height: 18px; flex: none; margin-top: 2px; display: grid; place-items: center; }
+  .spin { width: 15px; height: 15px; border: 2px solid var(--line); border-top-color: var(--strong); border-radius: 50%; animation: cspin .8s linear infinite; }
+  @keyframes cspin { to { transform: rotate(360deg); } }
+  .tick, .cross { width: 18px; height: 18px; border-radius: 50%; color: #fff; display: grid; place-items: center; }
+  .tick { background: var(--ok); } .cross { background: var(--bad); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--muted); }
+  .cmain { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.45; }
+  .cq { color: var(--muted); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cb { color: var(--ink); overflow-wrap: anywhere; }
+  .cr { color: var(--bad); font-size: 12.5px; }
+  .cact { display: flex; gap: 6px; flex: none; }
+  .btn.sm { padding: 3px 9px; font-size: 12px; border-radius: 7px; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+  .chint { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  .cwarn { color: var(--bad); font-size: 12.5px; display: flex; gap: 8px; align-items: center; padding: 4px 0; }
 </style>
 </head>
 <body>
@@ -93,6 +131,12 @@ export function previewHtml(): string {
     return new Promise(function (resolve, reject) { pending[id] = { resolve: resolve, reject: reject }; });
   }
   function notify(method, params) { post({ jsonrpc: "2.0", method: method, params: params || {} }); }
+  function requestT(method, params, ms) {
+    return new Promise(function (resolve, reject) {
+      var t = setTimeout(function () { reject(new Error("timeout")); }, ms);
+      request(method, params).then(function (v) { clearTimeout(t); resolve(v); }, function (e) { clearTimeout(t); reject(e); });
+    });
+  }
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function safeUrl(u) { try { var x = new URL(u); return x.protocol === "https:" || x.protocol === "http:" ? x.toString() : null; } catch (e) { return null; } }
@@ -220,6 +264,287 @@ export function previewHtml(): string {
                : '<div class="empty">Open the canvas to see the drawing.</div>';
   }
 
+
+  // ---------- Comments: select, ask the assistant, watch it happen ----------
+  var tools = { mcp: false }, items = [], keySeq = 1, sel = null, pop = null, composing = false, deferred = false;
+  var picked = false, askFailed = false, stale = false, pollTimer = null, pollStart = 0;
+  var ICON_OK = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2l2.4 2.4 4.6-5"/></svg>';
+  var ICON_X = '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>';
+
+  function canComment() {
+    return !!(last && last.canComment && last.noteId && (last.kind === "note" || last.kind === "project") &&
+      (tools.mcp || (window.openai && window.openai.callTool)));
+  }
+  function isOpen(it) { return it.status === "pending" || it.status === "working"; }
+  function byId(id) { for (var i = 0; i < items.length; i++) if (items[i].id === id) return items[i]; return null; }
+
+  /** Call one of our server's tools through the host (MCP Apps), or ChatGPT's bridge. */
+  function callTool(name, args) {
+    var p = tools.mcp ? requestT("tools/call", { name: name, arguments: args }, 30000)
+      : (window.openai && window.openai.callTool) ? Promise.resolve(window.openai.callTool(name, args))
+      : Promise.reject(new Error("This app can't do that here."));
+    return p.then(function (r) {
+      if (r && r.isError) {
+        var msg = "Something went wrong.";
+        try { msg = JSON.parse(r.content[0].text).message || msg; } catch (e) {}
+        throw new Error(msg);
+      }
+      if (r && r.structuredContent) return r.structuredContent;
+      try { return JSON.parse(r.content[0].text); } catch (e) { return r || {}; }
+    });
+  }
+
+  /** Put a message in the chat for the assistant (MCP Apps ui/message, or ChatGPT's follow-up). */
+  function say(text) {
+    return requestT("ui/message", { role: "user", content: { type: "text", text: text } }, 30000)
+      .catch(function () { return requestT("ui/message", { role: "user", content: [{ type: "text", text: text }] }, 30000); })
+      .catch(function (e) {
+        if (window.openai && window.openai.sendFollowUpMessage) return window.openai.sendFollowUpMessage({ prompt: text });
+        throw e;
+      });
+  }
+
+  /** Blocks a range covers, in document order (null when it leaves the note). */
+  function anchorsFor(range) {
+    var a = range.startContainer, b = range.endContainer;
+    var ea = a.nodeType === 1 ? a : a.parentNode, eb = b.nodeType === 1 ? b : b.parentNode;
+    var root = ea && ea.closest && ea.closest(".note");
+    if (!root || !eb.closest || eb.closest(".note") !== root) return null;
+    var out = Array.prototype.slice.call(root.querySelectorAll("[data-b]"))
+      .filter(function (el) { return range.intersectsNode(el); })
+      .map(function (el) { return el.getAttribute("data-b"); });
+    return out.length ? out : null;
+  }
+
+  function blocksFor(anchors) {
+    var out = [];
+    (anchors || []).forEach(function (a) {
+      document.querySelectorAll('.note [data-b="' + a.replace(/"/g, "") + '"]').forEach(function (el) { out.push(el); });
+    });
+    return out;
+  }
+
+  function markBlocks() {
+    document.querySelectorAll(".note [data-b]").forEach(function (el) { el.classList.remove("c-on"); });
+    items.forEach(function (it) {
+      if (it.status === "done" || it.status === "cancelled") return;
+      blocksFor(it.blockIds || it.anchors).forEach(function (el) { el.classList.add("c-on"); });
+    });
+  }
+  function hot(key, on) {
+    var it = null; items.forEach(function (x) { if (String(x.key) === String(key)) it = x; });
+    if (it) blocksFor(it.blockIds || it.anchors).forEach(function (el) { el.classList.toggle("c-hot", on); });
+  }
+
+  function closePop() {
+    if (pop) { pop.remove(); pop = null; }
+    composing = false;
+    document.querySelectorAll(".c-pick").forEach(function (el) { el.classList.remove("c-pick"); });
+    if (deferred) { deferred = false; refreshNote(); }
+  }
+  function place(el, rect) {
+    var w = el.offsetWidth || 120, h = el.offsetHeight || 36;
+    var left = Math.max(8, Math.min(rect.left, window.innerWidth - w - 8));
+    var top = rect.bottom + 6;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, rect.top - h - 6);
+    el.style.left = left + "px"; el.style.top = top + "px";
+  }
+  function showButton(rect) {
+    closePop();
+    if (sel) blocksFor(sel.anchors).forEach(function (el) { el.classList.add("c-pick"); });
+    pop = document.createElement("div");
+    pop.className = "cpop";
+    pop.innerHTML = '<button class="btn sm primary" data-act="compose">Comment</button>';
+    document.body.appendChild(pop);
+    place(pop, rect);
+  }
+  function compose() {
+    if (!pop || !sel) return;
+    composing = true;
+    var rect = pop.getBoundingClientRect();
+    pop.innerHTML = '<textarea placeholder="What should change? e.g. Make this shorter" maxlength="1000"></textarea>' +
+      '<div class="row"><span class="hint">' + (sel.quote ? "On the selected text" : "On this block") + '</span>' +
+      '<button class="btn sm" data-act="add">Add</button><button class="btn sm primary" data-act="send-now">Send</button></div>';
+    place(pop, { left: rect.left, top: rect.top, bottom: rect.top - 6 });
+    var ta = pop.querySelector("textarea");
+    ta.focus();
+    ta.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { e.preventDefault(); closePop(); }
+      else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addDraft(true); }
+    });
+  }
+  function addDraft(sendNow) {
+    if (!pop || !sel) return;
+    var text = pop.querySelector("textarea").value.trim();
+    if (!text) { pop.querySelector("textarea").focus(); return; }
+    var it = { key: keySeq++, id: null, status: "draft", quote: sel.quote, body: text, anchors: sel.anchors, blockIds: null, reason: null };
+    items.push(it);
+    sel = null;
+    var s = window.getSelection(); if (s) s.removeAllRanges();
+    closePop();
+    markBlocks(); renderPanel(); resize();
+    if (sendNow) send([it]);
+  }
+
+  /** Save drafts as comments, then ask the assistant to do them. */
+  function send(list) {
+    list = list.filter(function (it) { return it.status === "draft" || it.status === "error"; });
+    if (!list.length) return;
+    list.forEach(function (it) { it.status = "saving"; it.reason = null; });
+    renderPanel();
+    callTool("note_comment_create", {
+      noteId: last.noteId,
+      comments: list.map(function (it) { return { anchors: it.anchors, quote: it.quote || "", body: it.body }; })
+    }).then(function (r) {
+      (r.comments || []).forEach(function (c, i) {
+        var it = list[i]; if (!it) return;
+        it.id = c.id; it.status = c.status; it.blockIds = c.blockIds;
+      });
+      renderPanel(); markBlocks();
+      ask(list.map(function (it) { return it.id; }).filter(Boolean));
+    }).catch(function (e) {
+      list.forEach(function (it) { it.status = "error"; it.reason = e.message || "Couldn't save the comment."; });
+      renderPanel();
+    });
+  }
+  function ask(ids) {
+    if (!ids.length) return;
+    askFailed = false; stale = false;
+    var title = (last && last.title) || "this note";
+    say("Please apply my comment" + (ids.length > 1 ? "s" : "") + ' on the Octonote note "' + title + '" (' + ids.join(", ") + ").")
+      .catch(function () { askFailed = true; renderPanel(); });
+    poll(true);
+  }
+  function askAgain() {
+    ask(items.filter(isOpen).map(function (it) { return it.id; }));
+    renderPanel();
+  }
+
+  function retry(it) {
+    if (!it.id) { it.status = "draft"; send([it]); return; }
+    it.status = "pending"; it.reason = null; renderPanel();
+    callTool("note_comment_retry", { id: it.id })
+      .then(function (r) { if (r.comment) { it.status = r.comment.status; it.blockIds = r.comment.blockIds; } renderPanel(); ask([it.id]); })
+      .catch(function (e) { it.status = "failed"; it.reason = e.message; renderPanel(); });
+  }
+  function cancel(it) {
+    if (!it.id) { items = items.filter(function (x) { return x !== it; }); markBlocks(); renderPanel(); resize(); return; }
+    callTool("note_comment_cancel", { id: it.id })
+      .then(function (r) { it.status = (r.comment && r.comment.status) || "cancelled"; markBlocks(); renderPanel(); resize(); })
+      .catch(function () {});
+  }
+
+  /** Watch open comments; show the note again whenever it changes. */
+  function poll(restart) {
+    if (restart) { clearTimeout(pollTimer); pollStart = Date.now(); }
+    if (!items.some(isOpen)) { pollStart = 0; return; }
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(function () {
+      var ids = items.filter(function (it) { return it.id; }).map(function (it) { return it.id; });
+      callTool("note_comment_status", { noteId: last.noteId, ids: ids, since: last.version || null }).then(function (r) {
+        (r.comments || []).forEach(function (c) {
+          var it = byId(c.id);
+          if (it) { it.status = c.status; it.reason = c.reason; it.blockIds = c.blockIds; }
+        });
+        if (r.version) last.version = r.version;
+        if (typeof r.html === "string") { last.html = r.html; refreshNote(); }
+        markBlocks(); renderPanel();
+      }).catch(function () {}).then(function () {
+        if (!items.some(isOpen)) { pollStart = 0; return; }
+        if (Date.now() - pollStart > 600000) { stale = true; pollStart = 0; renderPanel(); return; }
+        poll();
+      });
+    }, 2000);
+  }
+
+  /** On load: comments still open on this note (e.g. the chat was reloaded). */
+  function pickUp() {
+    callTool("note_comment_status", { noteId: last.noteId, since: last.version || null }).then(function (r) {
+      (r.comments || []).forEach(function (c) {
+        if (byId(c.id) || (c.status !== "pending" && c.status !== "working")) return;
+        items.push({ key: keySeq++, id: c.id, status: c.status, quote: c.quote, body: c.body, anchors: c.blockIds, blockIds: c.blockIds, reason: c.reason });
+      });
+      if (r.version) last.version = r.version;
+      if (typeof r.html === "string") { last.html = r.html; refreshNote(); }
+      markBlocks(); renderPanel(); resize();
+      if (items.some(isOpen)) poll(true);
+    }).catch(function () {});
+  }
+
+  /** Put fresh note HTML in place without rebuilding the card. */
+  function refreshNote() {
+    if (composing) { deferred = true; return; }
+    var el = document.querySelector(".body .note");
+    if (!el || !last) return;
+    el.innerHTML = last.html ? sanitize(last.html) : '<p class="kind">This note is empty.</p>';
+    enhance(); markBlocks(); resize();
+  }
+
+  function statusIcon(it) {
+    if (it.status === "pending" || it.status === "working" || it.status === "saving") return '<span class="spin" title="Working on it"></span>';
+    if (it.status === "done") return '<span class="tick" title="Done">' + ICON_OK + "</span>";
+    if (it.status === "failed" || it.status === "declined" || it.status === "error") return '<span class="cross" title="Not done">' + ICON_X + "</span>";
+    return '<span class="dot" title="Not sent yet"></span>';
+  }
+  function actions(it) {
+    var k = ' data-k="' + it.key + '"';
+    if (it.status === "draft") return '<button class="btn sm primary" data-act="send-one"' + k + '>Send</button><button class="btn sm" data-act="remove"' + k + '>Remove</button>';
+    if (it.status === "pending" || it.status === "working") return '<button class="btn sm" data-act="cancel"' + k + '>Cancel</button>';
+    if (it.status === "failed" || it.status === "declined" || it.status === "error") return '<button class="btn sm" data-act="retry"' + k + '>Retry</button>';
+    return "";
+  }
+  function renderPanel() {
+    var box = document.getElementById("cpanel");
+    if (!box) return;
+    if (!canComment()) { box.innerHTML = ""; return; }
+    var shown = items.filter(function (it) { return it.status !== "cancelled"; });
+    if (!shown.length) { box.innerHTML = '<div class="chint">Select text, or click an image or table, to ask for a change.</div>'; return; }
+    var drafts = shown.filter(function (it) { return it.status === "draft"; });
+    var working = shown.filter(function (it) { return isOpen(it) || it.status === "saving"; }).length;
+    var settled = !working && !drafts.length;
+    var head = '<div class="cphead">Comments' + (working ? ' <span class="hint">· working on ' + working + "</span>" : "") +
+      (drafts.length > 1 ? '<button class="btn sm primary" data-act="send-all">Send all (' + drafts.length + ")</button>"
+        : settled ? '<button class="btn sm" data-act="clear">Clear</button>' : "") + "</div>";
+    var warn = askFailed ? '<div class="cwarn">Couldn\\'t ask the assistant.<button class="btn sm" data-act="ask-again">Ask again</button></div>'
+      : stale ? '<div class="cwarn">Still waiting on the assistant.<button class="btn sm" data-act="ask-again">Ask again</button></div>' : "";
+    box.innerHTML = head + warn + shown.map(function (it) {
+      return '<div class="crow" data-k="' + it.key + '"><span class="cst">' + statusIcon(it) + '</span><div class="cmain">' +
+        (it.quote ? '<div class="cq">\u201c' + esc(it.quote) + '\u201d</div>' : "") + '<div class="cb">' + esc(it.body) + "</div>" +
+        (it.reason && it.status !== "done" ? '<div class="cr">' + esc(it.reason) + "</div>" : "") +
+        '</div><div class="cact">' + actions(it) + "</div></div>";
+    }).join("");
+  }
+
+  function itemFor(el) {
+    var k = el.getAttribute("data-k"), it = null;
+    items.forEach(function (x) { if (String(x.key) === k) it = x; });
+    return it;
+  }
+
+  function onSelect() {
+    if (!canComment() || composing) return;
+    var s = window.getSelection();
+    if (!s || s.isCollapsed || !s.rangeCount) return;
+    var range = s.getRangeAt(0), anchors = anchorsFor(range);
+    if (!anchors) return;
+    sel = { anchors: anchors, quote: s.toString().split(/\\s+/).join(" ").trim().slice(0, 500) };
+    showButton(range.getBoundingClientRect());
+  }
+  document.addEventListener("mouseup", function (e) {
+    if (pop && pop.contains(e.target)) return;
+    setTimeout(onSelect, 0);
+  });
+  document.addEventListener("keyup", function (e) { if (e.shiftKey) onSelect(); });
+  document.addEventListener("mousedown", function (e) {
+    if (pop && !pop.contains(e.target) && !composing) closePop();
+  });
+  document.addEventListener("scroll", function () { if (pop && !composing) closePop(); }, true);
+  document.addEventListener("mouseover", function (e) {
+    var row = e.target.closest && e.target.closest(".crow");
+    document.querySelectorAll(".c-hot").forEach(function (el) { el.classList.remove("c-hot"); });
+    if (row) hot(row.getAttribute("data-k"), true);
+  });
+
   var last = null, mode = "inline", canFullscreen = false;
   function setMode(m) {
     if (!m || m === mode) return;
@@ -227,6 +552,7 @@ export function previewHtml(): string {
     if (last) render(last);
   }
   function render(p) {
+    if (!last || last.noteId !== p.noteId) { items = []; picked = false; askFailed = false; stale = false; }
     last = p;
     var body = "";
     if (p.kind === "note") body = '<div class="note">' + (p.html ? sanitize(p.html) : '<p class="kind">This note is empty.</p>') + "</div>";
@@ -238,8 +564,11 @@ export function previewHtml(): string {
         return '<li><span class="k">' + esc(i.kind) + '</span><a href="#" data-open="' + esc(i.url) + '">' + esc(i.title) + "</a></li>";
       }).join("") + "</ul>" : '<div class="empty">This notebook is empty.</div>';
     }
-    document.getElementById("root").innerHTML = '<div class="card">' + head(p) + '<div class="body">' + body + "</div></div>";
+    document.getElementById("root").innerHTML = '<div class="card">' + head(p) + '<div class="body">' + body + '</div><div id="cpanel"></div></div>';
     enhance();
+    markBlocks();
+    renderPanel();
+    if (canComment() && !picked) { picked = true; pickUp(); }
     resize();
   }
 
@@ -296,6 +625,31 @@ export function previewHtml(): string {
   }
 
   document.addEventListener("click", function (e) {
+    var act = e.target.closest("[data-act]");
+    if (act) {
+      e.preventDefault();
+      var a = act.getAttribute("data-act"), it = act.hasAttribute("data-k") ? itemFor(act) : null;
+      if (a === "compose") compose();
+      else if (a === "add") addDraft(false);
+      else if (a === "send-now") addDraft(true);
+      else if (a === "send-all") send(items.slice());
+      else if (a === "send-one" && it) send([it]);
+      else if (a === "remove" && it) cancel(it);
+      else if (a === "cancel" && it) cancel(it);
+      else if (a === "retry" && it) retry(it);
+      else if (a === "ask-again") askAgain();
+      else if (a === "clear") { items = items.filter(function (x) { return isOpen(x) || x.status === "draft"; }); markBlocks(); renderPanel(); resize(); }
+      return;
+    }
+    // Images, tables, diagrams and code: a click picks the whole block.
+    var blk = canComment() && !composing && e.target.closest && e.target.closest(".note [data-b]");
+    var s = window.getSelection();
+    if (blk && (!s || s.isCollapsed) && e.target.closest("img,table,.diagram,svg,pre,.katex-display")) {
+      e.preventDefault();
+      sel = { anchors: [blk.getAttribute("data-b")], quote: "" };
+      showButton(blk.getBoundingClientRect());
+      return;
+    }
     var t = e.target.closest("[data-open]");
     if (t) { e.preventDefault(); open(t.getAttribute("data-open")); return; }
     if (e.target.closest("[data-mode-toggle]")) {
@@ -323,6 +677,7 @@ export function previewHtml(): string {
     appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] },
     protocolVersion: "2026-01-26"
   }).then(function (res) {
+    tools.mcp = !!(res && res.hostCapabilities && res.hostCapabilities.serverTools);
     theme(res && res.hostContext);
     if (last) render(last); // show Expand once we know the host allows it
     notify("ui/notifications/initialized", {});
