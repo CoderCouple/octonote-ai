@@ -38,7 +38,7 @@ test.describe("line bend, shape fill / dashed / label alignment, links", () => {
     await waitForDoc(api, c.id, (d) => !d.items.find((i) => i.id === "l")?.bend, "line straightened");
   });
 
-  test("fill cycles tint → solid → none, dashed outline, label align / valign", async ({ page, api, enter }) => {
+  test("fill tint / solid / none, dashed outline, label align / valign (through the bar's sub-menus)", async ({ page, api, enter }) => {
     const c = await api.createCanvas(e2eTitle("styles"));
     await api.updateCanvas(c.id, { document: docOf([rect("a", 0, 0, { text: "Label", color: "blue", w: 240, h: 140 })]) });
     await enter(`/c/${c.id}`);
@@ -47,34 +47,42 @@ test.describe("line bend, shape fill / dashed / label alignment, links", () => {
     const a = await ui.centerOf("a");
     await page.mouse.click(a.x, a.y);
     const bar = ui.selbar();
+    const open = async (name: string | RegExp) => bar.getByRole("button", { name }).click();
 
+    // Colour ▾ → Fill tab → Tint / Solid / None.
     const pathFill = () => ui.item("a").locator("path").first().getAttribute("fill");
     const tintFill = await pathFill();
-    await bar.getByRole("button", { name: "Fill: tint" }).click();
+    await open("Colour");
+    await page.getByRole("tab", { name: "Fill" }).click();
+    await page.getByTitle("Solid fill").click();
     await waitForDoc(api, c.id, (d) => d.items[0]!.fill === "solid", "fill solid");
-    const solidFill = await pathFill();
-    expect(solidFill).not.toBe(tintFill);
-    await bar.getByRole("button", { name: "Fill: solid" }).click();
+    expect(await pathFill()).not.toBe(tintFill);
+    await page.getByTitle("None fill").click();
     await waitForDoc(api, c.id, (d) => d.items[0]!.fill === "none", "fill none");
     expect(await pathFill()).toMatch(/none|transparent/);
-    await bar.getByRole("button", { name: "Fill: none" }).click();
+    await page.getByTitle("Tint fill").click();
     await waitForDoc(api, c.id, (d) => (d.items[0]!.fill ?? "tint") === "tint", "fill back to tint");
+    await page.keyboard.press("Escape");
 
-    await bar.getByRole("button", { name: "Dashed outline" }).click();
-    await waitForDoc(api, c.id, (d) => d.items[0]!.dashed === true, "dashed saved");
+    // Stroke ▾ → dashed, then solid again.
+    await open(/^Stroke/);
+    await page.getByRole("button", { name: "dashed", exact: true }).click();
+    await waitForDoc(api, c.id, (d) => d.items[0]!.strokeStyle === "dashed", "dashed saved");
     await expect(ui.item("a").locator("path").first()).toHaveAttribute("stroke-dasharray", /\d/);
-    await bar.getByRole("button", { name: "Dashed outline" }).click();
-    await waitForDoc(api, c.id, (d) => !d.items[0]!.dashed, "dashed off");
+    await page.getByRole("button", { name: "solid", exact: true }).click();
+    await waitForDoc(api, c.id, (d) => !d.items[0]!.strokeStyle && !d.items[0]!.dashed, "dashed off");
+    await page.keyboard.press("Escape");
 
-    await bar.getByRole("button", { name: "Text alignment: center" }).click();
+    // Text ▾ → align and vertical position.
+    await open("Text");
+    await page.getByRole("button", { name: "Align right" }).click();
     await waitForDoc(api, c.id, (d) => d.items[0]!.align === "right", "align right");
-    await bar.getByRole("button", { name: "Text alignment: right" }).click();
+    await page.getByRole("button", { name: "Align left" }).click();
     await waitForDoc(api, c.id, (d) => d.items[0]!.align === "left", "align left");
     await expect(ui.item("a").locator(".occ-shape-text")).toHaveCSS("text-align", "left");
-
-    await bar.getByRole("button", { name: "Vertical text position: middle" }).click();
+    await page.getByRole("button", { name: "Text bottom" }).click();
     await waitForDoc(api, c.id, (d) => d.items[0]!.valign === "bottom", "valign bottom");
-    await bar.getByRole("button", { name: "Vertical text position: bottom" }).click();
+    await page.getByRole("button", { name: "Text top" }).click();
     await waitForDoc(api, c.id, (d) => d.items[0]!.valign === "top", "valign top");
     await expect(ui.item("a").locator(".occ-shape-text")).toHaveCSS("align-items", "flex-start");
     expect(await shape()).toMatchObject({ text: "Label", color: "blue", align: "left", valign: "top" });

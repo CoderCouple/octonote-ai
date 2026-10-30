@@ -21,7 +21,15 @@ The tools sit on the left edge. Each has a one-letter shortcut.
 | **Comment** | C | Pin a comment to a shape or a spot. Type `@` to mention someone with access. |
 | **+** | ⌘K or / | Insert a diagram from a template, a shape, an icon or a device frame (phone, browser, …). |
 
-Select something to get its bar: colour, fill (tint, solid or none), dashed outline, text size and alignment, layer order, duplicate and delete.
+Select something to get its bar. Each button opens a small menu:
+
+- **Colour:** border, fill (tint, solid or none) and text colours separately.
+- **Stroke:** solid, dashed or dotted, four widths, and opacity.
+- **Text:** size, bold, italic, font (sans, serif, mono, hand-drawn) and alignment.
+- **Lines:** straight, curved or elbow, and the arrowhead at each end (none, arrow, open, dot, diamond).
+- **⋯ More:** duplicate, lock, link, copy style and paste style, delete.
+
+Right-click anything for the same actions plus cut, copy and paste, layer order, comments and export. ⌥⌘C / ⌥⌘V copy and paste a style; ⇧⌘L locks; ⌘] / ⌘[ move one layer, ⇧⌘] / ⇧⌘[ to the front or back.
 
 **Rearrange** in the header lays out the selection (or the whole canvas) vertically or horizontally. Undo from the "Rearranged" message.
 
@@ -33,6 +41,8 @@ A figure is a diagram written as code: architecture maps, flowcharts, data model
 - **Turn a sketch into one:** select boxes and arrows you drew and click **To diagram**.
 - **Have an agent write one:** the CLI and the Claude/ChatGPT apps draw canvases from text (see below).
 - **Work inside it:** double-click (or press Enter) to drill into groups, collapse them, and play flows. Esc leaves.
+- **Restyle it by clicking:** inside an opened figure, click a box, a group, an icon's label or an arrow (shift-click for several). A toolbar at the bottom changes its text, shape, icon, colour, border, text size, typeface and alignment, or an arrow's label, line, width, routing and arrowheads. Every change is written into the figure's code, and ⌘Z undoes it.
+- **Edit the code:** select the figure and click **Code**. The code opens beside the canvas and the figure redraws as you type.
 - **Name it** with a `title` line in its code. The title sits above the figure's border.
 
 Embed a figure in a note with the **Figure** block, or drag it from the canvas into the note next to it in a project. The note's copy updates a few seconds after the canvas saves.

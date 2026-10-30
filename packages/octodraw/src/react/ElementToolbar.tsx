@@ -135,6 +135,29 @@ export function ElementToolbar(props: ElementToolbarProps) {
   const selectionKey = `${selection.kind}:${selection.ids.join('\u0000')}`;
   useEffect(() => setOpen(null), [selectionKey, !!editing]);
 
+  // When the bar goes away (selection cleared, delete) while it has focus, hand
+  // focus to the diagram / canvas around it, so keys like ⌘Z keep working.
+  // (React removes the bar before cleanup runs, so focus is tracked while it's here.)
+  const hadFocus = useRef(false);
+  useEffect(() => {
+    const el = bar.current;
+    const host = el?.parentElement?.closest<HTMLElement>('[tabindex]');
+    const onIn = () => (hadFocus.current = true);
+    const onOut = (e: FocusEvent) => {
+      if (!el?.contains(e.relatedTarget as Node | null) && e.relatedTarget) hadFocus.current = false;
+    };
+    el?.addEventListener('focusin', onIn);
+    el?.addEventListener('focusout', onOut);
+    return () => {
+      el?.removeEventListener('focusin', onIn);
+      el?.removeEventListener('focusout', onOut);
+      if (!hadFocus.current) return;
+      requestAnimationFrame(() => {
+        if (!document.activeElement || document.activeElement === document.body) host?.focus({ preventScroll: true });
+      });
+    };
+  }, []);
+
   const close = (refocus = true) => {
     const button = open ? buttons.current.get(open) : undefined;
     setOpen(null);

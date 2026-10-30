@@ -129,12 +129,14 @@ test.describe("canvas tools", () => {
     await expect(ui.items()).toHaveCount(2);
     await waitForDoc(api, c.id, (d) => d.items.length === 2, "redo saved");
 
-    // Selection bar Duplicate / Delete buttons.
+    // Selection bar ⋯ More → Duplicate / Delete.
     const b = await ui.centerOf("b");
     await page.mouse.click(b.x, b.y);
-    await ui.selbar().getByRole("button", { name: "Duplicate" }).click();
+    await ui.selbar().getByRole("button", { name: "More" }).click();
+    await page.getByRole("menuitem", { name: /^Duplicate/ }).click();
     await expect(ui.items()).toHaveCount(3);
-    await ui.selbar().getByRole("button", { name: "Delete" }).click();
+    await ui.selbar().getByRole("button", { name: "More" }).click();
+    await page.getByRole("menuitem", { name: /^Delete/ }).click();
     await expect(ui.items()).toHaveCount(2);
 
     // Arrow keys nudge the selection.

@@ -20,11 +20,13 @@ test("the element toolbar restyles boxes and arrows inside an opened figure thro
 
   // Colour → blue: the code gets `color: blue` on Payment's line (it's only declared once).
   await bar.getByRole("button", { name: /^Colou?r/ }).click();
-  await page.getByRole("button", { name: /^Blue$/ }).click();
+  await page.getByRole("menuitemradio", { name: "Blue", exact: true }).click();
   await waitForDoc(api, c.id, (d) => /Payment \[color: blue\]/.test(sourceOf(d)), "colour saved in the code");
 
   // Undo inside the opened figure takes it back out.
-  await page.keyboard.press("Escape"); // close the colour menu if still open
+  // Escape clears the selection (the bar goes away); ⌘Z still undoes.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("toolbar", { name: /box/i })).toHaveCount(0);
   await page.keyboard.press("ControlOrMeta+z");
   await waitForDoc(api, c.id, (d) => !sourceOf(d).includes("color: blue"), "undo saved");
 
@@ -41,7 +43,7 @@ test("the element toolbar restyles boxes and arrows inside an opened figure thro
   const arrowBar = page.getByRole("toolbar", { name: /arrow/i });
   await expect(arrowBar).toBeVisible();
   await arrowBar.getByRole("button", { name: /^Line/ }).click();
-  await page.getByRole("radio", { name: "Dashed" }).or(page.getByRole("button", { name: "Dashed" })).first().click();
+  await page.getByRole("radio", { name: "Dashed" }).or(page.getByRole("menuitemradio", { name: "Dashed" })).or(page.getByRole("button", { name: "Dashed" })).first().click();
   await waitForDoc(api, c.id, (d) => sourceOf(d).includes("Cart --> Billing"), "dashed arrow saved");
   await page.screenshot({ path: test.info().outputPath("element-toolbar.png") });
 });
