@@ -321,7 +321,7 @@ describe('sequence toolbar', () => {
     expect(sequenceControls(node('Client'), diagram)).toEqual(['editText', 'icon', 'color', 'more']);
     expect(sequenceControls(node('Client', 'DB'), diagram)).toEqual(['count', 'icon', 'color', 'delete']);
     expect(sequenceControls(edge('m0'), diagram)).toEqual(['editText', 'color', 'line', 'direction', 'more']);
-    expect(sequenceControls(edge('m0', 'm1'), diagram)).toEqual(['count', 'color', 'line', 'delete']);
+    expect(sequenceControls(edge('m0', 'm1'), diagram)).toEqual(['count', 'color', 'line', 'direction', 'delete']);
     expect(sequenceControls(edge('m7'), diagram)).toEqual([]);
   });
 

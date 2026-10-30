@@ -4,7 +4,7 @@ import { parseErd } from '../dsl/erd';
 import { parseDiagram } from '../dsl/parse';
 import { parseSequence } from '../dsl/sequence';
 import { BpmnSvg, layoutBpmn } from '../bpmn/bpmn';
-import { ErdSvg, layoutErd } from '../erd/erd';
+import { arrangeErd, erdCollapsedFrom, ErdSvg, layoutErd } from '../erd/erd';
 import type { IconSet } from '../icons/resolve';
 import type { IconResolver } from '../icons/types';
 import { arrangeLayout, type ViewPlacements } from '../layout/arrange';
@@ -37,7 +37,8 @@ export async function renderSourceSvg(source: string, options: SourceSvgOptions)
   const type = options.type ?? detectDiagramType(source);
   if (type === 'erd') {
     const erd = parseErd(source);
-    const layout = await layoutErd(erd, { theme, measureText });
+    // Saved state: tables dragged by hand (level '') and tables showing only key columns.
+    const layout = arrangeErd(erd, await layoutErd(erd, { theme, measureText, collapsed: erdCollapsedFrom(options.placements) }), options.placements?.['']);
     return renderDiagramSvg({ layout: { width: layout.width, height: layout.height, nodes: [], edges: [] }, settings: parseDiagram('').settings, theme, icons, iconSet, padding, title: options.title ? erd.settings?.title : undefined, body: createElement(ErdSvg, { layout, diagram: erd, theme, icons, iconSet }) });
   }
   if (type === 'sequence') {

@@ -40,7 +40,7 @@ export { detectDiagramType } from './dsl/detect';
 export type { DiagramType } from './dsl/detect';
 export { ERD_KEYWORDS, parseErd, parseErdWithSpans } from './dsl/erd';
 export type * from './dsl/erd';
-export { parseSequence, parseSequenceWithSpans, SEQUENCE_KEYWORDS } from './dsl/sequence';
+export { parseSequence, parseSequenceWithSpans, SEQUENCE_KEYWORDS, sequenceActivations } from './dsl/sequence';
 export type * from './dsl/sequence';
 export { ErdSvg, layoutErd } from './erd/erd';
 export type { ErdLayout } from './erd/erd';
@@ -137,12 +137,19 @@ export { CANVAS_TEMPLATES, FIGURE_TEMPLATES, figureTitle, type CanvasTemplate } 
 export { arrangeLayout, canResizeNode, placementKey } from './layout/arrange';
 export type { NodePlacement, NodePlacements, ViewPlacements } from './layout/arrange';
 export {
+  addColumn,
   applyErdEdits,
+  deleteColumn,
   deleteEntity,
   deleteRelationship,
+  ERD_COLUMN_KEYS,
   ERD_CONNECTORS,
+  erdColumnNameProblem,
   erdNameProblem,
+  renameColumn,
   renameEntity,
+  setColumnKey,
+  setColumnType,
   setEntityProperty,
   setRelationshipConnector,
   setRelationshipLabel,
@@ -151,13 +158,21 @@ export {
 export type { ErdEdit } from './dsl/edit-erd';
 export {
   applySequenceEdits,
+  deleteActivation,
+  deleteBlock,
   deleteMessage,
   deleteParticipant,
   messageDirectionOf,
   messageLineOf,
   participantMessageCount,
   renameParticipant,
+  blockMessageCount,
+  BLOCK_KINDS,
   sequenceNameProblem,
+  setBlockKind,
+  setBlockLabel,
+  setBlockProperty,
+  unwrapBlock,
   setMessageDirection,
   setMessageLabel,
   setMessageLine,

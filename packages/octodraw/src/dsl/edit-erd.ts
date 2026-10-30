@@ -26,7 +26,12 @@ export type ErdEdit =
   | { type: 'setRelationshipConnector'; relationship: string; connector: ErdConnector }
   | { type: 'setRelationshipProperty'; relationship: string; key: string; value: string | null }
   | { type: 'setRelationshipLabel'; relationship: string; label: string | null }
-  | { type: 'deleteRelationship'; relationship: string };
+  | { type: 'deleteRelationship'; relationship: string }
+  | { type: 'renameColumn'; entity: string; column: string; name: string }
+  | { type: 'setColumnType'; entity: string; column: string; columnType: string }
+  | { type: 'setColumnKey'; entity: string; column: string; key: string; on: boolean }
+  | { type: 'addColumn'; entity: string; name: string; columnType: string; after?: string }
+  | { type: 'deleteColumn'; entity: string; column: string };
 
 /** `<` one-to-many, `>` many-to-one, `-` one-to-one, `<>` many-to-many. */
 export const ERD_CONNECTORS: readonly ErdConnector[] = ['<', '>', '-', '<>'];
@@ -134,8 +139,7 @@ export function setRelationshipConnector(source: string, id: string, connector: 
   const { doc, rel } = found;
   if (rawAt(doc, rel.line, rel.connector) === connector) return unchanged(source);
   const edits = new LineEdits(doc);
-  // Always spaced: `-` is only a connector between whitespace.
-  edits.splice(rel.line, rel.from.range.endColumn, rel.to.range.column, ` ${connector} `);
+  edits.splice(rel.line, rel.connector.column, rel.connector.endColumn, spacedConnector(doc, rel, connector));
   return edits.result();
 }
 
@@ -191,6 +195,163 @@ export function deleteRelationship(source: string, id: string): EditResult {
   return edits.result();
 }
 
+// --- Columns ----------------------------------------------------------------
+// A column line is `name [type] [meta…]`: the first word after the name is its
+// type, the rest are flags (`pk`, `fk`, `unique`, …). A column only named in a
+// relationship (`orders.userId > users.id`) has no line until it gets one.
+
+/** Flags the toolbar toggles on a column (written as words after the type). */
+export const ERD_COLUMN_KEYS = ['pk', 'fk', 'unique', 'nullable'] as const;
+
+/** Why a column can't be called `name` (undefined when it can). */
+export function erdColumnNameProblem(name: string): string | undefined {
+  if (!name) return 'A name cannot be blank';
+  if (/\s/.test(name)) return "Column names can't contain spaces (relationships write them as 'table.column')";
+  if (/["<>[\]{}:]|\/\//.test(name)) return 'Column names can\'t contain " < > [ ] { } : or //';
+  return undefined;
+}
+
+/** A column type as written: quoted when it has spaces; undefined when it can't be written. */
+function formatColumnType(type: string): string | undefined {
+  if (type.includes('"') || /[\r\n]/.test(type)) return undefined;
+  return /\s|\/\//.test(type) ? `"${type}"` : type;
+}
+
+const columnLines = (doc: Doc, entity: string, column: string) => doc.spans.columns.filter((c) => c.entity === entity && c.name.text === column);
+const columnRefs = (doc: Doc, entity: string, column: string) =>
+  doc.spans.relationships.flatMap((r) => [r.from, r.to].filter((end) => end.entity.name === entity && end.column?.name === column).map((end) => ({ rel: r, end })));
+
+function findColumn(source: string, entity: string, column: string): { doc: Doc } | EditResult {
+  const doc = load(source);
+  const table = doc.diagram.entities.get(entity);
+  if (!table) return refuse(source, `There is no table '${entity}' in the code`);
+  if (!table.attributes.some((a) => a.name === column)) return refuse(source, `'${entity}' has no column '${column}'`);
+  return { doc };
+}
+
+/** Renames a column: its line and every relationship that names it (`users.email`). */
+export function renameColumn(source: string, entity: string, column: string, newName: string): EditResult {
+  const found = findColumn(source, entity, column);
+  if (!('doc' in found)) return found;
+  const { doc } = found;
+  const name = newName.trim();
+  if (name === column) return unchanged(source);
+  const problem = erdColumnNameProblem(name);
+  if (problem) return refuse(source, problem);
+  if (doc.diagram.entities.get(entity)!.attributes.some((a) => a.name === name)) return refuse(source, `'${entity}' already has a column '${name}'`);
+  const edits = new LineEdits(doc);
+  for (const c of columnLines(doc, entity, column)) edits.splice(c.line, c.name.column, c.name.endColumn, name);
+  for (const { rel, end } of columnRefs(doc, entity, column)) {
+    if (hasError(doc, rel.line)) return refuse(source, `Line ${rel.line} has an error`);
+    edits.splice(rel.line, end.column!.column, end.column!.endColumn, name);
+  }
+  return edits.result();
+}
+
+/** Sets a column's type; a column only named in relationships gets a line in its table. */
+export function setColumnType(source: string, entity: string, column: string, type: string): EditResult {
+  const found = findColumn(source, entity, column);
+  if (!('doc' in found)) return found;
+  const { doc } = found;
+  const text = type.trim();
+  if (!text) return refuse(source, 'A type cannot be blank');
+  const written = formatColumnType(text);
+  if (written === undefined) return refuse(source, 'Types cannot contain double quotes or line breaks');
+  const lines = columnLines(doc, entity, column);
+  if (lines.length === 0) return addColumnLine(doc, entity, undefined, `${column} ${written}`);
+  const edits = new LineEdits(doc);
+  for (const c of lines) {
+    if (c.type?.text === text) continue;
+    if (c.type) edits.splice(c.line, c.type.column, c.type.endColumn, written);
+    else edits.splice(c.line, c.name.endColumn, c.name.endColumn, ` ${written}`);
+  }
+  return edits.result();
+}
+
+/** Turns a flag (`pk`, `fk`, `unique`, `nullable`, …) on or off on a column; it needs a type first. */
+export function setColumnKey(source: string, entity: string, column: string, key: string, on: boolean): EditResult {
+  const found = findColumn(source, entity, column);
+  if (!('doc' in found)) return found;
+  const { doc } = found;
+  if (!/^[A-Za-z][\w-]*$/.test(key)) return refuse(source, `'${key}' isn't a column flag`);
+  const lines = columnLines(doc, entity, column);
+  if (lines.length === 0 || lines.some((c) => !c.type)) {
+    if (!on) return unchanged(source);
+    return refuse(source, `Give '${column}' a type first (the word after a column's name is its type)`);
+  }
+  const edits = new LineEdits(doc);
+  const lower = key.toLowerCase();
+  for (const c of lines) {
+    const has = c.meta.filter((m) => !m.quoted && m.text.toLowerCase() === lower);
+    if (on && !has.length) edits.splice(c.line, c.range.endColumn, c.range.endColumn, ` ${key}`);
+    if (!on) for (const m of has) edits.splice(c.line, startOfSpace(doc, c.line, m.column), m.endColumn, '', false);
+  }
+  return edits.result();
+}
+
+/** Adds a column line after `after` (or at the end of the table), giving the table a `{ }` body when it has none. */
+export function addColumn(source: string, entity: string, name: string, type: string, after?: string): EditResult {
+  const doc = load(source);
+  const table = doc.diagram.entities.get(entity);
+  if (!table) return refuse(source, `There is no table '${entity}' in the code`);
+  const problem = erdColumnNameProblem(name.trim());
+  if (problem) return refuse(source, problem);
+  if (table.attributes.some((a) => a.name === name.trim())) return refuse(source, `'${entity}' already has a column '${name.trim()}'`);
+  const written = formatColumnType(type.trim());
+  if (!type.trim() || written === undefined) return refuse(source, "That type can't be written");
+  return addColumnLine(doc, entity, after, `${name.trim()} ${written}`);
+}
+
+/** Deletes a column line; refused while a relationship uses the column. */
+export function deleteColumn(source: string, entity: string, column: string): EditResult {
+  const found = findColumn(source, entity, column);
+  if (!('doc' in found)) return found;
+  const { doc } = found;
+  const refs = columnRefs(doc, entity, column).length;
+  if (refs) return refuse(source, `${refs === 1 ? 'A relationship uses' : `${refs} relationships use`} '${entity}.${column}'; delete ${refs === 1 ? 'it' : 'them'} first`);
+  const edits = new LineEdits(doc);
+  for (const c of columnLines(doc, entity, column)) edits.removeLine(c.line);
+  return edits.result();
+}
+
+/** Writes a column line into a table: after a column, at the end of its body, or in a new body / declaration. */
+function addColumnLine(doc: Doc, entity: string, after: string | undefined, text: string): EditResult {
+  const source = doc.source;
+  const edits = new LineEdits(doc);
+  const own = doc.spans.columns.filter((c) => c.entity === entity);
+  const anchor = after ? own.filter((c) => c.name.text === after).at(-1) : undefined;
+  if (anchor) {
+    edits.insertAfter(anchor.line, `${indentOf(doc, anchor.line)}${text}`);
+    return edits.result();
+  }
+  const decls = doc.spans.entities.filter((d) => d.entity === entity);
+  if (decls.length > 1) return refuse(source, `'${entity}' is defined in ${decls.length} places`);
+  const decl = decls[0];
+  if (decl) {
+    if (hasError(doc, decl.line)) return refuse(source, `Line ${decl.line} has an error`);
+    const outer = indentOf(doc, decl.line);
+    const inner = own.length ? indentOf(doc, own.at(-1)!.line) : `${outer}  `;
+    if (decl.open && !decl.close) return refuse(source, `'${entity}' is missing its closing '}'`);
+    if (decl.open && decl.close && decl.close.line > decl.line) edits.insertBefore(decl.close.line, `${inner}${text}`);
+    else if (decl.open && decl.close) edits.splice(decl.line, decl.open.column, decl.close.endColumn, `{\n${inner}${text}\n${outer}}`);
+    else edits.splice(decl.line, decl.range.endColumn, decl.range.endColumn, ` {\n${inner}${text}\n${outer}}`);
+    return edits.result();
+  }
+  // Only used in relationships: declare it with a body next to where it is first used.
+  const rel = doc.spans.relationships.find((r) => r.from.entity.name === entity || r.to.entity.name === entity);
+  if (!rel) return refuse(source, `Couldn't find where '${entity}' is used`);
+  if (hasError(doc, rel.line)) return refuse(source, `Line ${rel.line} has an error`);
+  const end = rel.from.entity.name === entity ? rel.from : rel.to;
+  const outer = indentOf(doc, rel.line);
+  const block = [`${outer}${rawAt(doc, rel.line, end.entity)} {`, `${outer}  ${text}`, `${outer}}`];
+  const otherFirst = end === rel.to && rel.from.entity.name !== entity && firstLine(doc, rel.from.entity.name) === rel.line;
+  for (const line of block) {
+    if (otherFirst) edits.insertAfter(rel.line, line);
+    else edits.insertBefore(rel.line, line);
+  }
+  return edits.result();
+}
+
 /**
  * Applies edits in order, re-reading the code between them, as one change. If any
  * edit is refused nothing is applied. Deleting a relationship renumbers the ones
@@ -222,10 +383,33 @@ function applyErdEdit(source: string, edit: ErdEdit): EditResult {
       return setRelationshipLabel(source, edit.relationship, edit.label);
     case 'deleteRelationship':
       return deleteRelationship(source, edit.relationship);
+    case 'renameColumn':
+      return renameColumn(source, edit.entity, edit.column, edit.name);
+    case 'setColumnType':
+      return setColumnType(source, edit.entity, edit.column, edit.columnType);
+    case 'setColumnKey':
+      return setColumnKey(source, edit.entity, edit.column, edit.key, edit.on);
+    case 'addColumn':
+      return addColumn(source, edit.entity, edit.name, edit.columnType, edit.after);
+    case 'deleteColumn':
+      return deleteColumn(source, edit.entity, edit.column);
   }
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * The connector written in place of the old one, keeping its spacing
+ * (`a.id<b.id` stays unspaced); `-` gets a space on any side that has none,
+ * because it is only a connector between whitespace.
+ */
+function spacedConnector(doc: Doc, rel: ErdRelationshipSpan, connector: ErdConnector): string {
+  if (connector !== '-') return connector;
+  const line = doc.lines[rel.line - 1] ?? '';
+  const before = /\s/.test(line[rel.connector.column - 2] ?? '') ? '' : ' ';
+  const after = /\s/.test(line[rel.connector.endColumn - 1] ?? '') ? '' : ' ';
+  return `${before}-${after}`;
+}
 
 function findRelationship(source: string, id: string): { doc: Doc; rel: ErdRelationshipSpan } | EditResult {
   const doc = load(source);

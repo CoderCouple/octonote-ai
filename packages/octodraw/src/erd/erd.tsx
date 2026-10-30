@@ -3,6 +3,7 @@ import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { ErdConnector, ErdDiagram, ErdEntity } from '../dsl/erd';
 import { resolveIcon, type IconSet } from '../icons/resolve';
 import type { IconResolver } from '../icons/types';
+import type { ViewPlacements } from '../layout/arrange';
 import { estimateTextWidth, type Point, type TextMeasurer } from '../layout/layout';
 import { swatchFor } from '../react/theme';
 import type { Theme } from '../theme/tokens';
@@ -16,7 +17,7 @@ const HEADER = 38;
 const ROW = 26;
 const PAD_X = 14;
 /** Table header height and side padding (for overlays such as the inline name editor). */
-export const ERD_METRICS = { header: HEADER, paddingX: PAD_X, iconWidth: 26, nameSize: 14, labelSize: 12 } as const;
+export const ERD_METRICS = { header: HEADER, paddingX: PAD_X, iconWidth: 26, nameSize: 14, labelSize: 12, row: ROW, rowOffset: 4, cellSize: 12.5 } as const;
 const MIN_WIDTH = 190;
 const GAP = 28;
 /** Relationship lines for tables at their current positions (after layout or hand placement). */
@@ -78,6 +79,27 @@ export function arrangeErd(diagram: ErdDiagram, layout: ErdLayout, placements: R
 }
 
 const STUB = 22;
+
+/**
+ * The hand-placements level that remembers which tables show only their key
+ * columns (`{ [table]: { x: 0, y: 0 } }`), so "Key columns only" is saved with
+ * the figure like dragged tables (level ''). ERD diagrams have no drill levels,
+ * so the key can't clash with one; renames move it with `renamePlacements`.
+ */
+export const ERD_COLLAPSED_KEY = '#erd-collapsed';
+
+/** The tables saved as collapsed in a figure's placements. */
+export function erdCollapsedFrom(placements: ViewPlacements | undefined): Set<string> {
+  return new Set(Object.keys(placements?.[ERD_COLLAPSED_KEY] ?? {}));
+}
+
+/** Placements with the collapsed tables written in (the level is dropped when none are). */
+export function withErdCollapsed(placements: ViewPlacements, collapsed: ReadonlySet<string>): ViewPlacements {
+  const next = { ...placements };
+  if (collapsed.size) next[ERD_COLLAPSED_KEY] = Object.fromEntries([...collapsed].sort().map((name) => [name, { x: 0, y: 0 }]));
+  else delete next[ERD_COLLAPSED_KEY];
+  return next;
+}
 
 export interface ErdTableLayout {
   entity: ErdEntity;
@@ -183,9 +205,13 @@ export interface ErdSvgProps {
   selectedLinks?: ReadonlySet<string>;
   /** Makes relationships clickable (a wide invisible hit line, `data-edge-id`). */
   onSelectLink?: (id: string) => void;
+  /** Column rows drawn selected (accent row), by `table.column`. */
+  selectedColumns?: ReadonlySet<string>;
+  /** Makes column rows clickable (`data-column-id="table.column"`); the table header still selects the table. */
+  onSelectColumn?: (id: string) => void;
 }
 
-export function ErdSvg({ layout, diagram, theme, icons, iconSet, reveal, focus, onSelect, onToggle, selectedLinks, onSelectLink }: ErdSvgProps) {
+export function ErdSvg({ layout, diagram, theme, icons, iconSet, reveal, focus, onSelect, onToggle, selectedLinks, onSelectLink, selectedColumns, onSelectColumn }: ErdSvgProps) {
   const f = fontOf(theme);
   const crows = diagram.settings.notation === 'crows-feet';
   const tables = reveal === undefined ? layout.tables : layout.tables.slice(0, reveal);
@@ -286,8 +312,23 @@ export function ErdSvg({ layout, diagram, theme, icons, iconSet, reveal, focus, 
             {attributes.map((a, i) => {
               const rowY = y + HEADER + i * ROW + ROW / 2 + 4;
               const key = a.meta.find((m) => /^(pk|fk)$/i.test(m))?.toUpperCase();
+              const columnId = `${entity.name}.${a.name}`;
+              const picked = selectedColumns?.has(columnId) ?? false;
+              const rowTop = rowY - ROW / 2;
+              const pick = onSelectColumn
+                ? {
+                    'data-column-id': columnId,
+                    style: { cursor: 'pointer' },
+                    onClick: (e: { stopPropagation: () => void }) => {
+                      e.stopPropagation();
+                      onSelectColumn(columnId);
+                    },
+                  }
+                : {};
               return (
-                <g key={a.name}>
+                <g key={a.name} {...pick}>
+                  {onSelectColumn && <rect x={x + 1} y={rowTop} width={width - 2} height={ROW} fill="transparent" />}
+                  {picked && <rect x={x + 3} y={rowTop + 2} width={width - 6} height={ROW - 4} rx={4} fill={theme.color.accentSoft} stroke={theme.color.accent} strokeWidth={1.5} />}
                   {i > 0 && <line x1={x + 1} x2={x + width - 1} y1={rowY - ROW / 2} y2={rowY - ROW / 2} stroke={theme.color.border} />}
                   {key && (
                     <g>

@@ -95,9 +95,30 @@ export interface SeqMessageSpan {
   props?: PropertiesSpan;
 }
 
+/** One opening line of a block: `alt [props] {`, or a later `else` / `and` section. */
+export interface SeqBlockPartSpan {
+  line: number;
+  /** `loop`, `alt`, … or `else` / `and`. */
+  keyword: ColumnSpan & { word: string };
+  props?: PropertiesSpan;
+  /** The statement, `{` included. */
+  range: ColumnSpan;
+  /** The line of this part's closing `}` (missing when never closed). */
+  close?: number;
+}
+
+/** A block (`b<number>`, the order blocks open in) and its sections. */
+export interface SeqBlockSpan {
+  id: string;
+  kind: BlockKind;
+  /** The opening line first, then each `else` / `and`. */
+  parts: SeqBlockPartSpan[];
+}
+
 export interface SequenceSpans {
   statements: SeqStatementSpan[];
   messages: SeqMessageSpan[];
+  blocks: SeqBlockSpan[];
 }
 
 /** Words that start a non-participant line; a participant named like one needs quotes. */
@@ -118,7 +139,7 @@ export function parseSequence(source: string): SequenceDiagram {
 
 /** `parseSequence` plus the exact positions of every participant mention, connector, label and `[props]`. */
 export function parseSequenceWithSpans(source: string): { diagram: SequenceDiagram; spans: SequenceSpans } {
-  const spans: SequenceSpans = { statements: [], messages: [] };
+  const spans: SequenceSpans = { statements: [], messages: [], blocks: [] };
   return { diagram: parse(source, spans), spans };
 }
 
@@ -129,7 +150,7 @@ function parse(source: string, spans?: SequenceSpans): SequenceDiagram {
   const settings: SequenceSettings = { colorMode: 'pastel', styleMode: 'shadow', typeface: 'clean', autoNumber: 'off' };
   let legend: Legend | undefined;
   let inLegend = false;
-  const stack: { block: number; kind: BlockKind; line: number }[] = [];
+  const stack: { block: number; kind: BlockKind; line: number; part?: SeqBlockPartSpan }[] = [];
   let lastClosed: { block: number; kind: BlockKind } | undefined;
   let blocks = 0;
 
@@ -204,6 +225,7 @@ function parse(source: string, spans?: SequenceSpans): SequenceDiagram {
         return;
       }
       events.push({ type: 'block-end', block: open.block, range });
+      if (open.part) open.part.close = line;
       lastClosed = open;
       return;
     }
@@ -240,9 +262,17 @@ function parse(source: string, spans?: SequenceSpans): SequenceDiagram {
       return;
     }
 
-    const block = /^(\w+)\s*(?:\[(.*)\])?\s*\{\s*$/.exec(trimmed);
+    const block = /^(\w+)\s*(?:\[(.*)\])?\s*\{\s*$/d.exec(trimmed);
     if (block && (BLOCK_KINDS.includes(block[1]!) || block[1] === 'else' || block[1] === 'and')) {
       const props = block[2] !== undefined ? parseProps(block[2], line, column + trimmed.indexOf('[') + 1, new Set(['label', 'icon', 'color'])) : {};
+      let part: SeqBlockPartSpan | undefined;
+      if (spans) {
+        part = { line, keyword: { word: block[1]!, column, endColumn: column + block[1]!.length }, range: { column, endColumn: column + trimmed.length } };
+        if (block[2] !== undefined) {
+          const [ps, pe] = block.indices![2]!;
+          part.props = propertiesSpan(block[2], column - 1 + ps - 1, column - 1 + pe + 1);
+        }
+      }
       if (block[1] === 'else' || block[1] === 'and') {
         const expected = block[1] === 'else' ? 'alt' : 'par';
         const last = events.at(-1);
@@ -253,12 +283,14 @@ function parse(source: string, spans?: SequenceSpans): SequenceDiagram {
         // Reopen the previous block as a new section.
         events.pop();
         events.push({ type: 'block-section', block: lastClosed.block, label: props.label, range });
-        stack.push({ ...lastClosed, line });
+        stack.push({ block: lastClosed.block, kind: lastClosed.kind, line, part });
+        if (part) spans!.blocks[lastClosed.block]?.parts.push(part);
         return;
       }
       const id = blocks++;
       events.push({ type: 'block-start', block: id, kind: block[1] as BlockKind, label: props.label, properties: props, range });
-      stack.push({ block: id, kind: block[1] as BlockKind, line });
+      stack.push({ block: id, kind: block[1] as BlockKind, line, part });
+      if (part) spans!.blocks.push({ id: `b${id}`, kind: block[1] as BlockKind, parts: [part] });
       return;
     }
 
@@ -333,6 +365,36 @@ function parse(source: string, spans?: SequenceSpans): SequenceDiagram {
 
   for (const open of stack) report('error', "Missing closing '}'", open.line, 1, 2);
   return { kind: 'sequence', settings, participants, events, legend, diagnostics };
+}
+
+/** An activation bar: an `activate` and the `deactivate` that ends it (innermost first, per participant). */
+export interface SequenceActivation {
+  /** `a<n>`: the n-th `activate` in the code. */
+  id: string;
+  participant: string;
+  /** Index of its `activate` among the activate events. */
+  start: number;
+  /** Index of its `deactivate` among the deactivate events; missing when it runs to the end. */
+  end?: number;
+}
+
+/** The activation bars of a diagram, in the order their `activate` is written. */
+export function sequenceActivations(diagram: SequenceDiagram): SequenceActivation[] {
+  const out: SequenceActivation[] = [];
+  const open = new Map<string, SequenceActivation[]>();
+  let ends = 0;
+  for (const e of diagram.events) {
+    if (e.type === 'activate') {
+      const a: SequenceActivation = { id: `a${out.length}`, participant: e.participant, start: out.length };
+      out.push(a);
+      open.set(e.participant, [...(open.get(e.participant) ?? []), a]);
+    } else if (e.type === 'deactivate') {
+      const a = open.get(e.participant)?.pop();
+      if (a) a.end = ends;
+      ends++;
+    }
+  }
+  return out;
 }
 
 function statement(spans: SequenceSpans, kind: SeqStatementKind, line: number, range: SourceRange): SeqStatementSpan {

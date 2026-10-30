@@ -45,6 +45,8 @@ export interface SeqMessageLayout {
 }
 
 export interface SeqBlockLayout {
+  /** `b<n>`, the order blocks open in the code. */
+  id: string;
   kind: BlockKind;
   label?: string;
   x1: number;
@@ -53,6 +55,16 @@ export interface SeqBlockLayout {
   y2: number;
   sections: { y: number; label?: string }[];
   color?: string;
+  icon?: string;
+}
+
+export interface SeqActivationLayout {
+  /** `a<n>`: the n-th `activate` in the code (see `sequenceActivations`). */
+  id: string;
+  participant: string;
+  x: number;
+  y1: number;
+  y2: number;
 }
 
 export interface SequenceLayout {
@@ -60,7 +72,7 @@ export interface SequenceLayout {
   height: number;
   participants: SeqParticipantLayout[];
   messages: SeqMessageLayout[];
-  activations: { x: number; y1: number; y2: number }[];
+  activations: SeqActivationLayout[];
   blocks: SeqBlockLayout[];
   lifelineBottom: number;
 }
@@ -109,7 +121,8 @@ export function layoutSequence(diagram: SequenceDiagram, options: { measureText?
   let y = TOP + HEADER_H + 30;
   const messages: SeqMessageLayout[] = [];
   const activations: SequenceLayout['activations'] = [];
-  const openActivations = new Map<string, number[]>();
+  const openActivations = new Map<string, { y: number; id: string }[]>();
+  let activated = 0;
   const blocks = new Map<number, SeqBlockLayout & { columns: Set<number>; depth: number }>();
   const stack: number[] = [];
   const counters = [0];
@@ -133,14 +146,14 @@ export function layoutSequence(diagram: SequenceDiagram, options: { measureText?
       y += a === b ? SELF_GAP : MESSAGE_GAP;
     } else if (e.type === 'activate') {
       const list = openActivations.get(e.participant) ?? [];
-      list.push(y - MESSAGE_GAP / 2);
+      list.push({ y: y - MESSAGE_GAP / 2, id: `a${activated++}` });
       openActivations.set(e.participant, list);
     } else if (e.type === 'deactivate') {
       const list = openActivations.get(e.participant);
       const start = list?.pop();
-      if (start !== undefined) activations.push({ x: xs[index.get(e.participant)!]! + list!.length * 5, y1: start, y2: y - MESSAGE_GAP / 2 + 8 });
+      if (start !== undefined) activations.push({ id: start.id, participant: e.participant, x: xs[index.get(e.participant)!]! + list!.length * 5, y1: start.y, y2: y - MESSAGE_GAP / 2 + 8 });
     } else if (e.type === 'block-start') {
-      blocks.set(e.block, { kind: e.kind, label: e.label, x1: 0, x2: 0, y1: y - 12, y2: 0, sections: [], color: e.properties.color, columns: new Set(), depth: stack.length });
+      blocks.set(e.block, { id: `b${e.block}`, kind: e.kind, label: e.label, x1: 0, x2: 0, y1: y - 12, y2: 0, sections: [], color: e.properties.color, icon: e.properties.icon, columns: new Set(), depth: stack.length });
       stack.push(e.block);
       if (diagram.settings.autoNumber === 'nested') counters.push(0);
       y += BLOCK_HEADER;
@@ -156,14 +169,14 @@ export function layoutSequence(diagram: SequenceDiagram, options: { measureText?
     }
   }
   // Close anything left open at the bottom.
-  for (const [name, list] of openActivations) for (const start of list) activations.push({ x: xs[index.get(name)!]!, y1: start, y2: y });
+  for (const [name, list] of openActivations) for (const start of list) activations.push({ id: start.id, participant: name, x: xs[index.get(name)!]!, y1: start.y, y2: y });
 
   const blockLayouts: SeqBlockLayout[] = [...blocks.values()].map((b) => {
     const cols = [...b.columns];
     const lo = cols.length ? Math.min(...cols) : 0;
     const hi = cols.length ? Math.max(...cols) : 0;
     const inset = 18 + (3 - Math.min(b.depth, 3)) * 8;
-    return { kind: b.kind, label: b.label, x1: xs[lo]! - widths[lo]! / 2 + 4 - inset + 18, x2: xs[hi]! + widths[hi]! / 2 - 4 + inset - 18 + (messages.some((m) => m.self) ? 24 : 0), y1: b.y1, y2: b.y2 || y, sections: b.sections, color: b.color };
+    return { id: b.id, kind: b.kind, label: b.label, x1: xs[lo]! - widths[lo]! / 2 + 4 - inset + 18, x2: xs[hi]! + widths[hi]! / 2 - 4 + inset - 18 + (messages.some((m) => m.self) ? 24 : 0), y1: b.y1, y2: b.y2 || y, sections: b.sections, color: b.color, ...(b.icon ? { icon: b.icon } : {}) };
   });
 
   const participants = names.map((n, i) => ({ participant: diagram.participants.get(n)!, x: xs[i]!, width: widths[i]!, labelWidth: measure(diagram.participants.get(n)!.label, head) }));
@@ -190,9 +203,20 @@ export interface SequenceSvgProps {
   selectedMessages?: ReadonlySet<string>;
   /** Makes messages clickable (a wide invisible hit line, `data-edge-id`). */
   onSelectMessage?: (id: string) => void;
+  /** Blocks drawn selected (accent frame), by id (`b<n>`). */
+  selectedBlocks?: ReadonlySet<string>;
+  /** Makes blocks clickable on their frame and label tab (`data-block-id`). */
+  onSelectBlock?: (id: string) => void;
+  /** Activation bars drawn selected, by id (`a<n>`). */
+  selectedActivations?: ReadonlySet<string>;
+  /** Makes activation bars clickable (`data-activation-id`). */
+  onSelectActivation?: (id: string) => void;
 }
 
-export function SequenceSvg({ layout, theme, icons, iconSet, reveal, current, styleMode, focus, onSelect, selectedMessages, onSelectMessage }: SequenceSvgProps) {
+/** Width of a block's label tab. */
+const tabWidth = (b: SeqBlockLayout) => Math.max(56, `${b.kind}${b.label ? ` ${b.label}` : ''}`.length * 6.6 + 18) + (b.icon ? 18 : 0);
+
+export function SequenceSvg({ layout, theme, icons, iconSet, reveal, current, styleMode, focus, onSelect, selectedMessages, onSelectMessage, selectedBlocks, onSelectBlock, selectedActivations, onSelectActivation }: SequenceSvgProps) {
   const watercolor = styleMode === 'watercolor';
   const shadow = styleMode !== 'plain' && !watercolor;
   const headTop = TOP;
@@ -212,13 +236,28 @@ export function SequenceSvg({ layout, theme, icons, iconSet, reveal, current, st
     <g fontFamily={theme.font.sans}>
       {watercolor && <WatercolorDefs />}
       {blocks.map((b, i) => {
-        const color = b.color ? (swatchFor(theme, b.color)?.stroke ?? b.color) : theme.color.borderStrong;
-        const tab = `${b.kind}${b.label ? ` ${b.label}` : ''}`;
+        const picked = selectedBlocks?.has(b.id) ?? false;
+        const color = picked ? theme.color.accent : b.color ? (swatchFor(theme, b.color)?.stroke ?? b.color) : theme.color.borderStrong;
+        const tab = tabWidth(b);
+        const icon = b.icon ? resolveIcon(b.icon, icons, iconSet) : undefined;
+        const pick = onSelectBlock
+          ? (e: { stopPropagation: () => void }) => {
+              e.stopPropagation();
+              onSelectBlock(b.id);
+            }
+          : undefined;
         return (
-          <g key={i}>
-            <rect x={b.x1} y={b.y1} width={b.x2 - b.x1} height={b.y2 - b.y1} rx={theme.radius.md} fill={b.color ? (swatchFor(theme, b.color)?.groupFills[0] ?? 'none') : theme.group.fills[0]} fillOpacity={0.6} stroke={color} />
-            <path d={`M${b.x1},${b.y1 + 22} H${b.x1 + Math.max(56, tab.length * 6.6 + 18)} l8,-8 V${b.y1}`} fill="none" stroke={color} />
-            <text x={b.x1 + 8} y={b.y1 + 15} fontSize={11.5} fontWeight={600} fill={theme.color.text}>
+          <g key={i} data-block-id={onSelectBlock ? b.id : undefined}>
+            <rect x={b.x1} y={b.y1} width={b.x2 - b.x1} height={b.y2 - b.y1} rx={theme.radius.md} fill={b.color ? (swatchFor(theme, b.color)?.groupFills[0] ?? 'none') : theme.group.fills[0]} fillOpacity={0.6} stroke={color} strokeWidth={picked ? 2 : undefined} />
+            <path d={`M${b.x1},${b.y1 + 22} H${b.x1 + tab} l8,-8 V${b.y1}`} fill="none" stroke={color} strokeWidth={picked ? 2 : undefined} />
+            {icon && <Icon name={b.icon!} resolved={icon} x={b.x1 + 7} y={b.y1 + 4} size={14} tint={icon.tint ?? theme.color.text} theme={theme} />}
+            {pick && (
+              <>
+                <rect x={b.x1} y={b.y1} width={b.x2 - b.x1} height={b.y2 - b.y1} rx={theme.radius.md} fill="none" stroke="transparent" strokeWidth={10} pointerEvents="stroke" style={{ cursor: 'pointer' }} onClick={pick} />
+                <rect x={b.x1} y={b.y1} width={tab + 8} height={22} fill="transparent" style={{ cursor: 'pointer' }} onClick={pick} />
+              </>
+            )}
+            <text x={b.x1 + 8 + (icon ? 18 : 0)} y={b.y1 + 15} fontSize={11.5} fontWeight={600} fill={theme.color.text} pointerEvents={pick ? 'none' : undefined}>
               <tspan fontWeight={700}>{b.kind}</tspan>
               {b.label && <tspan fill={theme.color.textMuted}>{` ${b.label}`}</tspan>}
             </text>
@@ -238,9 +277,26 @@ export function SequenceSvg({ layout, theme, icons, iconSet, reveal, current, st
       {participants.map(({ participant, x }) => (
         <line key={`life-${participant.name}`} x1={x} x2={x} y1={headTop + HEADER_H} y2={layout.lifelineBottom} stroke={theme.color.borderStrong} strokeDasharray="5 5" />
       ))}
-      {activations.map((a, i) => (
-        <rect key={i} x={a.x - ACTIVATION_W / 2} y={a.y1} width={ACTIVATION_W} height={Math.max(8, a.y2 - a.y1)} rx={2} fill={theme.color.surface} stroke={theme.color.text} strokeWidth={1} />
-      ))}
+      {activations.map((a, i) => {
+        const picked = selectedActivations?.has(a.id) ?? false;
+        const height = Math.max(8, a.y2 - a.y1);
+        const bar = <rect key={i} x={a.x - ACTIVATION_W / 2} y={a.y1} width={ACTIVATION_W} height={height} rx={2} fill={picked ? theme.color.accentSoft : theme.color.surface} stroke={picked ? theme.color.accent : theme.color.text} strokeWidth={picked ? 2 : 1} />;
+        if (!onSelectActivation) return bar;
+        return (
+          <g
+            key={i}
+            data-activation-id={a.id}
+            style={{ cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectActivation(a.id);
+            }}
+          >
+            {bar}
+            <rect x={a.x - ACTIVATION_W / 2 - 4} y={a.y1} width={ACTIVATION_W + 8} height={height} fill="transparent" />
+          </g>
+        );
+      })}
       {layout.messages.slice(0, shownMessages).map((m, i) => {
         const id = `m${i}`;
         const picked = selectedMessages?.has(id) ?? false;

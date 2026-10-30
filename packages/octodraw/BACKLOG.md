@@ -8,12 +8,11 @@ ROADMAP.md; this is the checklist of loose ends.
 - [ ] BPMN: no drill-down/collapse/Maps; no expanded subprocesses; elements can't be dragged to another lane (that changes the code); lines leaving a boundary event can cross its task.
 
 ## Element toolbar: ERD and sequence
-- [ ] ERD: columns (name, type, pk/fk) aren't selectable or editable from the toolbar; only tables and relationships.
-- [ ] ERD: a table used as `table.column` can't be renamed to a name with spaces or `< > [ ] { } : ,` (a quoted name can't take `.column`); the toolbar refuses with a reason.
-- [ ] ERD: "Key columns only" is view state (like the header chevron), not saved with the figure.
-- [ ] Sequence: blocks (alt / loop / opt / par / break), their labels and activations aren't selectable yet.
-- [ ] Sequence: several selected messages get Colour and Line but no Direction (it is named per message); a return can't point both ways and a two-way message can't be a return (refused with a reason).
-- [ ] Rewrites always write connectors spaced (`a.id<b.id` becomes `a.id < b.id` when its cardinality changes).
+- [ ] ERD: a table used as `table.column` can't be renamed to a name with spaces or `< > [ ] { } : ,` (a quoted name can't take `.column`); the toolbar refuses with a reason. Column names can't have spaces either (refused).
+- [ ] ERD columns: only `pk` / `fk` are drawn (as badges); `unique`, `nullable` and other flags are written in the code but not shown. A flag needs a type first (the word after the name is the type), so it is refused on an untyped column. Columns hidden by "Key columns only" can't be selected until the table is expanded. No drag to reorder columns.
+- [ ] Sequence blocks: `else` / `and` sections aren't selectable (Edit label edits the block's own label); an alt / par with sections can't become loop / opt / break (refused with a reason, nothing is merged); no "wrap messages in a block" or "add section".
+- [ ] Sequence: deleting a block is refused when an activation starts inside it and ends outside (or the other way); activation bars can only be deleted, not moved.
+- [ ] Sequence: a return can't point both ways and a two-way message can't be a return (Eraser syntax has no `<-->`); with several messages selected the whole batch is refused, naming the message.
 
 ## Rendering
 - [ ] `watercolor`: PDF export may drop the SVG filters.

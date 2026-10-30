@@ -157,10 +157,14 @@ describe('deleteEntity', () => {
 });
 
 describe('relationships', () => {
-  it('changes cardinality, always spaced', () => {
+  it('changes cardinality, keeping the spacing (`-` always gets spaces)', () => {
     const src = 'a.id<b.aId';
     expect(edited(src, setRelationshipConnector(src, 'r0', '-'))).toBe('a.id - b.aId');
     expect(setRelationshipConnector(src, 'r0', '<')).toEqual({ source: src, changed: false });
+    expect(edited(src, setRelationshipConnector(src, 'r0', '<>'))).toBe('a.id<>b.aId');
+    expect(edited('a.id < b.aId', setRelationshipConnector('a.id < b.aId', 'r0', '>'))).toBe('a.id > b.aId');
+    expect(edited('a.id <b.aId', setRelationshipConnector('a.id <b.aId', 'r0', '-'))).toBe('a.id - b.aId');
+    expect(edited('a.id - b.aId', setRelationshipConnector('a.id - b.aId', 'r0', '<'))).toBe('a.id < b.aId');
     expect(setRelationshipConnector(src, 'r0', '>>' as never).reason).toMatch(/isn't a relationship/);
     expect(setRelationshipConnector(src, 'r9', '>').reason).toMatch(/no relationship/);
   });

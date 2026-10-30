@@ -1,4 +1,15 @@
-import { parseSequenceWithSpans, SEQUENCE_KEYWORDS, type SeqMentionSpan, type SeqMessageSpan, type SeqStatementSpan, type SequenceDiagram, type SequenceSpans } from './sequence';
+import {
+  parseSequenceWithSpans,
+  SEQUENCE_KEYWORDS,
+  sequenceActivations,
+  type BlockKind,
+  type SeqBlockSpan,
+  type SeqMentionSpan,
+  type SeqMessageSpan,
+  type SeqStatementSpan,
+  type SequenceDiagram,
+  type SequenceSpans,
+} from './sequence';
 import {
   formatValue,
   indentOf,
@@ -34,7 +45,17 @@ export type SequenceEdit =
   | { type: 'setMessageProperty'; message: string; key: string; value: string | null }
   | { type: 'setMessageLine'; message: string; line: MessageLine }
   | { type: 'setMessageDirection'; message: string; direction: MessageDirection }
-  | { type: 'deleteMessage'; message: string };
+  | { type: 'deleteMessage'; message: string }
+  | { type: 'setBlockProperty'; block: string; key: string; value: string | null }
+  | { type: 'setBlockKind'; block: string; kind: BlockKind }
+  | { type: 'unwrapBlock'; block: string }
+  | { type: 'deleteBlock'; block: string }
+  | { type: 'deleteActivation'; activation: string };
+
+/** The block kinds, in menu order. */
+export const BLOCK_KINDS: readonly BlockKind[] = ['loop', 'alt', 'opt', 'par', 'break'];
+/** The word that opens another section of a block kind (`else` in alt, `and` in par). */
+const SECTION_WORD: Partial<Record<BlockKind, string>> = { alt: 'else', par: 'and' };
 
 const MESSAGE_CONNECTORS: readonly Connector[] = ['>', '<', '<>', '-', '--', '-->'];
 
@@ -246,6 +267,143 @@ export function deleteMessage(source: string, id: string): EditResult {
   return edits.result();
 }
 
+// --- Blocks and activations ------------------------------------------------------
+// A block is `kind [props] {` … `}`, with `else` (alt) or `and` (par) sections,
+// each `else [props] {` … `}` right after the previous `}`. Ids are `b<n>`, the
+// order blocks open in; activations are `a<n>`, the n-th `activate`.
+
+function findBlock(source: string, id: string): { doc: Doc; block: SeqBlockSpan; first: number; last: number } | EditResult {
+  const doc = load(source);
+  const block = doc.spans.blocks.find((b) => b.id === id);
+  if (!block) return refuse(source, `There is no block '${id}' in the code`);
+  for (const part of block.parts) {
+    if (hasError(doc, part.line)) return refuse(source, `Line ${part.line} has an error`);
+    if (part.close === undefined) return refuse(source, `The ${part.keyword.word} block on line ${part.line} is missing its closing '}'`);
+  }
+  return { doc, block, first: block.parts[0]!.line, last: block.parts.at(-1)!.close! };
+}
+
+/** Sets (or with `null` removes) a block property (`label`, `color`, `icon`) on its opening line. */
+export function setBlockProperty(source: string, id: string, key: string, value: string | null): EditResult {
+  const found = findBlock(source, id);
+  if (!('doc' in found)) return found;
+  const { doc, block } = found;
+  if (!isPropertyKey(key)) return refuse(source, `'${key}' isn't a property name`);
+  const formatted = value === null ? null : formatValue(value);
+  if (formatted === undefined) return refuse(source, 'Values cannot contain double quotes');
+  const part = block.parts[0]!;
+  const next = propsAfter(doc, part.line, part.props, key, formatted);
+  if (next === rawAt(doc, part.line, part.props)) return unchanged(source);
+  const edits = new LineEdits(doc);
+  writeProps(doc, edits, part.line, part.props, next, part.keyword.endColumn);
+  return edits.result();
+}
+
+/** Sets (or with `null`/blank removes) a block's label. */
+export function setBlockLabel(source: string, id: string, label: string | null): EditResult {
+  const text = label?.trim() || null;
+  if (text && /[\r\n]/.test(text)) return refuse(source, 'Labels are one line');
+  return setBlockProperty(source, id, 'label', text);
+}
+
+/**
+ * Changes a block's kind. alt ⇄ par rewrites the section words (`else` ⇄ `and`);
+ * a block with sections can't become loop / opt / break (they have one section),
+ * so that is refused with a reason rather than dropping messages.
+ */
+export function setBlockKind(source: string, id: string, kind: BlockKind): EditResult {
+  if (!BLOCK_KINDS.includes(kind)) return refuse(source, `'${kind}' isn't a block. Use ${BLOCK_KINDS.join(', ')}`);
+  const found = findBlock(source, id);
+  if (!('doc' in found)) return found;
+  const { doc, block } = found;
+  if (block.kind === kind) return unchanged(source);
+  const sections = block.parts.length - 1;
+  const word = SECTION_WORD[kind];
+  if (sections && !word) {
+    const current = block.parts[1]!.keyword.word;
+    return refuse(source, `A ${kind} block has one section; this ${block.kind} has ${sections} '${current}' section${sections > 1 ? 's' : ''}. Move or delete ${sections > 1 ? 'them' : 'it'} in the code first`);
+  }
+  const edits = new LineEdits(doc);
+  const head = block.parts[0]!;
+  edits.splice(head.line, head.keyword.column, head.keyword.endColumn, kind);
+  for (const part of block.parts.slice(1)) edits.splice(part.line, part.keyword.column, part.keyword.endColumn, word!);
+  return edits.result();
+}
+
+/** Removes a block's frame (its opening, section and closing lines), keeping what is inside, one indent level out. */
+export function unwrapBlock(source: string, id: string): EditResult {
+  const found = findBlock(source, id);
+  if (!('doc' in found)) return found;
+  const { doc, block, first, last } = found;
+  const frame = new Set(block.parts.flatMap((p) => [p.line, p.close!]));
+  const edits = new LineEdits(doc);
+  for (const line of frame) edits.removeLine(line);
+  const outer = indentOf(doc, first);
+  let unit: string | undefined;
+  for (let line = first + 1; line < last; line++) {
+    if (frame.has(line) || !doc.lines[line - 1]!.trim()) continue;
+    const indent = indentOf(doc, line);
+    unit ??= indent.startsWith(outer) && indent.length > outer.length ? indent.slice(outer.length) : '';
+    if (unit && indent.startsWith(outer + unit)) edits.splice(line, outer.length + 1, outer.length + unit.length + 1, '', false);
+  }
+  return edits.result();
+}
+
+/** How many messages a block holds (nested blocks included). */
+export function blockMessageCount(source: string, id: string): number {
+  const found = findBlock(source, id);
+  if (!('doc' in found)) return 0;
+  return found.doc.spans.messages.filter((m) => m.line > found.first && m.line < found.last).length;
+}
+
+/**
+ * Deletes a block with everything inside it. Participants first written (or
+ * styled) inside keep a declaration line, so columns don't move; an activation
+ * that starts inside and ends outside (or the other way) is refused.
+ */
+export function deleteBlock(source: string, id: string): EditResult {
+  const found = findBlock(source, id);
+  if (!('doc' in found)) return found;
+  const { doc, first, last } = found;
+  const inside = (line: number) => line >= first && line <= last;
+  const activates = doc.spans.statements.filter((s) => s.kind === 'activate');
+  const deactivates = doc.spans.statements.filter((s) => s.kind === 'deactivate');
+  for (const a of sequenceActivations(doc.diagram)) {
+    const start = activates[a.start]?.line;
+    const end = a.end !== undefined ? deactivates[a.end]?.line : undefined;
+    if (start !== undefined && end !== undefined && inside(start) !== inside(end)) {
+      return refuse(source, `${a.participant}'s activation on line ${start} ends on line ${end}, across the block's edge; delete it first`);
+    }
+  }
+  const edits = new LineEdits(doc);
+  for (let line = first; line <= last; line++) edits.removeLine(line);
+  const keep: string[] = [];
+  for (const stmt of doc.spans.statements) {
+    if (!inside(stmt.line)) continue;
+    if (hasError(doc, stmt.line)) return refuse(source, `Line ${stmt.line} has an error`);
+    keep.push(...keepAlive(doc, stmt, null));
+  }
+  const indent = indentOf(doc, first);
+  for (const text of keep) edits.insertBefore(first, indent + text);
+  return edits.result();
+}
+
+/** Deletes an activation bar: its `activate` and the `deactivate` that ends it. */
+export function deleteActivation(source: string, id: string): EditResult {
+  const doc = load(source);
+  const activation = sequenceActivations(doc.diagram).find((a) => a.id === id);
+  if (!activation) return refuse(source, `There is no activation '${id}' in the code`);
+  const start = doc.spans.statements.filter((s) => s.kind === 'activate')[activation.start];
+  const end = activation.end !== undefined ? doc.spans.statements.filter((s) => s.kind === 'deactivate')[activation.end] : undefined;
+  const edits = new LineEdits(doc);
+  for (const stmt of [start, end]) {
+    if (!stmt) continue;
+    if (hasError(doc, stmt.line)) return refuse(source, `Line ${stmt.line} has an error`);
+    edits.replaceLine(stmt.line, keepAlive(doc, stmt, null));
+  }
+  return edits.result();
+}
+
 /**
  * Applies edits in order, re-reading the code between them, as one change. If any
  * edit is refused nothing is applied. Deleting a message renumbers the ones after it.
@@ -278,6 +436,16 @@ function applySequenceEdit(source: string, edit: SequenceEdit): EditResult {
       return setMessageDirection(source, edit.message, edit.direction);
     case 'deleteMessage':
       return deleteMessage(source, edit.message);
+    case 'setBlockProperty':
+      return setBlockProperty(source, edit.block, edit.key, edit.value);
+    case 'setBlockKind':
+      return setBlockKind(source, edit.block, edit.kind);
+    case 'unwrapBlock':
+      return unwrapBlock(source, edit.block);
+    case 'deleteBlock':
+      return deleteBlock(source, edit.block);
+    case 'deleteActivation':
+      return deleteActivation(source, edit.activation);
   }
 }
 
@@ -294,8 +462,13 @@ function findMessage(source: string, id: string): { doc: Doc; msg: SeqMessageSpa
 function writeConnector(doc: Doc, msg: SeqMessageSpan, connector: Connector): EditResult {
   if (!MESSAGE_CONNECTORS.includes(connector)) return refuse(doc.source, `'${connector}' isn't a connector`);
   const edits = new LineEdits(doc);
-  // Always spaced: `-`, `--` and `-->` are only connectors between whitespace.
-  edits.splice(msg.line, msg.from.range.endColumn, msg.to.range.column, ` ${connector} `);
+  // Keeps the spacing as written (`A>B` stays unspaced), except that `-`, `--`
+  // and `-->` are only connectors between whitespace.
+  const line = doc.lines[msg.line - 1] ?? '';
+  const dashed = connector.startsWith('-');
+  const before = dashed && !/\s/.test(line[msg.connector.column - 2] ?? '') ? ' ' : '';
+  const after = dashed && !/\s/.test(line[msg.connector.endColumn - 1] ?? '') ? ' ' : '';
+  edits.splice(msg.line, msg.connector.column, msg.connector.endColumn, `${before}${connector}${after}`);
   return edits.result();
 }
 

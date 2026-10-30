@@ -20,7 +20,7 @@ import { detectDiagramType, type DiagramType } from '../dsl/detect';
 import { parseErd } from '../dsl/erd';
 import { parseSequence } from '../dsl/sequence';
 import { BpmnSvg, bpmnAsDiagramLayout, layoutBpmn, type BpmnLayout } from '../bpmn/bpmn';
-import { arrangeErd, ErdSvg, layoutErd, ERD_METRICS, type ErdLayout } from '../erd/erd';
+import { arrangeErd, ERD_COLLAPSED_KEY, erdCollapsedFrom, ErdSvg, layoutErd, ERD_METRICS, withErdCollapsed, type ErdLayout } from '../erd/erd';
 import { layoutSequence, SEQUENCE_METRICS, SequenceSvg, type SequenceLayout } from '../sequence/sequence';
 import { erdControls, erdEditableText, pruneErdSelection, runErdAction, type ErdToolbarAction } from './toolbar/erd';
 import { erdToolbarDelegate, sequenceToolbarDelegate } from './toolbar/ErdSequenceControls';
@@ -320,19 +320,20 @@ export function OctoDiagram({
   const [autoLayout, setLayout] = useState<DiagramLayout | null>(null);
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const lastLayoutAt = useRef(0);
-  // ERD tables collapsed to their key columns.
-  const [erdCollapsed, setErdCollapsed] = useState<ReadonlySet<string>>(() => new Set());
-  const toggleTable = useCallback((name: string) => setErdCollapsed((all) => {
-    const next = new Set(all);
-    if (next.has(name)) next.delete(name);
-    else next.add(name);
-    return next;
-  }), []);
   // Sequence step-through: the message being explained.
   const [seqStep, setSeqStep] = useState<number | null>(null);
   // Hand placements (dragged nodes, resized groups) for the current drill level.
   const [ownPlacements, setOwnPlacements] = useState<ViewPlacements>({});
   const placements = placementsProp ?? ownPlacements;
+  const placementsRef = useRef(placements);
+  placementsRef.current = placements;
+  // ERD tables collapsed to their key columns: saved with the placements (`ERD_COLLAPSED_KEY`),
+  // mirrored here so a host that doesn't store them (read-only) still toggles.
+  const savedCollapsed = Object.keys(placements[ERD_COLLAPSED_KEY] ?? {}).sort().join('\n');
+  const [erdCollapsed, setErdCollapsedState] = useState<ReadonlySet<string>>(() => erdCollapsedFrom(placements));
+  const erdCollapsedRef = useRef(erdCollapsed);
+  erdCollapsedRef.current = erdCollapsed;
+  useEffect(() => setErdCollapsedState(erdCollapsedFrom(placementsRef.current)), [savedCollapsed]);
   const viewKey = placementKey(view.focus);
   const [dragPlacement, setDragPlacement] = useState<{ id: string; placement: NodePlacement } | null>(null);
   // BPMN elements can be dragged along their lane.
@@ -425,6 +426,25 @@ export function OctoDiagram({
       onPlacementsChange?.(next);
     },
     [placementsProp, onPlacementsChange],
+  );
+  const setErdCollapsed = useCallback(
+    (update: (all: ReadonlySet<string>) => ReadonlySet<string>) => {
+      const next = update(erdCollapsedRef.current);
+      erdCollapsedRef.current = next;
+      setErdCollapsedState(next);
+      commitPlacements(withErdCollapsed(placementsRef.current, next));
+    },
+    [commitPlacements],
+  );
+  const toggleTable = useCallback(
+    (name: string) =>
+      setErdCollapsed((all) => {
+        const next = new Set(all);
+        if (next.has(name)) next.delete(name);
+        else next.add(name);
+        return next;
+      }),
+    [setErdCollapsed],
   );
   const hasPlacements = Object.keys(placements[viewKey] ?? {}).length > 0;
   // ERD tables can be dragged too; relationships re-route as they move.
@@ -919,12 +939,12 @@ export function OctoDiagram({
     (next: DiagramSelection | null) => {
       if (selectionProp === undefined) setOwnSelection(next);
       onSelectionChange?.(next);
-      onSelect?.(next && next.kind !== 'edge' ? (next.ids[0] ?? null) : null);
+      onSelect?.(next && (next.kind === 'node' || next.kind === 'label') ? (next.ids[0] ?? null) : null);
     },
     [selectionProp, onSelectionChange, onSelect],
   );
   const select = useCallback((id: string | null) => setSelection(id ? { kind: 'node', ids: [id] } : null), [setSelection]);
-  const selected = selection && selection.kind !== 'edge' ? (selection.ids[0] ?? null) : null;
+  const selected = selection && (selection.kind === 'node' || selection.kind === 'label') ? (selection.ids[0] ?? null) : null;
 
   // The element toolbar: flow diagrams only, and only when the host takes code changes.
   const editable = !!onSourceChange && (diagramType === 'flow' || diagramType === 'bpmn') && !imported && !streaming && revealCount === undefined;
@@ -940,7 +960,7 @@ export function OctoDiagram({
   // ERD and sequence diagrams have their own toolbar: tables / relationships, participants / messages.
   const otherEditable = !!onSourceChange && chrome && (diagramType === 'erd' || diagramType === 'sequence') && !imported && !streaming && revealCount === undefined;
   const pickOther = useCallback(
-    (kind: 'node' | 'edge', id: string) => {
+    (kind: DiagramSelection['kind'], id: string) => {
       // The click that ends a drag or a pan isn't a selection.
       if (panned.current) {
         panned.current = false;
@@ -952,7 +972,12 @@ export function OctoDiagram({
   );
   const pickTable = useCallback((id: string) => pickOther('node', id), [pickOther]);
   const pickOtherEdge = useCallback((id: string) => pickOther('edge', id), [pickOther]);
+  const pickColumn = useCallback((id: string) => pickOther('column', id), [pickOther]);
+  const pickBlock = useCallback((id: string) => pickOther('block', id), [pickOther]);
+  const pickActivation = useCallback((id: string) => pickOther('activation', id), [pickOther]);
   const selectedEdgeSet = useMemo(() => new Set(selection?.kind === 'edge' ? selection.ids : []), [selection]);
+  const selectedOtherSet = useMemo(() => new Set(selection && selection.kind !== 'edge' && selection.kind !== 'node' ? selection.ids : []), [selection]);
+  const otherSelected = (kind: DiagramSelection['kind']) => (selection?.kind === kind ? selectedOtherSet : undefined);
   const toolbarCtx = useMemo<ToolbarContext>(() => {
     if (bpmn && bpmnView) {
       const bpmnSources = new Map(bpmnView.edges.map((e) => [e.id, e.sources]));
@@ -1009,7 +1034,7 @@ export function OctoDiagram({
     const names = erd?.entities ?? sequence?.participants;
     if (!rename || !names?.has(rename.to)) return;
     pendingRename.current = null;
-    setErdCollapsed((all) => (all.has(rename.from) ? new Set([...all].map((id) => (id === rename.from ? rename.to : id))) : all));
+    setErdCollapsedState((all) => (all.has(rename.from) ? new Set([...all].map((id) => (id === rename.from ? rename.to : id))) : all));
     if (placementsProp === undefined) setOwnPlacements((all) => renamePlacements(all, rename));
   }, [erd, sequence]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1149,7 +1174,7 @@ export function OctoDiagram({
   const interactive = !!(detailsPanel || onSelect);
   const otherBody =
     erd && arrangedErd ? (
-      <ErdSvg layout={arrangedErd} diagram={erd} theme={theme} icons={icons} iconSet={iconSet} reveal={revealCount} focus={otherEditable ? null : selected} selectedLinks={otherEditable ? selectedEdgeSet : undefined} onSelectLink={otherEditable ? pickOtherEdge : undefined} onSelect={
+      <ErdSvg layout={arrangedErd} diagram={erd} theme={theme} icons={icons} iconSet={iconSet} reveal={revealCount} focus={otherEditable ? null : selected} selectedLinks={otherEditable ? selectedEdgeSet : undefined} onSelectLink={otherEditable ? pickOtherEdge : undefined} selectedColumns={otherEditable ? otherSelected('column') : undefined} onSelectColumn={otherEditable ? pickColumn : undefined} onSelect={
           otherEditable
             ? pickTable
             : interactive
@@ -1175,6 +1200,10 @@ export function OctoDiagram({
         focus={otherEditable ? null : selected}
         selectedMessages={otherEditable ? selectedEdgeSet : undefined}
         onSelectMessage={otherEditable ? pickOtherEdge : undefined}
+        selectedBlocks={otherEditable ? otherSelected('block') : undefined}
+        onSelectBlock={otherEditable ? pickBlock : undefined}
+        selectedActivations={otherEditable ? otherSelected('activation') : undefined}
+        onSelectActivation={otherEditable ? pickActivation : undefined}
         onSelect={
           otherEditable
             ? pickTable
@@ -1498,7 +1527,7 @@ export function OctoDiagram({
           <button
             type="button"
             className="od-tool"
-            onClick={() => setErdCollapsed(erdCollapsed.size ? new Set() : new Set(erd.entities.keys()))}
+            onClick={() => setErdCollapsed(() => (erdCollapsed.size ? new Set() : new Set(erd.entities.keys())))}
             title={erdCollapsed.size ? 'Show every column' : 'Show only key columns in every table'}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1542,7 +1571,8 @@ export function OctoDiagram({
         </div>
       </div>}
 
-      {chrome && sequenceLayout && sequenceLayout.messages.length > 1 && revealCount === undefined && (
+      {/* The element toolbar takes the player's place while something is selected. */}
+      {chrome && sequenceLayout && sequenceLayout.messages.length > 1 && revealCount === undefined && (seqStep !== null || !otherDelegate) && (
         <div className={`od-player${seqStep !== null ? ' od-player-active' : ''}`} role="group" aria-label="Step through">
           {seqStep !== null ? (
             <>
@@ -1969,12 +1999,38 @@ function otherEdgeBox(id: string, erd: ErdLayout | null, seq: SequenceLayout | n
   return { x: Math.min(m.from, m.to), y: m.y - 22, width: Math.abs(m.to - m.from), height: 28 };
 }
 
+/** An ERD column's row (`table.column`); the table header when the column is hidden by collapsing. */
+function erdRowBox(erd: ErdLayout, id: string): Box | null {
+  const table = erd.tables.filter((x) => id.startsWith(`${x.entity.name}.`)).sort((a, b) => b.entity.name.length - a.entity.name.length)[0];
+  if (!table) return null;
+  const index = table.attributes.findIndex((a) => a.name === id.slice(table.entity.name.length + 1));
+  if (index < 0) return { x: table.x, y: table.y, width: table.width, height: ERD_METRICS.header };
+  return { x: table.x, y: table.y + ERD_METRICS.header + ERD_METRICS.rowOffset + index * ERD_METRICS.row, width: table.width, height: ERD_METRICS.row };
+}
+
+/** Layout-space box of an ERD column, sequence block or activation bar. */
+function otherPartBox(kind: DiagramSelection['kind'], id: string, erd: ErdLayout | null, seq: SequenceLayout | null): Box | null {
+  if (kind === 'column') return erd ? erdRowBox(erd, id) : null;
+  if (kind === 'block') {
+    const b = seq?.blocks.find((x) => x.id === id);
+    return b ? { x: b.x1, y: b.y1, width: b.x2 - b.x1, height: b.y2 - b.y1 } : null;
+  }
+  if (kind === 'activation') {
+    const a = seq?.activations.find((x) => x.id === id);
+    return a ? { x: a.x - 8, y: a.y1, width: 16, height: Math.max(8, a.y2 - a.y1) } : null;
+  }
+  return null;
+}
+
 /** The selection's screen box for ERD / sequence diagrams (so the toolbar stays clear of it). */
 function otherSelectionBox(selection: DiagramSelection, t: Transform, erd: ErdLayout | null, seq: SequenceLayout | null): ScreenRect | null {
   const boxes: Box[] = [];
   for (const id of selection.ids) {
     if (selection.kind === 'edge') {
       const box = otherEdgeBox(id, erd, seq);
+      if (box) boxes.push(box);
+    } else if (selection.kind !== 'node') {
+      const box = otherPartBox(selection.kind, id, erd, seq);
       if (box) boxes.push(box);
     } else if (erd) {
       const table = erd.tables.find((x) => x.entity.name === id);
@@ -2014,6 +2070,17 @@ function otherEditorBox(selection: DiagramSelection, t: Transform, theme: Theme,
     if (m.self) return at(m.from + 52, m.y + 12, SEQUENCE_METRICS.labelSize, 160, 'left');
     return at((m.from + m.to) / 2, m.y - 12, SEQUENCE_METRICS.labelSize, Math.abs(m.to - m.from) - 24);
   }
+  if (selection.kind === 'column') {
+    const row = erd && erdRowBox(erd, id);
+    if (!row) return null;
+    return at(row.x + ERD_METRICS.paddingX + 24, row.y + row.height / 2, ERD_METRICS.cellSize, row.width - ERD_METRICS.paddingX * 2 - 24, 'left');
+  }
+  if (selection.kind === 'block') {
+    const b = seq?.blocks.find((x) => x.id === id);
+    if (!b) return null;
+    return at(b.x1 + 8 + (b.icon ? 18 : 0) + b.kind.length * 7.5 + 6, b.y1 + 11, 11.5, Math.min(260, b.x2 - b.x1 - 80), 'left');
+  }
+  if (selection.kind !== 'node') return null;
   if (erd) {
     const table = erd.tables.find((x) => x.entity.name === id);
     if (!table) return null;

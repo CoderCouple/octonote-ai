@@ -8,9 +8,13 @@ import { bpmnActionToEdits, bpmnControls, type BpmnAction, type BpmnControl } fr
 // which code edits a toolbar action turns into. One action = one call to
 // `applyEdits` = one change (one undo step) for the host.
 
-export type SelectionKind = 'node' | 'edge' | 'label';
+export type SelectionKind = 'node' | 'edge' | 'label' | 'column' | 'block' | 'activation';
 
-/** What is selected in a diagram: boxes/groups (`node`), arrows (`edge`, view edge ids) or an icon node's label. */
+/**
+ * What is selected in a diagram: boxes/groups (`node`), arrows (`edge`, view edge ids)
+ * or an icon node's label; ERD columns (`column`, `table.column`), sequence blocks
+ * (`block`, `b<n>`) and activation bars (`activation`, `a<n>`).
+ */
 export interface DiagramSelection {
   kind: SelectionKind;
   ids: string[];

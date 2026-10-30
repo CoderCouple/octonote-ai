@@ -106,9 +106,28 @@ export interface ErdRelationshipSpan {
   props?: PropertiesSpan;
 }
 
+/** A word on a column line, with its text (quotes removed). */
+export interface ErdWordSpan extends ColumnSpan {
+  text: string;
+  quoted: boolean;
+}
+
+/** One column line inside a table body: `name [type] [meta…]`. */
+export interface ErdColumnSpan {
+  entity: string;
+  line: number;
+  /** Name through the last word. */
+  range: ColumnSpan;
+  name: ErdWordSpan;
+  type?: ErdWordSpan;
+  meta: ErdWordSpan[];
+}
+
 export interface ErdSpans {
   entities: ErdEntitySpan[];
   relationships: ErdRelationshipSpan[];
+  /** Column lines in table bodies (columns only named in relationships have none). */
+  columns: ErdColumnSpan[];
 }
 
 /** Words that start a setting line; a table can't be called one of these. */
@@ -128,7 +147,7 @@ export function parseErd(source: string): ErdDiagram {
 
 /** `parseErd` plus the exact positions of names, `[props]`, connectors, labels and braces. */
 export function parseErdWithSpans(source: string): { diagram: ErdDiagram; spans: ErdSpans } {
-  const spans: ErdSpans = { entities: [], relationships: [] };
+  const spans: ErdSpans = { entities: [], relationships: [], columns: [] };
   return { diagram: parse(source, spans), spans };
 }
 
@@ -206,6 +225,10 @@ function parse(source: string, spans?: ErdSpans): ErdDiagram {
       const words = trimmed.match(/"[^"]*"|\S+/g) ?? [];
       const [name, type, ...meta] = words.map(unquote);
       if (name) open.entity.attributes.push({ name, type, meta, range: { line, column, endColumn: column + trimmed.length } });
+      if (name && spans) {
+        const spansOf = [...trimmed.matchAll(/"[^"]*"|\S+/g)].map((m) => ({ text: unquote(m[0]), quoted: m[0].startsWith('"'), column: column + m.index, endColumn: column + m.index + m[0].length }));
+        spans.columns.push({ entity: open.entity.name, line, range: { column, endColumn: spansOf.at(-1)!.endColumn }, name: spansOf[0]!, type: spansOf[1], meta: spansOf.slice(2) });
+      }
       return;
     }
 

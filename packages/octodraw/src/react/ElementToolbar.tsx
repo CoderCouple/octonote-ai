@@ -806,6 +806,8 @@ const TOOLBAR_CSS = `
 .od-etb-t { font-weight: 600; }
 .od-etb-muted { color: var(--od-color-text-muted); font-variant-numeric: tabular-nums; }
 .od-etb-mixed { color: var(--od-color-text-muted); font-style: italic; font-weight: 400; }
+.od-etb-mono { font-family: var(--od-font-mono); font-size: 12px; }
+.od-etb-keytag { width: 34px; height: 16px; border-radius: 4px; background: var(--od-color-hover); color: var(--od-color-text-muted); font-size: 9.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .od-etb-a { font-weight: 600; text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 3px; }
 .od-etb-tag { height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--od-space-2); font-size: 12px; color: var(--od-color-text-muted); flex: none; cursor: default; }
 .od-etb-count { height: 34px; display: inline-flex; align-items: center; padding: 0 var(--od-space-3); border-radius: var(--od-radius-md); background: var(--od-color-accent-soft); color: var(--od-color-accent); font-size: 13px; font-weight: 600; flex: none; }
