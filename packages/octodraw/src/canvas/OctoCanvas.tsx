@@ -1013,9 +1013,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const onDoubleClick = (event: React.MouseEvent) => {
     const target = event.target as Element;
     if (target.closest('.occ-chrome, .occ-editor') || tool !== 'select') return;
-    // A handle belongs to its item: the bend handle sits on an arrow's label, so
-    // double-clicking the label edits it rather than starting a new text box there.
-    const id = target.closest('[data-item-id]')?.getAttribute('data-item-id') ?? target.closest('[data-handle]')?.getAttribute('data-for');
+    const id = target.closest('[data-item-id]')?.getAttribute('data-item-id');
     const item = id ? getItem(doc, id) : undefined;
     if (readOnly) {
       if (item?.type === 'figure') enterFigure(item.id);
