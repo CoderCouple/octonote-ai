@@ -14,6 +14,7 @@ import {
 } from "@/features/workspaces";
 import { getMeApi } from "@/features/workspaces/api/workspaces-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { serverSupportToken } from "@/lib/support-session-server";
 import { UpgradeNudge } from "@/features/billing";
 import { AppAnalyticsGate } from "@/lib/product-analytics/app-analytics-gate";
 
@@ -29,7 +30,8 @@ export default async function WorkspaceLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const support = Boolean(await serverSupportToken());
+  if (!user && !support) redirect("/login");
 
   const me = await getMeApi();
   const activeId = await getActiveWorkspaceIdCookie();

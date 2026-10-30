@@ -13,6 +13,7 @@
 import "server-only";
 import { createApiClient } from "@octonote/api-client";
 import { headers } from "next/headers";
+import { serverSupportToken } from "@/lib/support-session-server";
 import { env } from "@/env/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -27,6 +28,9 @@ const apiClient = createApiClient({
     }
   },
   getBearerToken: async () => {
+    // Staff viewing someone's account (read-only) act as that person.
+    const support = await serverSupportToken();
+    if (support) return support;
     const supabase = await createSupabaseServerClient();
     const {
       data: { session },

@@ -32,6 +32,8 @@ export const ID_PREFIXES = {
   oauthRequest: "oar",
   oauthGrant: "ocg",
   oauthToken: "oat",
+  supportGrant: "sag",
+  supportSession: "sup",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

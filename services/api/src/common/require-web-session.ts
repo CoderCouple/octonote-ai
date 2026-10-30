@@ -7,7 +7,7 @@ import { Forbidden } from "./error/error-factory";
  * its owner's normal editing — and can be revoked in Settings.
  */
 export function requireWebSession(req: AuthenticatedRequest, action: string) {
-  if (req.user.cliTokenId) {
+  if (req.user.cliTokenId || req.user.supportSessionId) {
     throw Forbidden(`${action} needs you signed in on the web, not a CLI token.`, {
       code: "WEB_SESSION_REQUIRED",
     });

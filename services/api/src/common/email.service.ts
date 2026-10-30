@@ -24,6 +24,14 @@ export interface ShareEmailInput {
   needsAccount: boolean;
 }
 
+export interface SupportAccessNoticeInput {
+  to: string;
+  name: string;
+  reason: string;
+  at: Date;
+  settingsUrl: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -32,6 +40,34 @@ export class EmailService {
   constructor() {
     const apiKey = process.env.RESEND_API_KEY;
     this.client = apiKey ? new Resend(apiKey) : null;
+  }
+
+  /**
+   * Support entered the account without the user's grant (an admin override):
+   * tell them, with the reason. Throws if it can't be sent, so the session
+   * isn't started without the user hearing about it.
+   */
+  async sendSupportAccessNotice(input: SupportAccessNoticeInput): Promise<void> {
+    const from = process.env.RESEND_FROM ?? "Octonote AI <onboarding@resend.dev>";
+    const subject = "Octonote support viewed your account";
+    const text =
+      `Hi ${input.name},\n\n` +
+      `Octonote support opened your account in read-only mode on ${input.at.toUTCString()} to investigate a problem. ` +
+      `Nothing was changed: support access can't edit, create or delete anything.\n\n` +
+      `Reason: ${input.reason}\n\n` +
+      `You can see every support visit, and choose whether support may enter in future, in Settings → Privacy: ${input.settingsUrl}\n\n` +
+      `Questions? Reply to this email or write to hello@octonote.ai.\n\nOctonote AI`;
+
+    if (!this.client) {
+      this.logger.warn(`RESEND_API_KEY missing — logging support notice to ${input.to} instead.`);
+      this.logger.log({ to: input.to, subject });
+      return;
+    }
+    const { error } = await this.client.emails.send({ from, to: input.to, subject, text, replyTo: "hello@octonote.ai" });
+    if (error) {
+      this.logger.error(`Resend failed: ${error.name} — ${error.message}`);
+      throw new Error(`Email delivery failed: ${error.message}`);
+    }
   }
 
   async sendShareNotification(input: ShareEmailInput): Promise<void> {

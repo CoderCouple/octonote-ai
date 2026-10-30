@@ -18,6 +18,13 @@ import { McpToolsService } from "../service/mcp-tools.service";
 import { NoteMarkdownController } from "../api/v1/controller/note-markdown.controller";
 import { NoteMarkdownService } from "../service/note-markdown.service";
 import { AdminController } from "../api/v1/controller/admin.controller";
+import {
+  AdminSupportController,
+  SupportAccessController,
+  SupportSessionController,
+} from "../api/v1/controller/support-access.controller";
+import { SupportViewInterceptor } from "../common/interceptor/support-view.interceptor";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 import { AdminMetricsController } from "../api/v1/controller/admin-metrics.controller";
 import { AdminCrmController, CrmInboundController } from "../api/v1/controller/admin-crm.controller";
 import { AdminPartnersController } from "../api/v1/controller/admin-partners.controller";
@@ -73,6 +80,9 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     CrmInboundController,
     AdminMetricsController,
     AdminController,
+    SupportAccessController,
+    SupportSessionController,
+    AdminSupportController,
   ],
   providers: [
     NotebooksService,
@@ -98,6 +108,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     AdminExploreService,
     AdminService,
     AdminGuard,
+    { provide: APP_INTERCEPTOR, useClass: SupportViewInterceptor },
     { provide: CRM_MAILER, useFactory: () => new ResendCrmMailer() },
     {
       provide: STRIPE_CLIENT,

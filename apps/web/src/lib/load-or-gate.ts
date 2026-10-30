@@ -7,6 +7,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { getMeApi } from "@/features/workspaces/api/workspaces-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { serverSupportToken } from "@/lib/support-session-server";
 
 export type Loaded<T> = { ok: true; data: T; signedIn: boolean } | { ok: false; signedIn: true };
 
@@ -15,10 +16,12 @@ export async function loadOrGate<T>(load: () => Promise<T>, returnTo: string): P
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  // A support session is "signed in" as the person being helped.
+  const signedIn = Boolean(user) || Boolean(await serverSupportToken());
   try {
-    return { ok: true, data: await load(), signedIn: Boolean(user) };
+    return { ok: true, data: await load(), signedIn };
   } catch {
-    if (!user) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
+    if (!signedIn) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
     return { ok: false, signedIn: true };
   }
 }

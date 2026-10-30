@@ -3,12 +3,15 @@ import { ModuleRef } from "@nestjs/core";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { buildIdFromUuid } from "@octonote/shared";
 import { isCliToken, userForCliToken } from "./cli-token-user";
+import { isSupportToken, userForSupportToken } from "./support-session-user";
 import { recordActivity } from "./record-activity";
 import { SUPABASE_CLIENT } from "./supabase.tokens";
 
 export interface OptionalAuthRequest {
-  user?: User & { id: string };
+  user?: User & { id: string; supportSessionId?: string };
   headers: Record<string, string | undefined>;
+  method?: string;
+  url?: string;
 }
 
 /**
@@ -28,6 +31,11 @@ export class OptionalSupabaseAuthGuard implements CanActivate {
     const header = request.headers.authorization;
     const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : undefined;
     if (!token) return true;
+    // Outside the try: a support session's write must fail, not turn anonymous.
+    if (isSupportToken(token)) {
+      request.user = (await userForSupportToken(this.moduleRef, token, request)) ?? undefined;
+      return true;
+    }
     try {
       if (isCliToken(token)) {
         const user = await userForCliToken(this.moduleRef, token);

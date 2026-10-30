@@ -11,7 +11,8 @@ import { drizzle } from "drizzle-orm/pglite";
 import { buildIdFromUuid } from "@octonote/shared";
 import { ChangeEventsService } from "../../src/common/change-events.service";
 import type { CrmMail, CrmMailer, InboundEvent, ReceivedMail } from "../../src/common/crm-mailer";
-import type { EmailService, ShareEmailInput } from "../../src/common/email.service";
+import type { EmailService, ShareEmailInput, SupportAccessNoticeInput } from "../../src/common/email.service";
+import { SupportAccessService } from "../../src/service/support-access.service";
 import { PermissionsService } from "../../src/common/permissions.service";
 import { PlanLimitsService } from "../../src/common/plan-limits.service";
 import { BillingService } from "../../src/service/billing.service";
@@ -65,7 +66,15 @@ const MIGRATIONS_DIR = join(__dirname, "../../drizzle");
 
 export class FakeEmail {
   sent: ShareEmailInput[] = [];
+  supportNotices: SupportAccessNoticeInput[] = [];
   failNext = false;
+  async sendSupportAccessNotice(input: SupportAccessNoticeInput): Promise<void> {
+    if (this.failNext) {
+      this.failNext = false;
+      throw new Error("smtp down");
+    }
+    this.supportNotices.push(input);
+  }
   async sendShareNotification(input: ShareEmailInput): Promise<void> {
     if (this.failNext) {
       this.failNext = false;
@@ -366,9 +375,10 @@ export async function createHarness() {
   const crmMailer = new FakeCrmMailer();
   const crm = new AdminCrmService(db, planLimits, adminAudit, crmMailer);
   const admin = new AdminService(db, supabase as never, planLimits, services.billing, adminAudit);
+  const support = new SupportAccessService(db, adminAudit, email as unknown as EmailService);
   const noteMarkdown = new NoteMarkdownService(services.pages);
   const canvasDiagrams = new CanvasDiagramService(services.canvases);
-  return { pg, db, email, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminTraffic, adminExplore, adminAudit, admin, partners, crm, crmMailer, productAnalytics, posthog, ...services };
+  return { pg, db, email, support, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminTraffic, adminExplore, adminAudit, admin, partners, crm, crmMailer, productAnalytics, posthog, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

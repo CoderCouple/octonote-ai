@@ -18,3 +18,4 @@ export * from "./tracking";
 export * from "./partners";
 export * from "./crm";
 export * from "./oauth";
+export * from "./support";

@@ -22,6 +22,7 @@ import { ViewsRepository } from "../db/repository/views.repository";
 import { WorkspaceMembersRepository } from "../db/repository/workspace-members.repository";
 import { WorkspacesRepository } from "../db/repository/workspaces.repository";
 import { CliTokensService } from "../service/cli-tokens.service";
+import { SupportAccessService } from "../service/support-access.service";
 import { OAuthService } from "../service/oauth.service";
 import { NotebookPlacement } from "../service/lib/notebook-placement";
 import { WorkspacesService } from "../service/workspaces.service";
@@ -43,6 +44,7 @@ const providers = [
   ChangeEventsService,
   // Verifies `ont_…` bearer tokens for the auth guards.
   CliTokensService,
+  SupportAccessService,
   OAuthService,
   EmailService,
   PermissionsService,

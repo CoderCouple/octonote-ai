@@ -15,7 +15,7 @@ const link = "text-foreground underline-offset-4 hover:underline";
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Notice" lastUpdated="October 27, 2026">
+    <LegalLayout title="Privacy Notice" lastUpdated="October 30, 2026">
       <p>
         This notice explains what information Octonote AI (&quot;we&quot;,
         &quot;us&quot;) collects when you use our website, web app and mobile
@@ -165,6 +165,18 @@ export default function PrivacyPage() {
           <strong>Votes.</strong> Signed-in readers can upvote or downvote a
           published page. We store each vote with the account that cast it so
           it can be changed or removed; everyone sees only the totals.
+        </p>
+        <p>
+          <strong>Octonote support.</strong> Our staff don&apos;t open your
+          account as a matter of course. To look into a problem you report, you
+          can allow support access in Settings → Privacy for 24 hours or 7
+          days. Support can then view your account read-only for up to 30
+          minutes at a time and can&apos;t change, create or delete anything.
+          In rare emergencies (for example, suspected data loss when we
+          can&apos;t reach you) an administrator may view it without your
+          permission, read-only; we record the reason and email you straight
+          away. Every visit is logged and listed in Settings → Privacy, and you
+          can withdraw access at any time, which ends a visit in progress.
         </p>
       </LegalSection>
 

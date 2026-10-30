@@ -26,6 +26,7 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
+import type { SupportAccessStatus } from "@octonote/shared";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import {
@@ -526,7 +527,87 @@ function PrivacySection({ userId }: { userId: string }) {
           aria-label="Help improve Octonote"
         />
       </Row>
+      <SupportAccessRow />
     </SectionShell>
+  );
+}
+
+const SUPPORT_CHOICES = [
+  { value: "off", label: "Not allowed" },
+  { value: "1", label: "For 24 hours" },
+  { value: "7", label: "For 7 days" },
+] as const;
+
+/**
+ * Support access: let Octonote support view this account read-only while
+ * they look into a problem, plus every past visit. Withdrawing it ends a
+ * visit in progress at once.
+ */
+function SupportAccessRow() {
+  const [status, setStatus] = useState<SupportAccessStatus | null>(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    clientApi
+      .get<SupportAccessStatus>("/me/support-access")
+      .then(setStatus)
+      .catch(() => setStatus({ grantedUntil: null, sessions: [] }));
+  }, []);
+
+  async function choose(value: string) {
+    setSaving(true);
+    try {
+      setStatus(
+        value === "off"
+          ? await clientApi.delete<SupportAccessStatus>("/me/support-access")
+          : await clientApi.put<SupportAccessStatus>("/me/support-access", { days: Number(value) }),
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const until = status?.grantedUntil ? new Date(status.grantedUntil) : null;
+  const when = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return (
+    <>
+      <Row
+        label="Support access"
+        description={
+          until
+            ? `Octonote support can view your account, read-only, until ${when(until.toISOString())}. They can't change anything.`
+            : "Let Octonote support view your account, read-only, while they look into a problem you reported. They can't change anything, and every visit is listed here."
+        }
+      >
+        <Select value={until ? "on" : "off"} onValueChange={choose} disabled={!status || saving}>
+          <SelectTrigger className="w-40" aria-label="Support access">
+            <SelectValue>{until ? "Allowed" : "Not allowed"}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {SUPPORT_CHOICES.map((c) => (
+              <SelectItem key={c.value} value={c.value}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Row>
+      {status && status.sessions.length > 0 ? (
+        <div className="text-muted-foreground px-1 pb-2 text-xs">
+          <p className="text-foreground mb-1 font-medium">Support visits</p>
+          <ul className="space-y-0.5">
+            {status.sessions.slice(0, 5).map((s) => (
+              <li key={s.id}>
+                {when(s.startedAt)} · read-only
+                {s.via === "override" ? " · emergency access (you were emailed)" : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </>
   );
 }
 

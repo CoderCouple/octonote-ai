@@ -3,6 +3,7 @@ import { buildIdFromUuid } from "@octonote/shared";
 import { env } from "@/env/client";
 import { serverFetch } from "@/lib/api/server-fetch";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { serverSupportToken } from "@/lib/support-session-server";
 import { AppAnalytics } from "./analytics-components";
 
 /**
@@ -14,6 +15,8 @@ import { AppAnalytics } from "./analytics-components";
  */
 export async function AppAnalyticsGate() {
   if (!env.NEXT_PUBLIC_POSTHOG_KEY) return null;
+  // Support viewing an account is neither them nor a user: never tracked.
+  if (await serverSupportToken()) return null;
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

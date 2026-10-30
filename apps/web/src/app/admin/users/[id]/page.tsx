@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { getAdminUser } from "@/features/admin/api";
 import { CrmPanel } from "@/features/admin/components/crm-panel";
 import { PlanBadge } from "@/features/admin/components/plan-badge";
+import { SupportPanel } from "@/features/admin/components/support-panel";
 import { errorText, fmtDate, PageBody, PageHeader, Panel, Stat, StatGrid } from "@/features/admin/components/ui";
 
 const APP: Record<string, string> = { web: "Web", mobile: "Mobile", cli: "CLI & agents" };
@@ -52,6 +53,7 @@ export default function AdminUserPage() {
             />
           </StatGrid>
           {u.isAdmin ? null : <CrmPanel userId={u.id} />}
+          <SupportPanel userId={u.id} email={u.email} />
           <Panel title="Workspaces">
             <ul className="divide-y">
               {u.memberships.map((m) => (
