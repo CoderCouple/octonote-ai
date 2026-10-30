@@ -53,7 +53,7 @@ export const EXAMPLES: Example[] = [
   {
     kind: "Note",
     title: "Designing a distributed rate limiter",
-    tag: "Math · Mermaid · code",
+    tag: "Math · diagrams · code",
     slug: "designing-a-distributed-rate-limiter-4dhz2j",
     featured: true,
   },
