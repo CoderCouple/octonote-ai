@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * While staff view someone's account (a support session), a red bar floats
+ * While staff piggyback on someone's account (a support session), a red bar floats
  * over every page: whose account, read-only, time left, and Exit. When the
  * session ends or expires, the token is dropped and the tab leaves.
  */
@@ -49,7 +49,7 @@ export function SupportBanner() {
       className="bg-destructive text-destructive-foreground fixed bottom-4 left-1/2 z-[1000] flex max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-3 rounded-full px-4 py-2 text-sm shadow-lg"
     >
       <span className="truncate">
-        <strong>Support view</strong> · {info.userName || info.userEmail} ({info.userEmail}) · read-only ·{" "}
+        <strong>Piggybacking</strong> · {info.userName || info.userEmail} ({info.userEmail}) · read-only ·{" "}
         {Math.max(1, Math.ceil(msLeft / 60_000))} min left
       </span>
       <button

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Admin → a person → Support access: open their account read-only in a new
+ * Admin → a person → Piggyback: open their account read-only in a new
  * tab on the main site. Inside their grant it just needs a reason; without
  * one it's an emergency override (they're emailed the reason). Past sessions
  * below, with how many requests each made.
@@ -74,7 +74,7 @@ export function SupportPanel({ userId, email }: { userId: string; email: string 
   const live = (s: AdminSupportStatus["sessions"][number]) => !s.endedAt && new Date(s.expiresAt) > new Date();
 
   return (
-    <Panel title="Support access">
+    <Panel title="Piggyback">
       {!status ? (
         <Loader2 className="text-muted-foreground size-4 animate-spin" />
       ) : (
@@ -82,8 +82,8 @@ export function SupportPanel({ userId, email }: { userId: string; email: string 
           <p className="text-sm">
             {granted
               ? `${email} allows support access until ${fmtDateTime(status.grantedUntil!)}.`
-              : `${email} hasn't allowed support access. Ask them to turn it on in Settings → Privacy.`}{" "}
-            <span className="text-muted-foreground">Sessions are read-only and last 30 minutes.</span>
+              : `${email} hasn't allowed support access. Ask them to turn on "Support access" in Settings → Privacy.`}{" "}
+            <span className="text-muted-foreground">Piggybacking is read-only and lasts 30 minutes.</span>
           </p>
           <div className="space-y-2">
             <Label htmlFor="support-reason">Reason (saved in the audit log{!granted ? " and emailed to them" : ""})</Label>
@@ -99,14 +99,14 @@ export function SupportPanel({ userId, email }: { userId: string; email: string 
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={override} onCheckedChange={(v) => setOverride(v === true)} className="mt-0.5" />
                 <span>
-                  <strong>Emergency override.</strong> Enter without their permission. They&apos;ll get an email
+                  <strong>Emergency override.</strong> Piggyback without their permission. They&apos;ll get an email
                   with your reason right away.
                 </span>
               </label>
             ) : null}
             <Button onClick={start} disabled={!canStart} variant={granted ? "default" : "destructive"}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Eye className="size-4" />}
-              View their account (read-only)
+              Piggyback (read-only)
             </Button>
           </div>
           {status.sessions.length ? (
