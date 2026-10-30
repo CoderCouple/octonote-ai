@@ -96,3 +96,109 @@ export interface Diagram {
   flows: Flow[];
   diagnostics: Diagnostic[];
 }
+
+// ---------------------------------------------------------------------------
+// Source positions (`parseDiagramWithSpans`). Kept apart from `Diagram` so the
+// parser's normal output doesn't change. Columns are 1-based with an exclusive
+// end, like `SourceRange`; the line is on the record that holds the span.
+
+export interface ColumnSpan {
+  column: number;
+  endColumn: number;
+}
+
+/** A name as written: a quoted name's span includes its quotes. */
+export interface NameSpan extends ColumnSpan {
+  name: string;
+  quoted: boolean;
+}
+
+/** One `key: value` entry inside `[ … ]`. */
+export interface PropertySpan {
+  key: string;
+  /** Value after unquoting, as the parser stores it. */
+  value: string;
+  /** The whole entry, trimmed (`key: value`). */
+  entry: ColumnSpan;
+  keyRange: ColumnSpan;
+  /** The value as written (quotes included). */
+  valueRange: ColumnSpan;
+}
+
+/** A `[ … ]` block, brackets included. */
+export interface PropertiesSpan extends ColumnSpan {
+  entries: PropertySpan[];
+}
+
+/** One declaration, connection or flow-step statement (a line can hold several: `G { A > B }`). */
+export interface StatementSpan {
+  index: number;
+  kind: 'declaration' | 'connection' | 'flow';
+  line: number;
+  /** From the first name to the end of the label / `[props]` (a group's `{` is not included). */
+  range: ColumnSpan;
+  /** Comma lists between connectors: `A > B, C` is `[[A], [B, C]]`; a declaration has one list. */
+  lists: NameSpan[][];
+  connectors: (ColumnSpan & { connector: Connector })[];
+  colon?: ColumnSpan;
+  /** The label text after `:`, trimmed. */
+  label?: ColumnSpan;
+  props?: PropertiesSpan;
+  /** The `{` when the declaration opens a group. */
+  brace?: ColumnSpan;
+  /** Group the statement was written in. */
+  group: string | null;
+  /** Column where more code follows on the same line (a `{` or `}` segment), if any. */
+  followedAt?: number;
+  /** Edge ids made by this statement, in order (connections only). */
+  edges: string[];
+}
+
+/** One declaration of a node or group (every one, including repeats). */
+export interface NodeDeclarationSpan {
+  id: string;
+  line: number;
+  statement: number;
+  /** Position in the statement's comma list (`A, B [props]` declares two). */
+  listIndex: number;
+  name: NameSpan;
+  props?: PropertiesSpan;
+  group: string | null;
+  opensGroup: boolean;
+}
+
+export interface EdgeSpan {
+  id: string;
+  line: number;
+  statement: number;
+  /** Connector index in a chain (`A > B > C`: 0 for A>B, 1 for B>C). */
+  segment: number;
+  /** Index of `from` / `to` in their comma lists. */
+  fromIndex: number;
+  toIndex: number;
+  /** How many edges the statement makes; more than 1 means a chain or multi-target line. */
+  count: number;
+  from: NameSpan;
+  to: NameSpan;
+  connector: ColumnSpan & { connector: Connector };
+  label?: ColumnSpan;
+  props?: PropertiesSpan;
+  group: string | null;
+}
+
+export interface GroupSpan {
+  id: string;
+  /** Line of `Name [props] {`. */
+  line: number;
+  statement: number;
+  open: ColumnSpan;
+  /** The matching `}`; missing when the group is never closed. */
+  close?: SourceRange;
+}
+
+export interface DiagramSpans {
+  statements: StatementSpan[];
+  nodes: NodeDeclarationSpan[];
+  edges: EdgeSpan[];
+  groups: GroupSpan[];
+}

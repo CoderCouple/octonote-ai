@@ -4,6 +4,11 @@ import type {
   Diagram,
   DiagramEdge,
   DiagramNode,
+  DiagramSpans,
+  GroupSpan,
+  NameSpan,
+  PropertiesSpan,
+  StatementSpan,
   Direction,
   Flow,
   GlobalSettings,
@@ -55,11 +60,44 @@ const NODE_PROPERTIES = new Set([
   'team', // owning team, for filtering
   'tech', // technology, for filtering
   'tags', // comma-separated tags, for filtering
+  'textSize', // small | medium | large or 8–48
+  'textAlign', // left | center | right
+  'textColor', // palette name or a colour
+  'iconSize', // small | medium | large or a number
+  'border', // solid | dashed | dotted
+  'strokeWidth', // thin | medium | thick or a number
 ]);
-const EDGE_PROPERTIES = new Set(['color', 'wrap']);
+const EDGE_PROPERTIES = new Set([
+  'color',
+  'wrap',
+  // octodraw extensions.
+  'line', // solid | dashed | dotted (overrides the connector's dash)
+  'strokeWidth',
+  'labelSize',
+  'routing', // auto | straight
+  'startArrow', // none | arrow | open | dot (overrides the connector)
+  'endArrow',
+]);
+
+const SIZES = ['small', 'medium', 'large'] as const;
+const ARROWHEADS = ['none', 'arrow', 'open', 'dot'] as const;
+
+/** Properties that take a named size or a number in a range. */
+const NUMERIC_PROPERTIES: Record<string, { names: readonly string[]; min: number; max: number }> = {
+  textSize: { names: SIZES, min: 8, max: 48 },
+  labelSize: { names: SIZES, min: 8, max: 48 },
+  iconSize: { names: SIZES, min: 8, max: 512 },
+  strokeWidth: { names: ['thin', 'medium', 'thick'], min: 0.25, max: 20 },
+};
 
 /** Allowed values per property (Eraser's flow chart syntax); others get a warning. */
 const PROPERTY_VALUES: Record<string, readonly string[]> = {
+  textAlign: ['left', 'center', 'right'],
+  border: ['solid', 'dashed', 'dotted'],
+  line: ['solid', 'dashed', 'dotted'],
+  routing: ['auto', 'straight'],
+  startArrow: ARROWHEADS,
+  endArrow: ARROWHEADS,
   shape: ['rectangle', 'cylinder', 'diamond', 'document', 'ellipse', 'hexagon', 'oval', 'parallelogram', 'star', 'trapezoid', 'triangle', 'circle'],
   colorMode: SETTING_VALUES.colorMode,
   styleMode: SETTING_VALUES.styleMode,
@@ -80,7 +118,7 @@ const CONNECTOR_STYLE: Record<Connector, Pick<DiagramEdge, 'startArrow' | 'endAr
 };
 
 type Token =
-  | { type: 'name'; value: string; start: number; end: number }
+  | { type: 'name'; value: string; start: number; end: number; quoted: boolean }
   | { type: 'connector'; value: Connector; start: number; end: number }
   | { type: 'comma' | 'lbrace' | 'rbrace'; start: number; end: number }
   | { type: 'colon'; start: number; end: number; rest: string; restStart: number }
@@ -90,6 +128,7 @@ interface NameRef {
   name: string;
   start: number;
   end: number;
+  quoted: boolean;
 }
 
 interface PendingEdge {
@@ -104,12 +143,22 @@ interface PendingEdge {
 }
 
 type Scope =
-  | { kind: 'group'; id: string; line: number; column: number }
+  | { kind: 'group'; id: string; line: number; column: number; span?: GroupSpan }
   | { kind: 'legend'; line: number; column: number }
   | { kind: 'flow'; flow: Flow; line: number; column: number };
 
 export function parseDiagram(source: string): Diagram {
   return new Parser(source).parse();
+}
+
+/**
+ * `parseDiagram` plus the exact source positions of every declaration, connection,
+ * property and group brace, for tools that rewrite the code (see `dsl/edit.ts`).
+ */
+export function parseDiagramWithSpans(source: string): { diagram: Diagram; spans: DiagramSpans } {
+  const parser = new Parser(source);
+  const diagram = parser.parse();
+  return { diagram, spans: parser.spans };
 }
 
 class Parser {
@@ -130,6 +179,7 @@ class Parser {
   private legend?: Legend;
   private readonly flows: Flow[] = [];
   private line = 0;
+  readonly spans: DiagramSpans = { statements: [], nodes: [], edges: [], groups: [] };
 
   constructor(source: string) {
     this.lines = source.split(/\r?\n/);
@@ -219,6 +269,9 @@ class Parser {
     let i = 0;
     const lists: NameRef[][] = [];
     const connectors: Connector[] = [];
+    const connectorTokens: Extract<Token, { type: 'connector' }>[] = [];
+    let colonToken: Extract<Token, { type: 'colon' }> | undefined;
+    let labelSpan: { start: number; end: number } | undefined;
     let label: string | undefined;
     let props: Extract<Token, { type: 'props' }> | undefined;
 
@@ -231,7 +284,7 @@ class Parser {
           this.report('error', 'Expected a name', this.range(pos, (tok?.end ?? pos) + (tok ? 0 : 1)));
           return undefined;
         }
-        list.push({ name: tok.value, start: tok.start, end: tok.end });
+        list.push({ name: tok.value, start: tok.start, end: tok.end, quoted: tok.quoted });
         i++;
         if (tokens[i]?.type !== 'comma') return list;
         i++;
@@ -242,7 +295,9 @@ class Parser {
     if (!first) return;
     lists.push(first);
     while (tokens[i]?.type === 'connector') {
-      connectors.push((tokens[i] as Extract<Token, { type: 'connector' }>).value);
+      const connector = tokens[i] as Extract<Token, { type: 'connector' }>;
+      connectors.push(connector.value);
+      connectorTokens.push(connector);
       i++;
       const next = readList();
       if (!next) return;
@@ -256,7 +311,12 @@ class Parser {
         return;
       }
       const split = splitTrailingProps(tok.rest);
+      colonToken = tok;
       label = split.label.trim() || undefined;
+      if (label) {
+        const labelStart = tok.restStart + (split.label.length - split.label.trimStart().length);
+        labelSpan = { start: labelStart, end: labelStart + label.length };
+      }
       if (split.props !== undefined) {
         const start = tok.restStart + split.propsStart;
         props = { type: 'props', raw: split.props, start, end: start + split.props.length + 2 };
@@ -272,12 +332,34 @@ class Parser {
 
     const properties = props ? this.parseProperties(props.raw, props.start + 1) : {};
 
+    const lastName = lists.at(-1)!.at(-1)!;
+    const statement: StatementSpan = {
+      index: -1,
+      kind: 'declaration',
+      line: this.line,
+      range: this.columns(first[0]!.start, Math.max(lastName.end, colonToken?.end ?? 0, labelSpan?.end ?? 0, props?.end ?? 0)),
+      lists: lists.map((list) => list.map((ref) => this.nameSpan(ref))),
+      connectors: connectorTokens.map((t) => ({ ...this.columns(t.start, t.end), connector: t.value })),
+      colon: colonToken ? this.columns(colonToken.start, colonToken.end) : undefined,
+      label: labelSpan ? this.columns(labelSpan.start, labelSpan.end) : undefined,
+      props: props ? propertiesSpan(props.raw, props.start, props.end) : undefined,
+      group: this.currentGroup() ?? null,
+      edges: [],
+    };
+    const record = (kind: StatementSpan['kind'], followedAt?: number): void => {
+      statement.kind = kind;
+      statement.index = this.spans.statements.length;
+      if (followedAt !== undefined) statement.followedAt = followedAt + 1;
+      this.spans.statements.push(statement);
+    };
+
     const flowScope = this.scopes.at(-1);
     if (flowScope?.kind === 'flow') {
       if (connectors.length === 0) {
         this.report('error', "A flow contains steps like 'A > B: caption'", this.range(first[0]!.start, first.at(-1)!.end));
         return;
       }
+      record('flow', tokens[i]?.start);
       for (let c = 0; c < connectors.length; c++) {
         for (const from of lists[c]!) {
           for (const to of lists[c + 1]!) {
@@ -297,12 +379,32 @@ class Parser {
         return;
       }
       if (props) this.checkKnown(properties, EDGE_PROPERTIES, 'connection', props.start + 1, props.raw);
+      record('connection', rest?.start);
+      let count = 0;
+      for (let c = 0; c < connectors.length; c++) count += lists[c]!.length * lists[c + 1]!.length;
       for (let c = 0; c < connectors.length; c++) {
-        for (const from of lists[c]!) {
-          for (const to of lists[c + 1]!) {
+        lists[c]!.forEach((from, fromIndex) => {
+          lists[c + 1]!.forEach((to, toIndex) => {
+            const id = `e${this.pendingEdges.length}`;
+            statement.edges.push(id);
+            this.spans.edges.push({
+              id,
+              line: this.line,
+              statement: statement.index,
+              segment: c,
+              fromIndex,
+              toIndex,
+              count,
+              from: statement.lists[c]![fromIndex]!,
+              to: statement.lists[c + 1]![toIndex]!,
+              connector: statement.connectors[c]!,
+              label: statement.label,
+              props: statement.props,
+              group: statement.group,
+            });
             this.pendingEdges.push({ from, to, connector: connectors[c]!, label, properties, line: this.line, group: this.currentGroup() ?? null });
-          }
-        }
+          });
+        });
       }
       if (rest) this.parseSegment(text.slice(rest.start - offset), rest.start);
       return;
@@ -319,12 +421,32 @@ class Parser {
       }
       i++;
     }
+    const rest = tokens[i];
+    if (!isLegend && (opens || !rest || rest.type === 'rbrace')) {
+      record('declaration', opens ? tokens[i - 1]!.start : rest?.start);
+      if (opens) statement.brace = this.columns(tokens[i - 1]!.start, tokens[i - 1]!.end);
+      first.forEach((ref, listIndex) => {
+        this.spans.nodes.push({
+          id: ref.name,
+          line: this.line,
+          statement: statement.index,
+          listIndex,
+          name: statement.lists[0]![listIndex]!,
+          props: statement.props,
+          group: statement.group,
+          opensGroup: opens,
+        });
+      });
+    }
     for (const ref of first) this.declare(ref, properties, opens);
 
-    const rest = tokens[i];
     if (opens) {
       const brace = tokens[i - 1]!;
-      if (!isLegend) this.scopes.push({ kind: 'group', id: first[0]!.name, line: this.line, column: brace.start + 1 });
+      if (!isLegend) {
+        const span: GroupSpan = { id: first[0]!.name, line: this.line, statement: statement.index, open: this.columns(brace.start, brace.end) };
+        this.spans.groups.push(span);
+        this.scopes.push({ kind: 'group', id: first[0]!.name, line: this.line, column: brace.start + 1, span });
+      }
       this.parseSegment(text.slice(brace.end - offset), brace.end);
     } else if (rest?.type === 'rbrace') {
       this.parseSegment(text.slice(rest.start - offset), rest.start);
@@ -416,13 +538,31 @@ class Parser {
         this.report('warning', `Unknown ${what} property '${key}'`, range);
         continue;
       }
+      const numeric = NUMERIC_PROPERTIES[key];
+      if (numeric) {
+        const n = /^\d+(\.\d+)?$/.test(value) ? Number(value) : NaN;
+        if (!numeric.names.includes(value) && !(n >= numeric.min && n <= numeric.max)) {
+          this.report('warning', `Unknown ${key} '${value}'. Use ${numeric.names.join(', ')} or a number ${numeric.min}–${numeric.max}`, range);
+        }
+        continue;
+      }
       const allowed = PROPERTY_VALUES[key];
       if (allowed && !allowed.includes(value)) this.report('warning', `Unknown ${key} '${value}'. Use ${allowed.join(', ')}`, range);
     }
   }
 
   private closeScope(at: number): void {
-    if (!this.scopes.pop()) this.report('error', "Unexpected '}'", this.range(at, at + 1));
+    const scope = this.scopes.pop();
+    if (!scope) this.report('error', "Unexpected '}'", this.range(at, at + 1));
+    else if (scope.kind === 'group' && scope.span) scope.span.close = this.range(at, at + 1);
+  }
+
+  private columns(start: number, end: number): { column: number; endColumn: number } {
+    return { column: start + 1, endColumn: end + 1 };
+  }
+
+  private nameSpan(ref: NameRef): NameSpan {
+    return { name: ref.name, quoted: ref.quoted, ...this.columns(ref.start, ref.end) };
   }
 
   private currentGroup(): string | undefined {
@@ -548,7 +688,7 @@ function tokenize(text: string, offset: number, error: (message: string, start: 
         error('Missing closing quote', start, offset + text.length);
         return undefined;
       }
-      tokens.push({ type: 'name', value: text.slice(i + 1, close), start, end: offset + close + 1 });
+      tokens.push({ type: 'name', value: text.slice(i + 1, close), start, end: offset + close + 1, quoted: true });
       i = close + 1;
       continue;
     }
@@ -556,7 +696,7 @@ function tokenize(text: string, offset: number, error: (message: string, start: 
     let j = i;
     while (j < text.length && !/[,{}:\[\]"]/.test(text[j]!) && !connectorAt(j)) j++;
     const value = text.slice(i, j).trimEnd();
-    tokens.push({ type: 'name', value, start, end: start + value.length });
+    tokens.push({ type: 'name', value, start, end: start + value.length, quoted: false });
     i = j;
   }
   return tokens;
@@ -593,6 +733,30 @@ export function splitOutsideQuotes(text: string, separator: string): { text: str
   }
   parts.push({ text: text.slice(start), start });
   return parts;
+}
+
+/** Positions of the entries of a `[raw]` block that spans 0-based columns `start`–`end`. */
+function propertiesSpan(raw: string, start: number, end: number): PropertiesSpan {
+  const entries: PropertiesSpan['entries'] = [];
+  const at = start + 1;
+  for (const part of splitOutsideQuotes(raw, ',')) {
+    const text = part.text.trim();
+    const colon = text.indexOf(':');
+    if (!text || colon < 0) continue;
+    const entryStart = at + part.start + (part.text.length - part.text.trimStart().length);
+    const key = text.slice(0, colon).trim();
+    const valueText = text.slice(colon + 1);
+    const valueStart = entryStart + colon + 1 + (valueText.length - valueText.trimStart().length);
+    const written = valueText.trim();
+    entries.push({
+      key,
+      value: unquote(written),
+      entry: { column: entryStart + 1, endColumn: entryStart + text.length + 1 },
+      keyRange: { column: entryStart + 1, endColumn: entryStart + key.length + 1 },
+      valueRange: { column: valueStart + 1, endColumn: valueStart + written.length + 1 },
+    });
+  }
+  return { column: start + 1, endColumn: end + 1, entries };
 }
 
 /** Splits `label [props]` at a trailing bracket group, if any. */

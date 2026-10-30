@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDiagram } from '../src';
+import { parseDiagram, parseDiagramWithSpans } from '../src';
 
 const errors = (source: string) => parseDiagram(source).diagnostics.filter((d) => d.severity === 'error');
 
@@ -189,5 +189,107 @@ describe('diagnostics', () => {
     const d = parseDiagram('A [icon: x]\nA [color: red]');
     expect(d.diagnostics[0]).toMatchObject({ severity: 'warning', line: 2 });
     expect(d.nodes.get('A')?.properties).toEqual({ icon: 'x', color: 'red' });
+  });
+});
+
+describe('style properties', () => {
+  it('accepts the new node, group and connection properties', () => {
+    const d = parseDiagram(
+      'A [textSize: large, textAlign: left, textColor: red, iconSize: 72, border: dotted, strokeWidth: thick]\nG [textSize: 20, border: dashed, strokeWidth: 1.5] {\n  B\n}\nA > B [line: dotted, strokeWidth: 2, labelSize: small, routing: straight, startArrow: dot, endArrow: open]',
+    );
+    expect(d.diagnostics).toEqual([]);
+    expect(d.nodes.get('A')?.properties).toMatchObject({ textSize: 'large', iconSize: '72', border: 'dotted' });
+    expect(d.edges[0]?.properties).toMatchObject({ line: 'dotted', startArrow: 'dot', routing: 'straight' });
+  });
+
+  it('warns on unknown values, never errors', () => {
+    const d = parseDiagram('A [textSize: huge, iconSize: 0, textAlign: justify, border: wavy]\nA > B [startArrow: diamond, labelSize: 60, line: wiggly, textSize: 12]');
+    expect(d.diagnostics.every((x) => x.severity === 'warning')).toBe(true);
+    expect(d.diagnostics.map((x) => x.message)).toEqual([
+      "Unknown textSize 'huge'. Use small, medium, large or a number 8–48",
+      "Unknown iconSize '0'. Use small, medium, large or a number 8–512",
+      "Unknown textAlign 'justify'. Use left, center, right",
+      "Unknown border 'wavy'. Use solid, dashed, dotted",
+      "Unknown startArrow 'diamond'. Use none, arrow, open, dot",
+      "Unknown labelSize '60'. Use small, medium, large or a number 8–48",
+      "Unknown line 'wiggly'. Use solid, dashed, dotted",
+      "Unknown connection property 'textSize'",
+    ]);
+  });
+});
+
+describe('source spans', () => {
+  const at = (source: string, line: number, span: { column: number; endColumn: number } | undefined) =>
+    span ? source.split('\n')[line - 1]!.slice(span.column - 1, span.endColumn - 1) : undefined;
+
+  it('leaves parseDiagram output unchanged', () => {
+    const source = 'G {\n  A [color: red]\n}\nA > B: x';
+    const { diagram } = parseDiagramWithSpans(source);
+    expect(diagram).toEqual(parseDiagram(source));
+  });
+
+  it('records every declaration with its name and property positions', () => {
+    const source = '  "API: v2" [icon: server,  color : "a, b"] // c\nAPI: v2 [label: x]\nA, B [color: red]';
+    const { spans } = parseDiagramWithSpans(source);
+    const api = spans.nodes.filter((n) => n.id === 'API: v2');
+    expect(api).toHaveLength(1); // line 2 is an error (':' in a declaration)
+    const decl = api[0]!;
+    expect(decl).toMatchObject({ line: 1, listIndex: 0, group: null, opensGroup: false, name: { quoted: true } });
+    expect(at(source, 1, decl.name)).toBe('"API: v2"');
+    expect(at(source, 1, decl.props)).toBe('[icon: server,  color : "a, b"]');
+    expect(decl.props!.entries.map((e) => [e.key, e.value, at(source, 1, e.keyRange), at(source, 1, e.valueRange), at(source, 1, e.entry)])).toEqual([
+      ['icon', 'server', 'icon', 'server', 'icon: server'],
+      ['color', 'a, b', 'color', '"a, b"', 'color : "a, b"'],
+    ]);
+    expect(spans.nodes.filter((n) => n.line === 3).map((n) => [n.id, n.listIndex, n.statement])).toEqual([
+      ['A', 0, 1],
+      ['B', 1, 1],
+    ]);
+  });
+
+  it('lists repeated declarations', () => {
+    const { diagram, spans } = parseDiagramWithSpans('A [icon: x]\nA [color: red]');
+    expect(spans.nodes.map((n) => n.line)).toEqual([1, 2]);
+    expect(diagram.nodes.get('A')?.range.line).toBe(1);
+  });
+
+  it('records connection parts per edge', () => {
+    const source = 'Web > API, Auth > DB: calls it [color: red]';
+    const { spans } = parseDiagramWithSpans(source);
+    expect(spans.edges.map((e) => [e.id, e.segment, e.fromIndex, e.toIndex, e.count, e.from.name, e.to.name])).toEqual([
+      ['e0', 0, 0, 0, 4, 'Web', 'API'],
+      ['e1', 0, 0, 1, 4, 'Web', 'Auth'],
+      ['e2', 1, 0, 0, 4, 'API', 'DB'],
+      ['e3', 1, 1, 0, 4, 'Auth', 'DB'],
+    ]);
+    const stmt = spans.statements[0]!;
+    expect(stmt).toMatchObject({ kind: 'connection', line: 1, edges: ['e0', 'e1', 'e2', 'e3'] });
+    expect(at(source, 1, stmt.range)).toBe(source);
+    expect(stmt.connectors.map((c) => c.connector)).toEqual(['>', '>']);
+    expect(at(source, 1, spans.edges[2]!.connector)).toBe('>');
+    expect(at(source, 1, stmt.label)).toBe('calls it');
+    expect(at(source, 1, stmt.colon)).toBe(':');
+    expect(at(source, 1, spans.edges[3]!.props)).toBe('[color: red]');
+  });
+
+  it('records groups with both braces and what follows a statement', () => {
+    const source = 'Outer {\n  G [color: blue] { A > B }\n}';
+    const { spans } = parseDiagramWithSpans(source);
+    expect(spans.groups.map((g) => [g.id, g.line, g.open.column, g.close])).toEqual([
+      ['Outer', 1, 7, { line: 3, column: 1, endColumn: 2 }],
+      ['G', 2, 19, { line: 2, column: 27, endColumn: 28 }],
+    ]);
+    const g = spans.statements[spans.groups[1]!.statement]!;
+    expect(at(source, 2, g.range)).toBe('G [color: blue]');
+    expect(at(source, 2, g.brace)).toBe('{');
+    const edge = spans.statements.find((s) => s.kind === 'connection')!;
+    expect(edge).toMatchObject({ group: 'G', followedAt: 27 });
+    expect(parseDiagramWithSpans('G {\n  A').spans.groups[0]!.close).toBeUndefined();
+  });
+
+  it('records flow steps as statements', () => {
+    const { spans } = parseDiagramWithSpans('A > B\nflow F {\n  A > B: go\n}');
+    expect(spans.statements.map((s) => s.kind)).toEqual(['connection', 'flow']);
+    expect(spans.edges).toHaveLength(1);
   });
 });
