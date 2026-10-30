@@ -53,6 +53,8 @@ export interface SelectionBarProps {
   onOpenFigure?: () => void;
   onAskAi?: () => void;
   onEnter?: () => void;
+  /** Opens the text editor of the one selected shape, arrow, text, sticky or code block. */
+  onEditText?: () => void;
   onToFigure?: () => void;
   onComment?: () => void;
   onDuplicate: () => void;
@@ -211,6 +213,11 @@ export function SelectionBar(props: SelectionBarProps) {
       onContextMenu={(e) => e.stopPropagation()}
       onKeyDown={onBarKey}
     >
+      {props.onEditText && (
+        <button type="button" className="occ-bar-btn occ-bar-edit" data-bar="" onClick={props.onEditText} title="Edit text (Enter)" aria-label="Edit text">
+          Edit text
+        </button>
+      )}
       {props.onOpenFigure && (
         <button type="button" className="occ-bar-btn" data-bar="" onClick={props.onOpenFigure} title="Edit this figure's code" aria-label="Edit code">
           <Glyph d="M16 18l6-6-6-6M8 6l-6 6 6 6" /> Code

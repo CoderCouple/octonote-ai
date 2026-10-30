@@ -1946,6 +1946,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
           onOpenFigure={single?.type === 'figure' && onOpenFigure ? () => onOpenFigure(single.id) : undefined}
           onAskAi={single?.type === 'figure' && onAskAi ? () => onAskAi(single.id) : undefined}
           onEnter={single?.type === 'figure' ? () => enterFigure(single.id) : undefined}
+          onEditText={single && !single.locked && (single.type === 'shape' || single.type === 'text' || single.type === 'line' || single.type === 'sticky' || single.type === 'code') ? () => (setBarMenu(null), setEditing(single.id)) : undefined}
           onToFigure={canConvert ? toFigure : undefined}
           onComment={single ? () => commentOn(single) : undefined}
           onDuplicate={() => (setBarMenu(null), duplicateSelected())}
@@ -2648,6 +2649,8 @@ const CSS = `
 .occ-selbar { position: absolute; display: flex; align-items: center; gap: 2px; padding: 3px; background: var(--od-color-raised); border: 1px solid var(--od-color-border); border-radius: var(--od-radius-lg); box-shadow: var(--od-shadow-chrome); white-space: nowrap; z-index: 2; }
 .occ-bar-btn { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 7px; border: 0; border-radius: var(--od-radius-md); background: none; color: var(--od-color-text); font-size: 12px !important; font-weight: 500; cursor: pointer; }
 .occ-bar-btn:hover, .occ-bar-btn[aria-expanded="true"] { background: var(--od-color-hover); }
+/* First in the bar, as in the figure toolbar. */
+.occ-bar-edit { background: var(--od-color-hover); margin-right: 3px; }
 .occ-bar-btn[aria-pressed="true"] { background: var(--od-color-accent-soft); color: var(--od-color-accent); }
 .occ-danger:hover { color: var(--od-color-danger); }
 .occ-bar-group { display: inline-flex; gap: 2px; padding-left: 3px; margin-left: 1px; border-left: 1px solid var(--od-color-border); }

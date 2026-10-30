@@ -47,7 +47,7 @@ test.describe("line bend, shape fill / dashed / label alignment, links", () => {
     const a = await ui.centerOf("a");
     await page.mouse.click(a.x, a.y);
     const bar = ui.selbar();
-    const open = async (name: string | RegExp) => bar.getByRole("button", { name }).click();
+    const open = async (name: string | RegExp) => bar.getByRole("button", { name, exact: typeof name === "string" }).click();
 
     // Colour ▾ → Fill tab → Tint / Solid / None.
     const pathFill = () => ui.item("a").locator("path").first().getAttribute("fill");
