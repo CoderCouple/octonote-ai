@@ -1,7 +1,7 @@
 import type { Diagram, DiagramNode } from '../dsl/types';
 import { resolveIcon, type IconSet } from '../icons/resolve';
 import type { IconResolver } from '../icons/types';
-import { DEFAULT_TYPOGRAPHY, estimateTextWidth, wrapText, type LayoutEdge, type LayoutNode, type TextMeasurer, type Typography } from '../layout/layout';
+import { DEFAULT_TYPOGRAPHY, estimateTextWidth, wrapText, type DiagramLayout, type LayoutEdge, type LayoutNode, type TextMeasurer, type Typography } from '../layout/layout';
 import { routeEdges } from '../layout/route';
 import { Icon, Wash, WatercolorDefs } from '../react/DiagramSvg';
 import { lineColor, swatchFor } from '../react/theme';
@@ -325,9 +325,20 @@ export interface BpmnSvgProps {
   reveal?: number;
   /** shadow (default) | plain | watercolor */
   styleMode?: string;
+  /** Element toolbar selection: elements, pools and lanes (`node`) or connections (`edge`, view edge ids). */
+  selection?: { kind: string; ids: readonly string[] } | null;
+  /** Clicking an element, pool or lane selects it (only wired when the diagram is editable). */
+  onSelect?: (id: string) => void;
+  /** Clicking a connection (an invisible wide hit path, `data-edge-id`) selects it. */
+  onSelectEdge?: (id: string) => void;
+  /** Camera zoom, so outlines and hit paths keep their on-screen size. */
+  zoom?: number;
 }
 
-export function BpmnSvg({ layout, theme, icons, iconSet, reveal, styleMode }: BpmnSvgProps) {
+/** On-screen width of a connection's invisible click target (as in DiagramSvg). */
+const EDGE_HIT_WIDTH = 12;
+
+export function BpmnSvg({ layout, theme, icons, iconSet, reveal, styleMode, selection, onSelect, onSelectEdge, zoom = 1 }: BpmnSvgProps) {
   const watercolor = styleMode === 'watercolor';
   const shadow = styleMode !== 'plain' && !watercolor;
   const font = theme.text.node;
@@ -338,6 +349,18 @@ export function BpmnSvg({ layout, theme, icons, iconSet, reveal, styleMode }: Bp
   // Lines to data objects and stores are associations (dotted).
   const dataIds = new Set(layout.elements.filter((e) => e.type === 'data' || e.type === 'store').map((e) => e.id));
   const edges = (reveal === undefined ? layout.edges : layout.edges.slice(0, Math.max(0, reveal - layout.elements.length))).filter((e) => shown.has(e.from) && shown.has(e.to));
+  const s = 1 / Math.max(zoom, 0.05);
+  const selectedNodes = new Set(selection && selection.kind === 'node' ? selection.ids : []);
+  const selectedEdges = new Set(selection && selection.kind === 'edge' ? selection.ids : []);
+  const pick = (id: string, fn?: (id: string) => void) =>
+    fn
+      ? {
+          onClick: (event: { stopPropagation: () => void }) => {
+            event.stopPropagation();
+            fn(id);
+          },
+        }
+      : {};
   const text = (lines: string[], cx: number, top: number, fill: string) => (
     <text textAnchor="middle" fontSize={font.size} fontWeight={font.weight} fill={fill}>
       {lines.map((line, i) => (
@@ -357,9 +380,9 @@ export function BpmnSvg({ layout, theme, icons, iconSet, reveal, styleMode }: Bp
         const cx = b.x + strip / 2;
         const cy = b.y + b.height / 2;
         return (
-          <g key={`${b.kind}:${b.id}`} data-node-id={b.id}>
-            <rect x={b.x} y={b.y} width={b.width} height={b.height} fill={b.kind === 'pool' ? theme.color.canvas : (swatch?.groupFills[0] ?? 'none')} stroke={stroke} strokeWidth={b.kind === 'pool' ? 1.2 : 1} />
-            <rect x={b.x} y={b.y} width={strip} height={b.height} fill={swatch?.nodeFill ?? theme.color.hover} stroke={stroke} strokeWidth={b.kind === 'pool' ? 1.2 : 1} />
+          <g key={`${b.kind}:${b.id}`} data-node-id={b.id} {...pick(b.id, onSelect)}>
+            <rect x={b.x} y={b.y} width={b.width} height={b.height} fill={b.kind === 'pool' ? theme.color.canvas : (swatch?.groupFills[0] ?? (onSelect ? 'transparent' : 'none'))} stroke={stroke} strokeWidth={b.kind === 'pool' ? 1.2 : 1} />
+            <rect x={b.x} y={b.y} width={strip} height={b.height} fill={swatch?.nodeFill ?? theme.color.hover} stroke={stroke} strokeWidth={b.kind === 'pool' ? 1.2 : 1} style={onSelect ? { cursor: 'pointer' } : undefined} />
             <text x={cx} y={cy} transform={`rotate(-90 ${cx} ${cy})`} textAnchor="middle" dominantBaseline="central" fontSize={b.kind === 'pool' ? 13.5 : 12.5} fontWeight={600} fill={theme.color.text}>
               {b.label}
             </text>
@@ -367,7 +390,8 @@ export function BpmnSvg({ layout, theme, icons, iconSet, reveal, styleMode }: Bp
         );
       })}
       {edges.map((e) => {
-        const color = lineColor(theme, e.color) ?? theme.color.edge;
+        const picked = selectedEdges.has(e.id);
+        const color = picked ? theme.color.accent : (lineColor(theme, e.color) ?? theme.color.edge);
         const marker = `od-bpmn-arrow-${color.replace(/[^\w]/g, '')}`;
         // Between pools a connection is a message flow: dashed, open circle at the start, open arrowhead.
         const association = dataIds.has(e.from) || dataIds.has(e.to);
@@ -385,6 +409,9 @@ export function BpmnSvg({ layout, theme, icons, iconSet, reveal, styleMode }: Bp
             </defs>
             <polyline points={e.points.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke={color} strokeWidth={theme.stroke.edge * 1.2} strokeDasharray={association ? '2 4' : message || e.dashed ? '6 4' : undefined} strokeLinejoin="round" markerEnd={e.endArrow ? `url(#${marker}${message ? '-open' : ''})` : undefined} markerStart={e.startArrow ? `url(#${marker}${message ? '-open' : ''})` : undefined} />
             {message && <circle cx={start.x} cy={start.y} r={3.5} fill={theme.color.canvas} stroke={color} strokeWidth={1.2} />}
+            {onSelectEdge && (
+              <polyline className="od-edge-hit" data-edge-id={e.id} points={e.points.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="transparent" strokeWidth={EDGE_HIT_WIDTH * s} pointerEvents="stroke" style={{ cursor: 'pointer' }} {...pick(e.id, onSelectEdge)} />
+            )}
             {e.label && (
               <text x={e.label.x + e.label.width / 2} y={e.label.y + e.label.height / 2} textAnchor="middle" dominantBaseline="central" fontSize={theme.text.edge.size} fill={theme.color.textMuted} stroke={theme.color.canvas} strokeWidth={4} paintOrder="stroke">
                 {e.label.text}
@@ -408,7 +435,7 @@ export function BpmnSvg({ layout, theme, icons, iconSet, reveal, styleMode }: Bp
         const outline =
           e.type === 'activity' || e.type === 'subprocess' ? <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={10} /> : e.type === 'event' ? <circle cx={cx} cy={cy} r={e.width / 2} /> : e.type === 'data' ? <path d={dataPath} /> : e.type === 'store' ? <path d={storePath} /> : <path d={`M${cx},${e.y} L${e.x + e.width},${cy} L${cx},${e.y + e.height} L${e.x},${cy} Z`} />;
         return (
-          <g key={e.id} data-node-id={e.id}>
+          <g key={e.id} data-node-id={e.id} {...pick(e.id, onSelect)} style={onSelect ? { cursor: 'pointer' } : undefined}>
             {watercolor && (
               <Wash color={stroke} theme={theme}>
                 {outline}
@@ -458,9 +485,58 @@ export function BpmnSvg({ layout, theme, icons, iconSet, reveal, styleMode }: Bp
           </g>
         );
       })}
+      {selectedNodes.size > 0 && <BpmnSelectionOutlines layout={layout} ids={[...selectedNodes]} theme={theme} scale={s} />}
     </g>
   );
 }
+
+/** 1.5px accent outline with corner handles (single selection) around selected elements, pools and lanes; visual only. */
+function BpmnSelectionOutlines({ layout, ids, theme, scale: s }: { layout: BpmnLayout; ids: string[]; theme: Theme; scale: number }) {
+  const pad = 5 * s;
+  const handle = 8 * s;
+  return (
+    <g className="od-selection" pointerEvents="none">
+      {ids.map((id) => {
+        const box = layout.elements.find((e) => e.id === id) ?? layout.bands.find((b) => b.id === id);
+        if (!box) return null;
+        const band = !('type' in box);
+        // Pools and lanes are outlined on their border, elements just outside their shape.
+        const p = band ? 0 : pad;
+        const x = box.x - p;
+        const y = box.y - p;
+        const w = box.width + p * 2;
+        const h = box.height + p * 2;
+        return (
+          <g key={id} data-selected-id={id}>
+            <rect x={x} y={y} width={w} height={h} rx={2 * s} fill="none" stroke={theme.color.accent} strokeWidth={1.5 * s} />
+            {ids.length === 1 &&
+              [
+                [x, y],
+                [x + w, y],
+                [x, y + h],
+                [x + w, y + h],
+              ].map(([cx, cy], i) => <rect key={i} x={cx! - handle / 2} y={cy! - handle / 2} width={handle} height={handle} rx={2 * s} fill={theme.color.raised} stroke={theme.color.accent} strokeWidth={1.5 * s} />)}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
+ * The BPMN layout as a plain DiagramLayout (elements as nodes with their outside
+ * label boxes, pools and lanes as groups, connections as edges), so the element
+ * toolbar can place itself and its text editor the same way as for flow diagrams.
+ */
+export function bpmnAsDiagramLayout(layout: BpmnLayout): DiagramLayout {
+  const base = { description: [], properties: {}, parent: null, depth: 0, hiddenCount: 0, variant: 'card' as const };
+  const nodes: LayoutNode[] = [
+    ...layout.bands.map((b) => ({ ...base, id: b.id, kind: 'group' as const, x: b.x, y: b.y, width: b.width, height: b.height, lines: [b.label] })),
+    ...layout.elements.map((e) => ({ ...base, id: e.id, kind: 'node' as const, x: e.x, y: e.y, width: e.width, height: e.height, lines: e.lines, labelBox: e.labelBox })),
+  ];
+  return { width: layout.width, height: layout.height, nodes, edges: layout.edges };
+}
+
 
 /** The symbol inside a gateway: X exclusive, + parallel, O inclusive, pentagon in a ring event-based. */
 function GatewayMarker({ kind, cx, cy, color }: { kind: NonNullable<BpmnElement['gateway']>; cx: number; cy: number; color: string }) {

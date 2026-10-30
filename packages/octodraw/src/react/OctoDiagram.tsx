@@ -19,7 +19,7 @@ import type { DiagramNode } from '../dsl/types';
 import { detectDiagramType, type DiagramType } from '../dsl/detect';
 import { parseErd } from '../dsl/erd';
 import { parseSequence } from '../dsl/sequence';
-import { BpmnSvg, layoutBpmn } from '../bpmn/bpmn';
+import { BpmnSvg, bpmnAsDiagramLayout, layoutBpmn, type BpmnLayout } from '../bpmn/bpmn';
 import { arrangeErd, ErdSvg, layoutErd, type ErdLayout } from '../erd/erd';
 import { layoutSequence, SequenceSvg } from '../sequence/sequence';
 import { parseDiagram } from '../dsl/parse';
@@ -149,7 +149,7 @@ export interface OctoDiagramProps {
   placements?: ViewPlacements;
   onPlacementsChange?: (placements: ViewPlacements) => void;
   /**
-   * Makes architecture / flow diagrams editable from an element toolbar: select a
+   * Makes architecture / flow and BPMN diagrams editable from an element toolbar: select a
    * box, group, icon label or arrow (shift-click for several) and restyle,
    * rename or delete it. Each toolbar action rewrites the code with the DSL edit
    * functions and calls this once with the new code, so one action is one undo
@@ -923,7 +923,9 @@ export function OctoDiagram({
   const selected = selection && selection.kind !== 'edge' ? (selection.ids[0] ?? null) : null;
 
   // The element toolbar: flow diagrams only, and only when the host takes code changes.
-  const editable = !!onSourceChange && diagramType === 'flow' && !imported && !streaming && revealCount === undefined;
+  const editable = !!onSourceChange && (diagramType === 'flow' || diagramType === 'bpmn') && !imported && !streaming && revealCount === undefined;
+  // BPMN uses the flow syntax, so the same toolbar edits its code; its connections are the BPMN layout's (top-level view) edges.
+  const bpmnView = useMemo(() => (bpmn ? buildView(bpmn, { focus: null }) : null), [bpmn]);
   const shiftClick = useRef(false);
   const pickNode = useCallback(
     (id: string) => setSelection(editable && shiftClick.current ? toggleInSelection(selectionRef.current, 'node', id) : { kind: 'node', ids: [id] }),
@@ -933,10 +935,14 @@ export function OctoDiagram({
   const pickLabel = useCallback((id: string) => setSelection({ kind: 'label', ids: [id] }), [setSelection]);
   const selectedEdgeSet = useMemo(() => new Set(selection?.kind === 'edge' ? selection.ids : []), [selection]);
   const toolbarCtx = useMemo<ToolbarContext>(() => {
+    if (bpmn && bpmnView) {
+      const bpmnSources = new Map(bpmnView.edges.map((e) => [e.id, e.sources]));
+      return { diagram: bpmn, edgeSources: (id) => bpmnSources.get(id) ?? bpmn.edges.filter((e) => e.id === id), bpmn: true };
+    }
     const sources = new Map(view.edges.map((e) => [e.id, e.sources]));
     const iconNodes = new Set(layout?.nodes.filter((n) => n.variant === 'icon').map((n) => n.id));
     return { diagram, edgeSources: (id) => sources.get(id) ?? diagram.edges.filter((e) => e.id === id), isIconNode: (id) => iconNodes.has(id) };
-  }, [diagram, view, layout]);
+  }, [diagram, view, layout, bpmn, bpmnView]);
   // Elements that left the view (deleted in the code, or after a drill) leave the selection.
   useEffect(() => {
     const current = selectionRef.current;
@@ -944,6 +950,12 @@ export function OctoDiagram({
     const next = pruneSelection(current, new Set(view.nodes.keys()), new Set(view.edges.map((e) => e.id)));
     if (next !== current) setSelection(next);
   }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const current = selectionRef.current;
+    if (!current || !bpmn || !bpmnView) return;
+    const next = pruneSelection(current, new Set(bpmn.nodes.keys()), new Set(bpmnView.edges.map((e) => e.id)));
+    if (next !== current) setSelection(next);
+  }, [bpmnView]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [editing, setEditing] = useState(false);
   const selectionKey = selection ? `${selection.kind}:${selection.ids.join('|')}` : '';
@@ -960,12 +972,12 @@ export function OctoDiagram({
   const pendingRename = useRef<{ from: string; to: string } | null>(null);
   useEffect(() => {
     const rename = pendingRename.current;
-    if (!rename || !diagram.nodes.has(rename.to)) return;
+    if (!rename || !(bpmn ?? diagram).nodes.has(rename.to)) return;
     pendingRename.current = null;
     if (focus === rename.from) setFocus(rename.to);
     setCollapsedGroups((all) => (all.has(rename.from) ? new Set([...all].map((id) => (id === rename.from ? rename.to : id))) : all));
     if (placementsProp === undefined) setOwnPlacements((all) => renamePlacements(all, rename));
-  }, [diagram]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [diagram, bpmn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyAction = useCallback(
     (action: ToolbarAction): ToolbarResult => {
@@ -1109,7 +1121,18 @@ export function OctoDiagram({
         }
       />
     ) : bpmnLayout ? (
-      <BpmnSvg layout={bpmnLayout} styleMode={bpmn?.settings.styleMode} theme={theme} icons={icons} iconSet={iconSet} reveal={revealCount} />
+      <BpmnSvg
+        layout={bpmnLayout}
+        styleMode={bpmn?.settings.styleMode}
+        theme={theme}
+        icons={icons}
+        iconSet={iconSet}
+        reveal={revealCount}
+        selection={editable && !dragPlacement ? selection : null}
+        onSelect={editable ? pickNode : undefined}
+        onSelectEdge={editable ? pickEdge : undefined}
+        zoom={transform.k}
+      />
     ) : undefined;
   // Exports show the whole diagram, without selection or step highlighting.
   const exportBody = erd && arrangedErd ? <ErdSvg layout={arrangedErd} diagram={erd} theme={theme} icons={icons} iconSet={iconSet} /> : sequence && sequenceLayout ? <SequenceSvg layout={sequenceLayout} styleMode={sequence.settings.styleMode} theme={theme} icons={icons} iconSet={iconSet} /> : bpmnLayout ? <BpmnSvg layout={bpmnLayout} styleMode={bpmn?.settings.styleMode} theme={theme} icons={icons} iconSet={iconSet} /> : undefined;
@@ -1179,10 +1202,13 @@ export function OctoDiagram({
   const subtitle = current?.properties.description;
   const cssVars = useMemo(() => themeCssVariables(theme) as CSSProperties, [theme]);
   const toolbarShown = editable && chrome && !!layout && selectionTarget(selection, toolbarCtx) !== null;
-  const selectionScreenBox = toolbarShown && layout && selection ? screenBoxOf(layout, selection, transform) : null;
+  // BPMN hands the camera a size-only layout; the toolbar places itself on the BPMN layout's boxes.
+  const toolbarLayout = toolbarShown && bpmnLayout ? bpmnAsDiagramLayout(bpmnLayout) : layout;
+  const selectionScreenBox = toolbarShown && toolbarLayout && selection ? screenBoxOf(toolbarLayout, selection, transform) : null;
   const editingBox =
-    toolbarShown && editing && layout && selection
-      ? editorBox(layout, selection, transform, theme, diagram.settings.typeface, editableText(selection, toolbarCtx), selectedEdges(selection, toolbarCtx)[0]?.properties)
+    toolbarShown && editing && toolbarLayout && selection
+      ? ((bpmnLayout && bpmnBandEditorBox(bpmnLayout, selection, transform, theme, editableText(selection, toolbarCtx))) ??
+        editorBox(toolbarLayout, selection, transform, theme, (bpmn ?? diagram).settings.typeface, editableText(selection, toolbarCtx), selectedEdges(selection, toolbarCtx)[0]?.properties))
       : null;
 
   return (
@@ -1789,6 +1815,18 @@ function editorBox(layout: DiagramLayout, selection: DiagramSelection, t: Transf
     align: textAlignOf(node.properties.textAlign) ?? 'center',
     initial,
   };
+}
+
+/** BPMN pools and lanes: the title editor goes over the name strip, horizontally. */
+function bpmnBandEditorBox(layout: BpmnLayout, selection: DiagramSelection, t: Transform, theme: Theme, initial: string): ToolbarEditing | null {
+  const band = selection.kind === 'node' ? layout.bands.find((b) => b.id === selection.ids[0]) : undefined;
+  if (!band) return null;
+  const size = Math.max(11, (band.kind === 'pool' ? 13.5 : 12.5) * t.k);
+  const width = Math.max(160, (initial.length + 4) * size * 0.6);
+  const height = size * 1.5 + 8;
+  const x = band.x * t.k + t.x;
+  const cy = (band.y + band.height / 2) * t.k + t.y;
+  return { rect: { x, y: cy - height / 2, width, height }, fontSize: size, fontFamily: theme.font.sans, align: 'left', initial };
 }
 
 /** 1.5px accent outline with four small corner handles around each selected box or group (handles are visual only). */

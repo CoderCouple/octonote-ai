@@ -27,6 +27,7 @@ import {
   type ToolbarContext,
   type ToolbarControl,
 } from './toolbar/actions';
+import { BpmnMoreMenu, bpmnControl, bpmnMenu, type BpmnToolbarUi } from './toolbar/BpmnControls';
 import { ColorGrid, swatchColor } from './toolbar/ColorGrid';
 import {
   AlignGlyph,
@@ -243,6 +244,8 @@ export function ElementToolbar(props: ElementToolbarProps) {
     </button>
   );
   const mixedText = <span className="od-etb-mixed">Mixed</span>;
+  // BPMN diagrams: the Type / Gateway kind / Event trigger / Line controls live in toolbar/BpmnControls.
+  const bpmnUi: BpmnToolbarUi = { selection, ctx, menuButton: (id, label, content, title) => menuButton(id, label, content, title), act, set, onClose: () => close(), mixed: mixedText };
 
   const isEdge = selection.kind === 'edge';
   const isLabel = selection.kind === 'label';
@@ -330,13 +333,15 @@ export function ElementToolbar(props: ElementToolbarProps) {
           </button>
         );
       case 'delete': {
-        const what = isEdge ? 'arrows' : 'boxes';
+        const what = ctx.bpmn ? (isEdge ? 'connections' : 'elements') : isEdge ? 'arrows' : 'boxes';
         return (
           <button key="delete" type="button" className="od-etb-btn" aria-label={`Delete ${selection.ids.length} ${what}`} title="Delete (⌫)" onClick={() => act({ type: 'delete' })}>
             <TrashGlyph />
           </button>
         );
       }
+      default:
+        return bpmnControl(control, bpmnUi);
     }
   };
 
@@ -353,13 +358,13 @@ export function ElementToolbar(props: ElementToolbarProps) {
       <button type="button" className="od-etb-btn od-etb-done" onClick={() => props.onCommitEdit(draft.current)}>
         Done
       </button>
-      <div className="od-etb-sep" />
-      {isEdge ? menuButton('labelSize', 'Label size', (() => {
+      {!ctx.bpmn && <div className="od-etb-sep" />}
+      {ctx.bpmn ? null : isEdge ? menuButton('labelSize', 'Label size', (() => {
         const name = sizeName(size.size, 'label');
         return name ? SIZE_LABELS[name] : `${size.size}px`;
       })()) : textButton('textSize', 'Text size')}
-      {target === 'box' && menuButton('align', 'Align', <AlignGlyph align={(propertyValue(selection, ctx, 'textAlign').value as 'left' | 'right' | undefined) ?? 'center'} />)}
-      {!isEdge && menuButton('textColor', 'Text colour', <span className="od-etb-a" style={{ textDecorationColor: swatchColor(theme, propertyValue(selection, ctx, 'textColor').value) ?? theme.color.text }}>A</span>)}
+      {target === 'box' && !ctx.bpmn && menuButton('align', 'Align', <AlignGlyph align={(propertyValue(selection, ctx, 'textAlign').value as 'left' | 'right' | undefined) ?? 'center'} />)}
+      {!isEdge && !ctx.bpmn && menuButton('textColor', 'Text colour', <span className="od-etb-a" style={{ textDecorationColor: swatchColor(theme, propertyValue(selection, ctx, 'textColor').value) ?? theme.color.text }}>A</span>)}
     </>
   );
 
@@ -509,11 +514,11 @@ export function ElementToolbar(props: ElementToolbarProps) {
       case 'more':
         return (
           <Menu label="More" onClose={onClose} width={264}>
-            <MoreMenu {...props} target={target} single={single} edges={edges.length} act={act} set={set} />
+            {ctx.bpmn ? <BpmnMoreMenu ui={bpmnUi} FieldEditor={FieldEditor} /> : <MoreMenu {...props} target={target} single={single} edges={edges.length} act={act} set={set} />}
           </Menu>
         );
       default:
-        return null;
+        return bpmnMenu(id, bpmnUi) ?? null;
     }
   };
 
@@ -541,7 +546,7 @@ export function ElementToolbar(props: ElementToolbarProps) {
           ref={bar}
           className="od-etb"
           role="toolbar"
-          aria-label={editing ? 'Editing text' : target === 'boxes' ? `${selection.ids.length} boxes` : target === 'arrows' ? `${selection.ids.length} arrows` : TARGET_NAMES[target]}
+          aria-label={editing ? 'Editing text' : target === 'boxes' ? `${selection.ids.length} boxes` : target === 'arrows' ? `${selection.ids.length} arrows` : (ctx.bpmn ? BPMN_TARGET_NAMES : TARGET_NAMES)[target]}
           // Presses on the bar never reach the diagram (no deselect, no pan).
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
@@ -560,6 +565,7 @@ export function ElementToolbar(props: ElementToolbarProps) {
 }
 
 const TARGET_NAMES = { box: 'Box', icon: 'Icon node', group: 'Group', arrow: 'Arrow', label: 'Label', boxes: 'Boxes', arrows: 'Arrows' } as const;
+const BPMN_TARGET_NAMES = { ...TARGET_NAMES, box: 'Element', group: 'Pool or lane', arrow: 'Connection', boxes: 'Elements', arrows: 'Connections' } as const;
 
 function overlaps(a: ScreenRect, b: ScreenRect): boolean {
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
@@ -612,7 +618,7 @@ function MoreMenu({ selection, ctx, target, single, edges, act, set, onOpenGroup
 }
 
 /** A one-line field inside a menu (description, link): Enter saves, Escape goes back. */
-function FieldEditor({ label, placeholder, initial, onSave, onBack }: { label: string; placeholder: string; initial: string; onSave: (value: string) => boolean; onBack: () => void }) {
+export function FieldEditor({ label, placeholder, initial, onSave, onBack }: { label: string; placeholder: string; initial: string; onSave: (value: string) => boolean; onBack: () => void }) {
   const [value, setValue] = useState(initial);
   return (
     <div className="od-etb-fieldrow">
@@ -722,6 +728,7 @@ const TOOLBAR_CSS = `
 .od-etb-muted { color: var(--od-color-text-muted); font-variant-numeric: tabular-nums; }
 .od-etb-mixed { color: var(--od-color-text-muted); font-style: italic; font-weight: 400; }
 .od-etb-a { font-weight: 600; text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 3px; }
+.od-etb-tag { height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--od-space-2); font-size: 12px; color: var(--od-color-text-muted); flex: none; cursor: default; }
 .od-etb-count { height: 34px; display: inline-flex; align-items: center; padding: 0 var(--od-space-3); border-radius: var(--od-radius-md); background: var(--od-color-accent-soft); color: var(--od-color-accent); font-size: 13px; font-weight: 600; flex: none; }
 .od-etb-note { pointer-events: auto; display: flex; align-items: center; gap: 10px; font: var(--od-text-ui); font-size: 12px; color: var(--od-color-text-muted); background: var(--od-color-raised); border: 1px solid var(--od-color-border); border-radius: var(--od-radius-md); padding: 4px 10px; box-shadow: var(--od-shadow-chrome); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .od-etb-note-warn { color: var(--od-color-danger); background: var(--od-color-danger-soft); border-color: transparent; }
