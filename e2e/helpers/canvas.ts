@@ -7,8 +7,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type { Api, Canvas, CanvasDoc } from "./api";
 
 export type ToolLabel =
-  | "Select" | "Pan" | "Rectangle" | "Ellipse" | "Diamond" | "Sticky note"
-  | "Arrow" | "Line" | "Pen" | "Text" | "Comment";
+  | "Select" | "Rectangle" | "Ellipse" | "Arrow" | "Line" | "Pen" | "Text"
+  | "Figure" | "Comment";
 
 export class CanvasUi {
   readonly root: Locator;

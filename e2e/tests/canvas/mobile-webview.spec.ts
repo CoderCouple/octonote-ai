@@ -1,6 +1,7 @@
 import { devices } from "@playwright/test";
 import { CanvasUi, docOf, rect, shapes, waitForDoc } from "../../helpers/canvas";
 import { e2eTitle, expect, test } from "../../helpers/fixtures";
+import { API_URL } from "../../helpers/env";
 
 const iPhone = devices["iPhone 15"] ?? devices["iPhone 13"]!;
 
@@ -18,7 +19,7 @@ test("in the app WebView (/embed/enter + OctonoteApp UA) the canvas hides duplic
   await api.updateCanvas(c.id, { document: docOf([rect("a", 0, 0, { text: "Phone" })]) });
   const clientHeaders: string[] = [];
   page.on("request", (r) => {
-    if (r.url().includes(":4000/")) clientHeaders.push(r.headers()["x-octonote-client"] ?? "");
+    if (r.url().startsWith(`${API_URL}/`)) clientHeaders.push(r.headers()["x-octonote-client"] ?? "");
   });
 
   await enter(`/c/${c.id}`);

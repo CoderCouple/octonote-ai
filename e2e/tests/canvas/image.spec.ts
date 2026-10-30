@@ -15,7 +15,7 @@ test.describe("images on the canvas are uploaded to storage", () => {
     const palette = page.getByRole("dialog", { name: "Insert" });
     const [chooser] = await Promise.all([
       page.waitForEvent("filechooser"),
-      palette.locator(".occ-palette-row", { hasText: "Image…" }).click(),
+      palette.getByRole("option", { name: "Image", exact: true }).click(),
     ]);
     await chooser.setFiles({ name: "red.png", mimeType: "image/png", buffer: Buffer.from(PNG_B64, "base64") });
 

@@ -11,12 +11,21 @@ test.describe("canvas tools", () => {
 
     await ui.draw("Rectangle", [260, 140], [420, 220]);
     await ui.draw("Ellipse", [480, 140], [640, 220]);
-    await ui.draw("Diamond", [700, 130], [840, 240]);
-    await expect(ui.items()).toHaveCount(3);
+    await expect(ui.items()).toHaveCount(2);
     // Drawing a shape hands back the Select tool.
     await expect(ui.rail().getByRole("button", { name: "Select", exact: true })).toHaveAttribute("aria-pressed", "true");
+    // Diamonds are under + › Shape.
+    await ui.rail().getByRole("button", { name: "Insert", exact: true }).click();
+    const palette = page.getByRole("dialog", { name: "Insert" });
+    await palette.getByRole("option", { name: /^Shape/ }).click();
+    await palette.getByRole("option", { name: /^Diamond/ }).click();
+    await expect(palette).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(ui.items()).toHaveCount(3);
 
-    await ui.tool("Sticky note");
+    // S still picks the sticky note (it isn't on the rail any more).
+    await ui.focus();
+    await page.keyboard.press("s");
     await page.mouse.click(...Object.values(await ui.at(320, 420)) as [number, number]);
     await page.keyboard.type("Sticky E2E");
     await page.keyboard.press("Escape");
@@ -153,7 +162,7 @@ test.describe("canvas tools", () => {
     await expect(ui.selbar()).toHaveCount(0);
 
     // Tool shortcuts.
-    for (const [key, label] of [["r", "Rectangle"], ["o", "Ellipse"], ["d", "Diamond"], ["s", "Sticky note"], ["a", "Arrow"], ["l", "Line"], ["p", "Pen"], ["t", "Text"], ["h", "Pan"], ["v", "Select"]] as const) {
+    for (const [key, label] of [["r", "Rectangle"], ["o", "Ellipse"], ["d", "Pen"], ["a", "Arrow"], ["l", "Line"], ["p", "Pen"], ["t", "Text"], ["f", "Figure"], ["c", "Comment"], ["v", "Select"]] as const) {
       await page.keyboard.press(key);
       await expect(ui.rail().getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-pressed", "true");
     }

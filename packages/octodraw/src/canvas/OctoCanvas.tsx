@@ -10,7 +10,8 @@ import { OctoDiagram, useResolvedScheme, type CopyFormat, type ExportFormat, typ
 import { themeCssVariables, themes as builtInThemes, type ColorScheme, type Theme } from '../theme/tokens';
 import { CommentLayer, type DraftThread } from './Comments';
 import { renderCanvasSvg } from './export';
-import { InsertPalette, type InsertChoice } from './InsertPalette';
+import { INSERT_PALETTE_CSS, InsertPalette, type InsertChoice, type InsertPage } from './InsertPalette';
+import { TOOL_RAIL_CSS, ToolRail } from './ToolRail';
 import { moveSlide, presentationSlides, setSlideHidden, setSlideNotes } from './present';
 import { CODE_FONT_SIZE, CodeView, cssFont, FrameView, IconView, ImageView, linePath, LineView, PenView, shapeLabel, shapePaint, shapeTextPadding, ShapeView, stickyLabel, stickyTextColor, StickyView, TEXT_LINE_HEIGHT, textFont, textLabel, TextView, type ItemContext } from './items';
 import { Glyph, SELECTION_BAR_CSS, SelectionBar, type BarMenu } from './SelectionBar';
@@ -91,7 +92,7 @@ import { renderSourceSvg } from '../export/source';
 import { CANVAS_TEMPLATES, FIGURE_TEMPLATES, FIGURE_TITLE, figureLabel, figureTitle, type CanvasTemplate } from './templates';
 import type { CanvasChangeMeta } from './useCanvasHistory';
 
-export type CanvasTool = 'select' | 'hand' | ShapeKind | 'sticky' | 'arrow' | 'line' | 'pen' | 'text' | 'comment';
+export type CanvasTool = 'select' | 'hand' | ShapeKind | 'figure' | 'sticky' | 'arrow' | 'line' | 'pen' | 'text' | 'comment';
 
 export interface OctoCanvasHandle {
   zoomToFit(): void;
@@ -179,7 +180,7 @@ type Gesture =
   | { kind: 'resize-group'; ids: string[]; handle: Handle; start: Point; box: Box }
   | { kind: 'rotate'; ids: string[]; pivot: Point; from: number; base: number }
   | { kind: 'marquee'; start: Point; base: string[] }
-  | { kind: 'create'; start: Point; shape: ShapeKind; id: string }
+  | { kind: 'create'; start: Point; shape: ShapeKind | 'figure'; id: string }
   | { kind: 'pen'; points: Point[] }
   | { kind: 'line'; start: Endpoint; arrow: boolean }
   | { kind: 'endpoint'; id: string; which: 'start' | 'end' }
@@ -194,7 +195,8 @@ const HANDLE_ANGLE: Record<Handle, number> = { n: 0, ne: 45, e: 90, se: 135, s: 
 const CURSORS = ['ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize'];
 /** The resize cursor for a handle on an item turned by `rotation` degrees. */
 const resizeCursor = (handle: Handle, rotation: number) => CURSORS[Math.round((((HANDLE_ANGLE[handle] + rotation) % 180) + 180) % 180 / 45) % 4]!;
-const TOOL_KEYS: Record<string, CanvasTool> = { v: 'select', h: 'hand', r: 'rectangle', o: 'ellipse', d: 'diamond', s: 'sticky', a: 'arrow', l: 'line', p: 'pen', t: 'text', c: 'comment' };
+// As in Eraser: D draws with the pen (P too); diamonds are under Insert › Shape.
+const TOOL_KEYS: Record<string, CanvasTool> = { v: 'select', h: 'hand', r: 'rectangle', o: 'ellipse', f: 'figure', s: 'sticky', a: 'arrow', l: 'line', d: 'pen', p: 'pen', t: 'text', c: 'comment' };
 const DEVICE_SIZES: Record<DeviceKind, [number, number]> = { phone: [300, 620], tablet: [620, 820], browser: [960, 620], desktop: [960, 640] };
 const DEFAULT_USER: CommentAuthor = { id: 'me', name: 'You' };
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -319,7 +321,9 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const pinch = useRef<{ d: number; mid: Point; cam: Camera } | null>(null);
   const [entered, setEntered] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  /** The Insert panel, by the page it opened on (+ → 'home', the Icon tool → 'icon'). */
+  const [palette, setPalette] = useState<InsertPage | null>(null);
+  const paletteOpen = palette !== null;
   const [panning, setPanning] = useState(false);
   const spaceHeld = useRef(false);
   // Until the user moves the camera, keep everything in view as figures size themselves.
@@ -472,7 +476,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (event: WheelEvent) => {
-      if ((event.target as Element).closest('.occ-palette-backdrop, .occ-menu, .occ-pop, .occ-ctx')) return;
+      if ((event.target as Element).closest('.occ-palette, .occ-menu, .occ-pop, .occ-ctx')) return;
       event.preventDefault();
       cameraTouched.current = true;
       stopFollowing();
@@ -509,6 +513,8 @@ export function OctoCanvas(props: OctoCanvasProps) {
     return { x: Math.round(all.x + all.w + 80), y: Math.round(all.y), w, h };
   };
   const newFigure = (source: string): FigureItem => ({ id: newItemId(), type: 'figure', ...freeSpot(480, 320), source, autoSize: true });
+  /** A figure with no code yet, in a box (the Figure tool, Insert › Figure). */
+  const emptyFigure = (box: Box): FigureItem => ({ id: newItemId(), type: 'figure', x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.w), h: Math.round(box.h), source: '', autoSize: false });
   /** Shows a newly placed figure now and fits it once it has sized itself. */
   const follow = (figure: Box & { id: string }) => {
     followFigure.current = figure.id;
@@ -589,10 +595,14 @@ export function OctoCanvas(props: OctoCanvasProps) {
   };
 
   const choose = (choice: InsertChoice) => {
-    setPaletteOpen(false);
+    setPalette(null);
     rootRef.current?.focus({ preventScroll: true });
     const c = viewportCenter();
-    if (choice.kind === 'template') {
+    if (choice.kind === 'figure') {
+      const figure = emptyFigure(freeSpot(480, 320));
+      insert([figure]);
+      follow(figure);
+    } else if (choice.kind === 'template') {
       const figure = newFigure(FIGURE_TEMPLATES.find((t) => t.id === choice.id)!.source);
       insert([figure]);
       follow(figure);
@@ -736,7 +746,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
             const side = Math.max(box.w, box.h);
             box = boxFromPoints(g.start, { x: g.start.x + Math.sign(p.x - g.start.x || 1) * side, y: g.start.y + Math.sign(p.y - g.start.y || 1) * side });
           }
-          setPreview(addItems(base, [newShape(g.shape, box)].map((s) => ({ ...s, id: g.id }))));
+          setPreview(addItems(base, [g.shape === 'figure' ? emptyFigure(box) : newShape(g.shape, box)].map((s) => ({ ...s, id: g.id }))));
           break;
         }
         case 'pen':
@@ -799,9 +809,13 @@ export function OctoCanvas(props: OctoCanvasProps) {
       if (g.kind === 'move' || g.kind === 'resize' || g.kind === 'resize-group' || g.kind === 'rotate' || g.kind === 'endpoint' || g.kind === 'bend') {
         if (current && current !== base) commit(current);
       } else if (g.kind === 'create') {
-        const drawn = current ? (getItem(current, g.id) as ShapeItem | undefined) : undefined;
+        const drawn = current ? (getItem(current, g.id) as ShapeItem | FigureItem | undefined) : undefined;
         const small = !drawn || drawn.w < 8 || drawn.h < 8;
-        insert([small ? newShape(g.shape, { x: g.start.x - 80, y: g.start.y - 40, w: 160, h: 80 }) : drawn!].map((shape) => ({ ...shape, id: g.id })));
+        if (g.shape === 'figure') {
+          // A click (or a tiny drag) makes a figure of the default size there.
+          insert([{ ...(small ? emptyFigure({ x: g.start.x - 240, y: g.start.y - 160, w: 480, h: 320 }) : (drawn as FigureItem)), id: g.id }]);
+          setTool('select');
+        } else insert([small ? newShape(g.shape, { x: g.start.x - 80, y: g.start.y - 40, w: 160, h: 80 }) : (drawn as ShapeItem)].map((shape) => ({ ...shape, id: g.id })));
       } else if (g.kind === 'pen') {
         if (g.points.length > 1) insert([penFromPoints(g.points)]);
       } else if (g.kind === 'line') {
@@ -863,7 +877,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
 
   const onPointerDown = (event: ReactPointerEvent) => {
     const target = event.target as Element;
-    if (target.closest('.occ-chrome, .occ-palette-backdrop, .occ-editor, .occ-comments, .occ-focus')) return;
+    if (target.closest('.occ-chrome, .occ-palette, .occ-editor, .occ-comments, .occ-focus')) return;
     if (entered && target.closest(`[data-item-id="${entered}"] .occ-figure-body`)) return;
     if (event.pointerType === 'touch') {
       touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -904,6 +918,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
       case 'rectangle':
       case 'ellipse':
       case 'diamond':
+      case 'figure':
         begin({ kind: 'create', start: p, shape: tool, id: newItemId() });
         return;
       case 'pen':
@@ -979,7 +994,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
 
   const onContextMenu = (event: React.MouseEvent) => {
     const target = event.target as Element;
-    if (readOnly || target.closest('.occ-chrome, .occ-editor, .occ-palette-backdrop, .occ-comments, .occ-focus')) return;
+    if (readOnly || target.closest('.occ-chrome, .occ-editor, .occ-palette, .occ-comments, .occ-focus')) return;
     if (entered && target.closest(`[data-item-id="${entered}"] .occ-figure-body`)) return;
     event.preventDefault();
     const rect = rootRef.current!.getBoundingClientRect();
@@ -1310,10 +1325,16 @@ export function OctoCanvas(props: OctoCanvasProps) {
       setSelection(doc.items.map((i) => i.id));
     } else if (mod && key === 'k') {
       event.preventDefault();
-      setPaletteOpen(true);
+      setPalette('home');
     } else if (event.key === '/' && !mod) {
       event.preventDefault();
-      setPaletteOpen(true);
+      setPalette('home');
+    } else if (key === 'i' && !mod && !event.altKey) {
+      event.preventDefault();
+      setPalette('icon');
+    } else if (mod && key === 'j' && onAskAi) {
+      event.preventDefault();
+      onAskAi(null);
     } else if (mod && (event.key === '=' || event.key === '+' || event.key === '-')) {
       event.preventDefault();
       zoomAt(cam.k * (event.key === '-' ? 1 / 1.25 : 1.25));
@@ -1458,7 +1479,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
     setSelection([]);
     setEditing(null);
     setEntered(null);
-    setPaletteOpen(false);
+    setPalette(null);
     setPresenting(index);
     setBarVisible(true);
     const slide = slides[index]!;
@@ -1721,7 +1742,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
         ...style,
       }}
     >
-      <style>{CSS + SELECTION_BAR_CSS}</style>
+      <style>{CSS + SELECTION_BAR_CSS + TOOL_RAIL_CSS + INSERT_PALETTE_CSS}</style>
       {props.ghosts && props.ghosts.length > 0 && <style>{`${props.ghosts.map((id) => `.occ-world [data-item-id="${id.replace(/["\\]/g, '')}"]`).join(',')} { opacity: 0.3; filter: grayscale(1); }`}</style>}
       <div className={`occ-world${camGliding ? ' occ-world-glide' : ''}`} style={{ transform: `translate(${cam.x}px, ${cam.y}px) scale(${k})`, clipPath: presentClip }}>
         {shown.items.map((item) => {
@@ -1895,9 +1916,18 @@ export function OctoCanvas(props: OctoCanvasProps) {
           })}
         </div>
       )}
-      {doc.items.length === 0 && !preview && !readOnly && <TemplateGallery templates={templates} theme={theme} icons={icons} iconSet={iconSet} onPick={insertTemplate} onInsert={() => setPaletteOpen(true)} />}
+      {doc.items.length === 0 && !preview && !readOnly && <TemplateGallery templates={templates} theme={theme} icons={icons} iconSet={iconSet} onPick={insertTemplate} onInsert={() => setPalette('home')} />}
 
-      {!readOnly && <ToolRail tool={tool} onTool={setTool} onInsert={() => setPaletteOpen(true)} />}
+      {!readOnly && (
+        <ToolRail
+          tool={tool}
+          insert={palette === 'icon' ? 'icon' : palette ? 'home' : null}
+          onTool={(t) => (setPalette(null), setTool(t))}
+          onInsert={() => setPalette((p) => (p === 'home' ? null : 'home'))}
+          onIcon={() => setPalette((p) => (p === 'icon' ? null : 'icon'))}
+          onAi={onAskAi ? () => onAskAi(null) : undefined}
+        />
+      )}
 
       {selBox && !preview && !editing && !entered && !readOnly && (
         <SelectionBar
@@ -2124,7 +2154,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
         </button>
       </div>}
 
-      {paletteOpen && <InsertPalette ctx={ctx} templates={templates} aiEnabled={!!onAskAi} onChoose={choose} onClose={() => (setPaletteOpen(false), rootRef.current?.focus({ preventScroll: true }))} />}
+      {palette && <InsertPalette key={palette} page={palette} ctx={ctx} templates={templates} aiEnabled={!!onAskAi} onChoose={choose} onAskAi={onAskAi ? () => onAskAi(null) : undefined} onClose={() => (setPalette(null), rootRef.current?.focus({ preventScroll: true }))} />}
     </div>
   );
 }
@@ -2576,40 +2606,6 @@ function TextEditor({ item, theme, onDone }: { item: CanvasItem; theme: Theme; o
   );
 }
 
-const TOOLS: { tool: CanvasTool; label: string; key: string; d: string }[] = [
-  { tool: 'select', label: 'Select', key: 'V', d: 'M5 3l14 8-6.5 1.5L9 19z' },
-  { tool: 'hand', label: 'Pan', key: 'H', d: 'M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11.5v-8a1.5 1.5 0 0 1 3 0V12M14 7.5a1.5 1.5 0 0 1 3 0V12M17 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-5-2.7L4.3 14a1.5 1.5 0 0 1 2.5-1.6L8 14' },
-  { tool: 'rectangle', label: 'Rectangle', key: 'R', d: 'M4 6h16v12H4z' },
-  { tool: 'ellipse', label: 'Ellipse', key: 'O', d: 'M12 6c4.4 0 8 2.7 8 6s-3.6 6-8 6-8-2.7-8-6 3.6-6 8-6z' },
-  { tool: 'diamond', label: 'Diamond', key: 'D', d: 'M12 3l9 9-9 9-9-9z' },
-  { tool: 'sticky', label: 'Sticky note', key: 'S', d: 'M5 4h14v10l-6 6H5zM13 20v-6h6' },
-  { tool: 'arrow', label: 'Arrow', key: 'A', d: 'M5 19L19 5M10 5h9v9' },
-  { tool: 'line', label: 'Line', key: 'L', d: 'M5 19L19 5' },
-  { tool: 'pen', label: 'Pen', key: 'P', d: 'M4 20c3-1 4-3 6-6s4-6 6-8 4 0 2 2-5 4-8 6-5 3-6 6z' },
-  { tool: 'text', label: 'Text', key: 'T', d: 'M5 6V4h14v2M12 4v16M9 20h6' },
-  { tool: 'comment', label: 'Comment', key: 'C', d: 'M4 5h16v11H9l-5 4z' },
-];
-
-function ToolRail({ tool, onTool, onInsert }: { tool: CanvasTool; onTool: (t: CanvasTool) => void; onInsert: () => void }) {
-  return (
-    <div className="occ-rail occ-chrome" role="toolbar" aria-label="Tools" aria-orientation="vertical">
-      {TOOLS.map((t, i) => (
-        <span key={t.tool} style={{ display: 'contents' }}>
-          {(i === 2 || i === 6 || i === 11) && <span className="occ-rail-sep" />}
-          <button type="button" className="occ-rail-btn" aria-pressed={tool === t.tool} title={`${t.label} (${t.key})`} aria-label={t.label} onClick={() => onTool(t.tool)}>
-            <Glyph d={t.d} />
-            <span className="occ-rail-key">{t.key}</span>
-          </button>
-        </span>
-      ))}
-      <span className="occ-rail-sep" />
-      <button type="button" className="occ-rail-btn occ-rail-insert" title="Insert diagram, shape or icon (⌘K)" aria-label="Insert" onClick={onInsert}>
-        <Glyph d="M12 5v14M5 12h14" />
-      </button>
-    </div>
-  );
-}
-
 const CSS = `
 .occ-root { position: relative; overflow: hidden; outline: none; touch-action: none; user-select: none; -webkit-user-select: none; container: occ / size; }
 .occ-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
@@ -2640,14 +2636,6 @@ const CSS = `
 .occ-chrome { font: var(--od-text-ui); color: var(--od-color-text); }
 .occ-chrome button { font: inherit; }
 .occ-chrome kbd { font: inherit; font-size: 11px; color: var(--od-color-text-subtle); }
-.occ-rail { position: absolute; left: var(--od-space-4); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 2px; padding: 4px; background: var(--od-color-raised); border: 1px solid var(--od-color-border); border-radius: var(--od-radius-lg); box-shadow: var(--od-shadow-chrome); }
-.occ-rail-btn { position: relative; display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: var(--od-radius-md); background: none; color: var(--od-color-text-muted); cursor: pointer; }
-.occ-rail-btn:hover { background: var(--od-color-hover); color: var(--od-color-text); }
-.occ-rail-btn[aria-pressed="true"] { background: var(--od-color-accent-soft); color: var(--od-color-accent); }
-.occ-rail-key { position: absolute; right: 3px; bottom: 1px; font-size: 8.5px; font-weight: 600; color: var(--od-color-text-subtle); }
-.occ-rail-insert { background: var(--od-color-accent); color: var(--od-color-on-accent); }
-.occ-rail-insert:hover { background: var(--od-color-accent); color: var(--od-color-on-accent); filter: brightness(1.08); }
-.occ-rail-sep { height: 1px; margin: 3px 6px; background: var(--od-color-border); }
 .occ-corner { position: absolute; bottom: var(--od-space-4); display: flex; align-items: center; gap: 2px; padding: 3px; background: var(--od-color-raised); border: 1px solid var(--od-color-border); border-radius: var(--od-radius-lg); box-shadow: var(--od-shadow-chrome); }
 .occ-corner:empty { display: none; }
 .occ-corner-left { left: var(--od-space-4); }
@@ -2686,20 +2674,6 @@ const CSS = `
 .occ-gallery-card img { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; border-radius: var(--od-radius-md); background: var(--od-color-canvas); margin-bottom: 6px; }
 .occ-gallery-card strong { font-size: 13px; font-weight: 600; }
 .occ-gallery-card small { font-size: 11.5px; color: var(--od-color-text-muted); line-height: 1.35; }
-.occ-palette-backdrop { position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; background: color-mix(in srgb, var(--od-color-canvas) 40%, transparent); z-index: 5; font: var(--od-text-ui); color: var(--od-color-text); }
-.occ-palette { width: min(520px, calc(100% - 32px)); max-height: 64vh; display: flex; flex-direction: column; background: var(--od-color-raised); border: 1px solid var(--od-color-border); border-radius: var(--od-radius-xl); box-shadow: var(--od-shadow-chrome), 0 24px 48px -12px rgba(0,0,0,0.25); overflow: hidden; }
-.occ-palette-input { border: 0; border-bottom: 1px solid var(--od-color-border); outline: none; padding: 14px 16px; font: inherit; font-size: 15px; background: none; color: var(--od-color-text); }
-.occ-palette-input::placeholder { color: var(--od-color-text-subtle); }
-.occ-palette-list { overflow-y: auto; padding: 6px; }
-.occ-palette-empty { margin: 12px; color: var(--od-color-text-muted); }
-.occ-palette-section + .occ-palette-section { margin-top: 6px; }
-.occ-palette-label { padding: 6px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--od-color-text-subtle); }
-.occ-palette-row { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 10px; border: 0; border-radius: var(--od-radius-md); background: none; color: var(--od-color-text); font: inherit; text-align: left; cursor: pointer; }
-.occ-palette-hint { color: var(--od-color-text-muted); font-size: 12px; }
-.occ-palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 2px; padding: 0 4px; }
-.occ-palette-icon { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 0; border-radius: var(--od-radius-md); background: none; color: var(--od-color-text-muted); font: inherit; font-size: 10.5px; cursor: pointer; overflow: hidden; }
-.occ-palette-icon span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.occ-palette-row[aria-selected="true"], .occ-palette-icon[aria-selected="true"] { background: var(--od-color-hover); color: var(--od-color-text); }
 .occ-sticky { box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 14px; text-align: center; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 6px 14px -6px rgba(0,0,0,0.22); }
 .occ-code { box-sizing: border-box; padding: 14px; background: var(--od-color-surface); border: 1px solid var(--od-color-border); border-radius: var(--od-radius-lg); color: var(--od-color-text); overflow: hidden; }
 .occ-code pre { margin: 0; font: inherit; white-space: pre; }
@@ -2733,17 +2707,11 @@ const CSS = `
 .occ-thread textarea:focus { border-color: var(--od-color-accent); }
 .occ-thread-foot { display: flex; justify-content: flex-end; gap: 6px; }
 .occ-thread-foot button:disabled { opacity: 0.45; cursor: default; }
-.occ-rail { max-height: calc(100% - 32px); overflow-y: auto; scrollbar-width: none; }
 /* Small containers (phones, narrow host panes): tools along the bottom, the selection bar wraps at the top. */
 @container occ (max-width: 640px) {
-  .occ-rail { left: 50%; top: auto; bottom: 64px; transform: translateX(-50%); flex-direction: row; max-width: calc(100% - 24px); max-height: none; overflow-x: auto; overflow-y: hidden; }
-  .occ-rail-key { display: none; }
-  .occ-rail-sep { width: 1px; height: auto; margin: 6px 3px; }
-  .occ-rail-btn { flex: none; width: 40px; height: 40px; }
   .occ-selbar { left: 50% !important; top: 8px !important; transform: translateX(-50%) !important; flex-wrap: wrap; justify-content: center; max-width: calc(100% - 16px); width: max-content; white-space: normal; }
   .occ-selbar .occ-menu-anchor { position: static; }
   .occ-selbar .occ-menu { left: 0; right: 0; min-width: 0; }
-  .occ-rail-btn { width: 36px; height: 38px; }
   .occ-corner { bottom: 12px; }
   .occ-corner-left { left: 12px; }
   .occ-corner-right { right: 12px; }
@@ -2755,7 +2723,6 @@ const CSS = `
   .occ-entered kbd { display: none; }
   .occ-entered-hint { display: none; }
   .occ-thread { width: min(280px, calc(100cqw - 32px)); }
-  .occ-palette-backdrop { padding-top: 8px; }
 }
 @container occ (max-height: 520px) {
   .occ-empty { top: 12px; transform: translateX(-50%); }

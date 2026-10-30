@@ -116,12 +116,40 @@ export function fontSizeOf(item: CanvasItem, theme: Theme): number | undefined {
   return undefined;
 }
 
+type Placement = { at: 'bottom' } | { at: 'lifted'; bottom: number } | { at: 'top' };
+/** Space between the docked bar and the canvas edge (px). */
+const DOCK_GAP = 16;
+/** Room the bar needs above a selection before it moves to the top instead (px). */
+const TOP_ROOM = 52;
+
 export function SelectionBar(props: SelectionBarProps) {
   const { box, cam, items, theme, menu, onMenu, onStyle } = props;
-  const left = cam.x + (box.x + box.w / 2) * cam.k;
-  const top = cam.y + box.y * cam.k;
-  const gap = 12 + (props.clearance ?? 0);
-  const below = top - gap < 52;
+  const barRef = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState<Placement>({ at: 'bottom' });
+  // Docked at the bottom centre, always in the same place; lifted just above the
+  // selection when it would cover it, and at the top when there's no room for that.
+  useLayoutEffect(() => {
+    const el = barRef.current;
+    const root = el?.parentElement;
+    if (!el || !root) return;
+    const H = root.clientHeight;
+    const W = root.clientWidth;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const sel = { x: cam.x + box.x * cam.k, y: cam.y + box.y * cam.k, w: box.w * cam.k, h: box.h * cam.k };
+    const docked = { x: (W - w) / 2, y: H - DOCK_GAP - h, w, h };
+    let next: Placement = { at: 'bottom' };
+    // Narrow canvases keep the bar at the top (CSS): the tools run along the bottom there.
+    const compact = W <= 640;
+    const covers = !compact && docked.x - 8 < sel.x + sel.w && sel.x < docked.x + w + 8 && docked.y - 8 < sel.y + sel.h && sel.y < docked.y + h + 8;
+    if (compact) next = { at: 'top' };
+    else if (covers) {
+      const above = sel.y - 12 - (props.clearance ?? 0);
+      next = above - h >= TOP_ROOM ? { at: 'lifted', bottom: Math.round(H - above) } : { at: 'top' };
+    }
+    setPlacement((p) => (p.at === next.at && (p.at !== 'lifted' || (next.at === 'lifted' && Math.abs(p.bottom - next.bottom) < 1)) ? p : next));
+  });
+  const below = placement.at === 'top';
   const styled = items.filter((i) => i.type !== 'figure');
   const all = (pred: (i: CanvasItem) => boolean) => styled.length > 0 && styled.every(pred);
   const onlyShapes = all((i) => i.type === 'shape');
@@ -174,10 +202,11 @@ export function SelectionBar(props: SelectionBarProps) {
 
   return (
     <div
+      ref={barRef}
       className={`occ-selbar occ-chrome${below ? ' occ-selbar-below' : ''}`}
       role="toolbar"
       aria-label="Selection"
-      style={{ left, top: below ? cam.y + (box.y + box.h) * cam.k + 12 : top - gap, transform: below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)' }}
+      style={placement.at === 'top' ? { left: '50%', top: DOCK_GAP, transform: 'translateX(-50%)' } : { left: '50%', bottom: placement.at === 'lifted' ? placement.bottom : DOCK_GAP, transform: 'translateX(-50%)' }}
       onPointerDown={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.stopPropagation()}
       onKeyDown={onBarKey}
