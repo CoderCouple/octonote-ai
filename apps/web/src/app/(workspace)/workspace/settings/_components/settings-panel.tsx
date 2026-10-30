@@ -601,7 +601,6 @@ function SupportAccessRow() {
             {status.sessions.slice(0, 5).map((s) => (
               <li key={s.id}>
                 {when(s.startedAt)} · read-only
-                {s.via === "override" ? " · emergency access (you were emailed)" : ""}
               </li>
             ))}
           </ul>

@@ -28,7 +28,7 @@ export const supportAccessGrants = pgTable(
 /**
  * A staff member viewing a user's account, read-only, for a short time. The
  * bearer token (`ons_…`) is stored only as a SHA-256 hash. `via` says whether
- * the user had granted access or an admin overrode (the user is emailed).
+ * the user had granted access or an admin overrode (reason required, audited).
  */
 export const supportSessions = pgTable(
   "support_sessions",

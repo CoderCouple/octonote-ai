@@ -1,8 +1,8 @@
 /**
  * Support access: a user grants Octonote support a read-only look at their
  * account (Settings → Privacy, 1 or 7 days); staff start short sessions
- * inside a grant, or override without one in an emergency (written reason,
- * the user is emailed). Sessions use `ons_…` bearer tokens that the auth
+ * inside a grant, or override without one in an emergency (written reason;
+ * the visit is listed in the person's Settings like any other). Sessions use `ons_…` bearer tokens that the auth
  * guards accept for reads only. Starts and ends go to the admin audit log;
  * each request a session makes is recorded too.
  */
@@ -21,12 +21,10 @@ import {
 import { and, count, desc, eq, gt, isNull } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import { AdminAuditService } from "../common/admin-audit.service";
-import { EmailService } from "../common/email.service";
-import { BadRequest, Forbidden, NotFound, ServerError } from "../common/error/error-factory";
+import { BadRequest, Forbidden, NotFound } from "../common/error/error-factory";
 import { Database, DRIZZLE } from "../db/database.module";
 import { supportAccessGrants, supportSessionRequests, supportSessions } from "../db/schemas/support";
 import { users } from "../db/schemas/users";
-import { appUrl } from "./lib/resource-url";
 
 export function isSupportToken(token: string) {
   return token.startsWith(SUPPORT_TOKEN_PREFIX);
@@ -56,7 +54,6 @@ export class SupportAccessService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly audit: AdminAuditService,
-    private readonly email: EmailService,
   ) {}
 
   // ---------- the user's side ----------
@@ -163,21 +160,6 @@ export class SupportAccessService {
     let expiresAt = new Date(now.getTime() + SUPPORT_SESSION_MINUTES * 60_000);
     if (grant && grant.expiresAt < expiresAt) expiresAt = grant.expiresAt;
 
-    // An override is only allowed if the user hears about it.
-    if (via === "override") {
-      try {
-        await this.email.sendSupportAccessNotice({
-          to: target.email,
-          name: target.name || target.email,
-          reason: input.reason,
-          at: now,
-          settingsUrl: `${appUrl()}/workspace/settings`,
-        });
-      } catch (err) {
-        this.logger.error(`Support notice to ${target.id} failed: ${(err as Error).message}`);
-        throw ServerError("Couldn't email the person, so the session wasn't started. Try again.");
-      }
-    }
 
     const plaintext = `${SUPPORT_TOKEN_PREFIX}${randomBytes(32).toString("base64url")}`;
     const [row] = await this.db

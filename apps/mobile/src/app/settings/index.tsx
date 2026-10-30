@@ -388,7 +388,7 @@ function SupportAccessField({ c }: { c: Palette }) {
           ? `Support can view your account, read-only, until ${when(until)}.`
           : "Let Octonote support view your account, read-only, while they look into a problem you reported.") +
         (visits.length
-          ? `\nLast support visit: ${when(new Date(visits[0]!.startedAt))}${visits[0]!.via === "override" ? " (emergency, you were emailed)" : ""}.`
+          ? `\nLast support visit: ${when(new Date(visits[0]!.startedAt))}.`
           : "")
       }
     >

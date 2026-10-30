@@ -174,8 +174,8 @@ export default function PrivacyPage() {
           minutes at a time and can&apos;t change, create or delete anything.
           In rare emergencies (for example, suspected data loss when we
           can&apos;t reach you) an administrator may view it without your
-          permission, read-only; we record the reason and email you straight
-          away. Every visit is logged and listed in Settings → Privacy, and you
+          permission, read-only; we record the reason, and the visit is listed
+          in your Settings alongside any others. Every visit is logged and listed in Settings → Privacy, and you
           can withdraw access at any time, which ends a visit in progress.
         </p>
       </LegalSection>

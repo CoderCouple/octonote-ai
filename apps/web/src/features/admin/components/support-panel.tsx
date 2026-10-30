@@ -3,7 +3,7 @@
 /**
  * Admin → a person → Piggyback: open their account read-only in a new
  * tab on the main site. Inside their grant it just needs a reason; without
- * one it's an emergency override (they're emailed the reason). Past sessions
+ * one it's an emergency override (reason audited, shown in their Settings). Past sessions
  * below, with how many requests each made.
  */
 import type { AdminSupportStatus, SupportSessionStarted } from "@octonote/shared";
@@ -86,7 +86,7 @@ export function SupportPanel({ userId, email }: { userId: string; email: string 
             <span className="text-muted-foreground">Piggybacking is read-only and lasts 30 minutes.</span>
           </p>
           <div className="space-y-2">
-            <Label htmlFor="support-reason">Reason (saved in the audit log{!granted ? " and emailed to them" : ""})</Label>
+            <Label htmlFor="support-reason">Reason (saved in the audit log)</Label>
             <Textarea
               id="support-reason"
               value={reason}
@@ -99,8 +99,7 @@ export function SupportPanel({ userId, email }: { userId: string; email: string 
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={override} onCheckedChange={(v) => setOverride(v === true)} className="mt-0.5" />
                 <span>
-                  <strong>Emergency override.</strong> Piggyback without their permission. They&apos;ll get an email
-                  with your reason right away.
+                  <strong>Emergency override.</strong> Piggyback without their permission. Your reason is saved in the audit log.
                 </span>
               </label>
             ) : null}

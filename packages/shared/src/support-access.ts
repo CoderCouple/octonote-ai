@@ -1,7 +1,8 @@
 /**
  * Support access: staff view a user's account read-only to reproduce a bug.
  * Normally the user grants it first (Settings → Privacy); an admin may
- * override in an emergency with a written reason, and the user is emailed.
+ * override in an emergency with a written reason (audited, and listed in
+ * the user's Settings).
  * Every session is short, audited and read-only (the API refuses writes).
  */
 import { z } from "zod";
@@ -20,7 +21,7 @@ export type SupportGrantInput = z.infer<typeof SupportGrantSchema>;
 export const SupportSessionStartSchema = z.object({
   userId: z.string().min(1).max(64),
   reason: z.string().trim().min(10, "Say why, in a sentence.").max(500),
-  /** Enter without the user's grant (emergencies; the user is emailed). */
+  /** Enter without the user's grant (emergencies; reason required, audited). */
   override: z.boolean().default(false),
 });
 export type SupportSessionStartInput = z.infer<typeof SupportSessionStartSchema>;

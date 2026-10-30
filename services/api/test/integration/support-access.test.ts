@@ -1,6 +1,6 @@
 /**
  * Support access: staff can view an account only inside the person's grant
- * (or by an override that emails them), only for a short time, only to read,
+ * (or by an admin override with a written reason), only for a short time, only to read,
  * and every session is audited and can be cut off by the person.
  */
 import { ForbiddenException } from "@nestjs/common";
@@ -38,7 +38,6 @@ describe("support access", () => {
     const s = await h.support.start(staff.id, { userId: alice.id, reason: REASON, override: false });
     expect(s.token).toMatch(/^ons_/);
     expect(new Date(s.expiresAt).getTime() - Date.now()).toBeLessThanOrEqual(30 * 60_000 + 1000);
-    expect(h.email.supportNotices).toHaveLength(0);
 
     const user = await asUser(s.token);
     expect(user?.id).toBe(alice.id);
@@ -46,21 +45,14 @@ describe("support access", () => {
     expect(user?.supportAdminId).toBe(staff.id);
   });
 
-  it("an override emails the person with the reason, and is audited", async () => {
+  it("an override sends no email, but is audited and shows in the person's Settings", async () => {
     const s = await h.support.start(staff.id, { userId: alice.id, reason: REASON, override: true });
-    expect(h.email.supportNotices).toHaveLength(1);
-    expect(h.email.supportNotices[0]).toMatchObject({ to: alice.email, reason: REASON });
+    expect(h.email.sent).toHaveLength(0);
     expect((await asUser(s.token))?.id).toBe(alice.id);
 
     const audit = await h.adminAudit.list();
     expect(audit[0]).toMatchObject({ action: "support.override", targetId: alice.id });
     expect((await h.support.status(alice.id)).sessions[0]).toMatchObject({ id: s.id, via: "override" });
-  });
-
-  it("doesn't start an override if the email can't be sent", async () => {
-    h.email.failNext = true;
-    expect(await statusOf(h.support.start(staff.id, { userId: alice.id, reason: REASON, override: true }))).toBe(500);
-    expect((await h.support.status(alice.id)).sessions).toHaveLength(0);
   });
 
   it("is read-only: writes are refused, Exit is allowed, requests are recorded", async () => {
