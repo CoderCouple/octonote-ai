@@ -31,7 +31,7 @@ import {
   type WorkspaceRole,
 } from "@/features/resources";
 import { openPlans } from "@/lib/upgrade";
-import { FREE_LIMIT, PRO_PRICE, type LimitedKind } from "@octonote/shared";
+import { FREE_LIMIT, PRO_PRICE, type LimitedKind, type SupportAccessStatus } from "@octonote/shared";
 import { setActiveWorkspaceId } from "@/lib/active-workspace";
 import { api } from "@/lib/api";
 import { env } from "@/lib/env";
@@ -342,7 +342,63 @@ function PrivacySection({ c }: { c: Palette }) {
           trackColor={{ true: c.tint }}
         />
       </Field>
+      <SupportAccessField c={c} />
     </Section>
+  );
+}
+
+/**
+ * Support access (staff call it Piggyback): let Octonote support view this
+ * account read-only while they look into a problem, for 24 hours or 7 days.
+ * Turning it off ends a visit in progress. Same API as web Settings.
+ */
+function SupportAccessField({ c }: { c: Palette }) {
+  const qc = useQueryClient();
+  const status = useQuery({
+    queryKey: ["support-access"],
+    queryFn: () => api.get<SupportAccessStatus>("/me/support-access"),
+  });
+  const save = useMutation({
+    mutationFn: (days: 0 | 1 | 7) =>
+      days
+        ? api.put<SupportAccessStatus>("/me/support-access", { days })
+        : api.delete<SupportAccessStatus>("/me/support-access"),
+    onSuccess: (data) => qc.setQueryData(["support-access"], data),
+    onError: (e) => Alert.alert("Couldn't save", e instanceof Error ? e.message : String(e)),
+  });
+
+  const until = status.data?.grantedUntil ? new Date(status.data.grantedUntil) : null;
+  const when = (d: Date) => d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+  function toggle(on: boolean) {
+    if (!on) return save.mutate(0);
+    Alert.alert("Allow support access?", "Octonote support can view your account, read-only. They can't change anything.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "For 24 hours", onPress: () => save.mutate(1) },
+      { text: "For 7 days", onPress: () => save.mutate(7) },
+    ]);
+  }
+
+  const visits = status.data?.sessions ?? [];
+  return (
+    <Field
+      label="Support access"
+      description={
+        (until
+          ? `Support can view your account, read-only, until ${when(until)}.`
+          : "Let Octonote support view your account, read-only, while they look into a problem you reported.") +
+        (visits.length
+          ? `\nLast support visit: ${when(new Date(visits[0]!.startedAt))}${visits[0]!.via === "override" ? " (emergency, you were emailed)" : ""}.`
+          : "")
+      }
+    >
+      <Switch
+        value={Boolean(until)}
+        disabled={!status.data || save.isPending}
+        onValueChange={toggle}
+        trackColor={{ true: c.tint }}
+      />
+    </Field>
   );
 }
 
