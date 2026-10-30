@@ -2,6 +2,7 @@
 
 import {
   OctoCanvas as Canvas,
+  updateItem,
   useCanvasHistory,
   type CanvasChangeMeta,
   type CanvasDocument,
@@ -28,6 +29,7 @@ import {
 import { CANVAS_THEMES, useCanvasColorScheme } from "../lib/octodraw-theme";
 import { rearrangeDocument, type RearrangeDirection } from "../lib/rearrange";
 import { uploadCanvasThumbnail } from "../lib/thumbnail";
+import { FigureCodePane } from "./figure-code-pane";
 
 const SAVE_DEBOUNCE_MS = 1200;
 // Thumbnails are expensive (render + upload); refresh them far less often than saves.
@@ -254,6 +256,25 @@ export function OctoCanvas({
     };
   }, [readOnly, canvasId, userId]);
 
+  // The figure whose code is open beside the canvas ("Code" on a figure).
+  const [codeFigureId, setCodeFigureId] = useState<string | null>(null);
+  const codeFigure = codeFigureId
+    ? doc.items.find((i) => i.id === codeFigureId && i.type === "figure")
+    : undefined;
+  // A burst of typing is one undo step: its first keystroke records the
+  // step, the rest update the figure silently until a pause.
+  const typing = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editCode = useCallback(
+    (source: string) => {
+      if (!codeFigureId) return;
+      const next = updateItem(docRef.current, codeFigureId, { source });
+      change(next, typing.current ? { silent: true } : undefined);
+      if (typing.current) clearTimeout(typing.current);
+      typing.current = setTimeout(() => (typing.current = null), 1200);
+    },
+    [change, codeFigureId],
+  );
+
   const onEditorRef = useRef(onEditor);
   onEditorRef.current = onEditor;
   useEffect(() => {
@@ -305,8 +326,16 @@ export function OctoCanvas({
         colorScheme={colorScheme}
         themes={CANVAS_THEMES}
         onUploadImage={readOnly ? undefined : onUploadImage}
+        onOpenFigure={readOnly ? undefined : setCodeFigureId}
         style={{ position: "absolute", inset: 0 }}
       />
+      {codeFigure && codeFigure.type === "figure" ? (
+        <FigureCodePane
+          source={codeFigure.source}
+          onChange={editCode}
+          onClose={() => setCodeFigureId(null)}
+        />
+      ) : null}
     </div>
   );
 }
