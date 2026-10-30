@@ -91,7 +91,8 @@ export function previewHtml(): string {
   .cpop textarea:focus { border-color: var(--link); }
   .cpop .row { display: flex; gap: 6px; justify-content: flex-end; align-items: center; margin-top: 6px; }
   .cpop .row .hint { margin-right: auto; }
-  .cpanel { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+  #cpanel:empty { display: none; }
+  #cpanel { margin-top: 10px; }
   .cphead { display: flex; align-items: center; gap: 8px; font-weight: 650; color: var(--strong); font-size: 13.5px; padding: 2px 0 4px; }
   .cphead .btn { margin-left: auto; }
   .crow { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); }
@@ -109,7 +110,8 @@ export function previewHtml(): string {
   .cact { display: flex; gap: 6px; flex: none; }
   .btn.sm { padding: 3px 9px; font-size: 12px; border-radius: 7px; }
   .hint { color: var(--muted); font-size: 12.5px; }
-  .chint { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  .chint { color: var(--muted); font-size: 12.5px; }
+  #cpanel .crow:last-child { border-bottom: 1px solid var(--line); }
   .cwarn { color: var(--bad); font-size: 12.5px; display: flex; gap: 8px; align-items: center; padding: 4px 0; }
 </style>
 </head>
@@ -266,15 +268,19 @@ export function previewHtml(): string {
 
 
   // ---------- Comments: select, ask the assistant, watch it happen ----------
-  var tools = { mcp: false }, items = [], keySeq = 1, sel = null, pop = null, composing = false, deferred = false;
-  var picked = false, askFailed = false, stale = false, pollTimer = null, pollStart = 0;
+  // Hosts don't all advertise it (ChatGPT's MCP Apps handshake doesn't list
+  // serverTools), so whether the card may call tools is found out by trying one.
+  var tools = { mcp: false, state: "unknown", probing: false }, items = [], keySeq = 1, sel = null, pop = null, composing = false, deferred = false;
+  var askFailed = false, stale = false, pollTimer = null, pollStart = 0;
   var ICON_OK = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2l2.4 2.4 4.6-5"/></svg>';
   var ICON_X = '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>';
 
-  function canComment() {
+  /** The note could take comments and some way to call tools exists (not yet known to work). */
+  function canTry() {
     return !!(last && last.canComment && last.noteId && (last.kind === "note" || last.kind === "project") &&
       (tools.mcp || (window.openai && window.openai.callTool)));
   }
+  function canComment() { return canTry() && tools.state === "ok"; }
   function isOpen(it) { return it.status === "pending" || it.status === "working"; }
   function byId(id) { for (var i = 0; i < items.length; i++) if (items[i].id === id) return items[i]; return null; }
 
@@ -457,9 +463,14 @@ export function previewHtml(): string {
     }, 2000);
   }
 
-  /** On load: comments still open on this note (e.g. the chat was reloaded). */
+  /**
+   * On load, the first tool call: if the host runs it, commenting turns on.
+   * It also picks up comments still open on this note (e.g. the chat was reloaded).
+   */
   function pickUp() {
+    tools.probing = true;
     callTool("note_comment_status", { noteId: last.noteId, since: last.version || null }).then(function (r) {
+      tools.state = "ok"; tools.probing = false;
       (r.comments || []).forEach(function (c) {
         if (byId(c.id) || (c.status !== "pending" && c.status !== "working")) return;
         items.push({ key: keySeq++, id: c.id, status: c.status, quote: c.quote, body: c.body, anchors: c.blockIds, blockIds: c.blockIds, reason: c.reason });
@@ -468,7 +479,7 @@ export function previewHtml(): string {
       if (typeof r.html === "string") { last.html = r.html; refreshNote(); }
       markBlocks(); renderPanel(); resize();
       if (items.some(isOpen)) poll(true);
-    }).catch(function () {});
+    }).catch(function () { tools.state = "no"; tools.probing = false; renderPanel(); resize(); });
   }
 
   /** Put fresh note HTML in place without rebuilding the card. */
@@ -552,7 +563,7 @@ export function previewHtml(): string {
     if (last) render(last);
   }
   function render(p) {
-    if (!last || last.noteId !== p.noteId) { items = []; picked = false; askFailed = false; stale = false; }
+    if (!last || last.noteId !== p.noteId) { items = []; askFailed = false; stale = false; if (tools.state === "ok") tools.state = "unknown"; }
     last = p;
     var body = "";
     if (p.kind === "note") body = '<div class="note">' + (p.html ? sanitize(p.html) : '<p class="kind">This note is empty.</p>') + "</div>";
@@ -564,11 +575,11 @@ export function previewHtml(): string {
         return '<li><span class="k">' + esc(i.kind) + '</span><a href="#" data-open="' + esc(i.url) + '">' + esc(i.title) + "</a></li>";
       }).join("") + "</ul>" : '<div class="empty">This notebook is empty.</div>';
     }
-    document.getElementById("root").innerHTML = '<div class="card">' + head(p) + '<div class="body">' + body + '</div><div id="cpanel"></div></div>';
+    document.getElementById("root").innerHTML = '<div class="card">' + head(p) + '<div id="cpanel"></div><div class="body">' + body + "</div></div>";
     enhance();
     markBlocks();
     renderPanel();
-    if (canComment() && !picked) { picked = true; pickUp(); }
+    if (canTry() && tools.state === "unknown" && !tools.probing) pickUp();
     resize();
   }
 
@@ -677,7 +688,7 @@ export function previewHtml(): string {
     appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] },
     protocolVersion: "2026-01-26"
   }).then(function (res) {
-    tools.mcp = !!(res && res.hostCapabilities && res.hostCapabilities.serverTools);
+    tools.mcp = true;
     theme(res && res.hostContext);
     if (last) render(last); // show Expand once we know the host allows it
     notify("ui/notifications/initialized", {});
