@@ -40,10 +40,12 @@ function previewUiMeta() {
 }
 
 /**
- * Tools only the card calls (MCP Apps `visibility: ["app"]`; ChatGPT reads its
- * own keys): hidden from the model, callable from the card's iframe.
+ * Tools only the card calls: MCP Apps `visibility: ["app"]` hides them from the
+ * model and lets the card's iframe call them. ChatGPT reads the same key (it
+ * maps its own "openai/visibility" onto it, so that key must not be set to an
+ * old string value); "openai/widgetAccessible" is its flag for card calls.
  */
-const APP_ONLY = { ui: { visibility: ["app"] }, "openai/visibility": "private", "openai/widgetAccessible": true } as const;
+const APP_ONLY = { ui: { visibility: ["app"] }, "openai/widgetAccessible": true } as const;
 
 /** Tools whose result renders as the inline card in MCP Apps hosts. */
 // Both forms of the card link, as the official ext-apps helper sets them: hosts

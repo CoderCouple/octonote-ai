@@ -200,7 +200,7 @@ describe("mcp server", () => {
     for (const name of ["note_comment_create", "note_comment_status", "note_comment_retry", "note_comment_cancel"]) {
       const meta = byName[name]!._meta as Record<string, unknown> & { ui?: { visibility?: string[] } };
       expect(meta.ui?.visibility, name).toEqual(["app"]);
-      expect(meta["openai/visibility"], name).toBe("private");
+      expect(meta["openai/visibility"], name).toBeUndefined();
       expect(meta["openai/widgetAccessible"], name).toBe(true);
     }
     // The assistant's tools stay visible (no visibility = model and app).

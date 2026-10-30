@@ -270,7 +270,7 @@ export function previewHtml(): string {
   // ---------- Comments: select, ask the assistant, watch it happen ----------
   // Hosts don't all advertise it (ChatGPT's MCP Apps handshake doesn't list
   // serverTools), so whether the card may call tools is found out by trying one.
-  var tools = { mcp: false, state: "unknown", probing: false }, items = [], keySeq = 1, sel = null, pop = null, composing = false, deferred = false;
+  var tools = { mcp: false, state: "unknown", probing: false, why: "" }, items = [], keySeq = 1, sel = null, pop = null, composing = false, deferred = false;
   var askFailed = false, stale = false, pollTimer = null, pollStart = 0;
   var ICON_OK = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2l2.4 2.4 4.6-5"/></svg>';
   var ICON_X = '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>';
@@ -479,7 +479,11 @@ export function previewHtml(): string {
       if (typeof r.html === "string") { last.html = r.html; refreshNote(); }
       markBlocks(); renderPanel(); resize();
       if (items.some(isOpen)) poll(true);
-    }).catch(function () { tools.state = "no"; tools.probing = false; renderPanel(); resize(); });
+    }).catch(function (e) {
+      tools.state = "no"; tools.probing = false;
+      tools.why = (e && (e.message || e.code)) ? String(e.message || e.code) : "the app didn't allow it";
+      renderPanel(); resize();
+    });
   }
 
   /** Put fresh note HTML in place without rebuilding the card. */
@@ -507,7 +511,12 @@ export function previewHtml(): string {
   function renderPanel() {
     var box = document.getElementById("cpanel");
     if (!box) return;
-    if (!canComment()) { box.innerHTML = ""; return; }
+    if (!canComment()) {
+      // Say why when this host turned it down, so a screenshot shows the reason.
+      box.innerHTML = canTry() && tools.state === "no"
+        ? '<div class="chint">Commenting isn\\'t available in this app (' + esc(tools.why) + ").</div>" : "";
+      return;
+    }
     var shown = items.filter(function (it) { return it.status !== "cancelled"; });
     if (!shown.length) { box.innerHTML = '<div class="chint">Select text, or click an image or table, to ask for a change.</div>'; return; }
     var drafts = shown.filter(function (it) { return it.status === "draft"; });
