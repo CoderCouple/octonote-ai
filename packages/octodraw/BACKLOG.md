@@ -46,6 +46,12 @@ ROADMAP.md; this is the checklist of loose ends.
 - [ ] Standalone OctoDiagram keeps placements in memory unless the host passes `placements` / `onPlacementsChange`.
 - [ ] Code edits in the editor aren't canvas undo steps (they're "silent"); Monaco's own undo covers them.
 
+## BPMN element toolbar
+- [ ] No "Add lane" in a pool's ⋯ menu (edit.ts has no insert-into-group edit yet).
+- [ ] Deleting the last element typed activity/event/gateway turns the code back into a flow diagram (`detectDiagramType`); type changes guard against it, deletes don't.
+- [ ] Text size / typeface / text colour aren't offered (the BPMN renderer doesn't draw them); description and link are stored but not drawn.
+- [ ] Boundary events can be selected but not dragged off their task; "Attach to task…" is the only way to move them.
+
 ## Presentation
 - [ ] Presenter view is a popup window: browsers may block it or leave full screen when it opens; the next-slide thumbnail draws figures from code (no drill/collapse state).
 

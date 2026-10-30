@@ -1,6 +1,7 @@
 import { applyEdits, type DiagramEdit } from '../../dsl/edit';
 import type { Connector, Diagram, DiagramEdge, DiagramNode } from '../../dsl/types';
 import { iconSizeOf, labelSizeOf, strokeWidthOf, textSizeOf } from '../../layout/style';
+import { bpmnActionToEdits, bpmnControls, type BpmnAction, type BpmnControl } from './bpmn';
 
 // The element toolbar's decisions, kept pure so they can be tested without a DOM:
 // what a selection is, which controls it gets, what its current values are, and
@@ -28,6 +29,8 @@ export interface ToolbarContext {
   edgeSources?: (edgeId: string) => readonly DiagramEdge[];
   /** True for nodes drawn as bare icons with their label underneath. */
   isIconNode?: (nodeId: string) => boolean;
+  /** A BPMN (swimlane) diagram: BPMN controls and actions (toolbar/bpmn.ts). */
+  bpmn?: boolean;
 }
 
 export type ToolbarControl =
@@ -47,7 +50,8 @@ export type ToolbarControl =
   | 'endArrow'
   | 'reverse'
   | 'more'
-  | 'delete';
+  | 'delete'
+  | BpmnControl;
 
 export type LineValue = 'solid' | 'dashed' | 'dotted';
 export type ArrowHeadValue = 'none' | 'arrow' | 'open' | 'dot';
@@ -61,7 +65,8 @@ export type ToolbarAction =
   | { type: 'reverse' }
   /** Edit text: renames a box (or sets `label:` when it has one), sets an arrow's label. */
   | { type: 'editText'; text: string }
-  | { type: 'delete'; keepContents?: boolean };
+  | { type: 'delete'; keepContents?: boolean }
+  | BpmnAction;
 
 export type ToolbarResult =
   | {
@@ -127,6 +132,7 @@ export function selectionTarget(selection: DiagramSelection | null, ctx: Toolbar
 
 /** The controls for a selection, left to right (separators are the toolbar's business). */
 export function toolbarControls(selection: DiagramSelection | null, ctx: ToolbarContext): ToolbarControl[] {
+  if (ctx.bpmn) return bpmnControls(selection, ctx);
   switch (selectionTarget(selection, ctx)) {
     case 'box':
       return ['editText', 'shape', 'icon', 'color', 'border', 'text', 'more'];
@@ -314,6 +320,8 @@ export interface PlannedEdits {
 /** The code edits for a toolbar action on a selection, or a reason it can't be done. */
 export function actionToEdits(action: ToolbarAction, selection: DiagramSelection | null, ctx: ToolbarContext): PlannedEdits | { reason: string } {
   if (!selection || selection.ids.length === 0) return { reason: 'Nothing is selected' };
+  const bpmnPlan = ctx.bpmn ? bpmnActionToEdits(action, selection, ctx) : undefined;
+  if (bpmnPlan) return bpmnPlan;
   const edges = selectedEdges(selection, ctx);
   const nodes = selectedNodes(selection, ctx);
   if (selection.kind === 'edge' ? edges.length === 0 : nodes.length === 0) return { reason: 'The selection is no longer in the code' };
@@ -401,6 +409,9 @@ export function actionToEdits(action: ToolbarAction, selection: DiagramSelection
         selection: null,
       };
     }
+    default:
+      // BPMN-only actions (toolbar/bpmn.ts) on anything else.
+      return { reason: "That doesn't apply here" };
   }
 }
 
