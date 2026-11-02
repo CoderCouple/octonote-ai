@@ -4,7 +4,7 @@
  * when there is one (a canvas, a project's canvas, a notebook's first few).
  */
 import { light } from "@octonote/design-tokens";
-import { previewFromMarkdown } from "@octonote/shared";
+import { octopusSvg, previewFromMarkdown } from "@octonote/shared";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
@@ -274,31 +274,17 @@ export async function siteCard({
   );
 }
 
-/** The Octonote AI mark (public/brand-logo-source.svg) and name. */
+/** The Octonote AI octopus (packages/shared/src/octopus.ts), as an image for satori. */
+const MARK_SRC = `data:image/svg+xml;base64,${Buffer.from(
+  octopusSvg({ ink: light["foreground-strong"], paper: light.background }),
+).toString("base64")}`;
+
+/** The Octonote AI mark and name. */
 function Brand() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-      <svg width="52" height="52" viewBox="0 0 120 120">
-        <rect
-          width="120"
-          height="120"
-          rx="26"
-          fill={light["foreground-strong"]}
-        />
-        <g
-          fill="none"
-          stroke={light.background}
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M40 32 H32 V40" />
-          <path d="M80 32 H88 V40" />
-          <path d="M40 88 H32 V80" />
-          <path d="M80 88 H88 V80" />
-          <circle cx="60" cy="60" r="14" />
-        </g>
-      </svg>
+    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={MARK_SRC} width={52} height={52} alt="" />
       <div
         style={{
           fontSize: 30,

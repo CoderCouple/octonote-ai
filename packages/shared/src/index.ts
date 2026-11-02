@@ -631,6 +631,7 @@ export const StudentDomainUpdateSchema = z
   .refine((v) => Object.values(v).some((x) => x !== undefined), "Nothing to change.");
 export type StudentDomainUpdate = z.infer<typeof StudentDomainUpdateSchema>;
 export * from "./brand-marks";
+export * from "./octopus";
 
 
 // --- Follow-ups CRM (admin) ------------------------------------------------------

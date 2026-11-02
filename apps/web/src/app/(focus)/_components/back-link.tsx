@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeft, Focus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { OctopusMark } from "@/components/octopus-mark";
 
 /**
  * Signed-in: back to the right workspace list. Signed-out link viewers: home.
@@ -25,9 +26,9 @@ export function BackLink({
       <Link
         href={signedIn ? "/workspace" : "/"}
         aria-label="Octonote AI home"
-        className="bg-foreground text-background grid size-7 place-items-center rounded-md"
+        className="text-foreground-strong hover:bg-accent grid size-7 place-items-center rounded-md transition-colors"
       >
-        <Focus className="size-3.5" />
+        <OctopusMark className="size-5" />
       </Link>
       {signedIn ? (
         <Link

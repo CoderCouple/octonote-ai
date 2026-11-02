@@ -12,6 +12,7 @@
     "format": "prettier . --write",
     "dev:user": "node scripts/dev-user.mjs",
     "dev:ip": "node scripts/dev-ip.mjs",
+    "brand:assets": "node scripts/brand-assets.mjs",
     "mobile:env": "node scripts/mobile-env.mjs",
     "cli:pack": "node scripts/pack-cli.mjs",
     "api-url:sync": "node scripts/api-url-sync.mjs",

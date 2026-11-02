@@ -6,7 +6,7 @@
  * magic link and a 6-digit code — the user can click the link or type the
  * code here (handy when the mail is on another device).
  */
-import { ArrowLeft, Focus, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -16,6 +16,7 @@ import { safeNext } from "@/lib/safe-next";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import type { OAuthProvider } from "../lib/enabled-providers";
+import { OctopusMark } from "@/components/octopus-mark";
 
 type Mode = "login" | "signup";
 
@@ -190,9 +191,7 @@ export function LoginForm({
 
   return (
     <div className="w-full max-w-[400px]">
-      <div className="bg-primary text-primary-foreground grid size-14 place-items-center rounded-2xl">
-        <Focus className="size-7" strokeWidth={2.25} />
-      </div>
+      <OctopusMark className="text-foreground-strong size-14" />
 
       {step.kind === "email" ? (
         <>

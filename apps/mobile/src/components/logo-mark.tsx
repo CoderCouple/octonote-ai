@@ -1,163 +1,76 @@
 /**
- * The Octonote AI mark — lucide's "focus" glyph on a rounded tile, same as the
- * web logo — drawn with plain Views so it can animate without an SVG lib.
- * Geometry is in the glyph's 24-unit viewBox, scaled to the tile.
+ * The Octonote AI octopus (packages/shared/src/octopus.ts), same as the web
+ * logo: black in light mode, white in dark, its face cut out in the surface
+ * colour. With `colors` it sits on a rounded tile (the splash).
  */
+import {
+  OCTOPUS_BODY,
+  OCTOPUS_FACES,
+  OCTOPUS_VIEWBOX,
+  type OctopusMood,
+} from "@octonote/shared";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   type SharedValue,
 } from "react-native-reanimated";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { usePalette } from "@/lib/theme";
 
-/** Glyph size relative to the tile (web: size-5 icon in a size-9 tile). */
-const GLYPH = 0.56;
-const STROKE = 2.25;
+/** Octopus size relative to its tile. */
+const ON_TILE = 0.72;
 
 export function LogoMark({
   size,
-  spread,
-  ring,
+  mood = "happy",
   colors,
+  bounce,
 }: {
   size: number;
-  /** Override the theme (the splash is always white-on-black). */
+  mood?: OctopusMood;
+  /** Draw it on a tile in these colours (the splash is fixed, not themed). */
   colors?: { tile: string; glyph: string };
-  /** 0 = at rest; 1 = corner brackets pushed outward (the "focus" pulse). */
-  spread?: SharedValue<number>;
-  /** Scale of the centre ring (0–1). */
-  ring?: SharedValue<number>;
+  /** 0 = at rest; 1 = hopped up a little (the splash's hello). */
+  bounce?: SharedValue<number>;
 }) {
   const c = usePalette();
-  const tile = colors?.tile ?? c.tint;
-  const ink = colors?.glyph ?? c.onTint;
-  const u = (size * GLYPH) / 24;
-  const sw = STROKE * u;
-  const glyph = size * GLYPH;
+  const ink = colors?.glyph ?? c.textStrong;
+  const paper = colors?.tile ?? c.background;
+  const mark = colors ? size * ON_TILE : size;
 
-  // Each bracket: a box whose two outer edges are the stroke, corner radius 2u.
-  const arm = 4 * u + sw;
-  const bracket = {
-    width: arm,
-    height: arm,
-    borderColor: ink,
-    position: "absolute" as const,
-  };
-  const at = 3 * u - sw / 2;
-  const far = 21 * u + sw / 2 - arm;
-  const radius = 2 * u + sw / 2;
-
-  const push = 1.6 * u;
-  const tl = useAnimatedStyle(() => {
-    const d = (spread?.value ?? 0) * push;
-    return { transform: [{ translateX: -d }, { translateY: -d }] };
+  const hop = useAnimatedStyle(() => {
+    const b = bounce?.value ?? 0;
+    return { transform: [{ translateY: -b * mark * 0.08 }, { scale: 1 + b * 0.04 }] };
   });
-  const tr = useAnimatedStyle(() => {
-    const d = (spread?.value ?? 0) * push;
-    return { transform: [{ translateX: d }, { translateY: -d }] };
-  });
-  const br = useAnimatedStyle(() => {
-    const d = (spread?.value ?? 0) * push;
-    return { transform: [{ translateX: d }, { translateY: d }] };
-  });
-  const bl = useAnimatedStyle(() => {
-    const d = (spread?.value ?? 0) * push;
-    return { transform: [{ translateX: -d }, { translateY: d }] };
-  });
-  const ringStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: ring?.value ?? 1 }],
-    opacity: ring ? Math.min(1, ring.value * 1.5) : 1,
-  }));
-
-  const ringSize = 6 * u + sw;
 
   return (
     <View
       style={[
-        styles.tile,
-        {
-          width: size,
-          height: size,
-          borderRadius: size * 0.223,
-          backgroundColor: tile,
-        },
+        styles.box,
+        { width: size, height: size },
+        colors && { borderRadius: size * 0.223, backgroundColor: colors.tile },
       ]}
       accessibilityRole="image"
       accessibilityLabel="Octonote AI"
     >
-      <View style={{ width: glyph, height: glyph }}>
-        <Animated.View
-          style={[
-            bracket,
-            {
-              left: at,
-              top: at,
-              borderTopWidth: sw,
-              borderLeftWidth: sw,
-              borderTopLeftRadius: radius,
-            },
-            tl,
-          ]}
-        />
-        <Animated.View
-          style={[
-            bracket,
-            {
-              left: far,
-              top: at,
-              borderTopWidth: sw,
-              borderRightWidth: sw,
-              borderTopRightRadius: radius,
-            },
-            tr,
-          ]}
-        />
-        <Animated.View
-          style={[
-            bracket,
-            {
-              left: far,
-              top: far,
-              borderBottomWidth: sw,
-              borderRightWidth: sw,
-              borderBottomRightRadius: radius,
-            },
-            br,
-          ]}
-        />
-        <Animated.View
-          style={[
-            bracket,
-            {
-              left: at,
-              top: far,
-              borderBottomWidth: sw,
-              borderLeftWidth: sw,
-              borderBottomLeftRadius: radius,
-            },
-            bl,
-          ]}
-        />
-        <Animated.View
-          style={[
-            {
-              position: "absolute",
-              left: 12 * u - ringSize / 2,
-              top: 12 * u - ringSize / 2,
-              width: ringSize,
-              height: ringSize,
-              borderRadius: ringSize / 2,
-              borderWidth: sw,
-              borderColor: ink,
-            },
-            ringStyle,
-          ]}
-        />
-      </View>
+      <Animated.View style={hop}>
+        <Svg width={mark} height={mark} viewBox={OCTOPUS_VIEWBOX}>
+          <Path d={OCTOPUS_BODY} fill={ink} />
+          {OCTOPUS_FACES[mood].map((p, i) =>
+            p.kind === "rect" ? (
+              <Rect key={i} x={p.x} y={p.y} width={p.width} height={p.height} rx={p.rx} fill={paper} />
+            ) : p.kind === "circle" ? (
+              <Circle key={i} cx={p.cx} cy={p.cy} r={p.r} fill={paper} />
+            ) : (
+              <Path key={i} d={p.d} fill="none" stroke={paper} strokeWidth={p.width} strokeLinecap="round" strokeLinejoin="round" />
+            ),
+          )}
+        </Svg>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  tile: { alignItems: "center", justifyContent: "center" },
+  box: { alignItems: "center", justifyContent: "center" },
 });

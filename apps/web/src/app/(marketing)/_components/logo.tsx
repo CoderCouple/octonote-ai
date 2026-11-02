@@ -1,13 +1,11 @@
-import { Focus } from "lucide-react";
 import Link from "next/link";
+import { OctopusMark } from "@/components/octopus-mark";
 
-/** The Octonote AI mark: the focus glyph on a rounded tile. */
+/** The Octonote AI mark: the octopus (black in light mode, white in dark) and the name. */
 export function Logo() {
   return (
     <Link href="/" className="text-foreground-strong flex items-center gap-2.5">
-      <span className="bg-primary text-primary-foreground grid size-9 place-items-center rounded-lg">
-        <Focus className="size-5" strokeWidth={2.25} />
-      </span>
+      <OctopusMark className="size-9" />
       <span className="text-xl font-bold tracking-tight">Octonote AI</span>
     </Link>
   );

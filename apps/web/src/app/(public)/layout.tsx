@@ -1,7 +1,7 @@
-import { Focus } from "lucide-react";
 import Link from "next/link";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { signupHref } from "@/features/public/lib/signup-ref";
+import { OctopusMark } from "@/components/octopus-mark";
 
 export default function PublicLayout({
   children,
@@ -13,9 +13,7 @@ export default function PublicLayout({
       <div className="bg-background text-foreground flex min-h-svh flex-col">
         <header className="bg-background/85 sticky top-0 z-40 flex h-14 items-center justify-between border-b px-4 backdrop-blur md:px-6">
           <Link href="/" className="flex shrink-0 items-center gap-2">
-            <div className="bg-primary text-primary-foreground grid size-6 place-items-center rounded-md">
-              <Focus className="size-3.5" strokeWidth={2.25} />
-            </div>
+            <OctopusMark className="text-foreground-strong size-6" />
             <span className="text-sm font-semibold tracking-tight">
               Octonote AI
             </span>

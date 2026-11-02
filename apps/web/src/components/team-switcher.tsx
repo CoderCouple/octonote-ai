@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, Focus, Loader2, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 
 import {
   createWorkspaceAction,
@@ -35,6 +35,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { OctopusMark } from "@/components/octopus-mark";
 
 export interface TeamSummary {
   id: string;
@@ -77,9 +78,7 @@ export function TeamSwitcher({ activeWorkspaceId, teams }: TeamSwitcherProps) {
               // Compact so the sidebar header is exactly 48px, like the top bar.
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-9 gap-2.5 px-1.5 group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!p-1.5"
             >
-              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-6 shrink-0 items-center justify-center rounded-md">
-                <Focus className="size-3.5" />
-              </div>
+              <OctopusMark className="text-foreground-strong size-6 shrink-0" paper="var(--sidebar)" />
               <span className="text-foreground-strong flex-1 truncate text-left text-sm font-semibold">
                 {active.name}
               </span>
@@ -106,7 +105,7 @@ export function TeamSwitcher({ activeWorkspaceId, teams }: TeamSwitcherProps) {
                   disabled={isLoading}
                 >
                   <div className="flex size-6 items-center justify-center rounded-md border">
-                    <Focus className="size-3.5 shrink-0" />
+                    <OctopusMark className="text-foreground-strong size-4 shrink-0" paper="var(--popover)" />
                   </div>
                   <div className="flex-1 truncate">{team.name}</div>
                   {isLoading ? (

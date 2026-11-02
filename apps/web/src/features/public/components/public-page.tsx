@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronLeft, Focus, Link2 } from "lucide-react";
+import { Check, ChevronLeft, Link2, User } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -235,7 +235,7 @@ function Avatar({
         box,
       )}
     >
-      {author?.name ? initials(author.name) : <Focus className="size-1/2" />}
+      {author?.name ? initials(author.name) : <User className="size-1/2" />}
     </span>
   );
 }

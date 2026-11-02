@@ -1,3 +1,5 @@
+import { octopusSvg } from "@octonote/shared";
+
 /**
  * The inline Octonote card for MCP Apps hosts (Claude, ChatGPT, and any client
  * that renders `ui://` resources). One self-contained page: it does the
@@ -39,7 +41,7 @@ export function previewHtml(): string {
   html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   .card { padding: 14px 16px 16px; }
   .head { display: flex; align-items: center; gap: 10px; }
-  .mark { width: 26px; height: 26px; border-radius: 7px; background: var(--strong); color: var(--bg); display: grid; place-items: center; flex: none; }
+  .mark { width: 26px; height: 26px; color: var(--strong); display: grid; place-items: center; flex: none; }
   .title { font-weight: 650; color: var(--strong); font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .kind { color: var(--muted); font-size: 12.5px; }
   .actions { margin-left: auto; display: flex; gap: 8px; flex: none; }
@@ -124,7 +126,7 @@ export function previewHtml(): string {
   var KATEX = "${CDN}/npm/katex@${KATEX_VERSION}/dist/katex.min.js";
   var nextId = 1, pending = {};
   var KIND = { note: "Note", canvas: "Canvas", project: "Project · note + canvas", notebook: "Notebook" };
-  var MARK = '<svg width="16" height="16" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7H7v2"/><path d="M23 7h2v2"/><path d="M9 25H7v-2"/><path d="M23 25h2v-2"/><circle cx="16" cy="16" r="3.5"/></svg>';
+  var MARK = ${JSON.stringify(octopusSvg({ ink: "currentColor", paper: "var(--bg)", size: 24 }))};
 
   function post(msg) { window.parent.postMessage(msg, "*"); }
   function request(method, params) {

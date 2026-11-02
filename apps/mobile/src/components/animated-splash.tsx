@@ -54,8 +54,7 @@ export function AnimatedSplash({ ready }: { ready: boolean }) {
   const reduceMotion = useReducedMotion();
   const [done, setDone] = useState(false);
 
-  const spread = useSharedValue(0);
-  const ring = useSharedValue(1);
+  const bounce = useSharedValue(0);
   const word = useSharedValue(0);
   const exit = useSharedValue(0);
 
@@ -72,25 +71,21 @@ export function AnimatedSplash({ ready }: { ready: boolean }) {
       return () => clearTimeout(t);
     }
 
-    spread.value = withDelay(
+    // The octopus hops hello: up, down, a smaller hop.
+    bounce.value = withDelay(
       150,
       withSequence(
-        withTiming(1, { duration: 320, easing: out }),
-        withTiming(0, { duration: 520, easing: out }),
-      ),
-    );
-    ring.value = withDelay(
-      150,
-      withSequence(
-        withTiming(0.5, { duration: 260, easing: out }),
-        withTiming(1, { duration: 600, easing: out }),
+        withTiming(1, { duration: 280, easing: out }),
+        withTiming(0, { duration: 320, easing: out }),
+        withTiming(0.4, { duration: 200, easing: out }),
+        withTiming(0, { duration: 260, easing: out }),
       ),
     );
     word.value = withDelay(500, withTiming(1, { duration: 600, easing: out }));
     exit.value = withDelay(1850, withTiming(1, { duration: 420, easing: out }));
     const t = setTimeout(() => setDone(true), 2300);
     return () => clearTimeout(t);
-  }, [ready, reduceMotion, spread, ring, word, exit]);
+  }, [ready, reduceMotion, bounce, word, exit]);
 
   const container = useAnimatedStyle(() => ({ opacity: 1 - exit.value }));
   const tile = useAnimatedStyle(() => ({
@@ -117,8 +112,7 @@ export function AnimatedSplash({ ready }: { ready: boolean }) {
         <Animated.View style={tile}>
           <LogoMark
             size={TILE}
-            spread={spread}
-            ring={ring}
+            bounce={bounce}
             colors={TILE_COLORS}
           />
         </Animated.View>

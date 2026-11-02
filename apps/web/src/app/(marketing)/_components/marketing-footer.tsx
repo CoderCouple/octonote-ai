@@ -51,6 +51,7 @@ const COLUMNS: {
     href: "/about",
     links: [
       { href: "/about", label: "About" },
+      { href: "/brand", label: "Brand assets" },
       ...(DEMO_URL ? [{ href: DEMO_URL, label: "Book a demo" }] : []),
       { href: `mailto:${SUPPORT_EMAIL}`, label: "Contact" },
       ...PROFILES.map((p) => ({ href: p.url, label: p.label })),
