@@ -8,7 +8,7 @@ import { emit } from "../core/output.js";
 import { parseRef } from "../core/refs.js";
 import { describeItem, item, setPublished } from "../core/resources.js";
 import { action } from "../core/run.js";
-import { colorEnabled, renderMarkdown } from "../core/terminal-markdown.js";
+import { colorEnabled, renderNote } from "../core/terminal-markdown.js";
 
 interface Page {
   id: string;
@@ -98,7 +98,7 @@ export function registerNote(program: Command) {
         }>(`/pages/${id}/markdown`);
         emit(
           { ...item(ctx, "page", md), markdown: md.markdown },
-          (d) => `${renderMarkdown(d.markdown)}\n\n${dimUrl(d.url)}`,
+          (d) => `${renderNote(d.title, d.markdown)}\n\n${dimUrl(d.url)}`,
         );
       }),
     );
