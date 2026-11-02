@@ -21,6 +21,10 @@ export const FAQS: { q: string; a: string }[] = [
     a: 'Yes. Install the octonote CLI, sign in once, and run "octonote setup claude" or "octonote setup codex". Your agent can then write notes, draw canvases from mermaid, organise notebooks and publish — using your account and permissions.',
   },
   {
+    q: "Can I use Octonote inside Claude or ChatGPT?",
+    a: "Yes. Add Octonote as a connector in Claude.ai or as a custom MCP server in ChatGPT (https://api.octonote.ai/mcp), sign in once, and ask the assistant to write notes, draw diagrams, file them in notebooks or find what you saved. Setup steps are on octonote.ai/claude and octonote.ai/chatgpt.",
+  },
+  {
     q: "Will an agent publish or delete things on its own?",
     a: "No. The guide agents follow tells them to publish, share or delete only when you ask, and deleting from the CLI needs an explicit --yes.",
   },

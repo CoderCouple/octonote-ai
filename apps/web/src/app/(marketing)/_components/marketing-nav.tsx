@@ -5,16 +5,19 @@ import { DOCS_URL } from "@/lib/site";
 import { BookDemoButton } from "./book-demo";
 import { Logo } from "./logo";
 
-const NAV_LINKS = [
+/** `from`: the breakpoint a link appears at, so the row never wraps on narrower screens. */
+const NAV_LINKS: { href: string; label: string; from?: "lg" | "xl" }[] = [
   { href: "/#canvases", label: "Features" },
-  { href: "/#agents", label: "Agents" },
-  { href: "/#examples", label: "Examples" },
-  { href: "/cli", label: "CLI" },
-  { href: DOCS_URL, label: "Docs" },
-  { href: "/students", label: "Students" },
+  { href: "/#agents", label: "Agents", from: "lg" },
+  { href: "/#assistants", label: "Claude & ChatGPT" },
+  { href: "/#examples", label: "Examples", from: "xl" },
+  { href: "/cli", label: "CLI", from: "lg" },
+  { href: DOCS_URL, label: "Docs", from: "lg" },
+  { href: "/students", label: "Students", from: "xl" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/#faq", label: "FAQ" },
+  { href: "/#faq", label: "FAQ", from: "xl" },
 ];
+const SHOW_FROM = { lg: "hidden lg:inline-flex", xl: "hidden xl:inline-flex" } as const;
 
 export function MarketingNav() {
   return (
@@ -26,7 +29,7 @@ export function MarketingNav() {
             <Link
               key={link.href}
               href={link.href}
-              className="hover:bg-accent hover:text-foreground rounded-md px-3 py-1.5 text-base transition-colors"
+              className={`hover:bg-accent hover:text-foreground rounded-md px-3 py-1.5 text-base whitespace-nowrap transition-colors ${link.from ? SHOW_FROM[link.from] : ""}`}
             >
               {link.label}
             </Link>

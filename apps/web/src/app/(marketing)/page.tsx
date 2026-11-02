@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Aura } from "./_components/aura";
 import { BookDemoButton } from "./_components/book-demo";
+import { CopyField } from "./_components/copy-field";
+import { DemoVideo } from "./_components/demo-video";
 import { AgentsDemo } from "./_components/demos/agents-demo";
 import { CanvasDemo } from "./_components/demos/canvas-demo";
 import { MobileDemo } from "./_components/demos/mobile-demo";
@@ -16,6 +18,7 @@ import { RotatingWord } from "./_components/rotating-word";
 import { HomeStructuredData } from "./_components/structured-data";
 import { TerminalWindow } from "./cli/_components/terminal-window";
 import { INSTALL, INSTALL_BACKUP } from "./cli/_data/install";
+import { MCP_URL } from "./_data/assistants";
 
 /** The three setup commands in one copyable terminal, with a link to the CLI docs. */
 function AgentSetup() {
@@ -44,6 +47,29 @@ octonote setup claude --skill`}
         npm registry blocked? Install from octonote.ai instead:{" "}
         <code className="text-foreground font-mono break-all">{INSTALL_BACKUP}</code>
       </p>
+    </div>
+  );
+}
+
+/** Links to the Claude and ChatGPT setup pages, with the connector URL to paste. */
+function AssistantSetup() {
+  return (
+    <div className="flex flex-col items-center gap-6 text-center">
+      <div className="w-full max-w-xl">
+        <CopyField value={MCP_URL} label="Connector URL" />
+      </div>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button asChild size="lg" className="h-12 gap-2 px-6 text-base">
+          <Link href="/claude">
+            Set up in Claude <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+        <Button asChild size="lg" variant="outline" className="h-12 gap-2 px-6 text-base">
+          <Link href="/chatgpt">
+            Set up in ChatGPT <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
@@ -147,6 +173,33 @@ export default function LandingPage() {
           },
         ]}
         footer={<AgentSetup />}
+      />
+
+      <FeatureSection
+        id="assistants"
+        eyebrow="Claude & ChatGPT"
+        title={
+          <>
+            Now inside <RotatingWord words={["Claude", "ChatGPT"]} />.
+          </>
+        }
+        body="Connect Octonote once and ask in the chat: answers become real notes, diagrams become editable canvases, and everything is filed in your notebooks, ready to share or publish."
+        demo={<DemoVideo label="Claude writing a note and drawing a diagram in Octonote" />}
+        points={[
+          {
+            title: "One connector",
+            body: "Paste the connector URL in Claude.ai or ChatGPT, sign in, and choose Allow. No install.",
+          },
+          {
+            title: "Notes and diagrams that last",
+            body: "Good answers stop disappearing into chat history: they're kept, searchable and editable in Octonote.",
+          },
+          {
+            title: "Only what you ask",
+            body: "Nothing is published, shared or deleted unless you say so in the chat.",
+          },
+        ]}
+        footer={<AssistantSetup />}
       />
 
       <FeatureSection

@@ -6,13 +6,7 @@
  * story-style progress dots. Hover pauses; dots jump; arrow keys work.
  * With reduced motion it never auto-advances.
  */
-import {
-  BookOpen,
-  Check,
-  FileText,
-  FolderKanban,
-  LayoutGrid,
-} from "lucide-react";
+import { Check, FileText, FolderKanban } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CanvasDemo } from "@/app/(marketing)/_components/demos/canvas-demo";
 import {
@@ -37,14 +31,14 @@ const SLIDES: { title: string; body: string; Demo: () => ReactNode }[] = [
     Demo: CanvasDemo,
   },
   {
-    title: "Share like a doc. Publish like a site.",
-    body: "Invite people as editors or viewers, or publish a clean public page in one click.",
-    Demo: ShareCard,
+    title: "Claude saves it for you.",
+    body: "Ask Claude Code to write up what you figured out. It lands in Octonote as a note with a real diagram.",
+    Demo: ClaudeCard,
   },
   {
-    title: "Group it. Share it all at once.",
-    body: "Collect notes, canvases and projects in a notebook. Share or publish it once and everything inside follows.",
-    Demo: NotebookCard,
+    title: "Codex finds it next week.",
+    body: "Codex reads your notes too, so a new session starts from what you already decided.",
+    Demo: CodexCard,
   },
 ];
 
@@ -231,149 +225,147 @@ function Todo({ done, children }: { done?: boolean; children: ReactNode }) {
   );
 }
 
-function ShareCard() {
-  const { ref, step } = useDemoStep<HTMLDivElement>(8);
-  const published = step >= 4;
-  return (
-    <div ref={ref}>
-      <DemoWindow
-        title="Share “Field guide”"
-        bodyClassName="h-[300px] px-6 py-5 lg:h-[340px] lg:px-8 lg:py-7"
-      >
-        <div className="space-y-3">
-          <Person initial="Y" name="You" role="Owner" />
-          <Reveal show={step >= 1}>
-            <Person initial="M" name="Maya" role="Editor" />
-          </Reveal>
-          <Reveal show={step >= 2}>
-            <Person initial="S" name="Sam" role="Viewer" />
-          </Reveal>
-        </div>
-        <div className="my-4 border-t lg:my-6" />
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <p className="text-foreground-strong text-base font-medium">
-              Publish to web
-            </p>
-            <p
-              className={cn(
-                "text-muted-foreground text-sm transition-opacity duration-500",
-                published ? "opacity-100" : "opacity-0",
-              )}
-            >
-              Live · anyone can read
-            </p>
-          </div>
-          <div
-            className={cn(
-              "relative h-6 w-11 rounded-full transition-colors duration-300",
-              published ? "bg-primary" : "bg-input",
-            )}
-          >
-            <div
-              className={cn(
-                "bg-background ease-emphasized absolute top-0.5 size-5 rounded-full shadow-sm transition-transform duration-300",
-                published ? "translate-x-[22px]" : "translate-x-0.5",
-              )}
-            />
-          </div>
-        </div>
-        <Reveal show={step >= 5} className="mt-5">
-          <div className="bg-muted flex items-center gap-2 rounded-lg px-3.5 py-2.5 font-mono text-sm">
-            octonote.ai/pub/field-guide
-            <Check className="ml-auto size-4" />
-          </div>
-        </Reveal>
-      </DemoWindow>
-    </div>
-  );
-}
-
-function Person({
-  initial,
-  name,
-  role,
+/** A coding agent's terminal over the Octonote item it saved or read. */
+function AgentCard({
+  title,
+  step,
+  lines,
+  item,
+  showItem,
 }: {
-  initial: string;
-  name: string;
-  role: string;
+  title: string;
+  step: number;
+  lines: ReactNode;
+  item: { icon: typeof FileText; title: string; meta: string };
+  showItem: boolean;
 }) {
+  const Icon = item.icon;
   return (
-    <div className="flex items-center gap-3.5">
-      <div className="bg-foreground-strong text-background grid size-9 place-items-center rounded-full text-sm font-semibold">
-        {initial}
+    <DemoWindow
+      title={title}
+      bodyClassName="flex h-[300px] flex-col lg:h-[340px]"
+    >
+      <div className="bg-muted/30 text-foreground [&_.animate-pulse]:bg-foreground flex min-h-0 flex-1 flex-col justify-end space-y-2 overflow-hidden px-5 py-4 text-left font-mono text-[12px] leading-relaxed lg:px-6 lg:text-[13px]">
+        {lines}
       </div>
-      <span className="text-foreground-strong flex-1 text-base font-medium">
-        {name}
-      </span>
-      <span className="text-muted-foreground text-sm">{role}</span>
+      <div
+        className={cn(
+          "flex items-center gap-3 border-t px-5 py-3.5 text-sm transition-colors duration-500 lg:px-6",
+          showItem ? "bg-muted/40" : "",
+        )}
+        data-step={step}
+      >
+        <Icon className="text-muted-foreground size-4 shrink-0" />
+        <span
+          className={cn(
+            "truncate font-medium transition-opacity duration-500",
+            showItem ? "text-foreground-strong opacity-100" : "opacity-0",
+          )}
+        >
+          {item.title}
+        </span>
+        <span
+          className={cn(
+            "text-muted-foreground ml-auto shrink-0 text-xs transition-opacity duration-500",
+            showItem ? "opacity-100" : "opacity-0",
+          )}
+        >
+          {item.meta}
+        </span>
+      </div>
+    </DemoWindow>
+  );
+}
+
+function ClaudeCard() {
+  const { ref, step } = useDemoStep<HTMLDivElement>(6);
+  return (
+    <div ref={ref}>
+      <AgentCard
+        title="Claude Code"
+        step={step}
+        showItem={step >= 5}
+        item={{ icon: FolderKanban, title: "Auth flow", meta: "Research · just now" }}
+        lines={
+          <>
+            <p className="text-foreground-strong">
+              <span className="text-muted-foreground">&gt; </span>
+              <Typed
+                text="Save the auth flow to Octonote, with a diagram"
+                active={step >= 1}
+                done={step >= 2}
+              />
+            </p>
+            <Reveal show={step >= 2}>
+              <AgentTool name="Write" arg="auth.md" />
+              <AgentTool name="Write" arg="auth.mmd" />
+            </Reveal>
+            <Reveal show={step >= 3}>
+              <p className="break-words">
+                <span className="text-foreground-strong">⏺ Bash</span>
+                (octonote project create &quot;Auth flow&quot; --note auth.md
+                --canvas-mermaid auth.mmd)
+              </p>
+            </Reveal>
+            <Reveal show={step >= 4}>
+              <p className="font-sans text-[13px] lg:text-sm">
+                <span className="text-foreground-strong">⏺ </span>
+                Saved “Auth flow” to Research, with the diagram.
+              </p>
+            </Reveal>
+          </>
+        }
+      />
     </div>
   );
 }
 
-const NOTEBOOK_ITEMS = [
-  { icon: FileText, title: "Roadmap", kind: "Note" },
-  { icon: LayoutGrid, title: "Launch flow", kind: "Canvas" },
-  { icon: FolderKanban, title: "Onboarding", kind: "Project" },
-];
-
-function NotebookCard() {
-  const { ref, step } = useDemoStep<HTMLDivElement>(7);
-  const published = step >= 4;
+function CodexCard() {
+  const { ref, step } = useDemoStep<HTMLDivElement>(6);
   return (
     <div ref={ref}>
-      <DemoWindow
-        title="Notebooks"
-        bodyClassName="h-[300px] px-6 py-5 lg:h-[340px] lg:px-8 lg:py-7"
-      >
-        <div className="mb-4 flex items-center gap-4 lg:mb-5">
-          <div className="bg-muted grid size-12 place-items-center rounded-xl border">
-            <BookOpen className="size-6" />
-          </div>
-          <div className="flex-1">
-            <p className="text-foreground-strong text-xl font-bold tracking-tight">
-              Field guide
+      <AgentCard
+        title="Codex"
+        step={step}
+        showItem={step >= 3}
+        item={{ icon: FileText, title: "Rate limits: decision", meta: "found in Research" }}
+        lines={
+          <>
+            <p className="text-foreground-strong">
+              <span className="text-muted-foreground">› </span>
+              <Typed
+                text="What did we decide about rate limits?"
+                active={step >= 1}
+                done={step >= 2}
+              />
             </p>
-            <p className="text-muted-foreground text-sm">
-              {Math.min(step, 3)} items
-            </p>
-          </div>
-          <span
-            className={cn(
-              "rounded-full border px-3 py-1 text-sm transition-all duration-500",
-              published
-                ? "bg-primary text-primary-foreground border-transparent"
-                : "text-muted-foreground",
-            )}
-          >
-            {published ? "Published" : "Private"}
-          </span>
-        </div>
-        <ul className="divide-y rounded-xl border">
-          {NOTEBOOK_ITEMS.map(({ icon: Icon, title, kind }, i) => (
-            <Reveal key={title} show={step >= i + 1}>
-              <li className="flex h-11 items-center gap-3.5 px-4 lg:h-14">
-                <Icon className="text-muted-foreground size-4.5" />
-                <span className="flex-1 text-base font-medium">{title}</span>
-                <span
-                  className={cn(
-                    "text-muted-foreground hidden text-xs transition-opacity duration-500 sm:inline",
-                    published ? "opacity-100" : "opacity-0",
-                  )}
-                  style={{
-                    transitionDelay: published ? `${i * 160}ms` : "0ms",
-                  }}
-                >
-                  Public via Field guide
-                </span>
-                <span className="text-foreground-subtle w-14 text-right text-sm">
-                  {kind}
-                </span>
-              </li>
+            <Reveal show={step >= 2}>
+              <p>
+                <span className="text-foreground-strong">• Ran</span>{" "}
+                octonote search &quot;rate limit&quot;
+              </p>
+              <p>
+                <span className="text-foreground-strong">• Ran</span> octonote
+                note show pag_r4t3…
+              </p>
             </Reveal>
-          ))}
-        </ul>
-      </DemoWindow>
+            <Reveal show={step >= 4}>
+              <p className="font-sans text-[13px] lg:text-sm">
+                A token bucket: 100 requests a minute per user, then a 429
+                with Retry-After.
+              </p>
+            </Reveal>
+          </>
+        }
+      />
     </div>
+  );
+}
+
+function AgentTool({ name, arg }: { name: string; arg: string }) {
+  return (
+    <p>
+      <span className="text-foreground-strong">⏺ {name}</span>({arg})
+    </p>
   );
 }
