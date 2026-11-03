@@ -33,7 +33,7 @@ import { useNoteTypography } from "@/features/notes/typography/use-note-typograp
 import { cn } from "@/lib/utils";
 import type { PublicByline, PublicProject } from "../types";
 import type { CanvasViewApi } from "./canvas-readonly";
-import { NotebookLine, type NotebookContext } from "./notebook-nav";
+import { NotebookLine, NotebookRail, type NotebookContext } from "./notebook-nav";
 import { NotesReadOnly } from "./notes-readonly";
 import { HeaderSlot } from "./header-slot";
 import { CanvasStage } from "./published-canvas";
@@ -252,6 +252,11 @@ export function PublishedProject({
         </header>
 
         <div className="relative flex min-h-0 flex-1">
+          {notebook ? (
+            <div className="absolute top-1/2 left-3 z-20 hidden -translate-y-1/2 lg:block">
+              <NotebookRail nb={notebook} />
+            </div>
+          ) : null}
           {note ? (
             <section
               aria-label="Note"
@@ -267,7 +272,13 @@ export function PublishedProject({
                 )}
               >
                 <div
-                  className="reader-typography mx-auto w-full max-w-[var(--reader-content-width)] px-5 pt-6 pb-28 md:px-10 lg:pt-10 lg:pb-16"
+                  className={cn(
+                    // The padding goes on top of the reading width, and .published-note
+                    // drops the editor's drag-handle gutters: readers don't need them.
+                    "reader-typography published-note mx-auto w-full max-w-[calc(var(--reader-content-width)+2.5rem)] px-5 pt-6 pb-28 md:max-w-[calc(var(--reader-content-width)+5rem)] md:px-10 lg:pt-10 lg:pb-16",
+                    // Room for the notebook rail on the pane's left edge.
+                    notebook && "lg:max-w-[calc(var(--reader-content-width)+8rem)] lg:px-16",
+                  )}
                   style={{ ...style, maxWidth: undefined }}
                 >
                   {project.description ? (
