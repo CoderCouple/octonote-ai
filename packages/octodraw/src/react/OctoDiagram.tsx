@@ -142,6 +142,8 @@ export interface OctoDiagramProps {
    * above 1:1), wheel and drag go to the host, and padding is compact.
    */
   embedded?: boolean;
+  /** Embedded: the host element the element toolbar docks in, instead of this diagram. */
+  toolbarHost?: HTMLElement | null;
   /** Overlay controls (toolbar, zoom, flow player). Defaults to true. */
   chrome?: boolean;
   /** Natural size of the diagram including padding, e.g. to size a figure box. */
@@ -233,6 +235,7 @@ export function OctoDiagram({
   share,
   onAskAi,
   embedded = false,
+  toolbarHost,
   chrome = true,
   onContentSize,
   arrange = true,
@@ -1795,6 +1798,7 @@ export function OctoDiagram({
           icons={icons}
           iconSet={iconSet}
           container={containerRef}
+          host={toolbarHost}
           avoid={otherScreenBox}
           onAction={() => false}
           editing={otherEditingBox}
@@ -1814,6 +1818,7 @@ export function OctoDiagram({
           icons={icons}
           iconSet={iconSet}
           container={containerRef}
+          host={toolbarHost}
           avoid={selectionScreenBox}
           onAction={runAction}
           onOpenGroup={(id) => {

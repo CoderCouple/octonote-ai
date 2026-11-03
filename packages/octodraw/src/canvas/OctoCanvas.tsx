@@ -266,6 +266,9 @@ export function OctoCanvas(props: OctoCanvasProps) {
   const ctx = useMemo<ItemContext>(() => ({ theme, icons, iconSet }), [theme, icons, iconSet]);
 
   const rootRef = useRef<HTMLDivElement>(null);
+  // The element an opened figure docks its toolbar in (state: it exists after the first render).
+  const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => setRootEl(rootRef.current), []);
   const [cam, setCam] = useState<Camera>({ x: 0, y: 0, k: 1 });
   const camRef = useRef(cam);
   camRef.current = cam;
@@ -1024,9 +1027,27 @@ export function OctoCanvas(props: OctoCanvasProps) {
       insert([newText(toWorld(event.clientX, event.clientY))], { edit: true });
       return;
     }
-    if (item.type === 'figure') enterFigure(item.id);
+    if (item.type === 'figure') {
+      enterFigure(item.id);
+      pickAfterEnter.current = { x: event.clientX, y: event.clientY };
+    }
     else if (item.type === 'shape' || item.type === 'text' || item.type === 'line' || item.type === 'sticky' || item.type === 'code') setEditing(item.id);
   };
+
+  // Double-clicking a box in a figure opens the figure and selects that box. It can only
+  // take the click once the figure is open, so pass it on then.
+  const pickAfterEnter = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const at = pickAfterEnter.current;
+    pickAfterEnter.current = null;
+    if (!entered || !at || compact) return;
+    const frame = requestAnimationFrame(() => {
+      const under = document.elementFromPoint(at.x, at.y);
+      if (!under?.closest(`[data-item-id="${entered}"] .occ-figure-body`) || under.closest('button')) return;
+      under.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: at.x, clientY: at.y }));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [entered, compact]);
 
   const enterFigure = (id: string) => {
     setSelection([id]);
@@ -1778,6 +1799,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
                   key={activeDrawIn?.id === item.id ? `${item.id}:${activeDrawIn.nonce}` : item.id}
                   item={item}
                   entered={entered === item.id && !compact}
+                  toolbarHost={entered === item.id && !compact ? rootEl : null}
                   selected={selection.includes(item.id)}
                   drawIn={activeDrawIn?.id === item.id}
                   scheme={scheme}
@@ -2457,6 +2479,7 @@ function TemplateGallery({ templates, theme, icons, iconSet, onPick, onInsert }:
 const FigureView = memo(function FigureView({
   item,
   entered,
+  toolbarHost,
   selected,
   drawIn,
   scheme,
@@ -2476,6 +2499,7 @@ const FigureView = memo(function FigureView({
   onSource?: (id: string, source: string, meta: SourceChangeMeta) => void;
   item: FigureItem;
   entered: boolean;
+  toolbarHost: HTMLElement | null;
   selected: boolean;
   drawIn: boolean;
   scheme: ColorScheme;
@@ -2503,6 +2527,7 @@ const FigureView = memo(function FigureView({
           onPlacementsChange={onPlacementsChange}
           onSourceChange={entered && onSource ? onSourceChange : undefined}
           embedded
+          toolbarHost={toolbarHost}
           chrome={entered}
           drawIn={drawIn}
           colorScheme={scheme}

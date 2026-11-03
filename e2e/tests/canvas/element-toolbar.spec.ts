@@ -15,6 +15,12 @@ test("the element toolbar restyles boxes and arrows inside an opened figure thro
   const figure = ui.item("f1");
   await figure.locator('[data-node-id="Payment"]').first().click();
   const bar = page.getByRole("toolbar", { name: /box/i });
+  // Docked at the bottom of the screen, not the figure, and still working from there.
+  await expect(bar).toBeVisible();
+  const barBox = (await bar.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(viewport.height - (barBox.y + barBox.height)).toBeLessThan(40);
+  expect(Math.abs(barBox.x + barBox.width / 2 - viewport.width / 2)).toBeLessThan(viewport.width * 0.2);
   await expect(bar).toBeVisible();
   await expect(bar.getByRole("button", { name: "Edit text" })).toBeVisible();
 
@@ -46,4 +52,31 @@ test("the element toolbar restyles boxes and arrows inside an opened figure thro
   await page.getByRole("radio", { name: "Dashed" }).or(page.getByRole("menuitemradio", { name: "Dashed" })).or(page.getByRole("button", { name: "Dashed" })).first().click();
   await waitForDoc(api, c.id, (d) => sourceOf(d).includes("Cart --> Billing"), "dashed arrow saved");
   await page.screenshot({ path: test.info().outputPath("element-toolbar.png") });
+});
+
+test("double-clicking a box in a figure opens the figure and selects that box", async ({ page, api, enter }) => {
+  const c = await api.createCanvas(e2eTitle("two clicks"));
+  const source = "title Checkout\ndirection right\nShopper > API\nAPI > Payment\nPayment > Stripe";
+  await api.updateCanvas(c.id, { document: docOf([{ id: "f1", type: "figure", x: 0, y: 0, w: 760, h: 300, source }]) });
+  await enter(`/c/${c.id}`);
+  const ui = await new CanvasUi(page).ready({ items: 1 });
+
+  await ui.item("f1").locator('[data-node-id="Payment"]').first().dblclick({ force: true });
+  const bar = page.getByRole("toolbar", { name: /box/i });
+  await expect(bar).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Done/ })).toBeVisible();
+  // Not left in the middle of editing the name.
+  await expect(page.locator(".od-etb-field")).toHaveCount(0);
+
+  // Open already: one click moves to another box.
+  await ui.item("f1").locator('[data-node-id="Stripe"]').first().click();
+  await expect(bar).toBeVisible();
+
+  // Done, then a double-click on the figure's empty space opens it with nothing selected.
+  await page.getByRole("button", { name: /^Done/ }).click();
+  await expect(bar).toHaveCount(0);
+  const box = (await ui.item("f1").boundingBox())!;
+  await page.mouse.dblclick(box.x + 30, box.y + box.height - 20);
+  await expect(page.getByRole("button", { name: /^Done/ })).toBeVisible();
+  await expect(bar).toHaveCount(0);
 });

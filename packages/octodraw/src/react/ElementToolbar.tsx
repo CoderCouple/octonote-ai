@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { resolveIcon, type IconSet } from '../icons/resolve';
 import type { IconResolver } from '../icons/types';
 import type { Theme } from '../theme/tokens';
@@ -76,6 +77,11 @@ export interface ElementToolbarProps {
   iconSet: IconSet;
   /** The diagram's root element: the bar and its menus are placed inside it. */
   container: RefObject<HTMLDivElement | null>;
+  /**
+   * Where the bar and its menus go instead of the diagram: a figure's bar docks at
+   * the bottom of the canvas around it, not the bottom of the figure.
+   */
+  host?: HTMLElement | null;
   /** Screen box of the selection (container coordinates); the bar moves so it never covers it. */
   avoid: ScreenRect | null;
   /** Runs an action; false when it was refused (true when it applied or there was nothing to change). */
@@ -152,8 +158,16 @@ const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  * The contextual toolbar for a diagram selection, docked at the bottom centre of
  * the diagram. Every control turns into a code edit through `onAction`.
  */
+/** A box in the diagram's coordinates, in the host's; the host's zoom scales the diagram. */
+function boxInHost(box: ScreenRect, diagram: HTMLElement, host: HTMLElement): ScreenRect {
+  const d = diagram.getBoundingClientRect();
+  const h = host.getBoundingClientRect();
+  const scale = diagram.clientWidth ? d.width / diagram.clientWidth : 1;
+  return { x: d.left - h.left + box.x * scale, y: d.top - h.top + box.y * scale, width: box.width * scale, height: box.height * scale };
+}
+
 export function ElementToolbar(props: ElementToolbarProps) {
-  const { selection, ctx, theme, icons, iconSet, container, avoid, onAction, editing, notice, delegate } = props;
+  const { selection, ctx, theme, icons, iconSet, container, host, avoid: avoidInDiagram, onAction, editing, notice, delegate } = props;
   const target = delegate ? null : selectionTarget(selection, ctx);
   const controls = delegate ? [] : toolbarControls(selection, ctx);
   const [open, setOpen] = useState<Pop | null>(null);
@@ -211,9 +225,11 @@ export function ElementToolbar(props: ElementToolbarProps) {
 
   // Dock at the bottom centre; if that would cover the selection, lift the bar above it, else move it to the top.
   useLayoutEffect(() => {
-    const root = container.current;
+    const diagram = container.current;
+    const root = host ?? diagram;
     const el = bar.current;
-    if (!root || !el) return;
+    if (!root || !diagram || !el) return;
+    const avoid = avoidInDiagram && host ? boxInHost(avoidInDiagram, diagram, host) : avoidInDiagram;
     const W = root.clientWidth;
     const H = root.clientHeight;
     const w = el.offsetWidth;
@@ -233,7 +249,7 @@ export function ElementToolbar(props: ElementToolbarProps) {
 
   // Menus open above the bar (below it when the bar is at the top), next to their button, inside the diagram.
   useLayoutEffect(() => {
-    const root = container.current;
+    const root = host ?? container.current;
     const el = pop.current;
     const button = open ? buttons.current.get(open) : undefined;
     if (!root || !el || !button || !bar.current) return;
@@ -269,11 +285,14 @@ export function ElementToolbar(props: ElementToolbarProps) {
   /** The docked bar with its note, the inline editor and the open menu. */
   const frame = (barItems: ReactNode, editingBar: ReactNode, menuNode: ReactNode, label: string, editHint: string) => {
     const wrapClass = `od-etb-wrap od-etb-${placement.at}`;
-    const wrapStyle = placement.at === 'lifted' ? { bottom: placement.bottom } : undefined;
+    // In a canvas the bar lines up with the Slides / Present / Export row.
+    const wrapStyle = placement.at === 'lifted' ? { bottom: placement.bottom } : host && placement.at === 'bottom' ? { bottom: 'var(--od-space-4)' } : undefined;
+    const place = (node: ReactNode) => (host ? createPortal(node, host) : node);
     return (
       <>
         <style>{TOOLBAR_CSS}</style>
         {editing && <InlineEditor key={selectionKey} editing={editing} draft={draft} onCommit={props.onCommitEdit} onCancel={props.onCancelEdit} barRef={bar} popRef={pop} />}
+        {place(<>
         <div className={wrapClass} style={wrapStyle}>
           {(notice || editing || selection.ids.length > 1) && (
             <div className={`od-etb-note${notice ? ' od-etb-note-warn' : ''}`} role={notice ? 'alert' : 'status'}>
@@ -306,6 +325,7 @@ export function ElementToolbar(props: ElementToolbarProps) {
             {menuNode}
           </div>
         )}
+        </>)}
       </>
     );
   };
