@@ -80,6 +80,15 @@ export class OAuthRepository {
       .orderBy(sql`${oauthGrants.lastUsedAt} desc nulls last`, desc(oauthGrants.createdAt));
   }
 
+  /** Someone's active connections with where each app signs in. */
+  activeGrantsWithRedirects(userId: string) {
+    return this.db
+      .select({ id: oauthGrants.id, clientName: oauthGrants.clientName, redirectUris: oauthClients.redirectUris })
+      .from(oauthGrants)
+      .leftJoin(oauthClients, eq(oauthClients.id, oauthGrants.clientId))
+      .where(and(eq(oauthGrants.userId, userId), isNull(oauthGrants.revokedAt)));
+  }
+
   async revokeGrant(id: string) {
     return (
       await this.db.update(oauthGrants).set({ revokedAt: new Date() }).where(eq(oauthGrants.id, id)).returning()

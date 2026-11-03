@@ -304,6 +304,22 @@ export class OAuthService {
     throw new OAuthError("unsupported_grant_type", "Use authorization_code or refresh_token.");
   }
 
+  /**
+   * Adding a connector again registers a new client, so the old connection
+   * would stay alive and listed. The same name signing in at the same website
+   * is the same app, so the new connection replaces it. Apps that sign in
+   * through the computer they run on (Claude Code) never match: two computers
+   * would keep disconnecting each other.
+   */
+  private async replaceOlderConnections(userId: string, newGrantId: string, name: string, redirectUri: string) {
+    const host = websiteHost(redirectUri);
+    if (!host) return;
+    for (const older of await this.repo.activeGrantsWithRedirects(userId)) {
+      if (older.id === newGrantId || older.clientName !== name) continue;
+      if (older.redirectUris?.some((uri) => websiteHost(uri) === host)) await this.repo.revokeGrant(older.id);
+    }
+  }
+
   private async exchangeCode(base: string, body: Record<string, unknown>): Promise<TokenResponse> {
     const code = str(body.code);
     const verifier = str(body.code_verifier);
@@ -327,6 +343,7 @@ export class OAuthService {
       scope: req.scope,
       resource: req.resource,
     });
+    await this.replaceOlderConnections(req.userId, grant.id, grant.clientName, req.redirectUri);
     void this.analytics?.capture(req.userId, "assistant_app_connected", { client: grant.clientName });
     return this.issue(grant.id, grant.scope);
   }
@@ -403,6 +420,16 @@ export class OAuthService {
     if (!grant || grant.userId !== userId) throw NotFound("Connection not found.");
     if (!grant.revokedAt) await this.repo.revokeGrant(id);
     return { id, revoked: true };
+  }
+}
+
+/** The website a redirect goes to; null for this computer, or anything unreadable. */
+function websiteHost(uri: string): string | null {
+  try {
+    const { hostname } = new URL(uri);
+    return ["localhost", "127.0.0.1", "[::1]"].includes(hostname) ? null : hostname.toLowerCase();
+  } catch {
+    return null;
   }
 }
 

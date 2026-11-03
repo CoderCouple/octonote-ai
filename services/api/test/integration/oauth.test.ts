@@ -288,6 +288,49 @@ describe("connected apps", () => {
     expect(await h.oauth.listGrants(alice.id)).toEqual([]);
   });
 
+  describe("connecting an app again", () => {
+    async function connectApp(name: string, redirect: string, userId = alice.id) {
+      const client = await h.oauth.register({ client_name: name, redirect_uris: [redirect] });
+      const { code, verifier } = await authorizeAndApprove(client.client_id, userId, { redirect_uri: redirect });
+      return h.oauth.token(BASE, {
+        grant_type: "authorization_code",
+        code,
+        code_verifier: verifier,
+        client_id: client.client_id,
+        redirect_uri: redirect,
+        resource: RESOURCE,
+      });
+    }
+    const names = async (userId = alice.id) => (await h.oauth.listGrants(userId)).map((g) => g.clientName);
+
+    it("replaces the old connection, and the old tokens stop working", async () => {
+      const first = await connectApp("Claude", REDIRECT);
+      const second = await connectApp("Claude", REDIRECT);
+      expect(await names()).toEqual(["Claude"]);
+      expect(await h.oauth.verifyAccessToken(first.access_token, RESOURCE)).toBeNull();
+      expect(await h.oauth.verifyAccessToken(second.access_token, RESOURCE)).not.toBeNull();
+    });
+
+    it("keeps apps with a different name or website", async () => {
+      await connectApp("Claude", REDIRECT);
+      await connectApp("ChatGPT", "https://chatgpt.example/connector/callback");
+      await connectApp("Claude", "https://other.example/callback");
+      expect((await names()).sort()).toEqual(["ChatGPT", "Claude", "Claude"]);
+    });
+
+    it("keeps apps that sign in through the computer they run on", async () => {
+      await connectApp("Claude Code", "http://localhost:3334/callback");
+      await connectApp("Claude Code", "http://127.0.0.1:4455/callback");
+      expect(await names()).toEqual(["Claude Code", "Claude Code"]);
+    });
+
+    it("never touches someone else's connection", async () => {
+      await connectApp("Claude", REDIRECT, bob.id);
+      await connectApp("Claude", REDIRECT, alice.id);
+      expect(await names(bob.id)).toEqual(["Claude"]);
+    });
+  });
+
   it("expires an unanswered consent request", async () => {
     const client = await registerClient();
     const { challenge } = pkce();
