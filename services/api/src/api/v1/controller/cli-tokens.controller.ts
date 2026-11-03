@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
@@ -32,6 +32,14 @@ export class CliTokensController {
   ): Promise<{ token: CliTokenDto; plaintext: string }> {
     requireWebSession(req, "Creating a CLI token");
     return this.tokens.create(req.user.id, body);
+  }
+
+  /** Settings → "Revoke unused". Web sessions only. */
+  @Post("revoke-unused")
+  @HttpCode(200)
+  revokeUnused(@Req() req: AuthenticatedRequest): Promise<{ revoked: number }> {
+    requireWebSession(req, "Revoking tokens");
+    return this.tokens.revokeUnused(req.user.id);
   }
 
   /** `octonote logout`: revoke the token making this request. */

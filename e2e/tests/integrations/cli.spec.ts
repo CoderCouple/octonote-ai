@@ -214,3 +214,19 @@ test.describe("errors", () => {
     expect(kind.code).toBe(2);
   });
 });
+
+test("signing in again revokes the token it replaces", async () => {
+  const first = await c.ok("POST", "/me/cli-tokens", { name: `E2E relogin ${tag()}` });
+  const second = await c.ok("POST", "/me/cli-tokens", { name: `E2E relogin ${tag()}` });
+  const env = { ...process.env, HOME: dir, OCTONOTE_CONFIG_DIR: join(dir, "relogin"), OCTONOTE_API_URL: API, OCTONOTE_WEB_URL: WEB };
+  delete env.OCTONOTE_TOKEN;
+  const login = (t: string) =>
+    spawnSync(process.execPath, [BIN, "--json", "login", "--paste"], { env, input: t, encoding: "utf8" });
+  expect(login(first.plaintext).status).toBe(0);
+  expect(login(second.plaintext).status).toBe(0);
+
+  const listed = (await c.ok("GET", "/me/cli-tokens")) as { id: string }[];
+  expect(listed.some((t) => t.id === first.token.id)).toBe(false);
+  expect(listed.some((t) => t.id === second.token.id)).toBe(true);
+  await c.call("DELETE", `/me/cli-tokens/${second.token.id}`);
+});

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../database.module";
 import { cliTokens } from "../schemas/cli-tokens";
 import { BaseRepository } from "./base.repository";
@@ -15,7 +15,24 @@ export class CliTokensRepository extends BaseRepository<typeof cliTokens> {
       .select()
       .from(cliTokens)
       .where(and(eq(cliTokens.userId, userId), isNull(cliTokens.revokedAt)))
-      .orderBy(desc(cliTokens.createdAt));
+      .orderBy(sql`${cliTokens.lastUsedAt} desc nulls last`, desc(cliTokens.createdAt));
+  }
+
+  /** Revokes tokens never used, optionally only those with one name and not `except`. */
+  async revokeNeverUsed(userId: string, only: { name?: string; except?: string } = {}) {
+    return this.db
+      .update(cliTokens)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(cliTokens.userId, userId),
+          isNull(cliTokens.revokedAt),
+          isNull(cliTokens.lastUsedAt),
+          only.name ? eq(cliTokens.name, only.name) : undefined,
+          only.except ? ne(cliTokens.id, only.except) : undefined,
+        ),
+      )
+      .returning({ id: cliTokens.id });
   }
 
   /** Not revoked; expiry is checked by the caller so it can say "expired". */

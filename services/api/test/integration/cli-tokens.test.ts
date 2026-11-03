@@ -70,4 +70,51 @@ describe("cli tokens", () => {
     expect(() => requireWebSession(viaToken, "Creating a CLI token")).toThrow(/signed in on the web/);
     expect(() => requireWebSession(viaWeb, "Creating a CLI token")).not.toThrow();
   });
+
+  describe("keeping the list tidy", () => {
+    const LOGIN = "CLI · my-mac";
+
+    it("a new login clears that computer's never-used tokens, nothing else", async () => {
+      const stale = await h.cliTokens.create(alice.id, { name: LOGIN });
+      const inUse = await h.cliTokens.create(alice.id, { name: "CLI · other" });
+      await h.cliTokens.verify(inUse.plaintext);
+      const ci = await h.cliTokens.create(alice.id, { name: "GitHub Actions" });
+      const fresh = await h.cliTokens.create(alice.id, { name: LOGIN });
+
+      expect(await h.cliTokens.verify(stale.plaintext)).toBeNull();
+      for (const t of [inUse, ci, fresh]) expect(await h.cliTokens.verify(t.plaintext)).not.toBeNull();
+    });
+
+    it("a new login leaves a used token with the same name: another computer may share it", async () => {
+      const other = await h.cliTokens.create(alice.id, { name: LOGIN });
+      await h.cliTokens.verify(other.plaintext);
+      await h.cliTokens.create(alice.id, { name: LOGIN });
+      expect(await h.cliTokens.verify(other.plaintext)).not.toBeNull();
+    });
+
+    it("a hand-made token with a repeated name is never cleared by creating another", async () => {
+      const a = await h.cliTokens.create(alice.id, { name: "Agent" });
+      await h.cliTokens.create(alice.id, { name: "Agent" });
+      expect(await h.cliTokens.verify(a.plaintext)).not.toBeNull();
+    });
+
+    it("revoke unused clears only your own never-used tokens", async () => {
+      const used = await h.cliTokens.create(alice.id, { name: "Used" });
+      await h.cliTokens.verify(used.plaintext);
+      const idle = await h.cliTokens.create(alice.id, { name: "Idle" });
+      const bobs = await h.cliTokens.create(bob.id, { name: "Bob's" });
+
+      expect(await h.cliTokens.revokeUnused(alice.id)).toEqual({ revoked: 1 });
+      expect(await h.cliTokens.verify(idle.plaintext)).toBeNull();
+      expect(await h.cliTokens.verify(used.plaintext)).not.toBeNull();
+      expect(await h.cliTokens.verify(bobs.plaintext)).not.toBeNull();
+    });
+
+    it("lists the tokens in use first", async () => {
+      const used = await h.cliTokens.create(alice.id, { name: "Used" });
+      await h.cliTokens.create(alice.id, { name: "Newer, never used" });
+      await h.cliTokens.verify(used.plaintext);
+      await expect.poll(async () => (await h.cliTokens.list(alice.id))[0]!.name).toBe("Used");
+    });
+  });
 });

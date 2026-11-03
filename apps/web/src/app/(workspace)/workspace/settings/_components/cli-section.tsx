@@ -49,6 +49,7 @@ export function CliSection() {
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<CliToken | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   const load = () =>
     clientApi
@@ -89,6 +90,21 @@ export function CliSection() {
       toast.error(err instanceof Error ? err.message : "Couldn't revoke.");
     }
   }
+
+  async function revokeUnused() {
+    try {
+      const { revoked } = await clientApi.post<{ revoked: number }>(
+        "/me/cli-tokens/revoke-unused",
+        {},
+      );
+      toast.success(`Revoked ${revoked} unused ${revoked === 1 ? "token" : "tokens"}.`);
+      void load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't revoke.");
+    }
+  }
+
+  const unused = tokens?.filter((t) => !t.lastUsedAt).length ?? 0;
 
   return (
     <SectionShell
@@ -133,8 +149,10 @@ export function CliSection() {
                   <div className="text-foreground truncate text-sm font-medium">
                     {t.name}
                   </div>
-                  <div className="text-muted-foreground truncate font-mono text-xs">
-                    {t.preview} · last used {when(t.lastUsedAt).toLowerCase()}
+                  <div className="text-muted-foreground text-xs">
+                    <span className="font-mono">{t.preview}</span> · created{" "}
+                    {when(t.createdAt)} ·{" "}
+                    {t.lastUsedAt ? `last used ${when(t.lastUsedAt)}` : "never used"}
                     {t.expiresAt ? ` · expires ${when(t.expiresAt)}` : ""}
                   </div>
                 </div>
@@ -151,6 +169,16 @@ export function CliSection() {
             ))}
           </ul>
         )}
+        {unused > 0 ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() => setClearing(true)}
+          >
+            Revoke {unused} unused
+          </Button>
+        ) : null}
       </Row>
       <Row
         label="Token for CI or a cloud agent"
@@ -226,7 +254,16 @@ export function CliSection() {
         onOpenChange={(o) => !o && setRevoking(null)}
         title={`Revoke “${revoking?.name ?? ""}”?`}
         description="Anything using this token stops working right away."
+        actionLabel="Revoke"
         onConfirm={() => (revoking ? revoke(revoking) : undefined)}
+      />
+      <ConfirmActionDialog
+        open={clearing}
+        onOpenChange={setClearing}
+        title={`Revoke ${unused} unused ${unused === 1 ? "token" : "tokens"}?`}
+        description="These have never been used. If you've copied one into CI or a script that hasn't run yet, it will stop working."
+        actionLabel="Revoke"
+        onConfirm={revokeUnused}
       />
     </SectionShell>
   );

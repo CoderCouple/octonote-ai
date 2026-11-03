@@ -57,6 +57,7 @@ export function registerAuth(program: Command) {
           }).get<{
             user: { email: string; name: string };
           }>("/me");
+          const previous = await readStored();
           // Addresses are saved only when custom (e.g. a local stack), so
           // everyone else follows the defaults if hosting ever moves.
           await writeStored({
@@ -65,6 +66,12 @@ export function registerAuth(program: Command) {
             apiUrl: customUrl(ctx.config.apiUrl, DEFAULT_API_URL),
             webUrl: customUrl(ctx.config.webUrl, DEFAULT_WEB_URL),
           });
+          // This computer's old token is replaced; don't leave it valid. Best effort.
+          if (previous.token && previous.token !== token) {
+            await new ApiClient({ apiUrl: ctx.config.apiUrl, token: previous.token })
+              .delete("/me/cli-tokens/current")
+              .catch(() => undefined);
+          }
           emit(
             { signedIn: true, email: me.user.email },
             () => `✓ Signed in as ${me.user.email}`,

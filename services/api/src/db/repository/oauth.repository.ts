@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { Database, DRIZZLE } from "../database.module";
 import { oauthClients, oauthGrants, oauthRequests, oauthTokens } from "../schemas/oauth";
 
@@ -77,7 +77,7 @@ export class OAuthRepository {
       .select()
       .from(oauthGrants)
       .where(and(eq(oauthGrants.userId, userId), isNull(oauthGrants.revokedAt)))
-      .orderBy(desc(oauthGrants.createdAt));
+      .orderBy(sql`${oauthGrants.lastUsedAt} desc nulls last`, desc(oauthGrants.createdAt));
   }
 
   async revokeGrant(id: string) {

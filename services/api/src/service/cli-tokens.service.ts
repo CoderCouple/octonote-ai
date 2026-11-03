@@ -10,6 +10,8 @@ import { CliTokensRepository } from "../db/repository/cli-tokens.repository";
 import { UsersRepository } from "../db/repository/users.repository";
 
 export const CLI_TOKEN_PREFIX = "ont_";
+/** What `octonote login` names its token, followed by the computer's name. */
+export const LOGIN_TOKEN_NAME_PREFIX = "CLI · ";
 
 export interface CliTokenDto {
   id: string;
@@ -68,6 +70,12 @@ export class CliTokensService {
         ? new Date(Date.now() + input.expiresInDays * 86_400_000)
         : null,
     });
+    // A login whose token never reached the CLI leaves one behind; a new login clears
+    // those. Used ones stay: another computer can share the name. The CLI revokes
+    // the token it's replacing itself, once the new one works.
+    if (row.name.startsWith(LOGIN_TOKEN_NAME_PREFIX)) {
+      await this.repo.revokeNeverUsed(userId, { name: row.name, except: row.id });
+    }
     void this.analytics?.capture(userId, "cli_connected");
     return { token: toDto(row), plaintext };
   }
@@ -78,6 +86,11 @@ export class CliTokensService {
     if (!row || row.userId !== userId) throw NotFound("Token not found.");
     if (row.revokedAt) return toDto(row);
     return toDto((await this.repo.revoke(id))!);
+  }
+
+  /** Settings → "Revoke unused": every token that has never been used. */
+  async revokeUnused(userId: string): Promise<{ revoked: number }> {
+    return { revoked: (await this.repo.revokeNeverUsed(userId)).length };
   }
 
   /**

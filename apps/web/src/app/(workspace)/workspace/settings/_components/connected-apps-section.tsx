@@ -5,6 +5,7 @@
  * allowed to use Octonote through the MCP server. Disconnecting ends the
  * app's access at once.
  */
+import { assistantMark } from "@octonote/shared";
 import { Bot, Loader2, Unplug } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -64,11 +65,11 @@ export function ConnectedAppsSection() {
           <ul className="divide-border divide-y rounded-md border">
             {apps.map((a) => (
               <li key={a.id} className="flex items-center gap-3 px-3 py-2.5">
-                <Bot className="text-muted-foreground size-4 shrink-0" />
+                <AppMark name={a.clientName} />
                 <div className="min-w-0 flex-1">
                   <div className="text-foreground truncate text-sm font-medium">{a.clientName}</div>
                   <div className="text-muted-foreground text-xs">
-                    Connected {when(a.createdAt)} · last used {when(a.lastUsedAt)}
+                    Connected {when(a.createdAt)} · {a.lastUsedAt ? `last used ${when(a.lastUsedAt)}` : "never used"}
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" className="hover:text-destructive gap-1.5" onClick={() => setRemoving(a)}>
@@ -100,5 +101,18 @@ export function ConnectedAppsSection() {
         }}
       />
     </SectionShell>
+  );
+}
+
+/** The app's own logo when we know it. */
+function AppMark({ name }: { name: string }) {
+  const mark = assistantMark(name);
+  if (!mark) return <Bot className="text-muted-foreground size-5 shrink-0" />;
+  return (
+    <svg viewBox={mark.viewBox} className="size-5 shrink-0" fill="currentColor" aria-hidden="true">
+      {mark.paths.map((p) => (
+        <path key={p.d} d={p.d} fill={p.fill} />
+      ))}
+    </svg>
   );
 }
