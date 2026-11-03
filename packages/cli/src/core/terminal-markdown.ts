@@ -22,14 +22,23 @@ const style = (on: boolean) => ({
 });
 type Style = ReturnType<typeof style>;
 
+export const bold = (text: string, on: boolean, underlined = false) =>
+  style(on).bold(underlined ? style(on).underline(text) : text);
+export const dim = (text: string, on: boolean) => style(on).dim(text);
+
+/** Other people's content must not be able to send escape codes to the terminal. */
+export const stripControl = (text: string) =>
+  // eslint-disable-next-line no-control-regex
+  text.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g, "");
+
 export function colorEnabled(): boolean {
   return Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
 }
 
 /** Text width to wrap at: the terminal's, capped so long lines stay readable. */
-export function terminalWidth(): number {
+export function terminalWidth(max = 110, fallback = 100): number {
   const cols = process.stdout.isTTY ? process.stdout.columns : 0;
-  return Math.max(40, Math.min(cols || 100, 110));
+  return Math.max(40, Math.min(cols || fallback, max));
 }
 
 /** ANSI styles and OSC 8 link wrappers take no columns. */
@@ -37,7 +46,8 @@ export function terminalWidth(): number {
 const HIDDEN = /\u001b\[[0-9;]*m|\u001b\]8;;[^\u001b]*\u001b\\/g;
 /** Emoji and East Asian wide characters take two columns in a terminal. */
 const WIDE = /\p{Emoji_Presentation}|[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/u;
-const visible = (s: string) => [...s.replace(HIDDEN, "")].reduce((n, ch) => n + (WIDE.test(ch) ? 2 : ch === "\uFE0F" ? 0 : 1), 0);
+export const charWidth = (ch: string) => (WIDE.test(ch) ? 2 : ch.codePointAt(0) === 0xfe0f ? 0 : 1);
+export const visible = (s: string) => [...s.replace(HIDDEN, "")].reduce((n, ch) => n + charWidth(ch), 0);
 
 /**
  * Inline marks: **bold**, *italic*, `code`, [text](url) and bare URLs. With
@@ -45,7 +55,7 @@ const visible = (s: string) => [...s.replace(HIDDEN, "")].reduce((n, ch) => n + 
  * its address is collected to list under the table.
  */
 function inline(text: string, s: Style, color: boolean, refs?: string[]): string {
-  // Links are rendered first and parked, so later marks don't touch their URLs.
+  // Links and code are rendered first and parked, so later marks don't touch them.
   const links: string[] = [];
   const park = (rendered: string) => `\u0000${links.push(rendered) - 1}\u0000`;
   const link = (label: string, url: string) => {
@@ -54,16 +64,22 @@ function inline(text: string, s: Style, color: boolean, refs?: string[]): string
     return park(label === url ? url : `${label} (${url})`);
   };
   return text
+    // An image can't show here: its name, linked to the picture (without Octonote's figure tag).
+    .replace(/!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g, (_, alt: string, u: string) => link(`▣ ${alt || "Image"}`, u.replace(/#octonote-figure=.*$/, "")))
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, t: string, u: string) => link(t, u))
     .replace(/(^|[\s(])(https?:\/\/[^\s)]*[^\s).,;:!?])/g, (_, pre: string, u: string) => `${pre}${link(u, u)}`)
-    .replace(/`([^`]+)`/g, (_, c: string) => s.cyan(c))
+    .replace(/`([^`]+)`/g, (_, c: string) => park(s.cyan(c)))
     .replace(/\*\*([^*]+)\*\*/g, (_, b: string) => s.bold(b))
+    // The note export italicises a link on its own and splits the text around it.
+    .replace(/\*(\u0000\d+\u0000)\*/g, (_, l: string) => park(s.italic(l)))
+    .replace(/(\u0000)\*(\s[^*]*[^*\s])\*/g, (_, pre: string, i: string) => `${pre}${s.italic(i)}`)
     .replace(/(^|[^*\w])\*([^*\s][^*]*)\*(?!\w)/g, (_, pre: string, i: string) => `${pre}${s.italic(i)}`)
+    .replace(/\u0000(\d+)\u0000/g, (_, n: string) => links[Number(n)]!)
     .replace(/\u0000(\d+)\u0000/g, (_, n: string) => links[Number(n)]!);
 }
 
 /** Word-wraps styled text: the first line starts with `first`, the rest with `rest`. */
-function wrap(text: string, width: number, first = "", rest = first): string[] {
+export function wrap(text: string, width: number, first = "", rest = first): string[] {
   const lines: string[] = [];
   let line = first;
   let len = visible(first);
@@ -141,7 +157,7 @@ const splitRow = (line: string) =>
 export function renderMarkdown(markdown: string, color = colorEnabled(), width = terminalWidth()): string {
   const s = style(color);
   const out: string[] = [];
-  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+  const lines = stripControl(markdown.replace(/\r\n?/g, "\n")).split("\n");
   let fence: { lang: string } | null = null;
 
   for (let i = 0; i < lines.length; i++) {
@@ -226,15 +242,5 @@ export function renderMarkdown(markdown: string, color = colorEnabled(), width =
   return out.join("\n").replace(/\n{3,}/g, "\n\n").replace(/^\n+/, "").replace(/\n+$/, "");
 }
 
-/**
- * A whole note for the terminal: its title (bold, underlined) above the body,
- * unless the body already starts with it.
- */
-export function renderNote(title: string, markdown: string, color = colorEnabled(), width = terminalWidth()): string {
-  const s = style(color);
-  const first = markdown.replace(/\r\n?/g, "\n").split("\n").find((l) => l.trim());
-  // Skip the title when the note already starts with it (as a heading or its first line).
-  const opensWithTitle = first ? first.replace(/^#{1,6}\s+/, "").trim().startsWith(title.trim()) : false;
-  const body = renderMarkdown(markdown, color, width);
-  return opensWithTitle || !title.trim() ? body : `${wrap(s.bold(s.underline(title.trim())), width).join("\n")}\n\n${body}`;
-}
+/** An item's link under the rendered text, dimmed in a colour terminal. */
+export const dimUrl = (url: string, color = colorEnabled()) => style(color).dim(url);

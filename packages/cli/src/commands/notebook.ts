@@ -1,14 +1,32 @@
 import type { Command } from "commander";
 import { resolveNotebook } from "../core/context.js";
 import { emit, table } from "../core/output.js";
-import { describeItem, item } from "../core/resources.js";
+import { describeItem, item, type Item } from "../core/resources.js";
 import { action } from "../core/run.js";
+import { renderNotebook } from "../core/terminal-items.js";
+import { dimUrl } from "../core/terminal-markdown.js";
 
 interface Notebook {
   id: string;
   name: string;
   updatedAt: string;
   counts?: { notes: number; canvases: number; projects: number };
+  publishedAt?: string | null;
+}
+
+interface Entry {
+  id: string;
+  title?: string;
+  name?: string;
+  updatedAt?: string;
+  publishedAt?: string | null;
+}
+
+interface Contents {
+  notebook: Notebook;
+  notes: Entry[];
+  canvases: Entry[];
+  projects: Entry[];
 }
 
 export function registerNotebook(program: Command) {
@@ -61,12 +79,29 @@ export function registerNotebook(program: Command) {
 
   notebook
     .command("show")
-    .description("Show a notebook (id or exact name)")
+    .description("Show a notebook and what's inside (id or exact name)")
     .argument("<notebook>", "notebook id or exact name")
     .action(
       action(async (ctx, ref: string) => {
-        const nb = await resolveNotebook(ctx, ref);
-        emit(item(ctx, "notebook", nb), describeItem);
+        const { id } = await resolveNotebook(ctx, ref);
+        const c = await ctx.api.get<Contents>(`/notebooks/${id}`);
+        // Everything in a published notebook is public, whatever its own state.
+        const inside = (kind: "page" | "canvas" | "project", rows: Entry[]) =>
+          rows.map((r): Item & { published: boolean } => ({
+            ...item(ctx, kind, r),
+            published: Boolean(r.publishedAt ?? c.notebook.publishedAt),
+          }));
+        emit(
+          {
+            ...item(ctx, "notebook", c.notebook),
+            items: [
+              ...inside("page", c.notes),
+              ...inside("canvas", c.canvases),
+              ...inside("project", c.projects),
+            ],
+          },
+          (d) => `${renderNotebook(d.title, d.items)}\n\n${dimUrl(d.url)}`,
+        );
       }),
     );
 }

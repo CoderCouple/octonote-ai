@@ -65,6 +65,7 @@ Links: \`click A href "https://…"\` makes a box open that page (canvases and
 note diagrams alike) — point code boxes at the file and line on GitHub.
 Other diagram types (sequence, state, ER, gantt…) can't be canvases — put
 them in a note as a \`\`\`mermaid block instead.
+Read one: \`octonote canvas show <id>\` gives its figures (with their source), words and connections.
 Raw canvas JSON also works: \`canvas pull <id> -o c.json\` / \`canvas push c.json --id <id>\`.
 It's \`{ "version": 1, "items": [...] }\`; items are shape (rectangle|ellipse|diamond,
 text), sticky, text, line (start/end {x,y,item?}, startArrow, endArrow, dashed, text),
@@ -73,12 +74,12 @@ frame, code, image, icon, pen and figure, each with x, y, w, h.
 ## Project = note + canvas
   octonote project create "Auth flow" --note auth.md --canvas-mermaid auth.mmd \\
     [--view split|notes|canvas] [--notebook "Name"] [--publish]
-  octonote project show <id>     # ids of its note and canvas (edit them as above)
+  octonote project show <id>     # JSON: ids of its note and canvas (edit them as above)
 
 ## Organise
   octonote list [--kind note|canvas|project|notebook] [--notebook "Name"]
   octonote search <words>                 # by title
-  octonote notebook list | create "Name" | show "Name"
+  octonote notebook list | create "Name" | show "Name"   # show lists what's inside
   octonote rename <id> "New name"         # any note, canvas, project or notebook
   octonote move <id> --notebook "Name"    # or --out
   octonote delete <id> --yes

@@ -7,6 +7,8 @@ import { emit } from "../core/output.js";
 import { parseRef } from "../core/refs.js";
 import { describeItem, item, setPublished } from "../core/resources.js";
 import { action } from "../core/run.js";
+import { canvasOutline, renderCanvas } from "../core/terminal-items.js";
+import { dimUrl } from "../core/terminal-markdown.js";
 
 interface Canvas {
   id: string;
@@ -105,6 +107,22 @@ export function registerCanvas(program: Command) {
           emit(out, describeItem);
         },
       ),
+    );
+
+  canvas
+    .command("show")
+    .alias("read")
+    .description("Print a canvas as an outline: its figures, words and connections")
+    .argument("<canvas>", "canvas id (cnv_…) or URL")
+    .action(
+      action(async (ctx, ref: string) => {
+        const { id } = parseRef(ref, "canvas");
+        const row = await ctx.api.get<Canvas>(`/canvases/${id}`);
+        emit(
+          { ...item(ctx, "canvas", row), ...canvasOutline(row.document) },
+          (d) => `${renderCanvas(d.title, row.document)}\n\n${dimUrl(d.url)}`,
+        );
+      }),
     );
 
   canvas

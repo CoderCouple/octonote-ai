@@ -3,10 +3,12 @@ import { resolveNotebook } from "../core/context.js";
 import { usage } from "../core/errors.js";
 import { parseFrontMatter } from "../core/frontmatter.js";
 import { readContent } from "../core/input.js";
-import { emit } from "../core/output.js";
+import { emit, outputMode } from "../core/output.js";
 import { appUrl, parseRef } from "../core/refs.js";
 import { describeItem, item, setPublished } from "../core/resources.js";
 import { action } from "../core/run.js";
+import { renderProject } from "../core/terminal-items.js";
+import { dimUrl } from "../core/terminal-markdown.js";
 
 interface Project {
   id: string;
@@ -133,12 +135,20 @@ export function registerProject(program: Command) {
 
   project
     .command("show")
-    .description("Show a project and the ids of its note and canvas")
+    .description("Print a project: its note, then its canvas (JSON: the ids of both)")
     .argument("<project>", "project id (prj_…) or URL")
     .action(
       action(async (ctx, ref: string) => {
         const { id } = parseRef(ref, "project");
         const p = await ctx.api.get<Project>(`/projects/${id}`);
+        // People read the note and canvas here; agents get the ids and fetch what they need.
+        const [note, canvas] =
+          outputMode() === "pretty"
+            ? await Promise.all([
+                p.noteId ? ctx.api.get<{ markdown: string }>(`/pages/${p.noteId}/markdown`) : null,
+                p.canvasId ? ctx.api.get<{ document?: unknown }>(`/canvases/${p.canvasId}`) : null,
+              ])
+            : [null, null];
         emit(
           {
             ...item(ctx, "project", p),
@@ -152,7 +162,7 @@ export function registerProject(program: Command) {
               : null,
           },
           (d) =>
-            `${describeItem(d)}\n  note ${d.noteId} · canvas ${d.canvasId}`,
+            `${renderProject(d.title, note?.markdown ?? null, canvas?.document)}\n\n${dimUrl(d.url)}`,
         );
       }),
     );

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { renderMarkdown, renderNote } from "./terminal-markdown.js";
+import { renderNote } from "./terminal-items.js";
+import { renderMarkdown } from "./terminal-markdown.js";
 
 const MD = `# Caching plan
 
@@ -42,15 +43,22 @@ describe("terminal markdown", () => {
 describe("renderNote", () => {
   it("puts the title above the body", () => {
     const out = renderNote("To-do List", "## To-do\n\n- [ ] Sell stock.", false);
-    expect(out.split("\n")[0]).toBe("To-do List");
+    expect(out.split("\n")[0]).toMatch(/^╭─ To-do List ─+╮$/);
     expect(out).toContain("☐ Sell stock.");
   });
   it("doesn't repeat a title the body already opens with", () => {
     const out = renderNote("Launch plan", "# Launch plan\n\nShip it.", false);
     expect(out.match(/Launch plan/g)).toHaveLength(1);
   });
-  it("makes the title bold and underlined in colour", () => {
-    expect(renderNote("Plan", "Body", true).startsWith("\u001b[1m\u001b[4mPlan")).toBe(true);
+  it("drops an opening line that only repeats the title, however it's punctuated", () => {
+    const out = renderNote("Octonote AI architecture", "# Octonote AI — architecture\n\nBody", false);
+    expect(out).not.toContain("—");
+  });
+  it("keeps an opening line that adds to the title", () => {
+    expect(renderNote("Plan", "# Plan (updated Oct)\n\nBody", false)).toContain("Plan (updated Oct)");
+  });
+  it("makes the title bold in colour", () => {
+    expect(renderNote("Plan", "Body", true)).toContain("\u001b[1mPlan\u001b[22m");
   });
 });
 
@@ -85,5 +93,31 @@ describe("wide characters", () => {
     const rows = out.split("\n").filter((l) => l.startsWith("│"));
     const width = (l: string) => [...l].reduce((n, ch) => n + (/\p{Emoji_Presentation}/u.test(ch) ? 2 : 1), 0);
     expect(new Set(rows.map(width)).size).toBe(1);
+  });
+});
+
+describe("terminal markdown inline marks", () => {
+  it("pairs italics that restart right after inline code", () => {
+    const out = renderMarkdown("*make the code* `VIZUARA`*, max 300 uses.*", false);
+    expect(out).toBe("make the code VIZUARA, max 300 uses.");
+  });
+
+  it("pairs italics split around an italic link, as the note export writes them", () => {
+    const md = "*Based on* *[Talk](https://a.io/t)** by Dr. X and his course* *[Course](https://a.io/c)**.*";
+    expect(renderMarkdown(md, false)).toBe("Based on Talk (https://a.io/t) by Dr. X and his course Course (https://a.io/c).");
+  });
+
+  it("prints an image as its name and a clean link", () => {
+    const md = "![Figure](https://x.io/f.png#octonote-figure=fig_1&w=2&h=1)";
+    expect(renderMarkdown(md, false)).toBe("▣ Figure (https://x.io/f.png)");
+    expect(renderMarkdown(md, true)).toContain("\u001b]8;;https://x.io/f.png\u001b\\");
+  });
+
+  it("leaves asterisks inside code alone", () => {
+    expect(renderMarkdown("run `a*b*c` now", false)).toBe("run a*b*c now");
+  });
+
+  it("removes escape codes from note content", () => {
+    expect(renderMarkdown("safe\u001b[31m text\u0007", false)).toBe("safe[31m text");
   });
 });
