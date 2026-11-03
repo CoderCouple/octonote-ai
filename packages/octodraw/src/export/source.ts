@@ -39,17 +39,17 @@ export async function renderSourceSvg(source: string, options: SourceSvgOptions)
     const erd = parseErd(source);
     // Saved state: tables dragged by hand (level '') and tables showing only key columns.
     const layout = arrangeErd(erd, await layoutErd(erd, { theme, measureText, collapsed: erdCollapsedFrom(options.placements) }), options.placements?.['']);
-    return renderDiagramSvg({ layout: { width: layout.width, height: layout.height, nodes: [], edges: [] }, settings: parseDiagram('').settings, theme, icons, iconSet, padding, title: options.title ? erd.settings?.title : undefined, body: createElement(ErdSvg, { layout, diagram: erd, theme, icons, iconSet }) });
+    return renderDiagramSvg({ measureText, layout: { width: layout.width, height: layout.height, nodes: [], edges: [] }, settings: parseDiagram('').settings, theme, icons, iconSet, padding, title: options.title ? erd.settings?.title : undefined, body: createElement(ErdSvg, { layout, diagram: erd, theme, icons, iconSet }) });
   }
   if (type === 'sequence') {
     const sequence = parseSequence(source);
     const layout = layoutSequence(sequence, { measureText });
-    return renderDiagramSvg({ layout: { width: layout.width, height: layout.height, nodes: [], edges: [] }, settings: parseDiagram('').settings, theme, icons, iconSet, padding, title: options.title ? sequence.settings?.title : undefined, body: createElement(SequenceSvg, { layout, theme, icons, iconSet, styleMode: sequence.settings.styleMode }) });
+    return renderDiagramSvg({ measureText, layout: { width: layout.width, height: layout.height, nodes: [], edges: [] }, settings: parseDiagram('').settings, theme, icons, iconSet, padding, title: options.title ? sequence.settings?.title : undefined, body: createElement(SequenceSvg, { layout, theme, icons, iconSet, styleMode: sequence.settings.styleMode }) });
   }
   if (type === 'bpmn') {
     const diagram = parseDiagram(source);
     const layout = layoutBpmn(diagram, { measureText, typography: theme.text });
-    return renderDiagramSvg({ layout: { width: layout.width, height: layout.height, nodes: [], edges: [] }, settings: diagram.settings, theme, icons, iconSet, padding, title: options.title ? diagram.settings.title : undefined, body: createElement(BpmnSvg, { layout, theme, icons, iconSet, styleMode: diagram.settings.styleMode }) });
+    return renderDiagramSvg({ measureText, layout: { width: layout.width, height: layout.height, nodes: [], edges: [] }, settings: diagram.settings, theme, icons, iconSet, padding, title: options.title ? diagram.settings.title : undefined, body: createElement(BpmnSvg, { layout, theme, icons, iconSet, styleMode: diagram.settings.styleMode }) });
   }
   const diagram = parseDiagram(source);
   const view = buildView(diagram, { focus: null });
@@ -57,5 +57,5 @@ export async function renderSourceSvg(source: string, options: SourceSvgOptions)
   let layout = await layoutView(view, opts);
   const top = options.placements?.[''];
   if (top) layout = arrangeLayout(view, layout, top, opts);
-  return renderDiagramSvg({ layout, settings: diagram.settings, theme, icons, iconSet, padding, title: options.title ? diagram.settings.title : undefined });
+  return renderDiagramSvg({ measureText, layout, settings: diagram.settings, theme, icons, iconSet, padding, title: options.title ? diagram.settings.title : undefined });
 }

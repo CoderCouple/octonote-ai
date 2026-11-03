@@ -59,3 +59,28 @@ export function isPrefixedId(value: unknown): value is string {
 export function hasPrefix(value: string, prefix: IdPrefix): boolean {
   return value.startsWith(`${prefix}_`);
 }
+
+/** FNV-1a. */
+function fnv(text: string, seed: number): number {
+  let h = seed;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/**
+ * The figure's id in the API and in note embeds. Items already carrying a
+ * `fig_` id (converted from older canvases) keep it; others get a stable id
+ * derived from canvas + item id, so the same item always maps to the same
+ * figure and copies on another canvas never collide.
+ */
+export function figureApiId(canvasId: string, itemId: string): string {
+  if (/^fig_[0-9a-f-]{36}$/.test(itemId)) return itemId;
+  const key = `${canvasId}:${itemId}`;
+  const hex = [0x811c9dc5, 0x01000193, 0x9e3779b9, 0x85ebca6b]
+    .map((seed) => fnv(key, seed).toString(16).padStart(8, "0"))
+    .join("");
+  return `fig_${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}

@@ -48,7 +48,7 @@ export function previewHtml(): string {
   .btn { appearance: none; border: 1px solid var(--line); background: var(--bg); color: var(--strong); border-radius: 8px; padding: 6px 11px; font: 600 13px Inter, system-ui, sans-serif; cursor: pointer; text-decoration: none; }
   .btn.primary { background: var(--strong); color: var(--bg); border-color: var(--strong); }
   .body { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
-  .note { max-height: 520px; overflow: auto; }
+  .note { max-height: 520px; overflow: hidden auto; overflow-wrap: anywhere; }
   :root[data-mode="fullscreen"] .note { max-height: none; }
   :root[data-mode="fullscreen"] .card { max-width: 980px; margin: 0 auto; }
   .board { display: block; width: 100%; height: auto; max-height: 560px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
@@ -69,12 +69,15 @@ export function previewHtml(): string {
   .note pre { background: var(--tint); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow: auto; }
   .note pre code { background: none; padding: 0; }
   .note blockquote { border-left: 3px solid var(--line); margin: .5em 0; padding-left: 12px; color: var(--muted); }
-  .note table { border-collapse: collapse; margin: .5em 0; }
+  .note .katex-display { max-width: 100%; overflow: auto hidden; }
+  .note .katex-mathml { position: absolute; clip: rect(1px, 1px, 1px, 1px); width: 1px; height: 1px; overflow: hidden; }
+  .note [data-b] { position: relative; }
+  .note table { border-collapse: collapse; margin: .5em 0; display: block; max-width: 100%; overflow-x: auto; }
   .note th, .note td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; }
   .note img { max-width: 100%; border-radius: 8px; }
   .diagram { border: 1px solid var(--line); border-radius: 10px; padding: 10px; overflow: auto; text-align: center; margin: .5em 0; }
   .shot { display: block; width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--tint); }
-  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
   @media (max-width: 560px) { .split { grid-template-columns: 1fr; } .actions .btn:not(.primary) { display: none; } }
   .empty { color: var(--muted); font-size: 14px; padding: 18px; text-align: center; border: 1px dashed var(--line); border-radius: 10px; }
   .items { list-style: none; margin: 0; padding: 0; }
@@ -233,6 +236,13 @@ export function previewHtml(): string {
     var parts = ['<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>'];
     o.shapes.forEach(function (sh) {
       var size = FONT[sh.size] || 16, stroke = strokeOf(sh.color);
+      if (sh.kind === "figure") {
+        var pic = sh.imageUrl && safeUrl(sh.imageUrl), to = sh.url && safeUrl(sh.url), place = ' x="' + sh.x + '" y="' + sh.y + '" width="' + sh.w + '" height="' + sh.h + '"';
+        parts.push('<g' + (to ? ' class="link" data-open="' + esc(to) + '"' : "") + ">" + (pic
+          ? '<image href="' + esc(pic) + '"' + place + ' preserveAspectRatio="xMidYMin meet"><title>' + esc(sh.label) + "</title></image>"
+          : '<rect' + place + ' rx="8" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="8 6"/>' + textBlock(sh.label, sh.x + sh.w / 2, sh.y + sh.h / 2, sh.w - 16, size)) + "</g>");
+        return;
+      }
       if (sh.kind === "text") { parts.push(textBlock(sh.label, sh.x + sh.w / 2, sh.y + sh.h / 2, Math.max(sh.w, 80), size)); return; }
       if (sh.kind === "frame") {
         parts.push('<rect x="' + sh.x + '" y="' + sh.y + '" width="' + sh.w + '" height="' + sh.h + '" rx="6" fill="none" stroke="var(--line)" stroke-width="1.5"/>');
@@ -262,8 +272,10 @@ export function previewHtml(): string {
   }
 
   function shot(p) {
-    if (p.outline && (p.outline.shapes.length || p.outline.arrows.length)) return drawOutline(p.outline, p.title);
     var src = p.thumbnailUrl && safeUrl(p.thumbnailUrl);
+    // A figure with no stored picture yet can only be seen in the canvas's own snapshot.
+    var missing = p.outline && p.outline.shapes.some(function (s) { return s.kind === "figure" && !s.imageUrl; });
+    if (p.outline && (p.outline.shapes.length || p.outline.arrows.length) && !(missing && src)) return drawOutline(p.outline, p.title);
     return src ? '<img class="shot" alt="Canvas: ' + esc(p.title) + '" src="' + esc(src) + '" />'
                : '<div class="empty">Open the canvas to see the drawing.</div>';
   }

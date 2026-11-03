@@ -15,7 +15,7 @@
 import { octodrawLineEnds, type OctodrawItem } from "@octonote/content/server";
 
 export interface OutlineShape {
-  kind: "geo" | "note" | "text" | "frame";
+  kind: "geo" | "note" | "text" | "frame" | "figure";
   geo: string;
   x: number;
   y: number;
@@ -28,6 +28,8 @@ export interface OutlineShape {
   dash: string;
   size: string;
   url?: string;
+  /** A figure's stored picture; without one the card shows a box with its title. */
+  imageUrl?: string;
 }
 
 export interface OutlineArrow {
@@ -58,6 +60,7 @@ interface Item {
   color?: string;
   shape?: string;
   text?: string;
+  source?: string;
   title?: string;
   device?: string;
   fontSize?: number;
@@ -124,7 +127,10 @@ const headKey = (head: unknown, legacy: unknown) => (typeof head === "string" ? 
 /** Octodraw fill → the card's fill key (undefined = octodraw's default tint). */
 const fillKey = (fill: unknown) => (fill === "none" ? "none" : fill === "solid" ? "solid" : "semi");
 
-function toShape(it: Item): OutlineShape | null {
+/** A figure's stored picture by its canvas item id. */
+export type FigureImages = ReadonlyMap<string, string>;
+
+function toShape(it: Item, figureImages?: FigureImages): OutlineShape | null {
   const box = { x: num(it.x), y: num(it.y), w: Math.max(num(it.w, 100), 1), h: Math.max(num(it.h, 60), 1) };
   const url = typeof it.link === "string" && it.link ? { url: it.link } : {};
   switch (it.type) {
@@ -139,15 +145,18 @@ function toShape(it: Item): OutlineShape | null {
       return { ...box, ...url, kind: "geo", geo: "rectangle", label: String(it.text ?? "").split("\n").slice(0, 6).join("\n"), color: "grey", fill: "semi", dash: "solid", size: "s" };
     case "frame":
       return { ...box, ...url, kind: "frame", geo: "rectangle", label: String(it.title ?? ""), color: "grey", fill: "none", dash: "solid", size: "s" };
-    case "figure":
-      return { ...box, ...url, kind: "geo", geo: "rectangle", label: "Diagram", color: "grey", fill: "none", dash: "dashed", size: "s" };
+    case "figure": {
+      const label = /^\s*title\s+(.+)$/m.exec(String(it.source ?? ""))?.[1]?.trim() ?? "Figure";
+      const imageUrl = figureImages?.get(String(it.id));
+      return { ...box, ...url, ...(imageUrl ? { imageUrl } : {}), kind: "figure", geo: "none", label, color: "grey", fill: "none", dash: "dashed", size: "s" };
+    }
     default:
       return null;
   }
 }
 
 /** The outline of an octodraw canvas document, or null when there's nothing to draw. */
-export function canvasOutline(document: unknown): CanvasOutline | null {
+export function canvasOutline(document: unknown, figureImages?: FigureImages): CanvasOutline | null {
   const items = (document as { items?: unknown } | null)?.items;
   if (!Array.isArray(items)) return null;
 
@@ -156,7 +165,7 @@ export function canvasOutline(document: unknown): CanvasOutline | null {
   const targets = new Map<string, OctodrawItem>();
   for (const it of items as Item[]) {
     if (!it || typeof it !== "object" || shapes.length >= MAX_SHAPES) continue;
-    const shape = toShape(it);
+    const shape = toShape(it, figureImages);
     if (!shape) continue;
     shapes.push(shape);
     if (typeof it.id === "string") {

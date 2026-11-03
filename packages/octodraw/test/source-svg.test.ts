@@ -25,4 +25,12 @@ describe('renderSourceSvg', () => {
     expect(plain.svg).not.toContain('od-watercolor');
     expect(wc.svg).toContain('filter="url(#od-watercolor-a)"');
   });
+
+  it('widens the picture to fit a long title', async () => {
+    const short = await renderSourceSvg('A > B', { theme: lightTheme, title: true });
+    const title = 'A very long title that is much wider than the little diagram underneath it';
+    const long = await renderSourceSvg(`title ${title}\nA > B`, { theme: lightTheme, title: true, measureText: (text, font) => text.length * font.size * 0.6 });
+    expect(long.width).toBeGreaterThan(short.width);
+    expect(long.width).toBeGreaterThanOrEqual(title.length * lightTheme.text.title.size * 0.6);
+  });
 });

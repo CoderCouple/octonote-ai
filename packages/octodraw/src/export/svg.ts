@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { GlobalSettings } from '../dsl/types';
 import type { IconSet } from '../icons/resolve';
 import type { IconResolver } from '../icons/types';
-import type { DiagramLayout } from '../layout/layout';
+import { estimateTextWidth, type DiagramLayout, type TextMeasurer } from '../layout/layout';
 import { DiagramSvg, fontFamilyFor } from '../react/DiagramSvg';
 import type { Theme } from '../theme/tokens';
 
@@ -24,6 +24,8 @@ export interface RenderSvgOptions {
   /** Extra CSS, e.g. @font-face rules so the file renders with the right fonts elsewhere. */
   fontCss?: string;
   padding?: number;
+  /** Measures the title, so a long one widens the picture; the estimate when left out. */
+  measureText?: TextMeasurer;
   /** Render this instead of the architecture diagram (ERD / sequence views); `layout` then only provides the size. */
   body?: ReactElement;
 }
@@ -34,9 +36,10 @@ export interface RenderedSvg {
   height: number;
 }
 
-export function renderDiagramSvg({ layout, settings, theme, icons, iconSet = 'eraser', title, background, fontCss, padding = 24, body: customBody }: RenderSvgOptions): RenderedSvg {
+export function renderDiagramSvg({ layout, settings, theme, icons, iconSet = 'eraser', title, background, fontCss, padding = 24, measureText = estimateTextWidth, body: customBody }: RenderSvgOptions): RenderedSvg {
   const titleHeight = title ? theme.text.title.size * theme.text.title.lineHeight + 16 : 0;
-  const width = Math.ceil(layout.width + padding * 2);
+  const titleWidth = title ? measureText(title, { size: theme.text.title.size, weight: theme.text.title.weight }) : 0;
+  const width = Math.ceil(Math.max(layout.width, titleWidth) + padding * 2);
   const height = Math.ceil(layout.height + padding * 2 + titleHeight);
   const family = fontFamilyFor(theme, settings.typeface);
   const body = renderToStaticMarkup(

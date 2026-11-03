@@ -35,6 +35,7 @@ beforeEach(async () => {
     h.canvasDiagrams,
     h.settings,
     h.shares,
+    h.figures,
   );
   const controller = new McpController(h.oauth, tools, h.activity, h.noteComments);
   app = Fastify();

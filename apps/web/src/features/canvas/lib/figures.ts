@@ -6,7 +6,9 @@
  */
 import type { CanvasDocument, FigureItem } from "@octonote/octodraw";
 import { figureTitle } from "@octonote/octodraw";
+import { figureApiId } from "@octonote/shared";
 import { clientApi } from "@/lib/api/client-fetch";
+export { figureApiId };
 export {
   getFigureClientApi,
   listCanvasFiguresClientApi,
@@ -19,9 +21,6 @@ import { renderFigurePng } from "./render";
 /** Exported figures are capped at this width (px) to keep uploads small. */
 const MAX_EXPORT_WIDTH = 1600;
 
-/** The API's figure id format (`fig_<uuid>`). */
-const FIGURE_ID = /^fig_[0-9a-f-]{36}$/;
-
 /** FNV-1a — a cheap fingerprint to skip re-exporting unchanged figures. */
 function hash(text: string, seed = 0x811c9dc5): number {
   let h = seed;
@@ -30,21 +29,6 @@ function hash(text: string, seed = 0x811c9dc5): number {
     h = Math.imul(h, 0x01000193);
   }
   return h >>> 0;
-}
-
-/**
- * The figure's id in the API and in note embeds. Items already carrying a
- * `fig_` id (converted from older canvases) keep it; others get a stable id
- * derived from canvas + item id, so the same item always maps to the same
- * figure and copies on another canvas never collide.
- */
-export function figureApiId(canvasId: string, itemId: string): string {
-  if (FIGURE_ID.test(itemId)) return itemId;
-  const key = `${canvasId}:${itemId}`;
-  const hex = [0x811c9dc5, 0x01000193, 0x9e3779b9, 0x85ebca6b]
-    .map((seed) => hash(key, seed).toString(16).padStart(8, "0"))
-    .join("");
-  return `fig_${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
 export function figureItems(doc: CanvasDocument): FigureItem[] {
@@ -58,7 +42,8 @@ export function figureLabel(item: FigureItem): string {
 
 function fingerprint(item: FigureItem): string {
   // Only the code and hand placements change the picture, not where it sits.
-  return hash(JSON.stringify([item.source, item.placements ?? null])).toString(16);
+  // The version redraws stored pictures once when the way they're drawn changes (2: titles fit).
+  return hash(JSON.stringify([2, item.source, item.placements ?? null])).toString(16);
 }
 
 async function toBase64(blob: Blob): Promise<string> {

@@ -116,4 +116,18 @@ describe("assistant card outline", () => {
     expect(canvasOutline({ version: 1, items: [] })).toBeNull();
     expect(canvasOutline(null)).toBeNull();
   });
+
+  it("gives figures their stored picture, and their title when there is none", () => {
+    const doc = {
+      version: 1,
+      items: [
+        { id: "f1", type: "figure", x: 0, y: 0, w: 100, h: 100, source: "title Pipeline\ndirection down\nA > B" },
+        { id: "f2", type: "figure", x: 200, y: 0, w: 100, h: 100, source: "A > B" },
+      ],
+    };
+    const [a, b] = canvasOutline(doc, new Map([["f1", "https://x.supabase.co/f1.png?v=1"]]))!.shapes;
+    expect(a).toMatchObject({ kind: "figure", label: "Pipeline", imageUrl: "https://x.supabase.co/f1.png?v=1" });
+    expect(b).toMatchObject({ kind: "figure", label: "Figure" });
+    expect(b!.imageUrl).toBeUndefined();
+  });
 });

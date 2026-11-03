@@ -12,6 +12,8 @@ import { WorkspaceMembersRepository } from "../db/repository/workspace-members.r
 import type { ResourceKind } from "../model/sharing.model";
 import { CanvasDiagramService } from "./canvas-diagram.service";
 import { CanvasesService } from "./canvases.service";
+import { figureApiId } from "@octonote/shared";
+import { FiguresService } from "./figures.service";
 import { canvasOutline, type CanvasOutline } from "./lib/canvas-outline";
 import { resourceUrl } from "./lib/resource-url";
 import { NotebooksService } from "./notebooks.service";
@@ -97,7 +99,21 @@ export class McpToolsService {
     private readonly diagrams: CanvasDiagramService,
     private readonly settings: SharingSettingsService,
     private readonly shares: SharesService,
+    private readonly figures: FiguresService,
   ) {}
+
+  /** A canvas as the card draws it, figures as their stored pictures. */
+  private async outline(canvas: { id: string; document: unknown }, userId: string) {
+    const stored = new Map((await this.figures.listForCanvas(canvas.id, userId)).map((f) => [f.id, f.imageUrl]));
+    const raw = (canvas.document as { items?: { id?: unknown; type?: unknown }[] } | null)?.items;
+    const images = new Map<string, string>();
+    for (const it of Array.isArray(raw) ? raw : []) {
+      if (it?.type !== "figure" || typeof it.id !== "string") continue;
+      const url = stored.get(figureApiId(canvas.id, it.id));
+      if (url) images.set(it.id, url);
+    }
+    return canvasOutline(canvas.document, images);
+  }
 
   /** The person's own workspace (the one they own), as the CLI picks it. */
   async workspaceId(userId: string): Promise<string> {
@@ -223,7 +239,7 @@ export class McpToolsService {
     }
     if (kind === "canvas") {
       const { canvas } = await this.canvases.getOne(id, userId);
-      return { ...ref(kind, id, canvas.title), publicUrl, thumbnailUrl: canvas.thumbnailUrl, outline: canvasOutline(canvas.document) };
+      return { ...ref(kind, id, canvas.title), publicUrl, thumbnailUrl: canvas.thumbnailUrl, outline: await this.outline(canvas, userId) };
     }
     if (kind === "project") {
       const p = await this.projects.getOne(id, userId);
@@ -238,7 +254,7 @@ export class McpToolsService {
         version: note?.updatedAt.toISOString() ?? null,
         canComment: loaded ? editable(loaded.access.role) : false,
         thumbnailUrl: canvas?.thumbnailUrl ?? null,
-        outline: canvas ? canvasOutline(canvas.document) : null,
+        outline: canvas ? await this.outline(canvas, userId) : null,
       };
     }
     return { ...ref(kind, id, (await this.notebooks.getContents(id, userId)).notebook.name), publicUrl, items: await this.list(userId, { notebook: id }) };
