@@ -1,3 +1,4 @@
+import { supabaseUserFromToken } from "./supabase-token";
 import {
   CanActivate,
   ExecutionContext,
@@ -55,13 +56,13 @@ export class SupabaseAuthGuard implements CanActivate {
       return true;
     }
 
-    const { data, error } = await this.supabase.auth.getUser(token);
-    if (error || !data.user) {
+    const user = await supabaseUserFromToken(this.supabase, token);
+    if (!user) {
       throw new UnauthorizedException("Invalid Supabase session.");
     }
 
     // Downstream code always sees the prefixed `usr_<uuid>` form.
-    request.user = { ...data.user, id: buildIdFromUuid("usr", data.user.id) };
+    request.user = { ...user, id: buildIdFromUuid("usr", user.id) };
     recordActivity(this.moduleRef, request.user, request.headers);
     return true;
   }

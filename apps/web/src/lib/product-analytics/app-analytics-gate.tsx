@@ -18,9 +18,8 @@ export async function AppAnalyticsGate() {
   // Support viewing an account is neither them nor a user: never tracked.
   if (await serverSupportToken()) return null;
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: authData } = await supabase.auth.getClaims();
+  const user = authData?.claims ?? null;
   if (!user) return null;
   const [allowed, staff] = await Promise.all([
     serverFetch<{ analytics?: boolean }>("/me/preferences")

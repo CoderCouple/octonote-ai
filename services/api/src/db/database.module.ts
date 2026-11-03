@@ -20,6 +20,9 @@ export type Database = ReturnType<typeof drizzle<typeof schema>>;
         const client = postgres(url, {
           max: Number(process.env.DB_POOL_SIZE ?? 10),
           prepare: false,
+          // The session pooler allows 15 connections in all, and two copies overlap
+          // during a deploy: don't hold on to ones we aren't using.
+          idle_timeout: 30,
         });
         return drizzle(client, { schema });
       },

@@ -13,9 +13,8 @@ export type Loaded<T> = { ok: true; data: T; signedIn: boolean } | { ok: false; 
 
 export async function loadOrGate<T>(load: () => Promise<T>, returnTo: string): Promise<Loaded<T>> {
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: authData } = await supabase.auth.getClaims();
+  const user = authData?.claims ?? null;
   // A support session is "signed in" as the person being helped.
   const signedIn = Boolean(user) || Boolean(await serverSupportToken());
   try {

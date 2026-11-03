@@ -12,6 +12,10 @@ import { updateSession } from "./lib/supabase/middleware";
 /** The production deployment's Vercel host: one site for search engines. */
 const VERCEL_PRODUCTION_HOST = "octonote-ai.vercel.app";
 
+/** The marketing site. Published pages do read it: signed-in readers count by account. */
+const PUBLIC_PATH =
+  /^\/($|(about|brand|chatgpt|claude|pricing|privacy|students|terms|use-cases|vs|api\/geo)(\/|$)|cli$)/;
+
 export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
 
@@ -49,7 +53,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const response = await updateSession(request);
+  // The marketing pages don't read the session.
+  const response = PUBLIC_PATH.test(path) ? NextResponse.next() : await updateSession(request);
   // Remember where a sign-up came from: a creator's link (?ref=priya) on any
   // page, or the sign-up buttons on published pages. A creator's ref stays.
   if (request.nextUrl.searchParams.has("ref")) {

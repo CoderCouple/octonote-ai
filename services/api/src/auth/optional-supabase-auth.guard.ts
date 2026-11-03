@@ -1,3 +1,4 @@
+import { supabaseUserFromToken } from "./supabase-token";
 import { CanActivate, ExecutionContext, Inject, Injectable } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
@@ -43,9 +44,9 @@ export class OptionalSupabaseAuthGuard implements CanActivate {
         if (user) recordActivity(this.moduleRef, user, request.headers);
         return true;
       }
-      const { data, error } = await this.supabase.auth.getUser(token);
-      if (!error && data.user) {
-        request.user = { ...data.user, id: buildIdFromUuid("usr", data.user.id) };
+      const user = await supabaseUserFromToken(this.supabase, token);
+      if (user) {
+        request.user = { ...user, id: buildIdFromUuid("usr", user.id) };
         recordActivity(this.moduleRef, request.user, request.headers);
       }
     } catch {

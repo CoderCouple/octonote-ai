@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, isNull, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, type SQL } from "drizzle-orm";
 import { Database, DRIZZLE } from "../database.module";
 import { pages } from "../schemas/pages";
 import { users } from "../schemas/users";
@@ -44,6 +44,16 @@ export class PagesRepository extends BaseRepository<typeof pages> {
       .where(and(eq(pages.projectId, projectId), isNull(pages.deletedAt)))
       .limit(1);
     return rows[0] ?? null;
+  }
+
+  /** Each project's note, for lists: only what a card shows, not the document. */
+  async findActiveByProjects(projectIds: string[]) {
+    if (projectIds.length === 0) return new Map<string, { title: string; contentMd: string }>();
+    const rows = await this.db
+      .select({ projectId: pages.projectId, title: pages.title, contentMd: pages.contentMd })
+      .from(pages)
+      .where(and(inArray(pages.projectId, projectIds), isNull(pages.deletedAt)));
+    return new Map(rows.map((r) => [r.projectId!, { title: r.title, contentMd: r.contentMd }]));
   }
 
   /** True if the project already has a non-deleted page (1:1 invariant). */

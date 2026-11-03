@@ -26,9 +26,10 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Checked here against Supabase's public keys, refreshing an expired session
+  // first; no call to Supabase on every page.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
   const pathname = request.nextUrl.pathname;
 
   if (!user && pathname.startsWith("/workspace")) {

@@ -36,8 +36,11 @@ export class PagesService {
     pageId: string,
     actorUserId: string | null,
   ): Promise<{ page: Page; access: ResolvedAccess }> {
-    const access = await this.permissions.require(actorUserId, { kind: "page", id: pageId }, "view");
-    const row = await this.pagesRepo.findById(pageId);
+    // Together: nothing is returned unless the permission check passes too.
+    const [access, row] = await Promise.all([
+      this.permissions.require(actorUserId, { kind: "page", id: pageId }, "view"),
+      this.pagesRepo.findById(pageId),
+    ]);
     if (!row) throw NotFound("Page not found.");
     return { page: toPage(row), access };
   }

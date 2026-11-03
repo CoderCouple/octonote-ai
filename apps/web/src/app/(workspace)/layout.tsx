@@ -28,9 +28,8 @@ export default async function WorkspaceLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: authData } = await supabase.auth.getClaims();
+  const user = authData?.claims ?? null;
   const support = Boolean(await serverSupportToken());
   if (!user && !support) redirect("/login");
 

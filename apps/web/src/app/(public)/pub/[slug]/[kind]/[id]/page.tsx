@@ -34,12 +34,14 @@ export async function generateMetadata(props: Params): Promise<Metadata> {
 }
 
 export default async function PublishedChildPage(props: Params) {
-  const view = await load(props, true);
+  // Together: the notebook for the rail needn't wait for the item.
+  const { slug } = await props.params;
+  const [view, root] = await Promise.all([load(props, true), fetchPublishedRoot(slug)]);
   if (!view) notFound();
   return (
     <>
       <JsonLd data={articleJsonLd(view, await pathOf(props))} />
-      <PublicPage view={view} notebook={await notebookFor(view)} />
+      <PublicPage view={view} notebook={notebookFor(view, root)} />
     </>
   );
 }
@@ -48,9 +50,8 @@ export default async function PublishedChildPage(props: Params) {
  * Opened from inside a published notebook: load the notebook too, for the
  * left rail (desktop) and the notebook sheet (phones).
  */
-async function notebookFor(view: PublicView): Promise<NotebookContext | null> {
+function notebookFor(view: PublicView, root: PublicView | null): NotebookContext | null {
   if (view.root.kind !== "notebook") return null;
-  const root = await fetchPublishedRoot(view.root.slug);
   if (!root || root.resource.kind !== "notebook") return null;
   return {
     slug: view.root.slug,

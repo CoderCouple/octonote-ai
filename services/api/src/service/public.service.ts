@@ -252,9 +252,7 @@ export class PublicService {
       this.projectsRepo.listByNotebook(id),
     ]);
     // A project's card reads its own note (excerpt, reading time).
-    const projectNotes = await Promise.all(
-      projects.map((p) => this.pagesRepo.findActiveByProject(p.id)),
-    );
+    const noteByProject = await this.pagesRepo.findActiveByProjects(projects.map((p) => p.id));
     const noteMeta = (md: string, title: string) => ({
       excerpt: previewFromMarkdown(md, title, 220) || null,
       minutes: readingMinutes(md),
@@ -282,8 +280,8 @@ export class PublicService {
           excerpt: null,
           minutes: null,
         })),
-        ...projects.map((p, i) => {
-          const note = projectNotes[i];
+        ...projects.map((p) => {
+          const note = noteByProject.get(p.id);
           return {
             kind: "project" as const,
             id: p.id,
