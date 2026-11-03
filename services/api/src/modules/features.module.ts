@@ -19,6 +19,8 @@ import { NoteCommentsService } from "../service/note-comments.service";
 import { NoteMarkdownController } from "../api/v1/controller/note-markdown.controller";
 import { NoteMarkdownService } from "../service/note-markdown.service";
 import { AdminController } from "../api/v1/controller/admin.controller";
+import { AdminFeedbackController, FeedbackController } from "../api/v1/controller/feedback.controller";
+import { FeedbackService } from "../service/feedback.service";
 import {
   AdminSupportController,
   SupportAccessController,
@@ -60,6 +62,8 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
 @Module({
   controllers: [
     WorkspacesController,
+    FeedbackController,
+    AdminFeedbackController,
     NotebooksController,
     ProjectsController,
     PagesController,
@@ -86,6 +90,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     AdminSupportController,
   ],
   providers: [
+    FeedbackService,
     NotebooksService,
     ProjectsService,
     PagesService,

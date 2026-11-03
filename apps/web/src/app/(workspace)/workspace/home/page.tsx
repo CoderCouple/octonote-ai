@@ -9,6 +9,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { accessOf, CreateButton, notebookLookup } from "@/features/library";
 import { listCanvasesApi } from "@/features/canvas/api/canvases-api";
+import { FeedbackRow } from "@/features/feedback";
 import { HomeSearch, NewBadge, type SearchEntry } from "@/features/home";
 import { listNotebooksApi } from "@/features/notebooks/api/notebooks-api";
 import { listNotesApi } from "@/features/notes/api/notes-api";
@@ -263,6 +264,7 @@ export default async function HomePage() {
           />
         ))}
       </Section>
+      <FeedbackRow />
     </div>
   );
 }

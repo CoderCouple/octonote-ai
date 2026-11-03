@@ -20,3 +20,4 @@ export * from "./crm";
 export * from "./oauth";
 export * from "./support";
 export * from "./note-comments";
+export * from "./feedback";

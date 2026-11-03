@@ -293,6 +293,27 @@ export default function HomeTab() {
             })}
           </>
         )}
+        <View style={styles.feedback}>
+          <Text style={[styles.feedbackText, { color: c.textSecondary }]}>
+            Something wrong, or missing?
+          </Text>
+          <View style={styles.feedbackLinks}>
+            <Pressable
+              accessibilityRole="link"
+              hitSlop={10}
+              onPress={() => router.push("/feedback?kind=bug&from=Home")}
+            >
+              <Text style={[styles.feedbackLink, { color: c.text }]}>Report a bug</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="link"
+              hitSlop={10}
+              onPress={() => router.push("/feedback?kind=feature&from=Home")}
+            >
+              <Text style={[styles.feedbackLink, { color: c.text }]}>Request a feature</Text>
+            </Pressable>
+          </View>
+        </View>
       </ScrollView>
       <ActionSheet
         visible={createOpen}
@@ -467,6 +488,10 @@ function Card({
 }
 
 const styles = StyleSheet.create({
+  feedback: { alignItems: "center", gap: 8, paddingHorizontal: 16, paddingTop: 24 },
+  feedbackText: { fontSize: 14 },
+  feedbackLinks: { flexDirection: "row", gap: 20 },
+  feedbackLink: { fontSize: 14, fontWeight: "500", textDecorationLine: "underline" },
   search: {
     flexDirection: "row",
     alignItems: "center",

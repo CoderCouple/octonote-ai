@@ -8,7 +8,8 @@ import { useRouter, type Href } from "expo-router";
 import {
   ChevronRight,
   CreditCard,
-  LifeBuoy,
+  Bug,
+  Lightbulb,
   LogOut,
   Settings,
   Users,
@@ -24,11 +25,8 @@ import {
   useState,
 } from "react";
 import {
-  Alert,
   Animated,
   Easing,
-  Linking,
-  Platform,
   Modal,
   Pressable,
   StyleSheet,
@@ -37,8 +35,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Constants from "expo-constants";
-import { SUPPORT_EMAIL, supportMailto } from "@octonote/shared";
 import {
   useActiveMembership,
   useMe,
@@ -68,31 +64,6 @@ export function useNewShareCount() {
   const seen = useSharedSeenAt();
   return (shared.data ?? []).filter((i) => isNewShare(i.createdAt, seen))
     .length;
-}
-
-/**
- * Opens "Help & feedback": an email to support pre-filled with details that
- * help debugging (platform, versions, user and workspace); the user writes above them.
- */
-export function useOpenSupportEmail() {
-  const me = useMe().data;
-  const active = useActiveMembership();
-  return useCallback(() => {
-    void Linking.openURL(
-      supportMailto({
-        platform: Platform.OS === "ios" ? "iOS" : "Android",
-        appVersion: Constants.expoConfig?.version,
-        system: `${Platform.OS === "ios" ? "iOS" : "Android"} ${Platform.Version}`,
-        device: Constants.deviceName ?? undefined,
-        userId: me?.user.id,
-        email: me?.user.email,
-        workspaceName: active?.workspace.name,
-        workspaceId: active?.workspace.id,
-      }),
-    ).catch(() =>
-      Alert.alert("No email app", `Write to us at ${SUPPORT_EMAIL}.`),
-    );
-  }, [me, active]);
 }
 
 export function AccountPanelProvider({
@@ -128,7 +99,6 @@ function AccountPanel({
   const me = useMe().data;
   const active = useActiveMembership();
   const newShares = useNewShareCount();
-  const openSupportEmail = useOpenSupportEmail();
 
   useEffect(() => {
     if (visible) setMounted(true);
@@ -240,12 +210,15 @@ function AccountPanel({
         />
         <PanelRow
           c={c}
-          icon={LifeBuoy}
-          label="Help & feedback"
-          onPress={() => {
-            onClose();
-            openSupportEmail();
-          }}
+          icon={Bug}
+          label="Report a bug"
+          onPress={() => go("/feedback?kind=bug&from=Account panel")}
+        />
+        <PanelRow
+          c={c}
+          icon={Lightbulb}
+          label="Request a feature"
+          onPress={() => go("/feedback?kind=feature&from=Account panel")}
         />
         <View style={styles.spacer} />
         <Divider c={c} />

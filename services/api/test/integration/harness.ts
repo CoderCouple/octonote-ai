@@ -11,7 +11,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { buildIdFromUuid } from "@octonote/shared";
 import { ChangeEventsService } from "../../src/common/change-events.service";
 import type { CrmMail, CrmMailer, InboundEvent, ReceivedMail } from "../../src/common/crm-mailer";
-import type { EmailService, ShareEmailInput } from "../../src/common/email.service";
+import type { EmailService, FeedbackEmailInput, ShareEmailInput } from "../../src/common/email.service";
 import { SupportAccessService } from "../../src/service/support-access.service";
 import { NoteCommentsService } from "../../src/service/note-comments.service";
 import { PermissionsService } from "../../src/common/permissions.service";
@@ -52,6 +52,7 @@ import { ViewsRepository } from "../../src/db/repository/views.repository";
 import { NotebookPlacement } from "../../src/service/lib/notebook-placement";
 import { MeService } from "../../src/service/me.service";
 import { VotesService } from "../../src/service/votes.service";
+import { FeedbackService } from "../../src/service/feedback.service";
 import { FiguresService } from "../../src/service/figures.service";
 import { AccountService } from "../../src/service/account.service";
 import { PreferencesService } from "../../src/service/preferences.service";
@@ -68,6 +69,14 @@ const MIGRATIONS_DIR = join(__dirname, "../../drizzle");
 export class FakeEmail {
   sent: ShareEmailInput[] = [];
   failNext = false;
+  feedback: FeedbackEmailInput[] = [];
+  async sendFeedbackNotification(input: FeedbackEmailInput): Promise<void> {
+    if (this.failNext) {
+      this.failNext = false;
+      throw new Error("smtp down");
+    }
+    this.feedback.push(input);
+  }
   async sendShareNotification(input: ShareEmailInput): Promise<void> {
     if (this.failNext) {
       this.failNext = false;
@@ -143,6 +152,10 @@ export class FakeSupabase {
         this.uploads.set(`${bucket}/${path}`, { bytes, options });
         return { error: null };
       },
+      createSignedUrl: async (path: string, seconds: number) => ({
+        data: { signedUrl: `https://storage.test/signed/${bucket}/${path}?e=${seconds}` },
+        error: null,
+      }),
       getPublicUrl: (path: string) => ({
         data: { publicUrl: `https://storage.test/${bucket}/${path}` },
       }),
@@ -372,7 +385,8 @@ export async function createHarness() {
   const noteComments = new NoteCommentsService(db, services.pages, permissions);
   const noteMarkdown = new NoteMarkdownService(services.pages);
   const canvasDiagrams = new CanvasDiagramService(services.canvases);
-  return { pg, db, email, support, noteComments, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminTraffic, adminExplore, adminAudit, admin, partners, crm, crmMailer, productAnalytics, posthog, ...services };
+  const feedback = new FeedbackService(db, supabase as never, email as unknown as EmailService, planLimits, adminAudit);
+  return { pg, db, email, feedback, support, noteComments, supabase, stripe, signIn, noteMarkdown, canvasDiagrams, activity, adminMetrics, adminTraffic, adminExplore, adminAudit, admin, partners, crm, crmMailer, productAnalytics, posthog, ...services };
 }
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>;

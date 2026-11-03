@@ -35,6 +35,7 @@ export const ID_PREFIXES = {
   supportGrant: "sag",
   supportSession: "sup",
   noteComment: "cmt",
+  feedback: "fbk",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

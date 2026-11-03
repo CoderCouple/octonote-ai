@@ -44,7 +44,7 @@ export function Row({
   children,
 }: {
   label: string;
-  description?: string;
+  description?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (

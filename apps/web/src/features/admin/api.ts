@@ -14,6 +14,9 @@ import type {
   StudentDomainCreate,
   StudentDomainUpdate,
   CreatorDashboard,
+  FeedbackItem,
+  FeedbackList,
+  FeedbackUpdate,
   CrmEmailInput,
   CrmFollowupCreate,
   CrmFollowupUpdate,
@@ -164,3 +167,9 @@ export const updateCrmFollowup = (
 /** Explore: one measure grouped, split and filtered. */
 export const exploreAdmin = (q: ExploreQuery) =>
   clientApi.post<ExploreResult>("/admin/explore", q);
+
+/** Admin → Feedback. */
+export const listFeedback = () => clientApi.get<FeedbackList>("/admin/feedback");
+export const getFeedbackItem = (id: string) => clientApi.get<FeedbackItem>(`/admin/feedback/${id}`);
+export const updateFeedbackItem = (id: string, change: FeedbackUpdate) =>
+  clientApi.patch<FeedbackItem>(`/admin/feedback/${id}`, change);

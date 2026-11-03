@@ -49,17 +49,22 @@ export function PageBody({ children, wide = false }: { children: React.ReactNode
 export function Section({
   title,
   description,
+  action,
   children,
 }: {
   title: string;
   description?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-foreground-strong text-base font-semibold">{title}</h2>
-        {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-foreground-strong text-base font-semibold">{title}</h2>
+          {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
+        </div>
+        {action}
       </div>
       {children}
     </section>

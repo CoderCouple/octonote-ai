@@ -54,6 +54,8 @@ const COLUMNS: {
       { href: "/brand", label: "Brand assets" },
       ...(DEMO_URL ? [{ href: DEMO_URL, label: "Book a demo" }] : []),
       { href: `mailto:${SUPPORT_EMAIL}`, label: "Contact" },
+      { href: "/login?next=%2Fworkspace%2Fhome%3Ffeedback%3Dbug", label: "Report a bug" },
+      { href: "/login?next=%2Fworkspace%2Fhome%3Ffeedback%3Dfeature", label: "Request a feature" },
       ...PROFILES.map((p) => ({ href: p.url, label: p.label })),
       { href: "/privacy", label: "Privacy" },
       { href: "/terms", label: "Terms" },

@@ -16,6 +16,7 @@ import { getMeApi } from "@/features/workspaces/api/workspaces-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { serverSupportToken } from "@/lib/support-session-server";
 import { UpgradeNudge } from "@/features/billing";
+import { FeedbackProvider } from "@/features/feedback";
 import { AppAnalyticsGate } from "@/lib/product-analytics/app-analytics-gate";
 
 /** App pages never belong in search results. */
@@ -46,6 +47,12 @@ export default async function WorkspaceLayout({
   }
 
   return (
+    <FeedbackProvider
+      email={me.user.email}
+      userId={me.user.id}
+      workspaceId={active.workspace.id}
+      workspaceName={active.workspace.name}
+    >
     <SidebarProvider>
       <AppSidebar
         workspace={active.workspace}
@@ -69,5 +76,6 @@ export default async function WorkspaceLayout({
       </SidebarInset>
       <AppAnalyticsGate />
     </SidebarProvider>
+    </FeedbackProvider>
   );
 }

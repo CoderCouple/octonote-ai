@@ -3,7 +3,8 @@
 import {
   ChevronsUpDown,
   CreditCard,
-  LifeBuoy,
+  Bug,
+  Lightbulb,
   LogOut,
   Monitor,
   Moon,
@@ -14,8 +15,8 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 
+import { useFeedback } from "@/features/feedback";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { supportMailto } from "@octonote/shared";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -57,6 +58,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
+  const openFeedback = useFeedback();
   const router = useRouter();
 
   async function onSignOut() {
@@ -125,22 +127,13 @@ export function NavUser({
                 Plan &amp; billing
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => {
-                // Pre-filled with details that help debugging; the user writes above them.
-                window.location.href = supportMailto({
-                  platform: "Web",
-                  system: navigator.userAgent,
-                  userId: user.id,
-                  email: user.email,
-                  workspaceName: workspace.name,
-                  workspaceId: workspace.id,
-                  location: window.location.pathname,
-                });
-              }}
-            >
-              <LifeBuoy />
-              Help &amp; feedback
+            <DropdownMenuItem onSelect={() => openFeedback("bug")}>
+              <Bug />
+              Report a bug
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => openFeedback("feature")}>
+              <Lightbulb />
+              Request a feature
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-muted-foreground px-2 py-1 text-xs font-normal">

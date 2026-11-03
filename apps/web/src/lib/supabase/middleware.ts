@@ -49,9 +49,13 @@ export async function updateSession(request: NextRequest) {
     (pathname.startsWith("/login") || pathname.startsWith("/signup"))
   ) {
     const url = request.nextUrl.clone();
-    url.pathname =
-      safeNext(request.nextUrl.searchParams.get("next")) ?? "/workspace";
-    url.search = "";
+    // `next` can carry its own query, e.g. /workspace/home?feedback=bug.
+    const target = new URL(
+      safeNext(request.nextUrl.searchParams.get("next")) ?? "/workspace",
+      request.nextUrl.origin,
+    );
+    url.pathname = target.pathname;
+    url.search = target.search;
     return NextResponse.redirect(url);
   }
 

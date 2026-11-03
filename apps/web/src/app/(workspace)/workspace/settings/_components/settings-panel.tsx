@@ -74,7 +74,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { SUPPORT_EMAIL, supportMailto, type CreatorDashboard } from "@octonote/shared";
+import { SUPPORT_EMAIL, type CreatorDashboard } from "@octonote/shared";
+import { useFeedback } from "@/features/feedback";
 
 type Role = "OWNER" | "ADMIN" | "MEMBER";
 
@@ -206,7 +207,7 @@ export function SettingsPanel({
         <CliSection />
         <ConnectedAppsSection />
         {creator ? <CreatorSection creator={creator} /> : null}
-        <AboutSection user={user} workspace={workspace} />
+        <AboutSection />
         {isOwner ? (
           <DangerSection
             workspaceId={workspace.id}
@@ -610,26 +611,8 @@ function SupportAccessRow() {
   );
 }
 
-function AboutSection({
-  user,
-  workspace,
-}: {
-  user: SettingsPanelProps["user"];
-  workspace: SettingsPanelProps["workspace"];
-}) {
-  // Built on click so the time and page are current.
-  const openSupportEmail = (e: React.MouseEvent) => {
-    e.preventDefault();
-    window.location.href = supportMailto({
-      platform: "Web",
-      system: navigator.userAgent,
-      userId: user.id,
-      email: user.email,
-      workspaceName: workspace.name,
-      workspaceId: workspace.id,
-      location: window.location.pathname,
-    });
-  };
+function AboutSection() {
+  const openFeedback = useFeedback();
 
   return (
     <SectionShell
@@ -656,15 +639,32 @@ function AboutSection({
       </Row>
       <Row
         label="Help & feedback"
-        description="Opens an email with a few details that help us look into problems."
+        description={
+          <>
+            Tell us what&apos;s wrong or what&apos;s missing. You can also write to{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-4">
+              {SUPPORT_EMAIL}
+            </a>
+            .
+          </>
+        }
       >
-        <a
-          href={`mailto:${SUPPORT_EMAIL}`}
-          onClick={openSupportEmail}
-          className="text-foreground-strong text-sm font-medium underline underline-offset-4"
-        >
-          {SUPPORT_EMAIL}
-        </a>
+        <span className="flex flex-wrap justify-end gap-x-3 gap-y-1">
+          <button
+            type="button"
+            onClick={() => openFeedback("bug")}
+            className="text-foreground-strong text-sm font-medium underline underline-offset-4"
+          >
+            Report a bug
+          </button>
+          <button
+            type="button"
+            onClick={() => openFeedback("feature")}
+            className="text-foreground-strong text-sm font-medium underline underline-offset-4"
+          >
+            Request a feature
+          </button>
+        </span>
       </Row>
     </SectionShell>
   );

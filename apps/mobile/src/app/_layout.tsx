@@ -49,6 +49,10 @@ export default function RootLayout() {
                 />
                 <Stack.Screen name="plan" options={{ title: "Plan" }} />
                 <Stack.Screen
+                  name="feedback"
+                  options={{ title: "Send feedback", presentation: "modal" }}
+                />
+                <Stack.Screen
                   name="shared"
                   options={{ title: "Shared with you" }}
                 />

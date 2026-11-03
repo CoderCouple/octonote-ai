@@ -9,6 +9,8 @@
  */
 import {
   ADMIN_METRIC_RANGES,
+  FEEDBACK_KIND_LABEL,
+  type FeedbackList,
   type AdminMetricRange,
   type AdminMetrics,
   type AdminTraffic,
@@ -26,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { getAdminMetrics, getAdminTraffic } from "@/features/admin/api";
+import { getAdminMetrics, getAdminTraffic, listFeedback } from "@/features/admin/api";
 import {
   change,
   errorText,
@@ -177,6 +179,8 @@ function Dashboard({ m }: { m: AdminMetrics }) {
   const sourcesTotal = g.bySource.web + g.bySource.mobile + g.bySource.cli;
   return (
     <>
+      <FeedbackCard />
+
       <Section
         title="Growth"
         description="People signing up and coming back. Active counts started on Oct 14, 2026."
@@ -629,5 +633,49 @@ function SourceBar({
         ))}
       </div>
     </div>
+  );
+}
+
+/** Newest reports at a glance; the work happens in Admin → Feedback. */
+function FeedbackCard() {
+  const [data, setData] = useState<FeedbackList | null>(null);
+  useEffect(() => {
+    listFeedback()
+      .then(setData)
+      .catch(() => setData(null));
+  }, []);
+  if (!data) return null;
+  const latest = data.items.filter((i) => i.status === "new").slice(0, 3);
+  return (
+    <Section
+      title="Feedback"
+      description="What people have reported and asked for."
+      action={
+        <Link href="/admin/feedback" className="text-sm font-medium underline underline-offset-4">
+          View all
+        </Link>
+      }
+    >
+      <StatGrid>
+        <Stat label="New bugs" value={String(data.counts.newBugs)} />
+        <Stat label="New requests" value={String(data.counts.newRequests)} />
+        <Stat label="Planned" value={String(data.counts.planned)} />
+      </StatGrid>
+      {latest.length ? (
+        <ul className="mt-3 divide-y border-y text-sm">
+          {latest.map((i) => (
+            <li key={i.id}>
+              <Link
+                href={`/admin/feedback?f=${i.id}`}
+                className="hover:bg-muted/50 flex justify-between gap-3 px-1 py-2"
+              >
+                <span className="truncate">{i.message}</span>
+                <span className="text-muted-foreground shrink-0">{FEEDBACK_KIND_LABEL[i.kind]}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </Section>
   );
 }

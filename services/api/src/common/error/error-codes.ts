@@ -11,6 +11,7 @@ export const ErrorCode = {
   CONFLICT: "CONFLICT",
   /** A free-plan limit was hit (HTTP 402). Clients show the upgrade prompt. */
   PLAN_LIMIT: "PLAN_LIMIT",
+  RATE_LIMITED: "RATE_LIMITED",
   VALIDATION_ERROR: "VALIDATION_ERROR",
   SERVER_ERROR: "SERVER_ERROR",
   HTTP_EXCEPTION: "HTTP_EXCEPTION",

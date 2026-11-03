@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Handshake,
   Inbox,
+  MessageSquareWarning,
   LayoutDashboard,
   ScrollText,
   ShieldCheck,
@@ -22,7 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -47,6 +48,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { listFeedback } from "@/features/admin/api";
 import { cn } from "@/lib/utils";
 
 const GROUPS: {
@@ -60,6 +62,7 @@ const GROUPS: {
       { href: "/admin/explore", label: "Explore", icon: ChartColumnBig },
       { href: "/admin/inbox", label: "Inbox", icon: Inbox },
       { href: "/admin/followups", label: "Follow-ups", icon: CalendarCheck },
+      { href: "/admin/feedback", label: "Feedback", icon: MessageSquareWarning },
     ],
   },
   {
@@ -93,11 +96,13 @@ function NavButton({
   label,
   icon: Icon,
   active,
+  count,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
+  count?: number;
 }) {
   return (
     <SidebarMenuItem>
@@ -115,6 +120,17 @@ function NavButton({
         <Link href={href} aria-current={active ? "page" : undefined}>
           <Icon strokeWidth={active ? 2.2 : 1.8} />
           <span>{label}</span>
+          {count ? (
+            <span
+              aria-label={`${count} new`}
+              className={cn(
+                "ml-auto rounded-full px-1.5 text-xs font-semibold group-data-[collapsible=icon]:hidden",
+                active ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground",
+              )}
+            >
+              {count}
+            </span>
+          ) : null}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -129,6 +145,20 @@ function AdminSidebar({
   mainOrigin: string;
 }) {
   const path = usePathname();
+  const [newFeedback, setNewFeedback] = useState(0);
+  useEffect(() => {
+    let live = true;
+    listFeedback()
+      .then(({ counts }) => {
+        if (live) setNewFeedback(counts.newBugs + counts.newRequests);
+      })
+      .catch(() => {
+        // Only the badge is missing; the page itself reports errors.
+      });
+    return () => {
+      live = false;
+    };
+  }, [path]);
   return (
     <Sidebar collapsible="icon">
       {/* Exactly 48px with a bottom border: lines up with the top bar's border. */}
@@ -164,6 +194,7 @@ function AdminSidebar({
                   key={item.href}
                   {...item}
                   active={isActive(path, item.href)}
+                  count={item.href === "/admin/feedback" ? newFeedback : undefined}
                 />
               ))}
             </SidebarMenu>

@@ -30,6 +30,8 @@ import { projects } from "../db/schemas/projects";
 import { resourceShares } from "../db/schemas/sharing";
 import { users } from "../db/schemas/users";
 import { workspaceMembers, workspaces } from "../db/schemas/workspaces";
+import { feedbackItems } from "../db/schemas/feedback";
+import { FEEDBACK_BUCKET } from "./feedback.service";
 
 /** Must match apps/web/src/features/canvas/constants.ts. */
 export const THUMBNAIL_BUCKET = "canvas-thumbnails";
@@ -93,6 +95,12 @@ export class AccountService {
       heirs.set(ws.id, (owner ?? others[0]!).userId);
     }
 
+    const screenshots = (
+      await this.db
+        .select({ path: feedbackItems.screenshotPath })
+        .from(feedbackItems)
+        .where(eq(feedbackItems.userId, userId))
+    ).flatMap((r) => (r.path ? [r.path] : []));
     const thumbnails = doomed.length
       ? (
           await this.db
@@ -154,6 +162,11 @@ export class AccountService {
     if (thumbnails.length) {
       const { error } = await this.supabase.storage.from(THUMBNAIL_BUCKET).remove(thumbnails);
       if (error) this.logger.error(`Thumbnail cleanup failed for ${userId}`, error);
+    }
+    // Their reports went with the account (cascade); these can show private notes.
+    if (screenshots.length) {
+      const { error } = await this.supabase.storage.from(FEEDBACK_BUCKET).remove(screenshots);
+      if (error) this.logger.error(`Screenshot cleanup failed for ${userId}`, error);
     }
   }
 }

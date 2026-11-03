@@ -21,7 +21,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { initials, useOpenSupportEmail } from "@/components/account-panel";
+import { initials } from "@/components/account-panel";
 import { replaySplash } from "@/components/animated-splash";
 import { Field, Item, Section, SettingsScreen } from "@/components/settings-ui";
 import {
@@ -59,7 +59,6 @@ export default function Settings() {
   const active = useActiveMembership();
   const theme = useThemeChoice();
   const onboarding = useOnboarding();
-  const openSupportEmail = useOpenSupportEmail();
 
   const role = active?.membership.role;
   const canManage = role === "OWNER" || role === "ADMIN";
@@ -215,7 +214,8 @@ export default function Settings() {
             void WebBrowser.openBrowserAsync(`${env.WEB_URL}/privacy`)
           }
         />
-        <Item label="Help & feedback" onPress={openSupportEmail} />
+        <Item label="Report a bug" onPress={() => router.push("/feedback?kind=bug&from=Settings")} />
+        <Item label="Request a feature" onPress={() => router.push("/feedback?kind=feature&from=Settings")} />
         <Item label="Version" detail={Constants.expoConfig?.version ?? "—"} />
       </Section>
 

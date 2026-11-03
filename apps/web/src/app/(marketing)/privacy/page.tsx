@@ -15,7 +15,7 @@ const link = "text-foreground underline-offset-4 hover:underline";
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Notice" lastUpdated="October 30, 2026">
+    <LegalLayout title="Privacy Notice" lastUpdated="November 3, 2026">
       <p>
         This notice explains what information Octonote AI (&quot;we&quot;,
         &quot;us&quot;) collects when you use our website, web app and mobile
@@ -96,6 +96,18 @@ export default function PrivacyPage() {
           We never store the IP address or browser type, we skip known bots and
           link previews, and visits by a page&apos;s own owners and editors
           aren&apos;t counted.
+        </p>
+        <p>
+          <strong>Bug reports and feature requests.</strong> When you send one,
+          we keep what you wrote and any screenshot you add, along with your
+          account id, email address, workspace and plan, your device and
+          browser or app version, the page you were on, the time and your time
+          zone, and your rough location (city and country, worked out from your
+          connection; we don&apos;t keep the IP address). The form shows this
+          list. Only Octonote staff can read reports, and we use them only to
+          look into problems and decide what to build. Screenshots are stored
+          privately, so take care not to include anything you&apos;d rather not
+          share.
         </p>
         <p>
           <strong>Product analytics.</strong> To learn which features are used
@@ -272,7 +284,7 @@ export default function PrivacyPage() {
           When you delete a note or canvas it disappears from your workspace
           straight away; we may keep a copy for a limited time so mistakes can
           be recovered. When your account is deleted, we delete your account
-          information and content, apart from anything we must keep to meet
+          information, content and any bug reports or feature requests you sent, apart from anything we must keep to meet
           legal obligations, resolve disputes or prevent abuse. Server logs are
           kept for a short period by our hosting providers.
         </p>

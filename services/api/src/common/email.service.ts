@@ -3,6 +3,7 @@
  * logged instead, so local dev works without DNS setup.
  */
 import { Injectable, Logger } from "@nestjs/common";
+import { SUPPORT_EMAIL } from "@octonote/shared";
 import { Resend } from "resend";
 import type { ResourceKind } from "../model/sharing.model";
 
@@ -12,6 +13,14 @@ const KIND_LABEL: Record<ResourceKind, string> = {
   project: "project",
   notebook: "notebook",
 };
+
+export interface FeedbackEmailInput {
+  id: string;
+  kindLabel: string;
+  message: string;
+  fromEmail: string;
+  hasScreenshot: boolean;
+}
 
 export interface ShareEmailInput {
   to: string;
@@ -61,6 +70,25 @@ export class EmailService {
       this.logger.error(`Resend failed: ${error.name} — ${error.message}`);
       throw new Error(`Email delivery failed: ${error.message}`);
     }
+  }
+
+  /** A heads-up to the team; the report itself is in Admin → Feedback. */
+  async sendFeedbackNotification(input: FeedbackEmailInput): Promise<void> {
+    const subject = `${input.kindLabel}: ${input.message.replace(/\s+/g, " ").slice(0, 70)}`;
+    if (!this.client) {
+      this.logger.log(`RESEND_API_KEY missing — not emailing report ${input.id}.`);
+      return;
+    }
+    const { error } = await this.client.emails.send({
+      from: process.env.RESEND_FROM ?? "Octonote AI <onboarding@resend.dev>",
+      to: SUPPORT_EMAIL,
+      replyTo: input.fromEmail,
+      subject,
+      text:
+        `From ${input.fromEmail}${input.hasScreenshot ? " (with a screenshot)" : ""}\n\n${input.message}\n\n` +
+        `Open it: https://admin.octonote.ai/admin/feedback?f=${input.id}`,
+    });
+    if (error) throw new Error(`Email delivery failed: ${error.message}`);
   }
 }
 
