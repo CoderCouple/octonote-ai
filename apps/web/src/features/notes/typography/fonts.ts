@@ -175,14 +175,13 @@ export function lineHeightRatio(lh: NotesLineHeight): number {
 /** rem widths keyed by preset. Used as the article's `max-width`. */
 export function contentWidthRem(width: NotesContentWidth): number {
   switch (width) {
-    // ~65–75 characters a line at the default size: the comfortable measure.
     case "narrow":
       return 36;
     case "wide":
       return 52;
     case "medium":
     default:
-      return 42;
+      return 45;
   }
 }
 
