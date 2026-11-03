@@ -181,7 +181,7 @@ export function contentWidthRem(width: NotesContentWidth): number {
       return 52;
     case "medium":
     default:
-      return 45;
+      return 43.75;
   }
 }
 
