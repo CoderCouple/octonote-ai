@@ -35,7 +35,7 @@ export function emailDomainSuffixes(email: string): string[] {
 }
 
 /** Pro prices in USD. */
-export const PRO_PRICE: Record<BillingInterval, number> = { month: 10, year: 100 };
+export const PRO_PRICE: Record<BillingInterval, number> = { month: 20, year: 200 };
 
 /** Error code the API returns (HTTP 402) when a free limit is hit. */
 export const PLAN_LIMIT_CODE = "PLAN_LIMIT";

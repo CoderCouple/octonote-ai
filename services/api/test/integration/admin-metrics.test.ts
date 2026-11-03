@@ -102,6 +102,18 @@ describe("subscription history", () => {
 });
 
 describe("metrics", () => {
+  it("counts what each subscriber really pays when prices change", async () => {
+    const paying = (id: string, workspaceId: string, cents?: number) =>
+      h.billing.syncSubscription({
+        id, customer: "cus_x", status: "active", cancel_at_period_end: false, metadata: { workspaceId },
+        items: { data: [{ price: { unit_amount: cents, recurring: { interval: "month" } }, current_period_end: 1_900_000_000 }] },
+      } as never);
+    await paying("sub_new", alice.workspaceId, 2000); // the current price
+    await paying("sub_old", bob.workspaceId); // synced before prices were recorded: $10
+
+    expect((await h.adminMetrics.metrics(30)).revenue).toMatchObject({ mrrCents: 3000, paying: 2 });
+  });
+
   it("counts growth, revenue after discounts, codes and usage", async () => {
     // Activity: alice on web + mobile today, bob through the CLI.
     await h.activity.record(alice.id, "web");

@@ -1,6 +1,6 @@
 import { generateId } from "@octonote/shared";
 import { sql } from "drizzle-orm";
-import { boolean, check, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { workspaces } from "./workspaces";
 
@@ -18,6 +18,8 @@ export const workspaceBilling = pgTable("workspace_billing", {
   /** Stripe subscription status: active, trialing, past_due, canceled, … */
   status: text("status"),
   interval: text("interval"),
+  /** What Stripe charges per interval. Empty on subscriptions not synced since it was added. */
+  priceCents: integer("price_cents"),
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

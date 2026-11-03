@@ -38,7 +38,7 @@ export const PRICING_FAQS: { q: string; a: string }[] = [
   },
   {
     q: "How much is Pro?",
-    a: "$10 a month or $100 a year per workspace. Pro removes every limit: unlimited notes, canvases, projects, notebooks and workspaces.",
+    a: "$20 a month or $200 a year per workspace. Pro removes every limit: unlimited notes, canvases, projects, notebooks and workspaces.",
   },
   {
     q: "Do students get Pro for free?",

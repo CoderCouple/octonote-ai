@@ -84,7 +84,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         feature: "Paid plan",
-        us: "Pro $10/month per workspace, unlimited",
+        us: "Pro $20/month per workspace, unlimited",
         them: "Plus $10, Business $20 per member/month",
       },
     ],
@@ -122,8 +122,8 @@ export const COMPARISONS: Comparison[] = [
         a: "Not natively, as of October 2026. People embed boards from other tools or use integrations. Octonote AI has an infinite canvas built in, next to your notes.",
       },
       {
-        q: "Is Octonote AI cheaper than Notion?",
-        a: "For one person, Pro is $10 a month for unlimited notes, canvases, projects and notebooks, and publishing is included. Notion Plus is $10 per member per month, and a custom domain for Notion Sites is a paid add-on.",
+        q: "How does Octonote AI's price compare with Notion?",
+        a: "Pro is $20 a month per workspace for unlimited notes, canvases, projects and notebooks, with publishing included and no per-member charges. Notion Plus is $10 per member per month, so Notion costs less for one person and the same for two. A custom domain for Notion Sites is a paid add-on.",
       },
     ],
     sources: [
@@ -179,7 +179,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         feature: "Paid plan",
-        us: "Pro $10/month per workspace",
+        us: "Pro $20/month per workspace",
         them: "Professional $10/member/month yearly, $12 monthly",
       },
     ],
@@ -277,7 +277,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         feature: "Price",
-        us: "Free plan; Pro $10/month per workspace, unlimited",
+        us: "Free plan; Pro $20/month per workspace, unlimited",
         them: "App free, including for work",
       },
     ],
@@ -377,7 +377,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         feature: "Paid plan",
-        us: "Pro $10/month per workspace",
+        us: "Pro $20/month per workspace",
         them: "Plus $6/user/month",
       },
     ],
@@ -477,7 +477,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         feature: "Paid plan",
-        us: "Pro $10/month per workspace",
+        us: "Pro $20/month per workspace",
         them: "Starter $8, Business $20 per member/month (yearly)",
       },
     ],
@@ -492,7 +492,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         title: "Simple pricing for one person",
-        body: "Pro is $10 a month per workspace with no per-member charges, and the free plan has every feature.",
+        body: "Pro is $20 a month per workspace with no per-member charges, and the free plan has every feature.",
       },
     ],
     chooseUs: [

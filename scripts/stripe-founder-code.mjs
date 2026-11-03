@@ -77,6 +77,6 @@ if (promo) {
 }
 
 console.log(
-  `\nCustomers enter ${CODE} at Checkout: Pro $10/mo → $6/mo, $100/yr → $60/yr, forever.` +
+  `\nCustomers enter ${CODE} at Checkout: Pro $20/mo → $12/mo, $200/yr → $120/yr, forever.` +
     `\nLimit ${MAX_REDEMPTIONS} customers; expires Dec 31, 2026; first-time customers only.`,
 );

@@ -244,7 +244,9 @@ export class BillingService {
     const sub = await stripe.subscriptions.retrieve(subId);
     const item = sub.items.data[0];
     if (!item) throw BadRequest("This subscription has no plan to change.");
-    if (item.price.id === price) throw Conflict(`This workspace is already billed ${interval}ly.`);
+    // By interval, not price id: someone on an older price is still billed this way,
+    // and this mustn't quietly move them to the current price.
+    if (item.price.recurring?.interval === interval) throw Conflict(`This workspace is already billed ${interval}ly.`);
     await this.syncSubscription(
       await stripe.subscriptions.update(subId, {
         items: [{ id: item.id, price }],
@@ -306,6 +308,7 @@ export class BillingService {
       stripeSubscriptionId: sub.id,
       status: sub.status,
       interval: item?.price.recurring?.interval ?? null,
+      priceCents: item?.price.unit_amount ?? null,
       currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
       cancelAtPeriodEnd: sub.cancel_at_period_end,
       updatedAt: new Date(),

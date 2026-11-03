@@ -278,4 +278,13 @@ describe("billing page", () => {
     });
     expect(await statusOf(h.billing.changeInterval(alice.workspaceId, "year", alice.id))).toBe(409);
   });
+
+  it("doesn't move someone on an older price to the current one", async () => {
+    await becomePro(alice.workspaceId);
+    const sub = Object.values(h.stripe.subscriptionsById)[0] as { items: { data: { price: { id: string } }[] } };
+    sub.items.data[0]!.price.id = "price_from_before_the_increase";
+    h.stripe.lastSubscriptionUpdate = null as never;
+    expect(await statusOf(h.billing.changeInterval(alice.workspaceId, "month", alice.id))).toBe(409);
+    expect(h.stripe.lastSubscriptionUpdate).toBeNull();
+  });
 });

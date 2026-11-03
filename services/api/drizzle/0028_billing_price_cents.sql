@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_billing" ADD COLUMN "price_cents" integer;

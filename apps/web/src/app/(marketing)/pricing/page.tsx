@@ -8,7 +8,7 @@ import { PRICING_FAQS } from "../_data/faqs";
 
 const TITLE = "Pricing — Octonote AI";
 const DESCRIPTION =
-  "Octonote AI is free to start with every feature. Pro is $10 a month or $100 a year for unlimited notes, canvases, projects and workspaces. Students get Pro free for a year.";
+  "Octonote AI is free to start with every feature. Pro is $20 a month or $200 a year for unlimited notes, canvases, projects and workspaces. Students get Pro free for a year.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },

@@ -8,7 +8,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
   discountedCents,
-  PRO_PRICE,
   type AdminMetrics,
   type ItemKind,
 } from "@octonote/shared";
@@ -63,6 +62,9 @@ function staffFilter(exclude: boolean): StaffFilter {
     share: sql` and (granted_by_user_id is null or granted_by_user_id not in ${staff})`,
   };
 }
+
+/** What subscriptions cost before their price was recorded (`price_cents`). */
+const LEGACY_PRO_PRICE = { month: 10, year: 100 };
 
 @Injectable()
 export class AdminMetricsService {
@@ -362,7 +364,7 @@ export class AdminMetricsService {
       );
     return rows.map(({ billing, code, redeemedAt }) => {
       const interval = billing.interval === "year" ? "year" : "month";
-      const list = PRO_PRICE[interval] * 100;
+      const list = billing.priceCents ?? LEGACY_PRO_PRICE[interval] * 100;
       const paid = discountedCents(
         list,
         code && redeemedAt ? discountInForce(code, redeemedAt) : null,

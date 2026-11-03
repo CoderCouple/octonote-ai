@@ -358,7 +358,7 @@ export const CRM_TEMPLATES: { id: string; label: string; subject: string; body: 
     id: "pro-ending",
     label: "Free Pro ends soon",
     subject: "Your free Pro ends soon",
-    body: "Hi {first},\n\nA quick heads-up: your free Pro ends soon. Everything you made stays either way. If you'd like to keep Pro, it's $10 a month or $100 a year in Settings, Plan & billing.\n\n{me}\nCo-founder, Octonote AI",
+    body: "Hi {first},\n\nA quick heads-up: your free Pro ends soon. Everything you made stays either way. If you'd like to keep Pro, it's $20 a month or $200 a year in Settings, Plan & billing.\n\n{me}\nCo-founder, Octonote AI",
   },
 ];
 
