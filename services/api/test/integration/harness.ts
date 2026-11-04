@@ -284,8 +284,8 @@ export async function createHarness() {
   const promotions = new PromotionsService(db, planLimits, workspaces, stripe as never, productAnalytics);
   const adminAudit = new AdminAuditService(db);
   const partners = new PartnersService(db, promotions, planLimits, adminAudit);
-  const figures = new FiguresService(db, permissions, workspaces, sharingRepo, changeEvents, supabase as never);
 
+  const figures = new FiguresService(db, permissions, workspaces, sharingRepo, changeEvents, supabase as never);
   const services = {
     cliTokens: new CliTokensService(new CliTokensRepository(db), new UsersRepository(db), productAnalytics),
     oauth: new OAuthService(new OAuthRepository(db), new UsersRepository(db), productAnalytics),
@@ -299,6 +299,7 @@ export async function createHarness() {
       workspaces,
       changeEvents,
       planLimits,
+      figures,
     ),
     projects: new ProjectsService(
       projectsRepo,

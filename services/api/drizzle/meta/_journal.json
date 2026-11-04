@@ -225,6 +225,13 @@
       "when": 1793830550796,
       "tag": "0031_figure_links_in_canvases",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793833341340,
+      "tag": "0032_figure_records_on_save",
+      "breakpoints": true
     }
   ]
 }

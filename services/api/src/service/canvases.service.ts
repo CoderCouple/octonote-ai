@@ -14,6 +14,7 @@ import { emptyOctodrawDocument, isOctodrawDocument } from "@octonote/content/ser
 import { NotebookPlacement } from "./lib/notebook-placement";
 import { WorkspacesService } from "./workspaces.service";
 import { PlanLimitsService } from "../common/plan-limits.service";
+import { FiguresService } from "./figures.service";
 import { documentWithFigureLinks, withFigureLinks } from "./lib/figure-urls";
 
 const MEMBER_ROLES = ["OWNER", "ADMIN", "MEMBER"] as const;
@@ -48,6 +49,7 @@ export class CanvasesService {
     private readonly workspacesService: WorkspacesService,
     private readonly changeEvents: ChangeEventsService,
     private readonly planLimits: PlanLimitsService,
+    private readonly figures: FiguresService,
   ) {}
 
   /** Who can be @mentioned in the canvas's comments: people with access, names only. Editors only. */
@@ -137,6 +139,9 @@ export class CanvasesService {
       updatedAt: new Date(),
     });
     if (!updated) throw NotFound("Canvas not found.");
+    if (patch.document !== undefined) {
+      await this.figures.syncCanvasRows(canvasId, access.workspaceId, patch.document, actorUserId);
+    }
     await this.changeEvents.record({
       workspaceId: access.workspaceId,
       userId: actorUserId,

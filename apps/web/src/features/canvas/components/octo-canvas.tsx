@@ -27,6 +27,7 @@ import {
   listCanvasFiguresClientApi,
   syncFigures,
 } from "../lib/figures";
+import { thumbnailIsStale } from "../constants";
 import { CANVAS_THEMES, useCanvasColorScheme } from "../lib/octodraw-theme";
 import { rearrangeDocument, type RearrangeDirection } from "../lib/rearrange";
 import { uploadCanvasThumbnail } from "../lib/thumbnail";
@@ -51,6 +52,8 @@ export interface OctoCanvasProps {
   canvasId: string;
   initialDocument: unknown;
   initialThumbnailUrl?: string | null;
+  /** A project's canvas: its picture is the first figure. */
+  inProject?: boolean;
   /** Viewers: no editing, no saving. */
   readOnly?: boolean;
   /** When true, freehand pen strokes snap to clean shapes. */
@@ -66,6 +69,7 @@ export function OctoCanvas({
   canvasId,
   initialDocument,
   initialThumbnailUrl = null,
+  inProject = false,
   readOnly = false,
   autoShape = false,
   onSaveStateChange,
@@ -124,6 +128,7 @@ export function OctoCanvas({
             docRef.current,
             canvasId,
             thumbnailUrl.current,
+            { inProject },
           );
           if (url) thumbnailUrl.current = url;
         } catch (err) {
@@ -132,7 +137,7 @@ export function OctoCanvas({
         }
       }, delay);
     },
-    [canvasId],
+    [canvasId, inProject],
   );
 
   const scheduleFigureSync = useCallback(() => {
@@ -195,7 +200,7 @@ export function OctoCanvas({
   useEffect(() => {
     if (readOnly) return;
     // Canvases created before their first thumbnail get one on open.
-    if (!thumbnailUrl.current && initial.items.length > 0) scheduleThumbnail(2000);
+    if (thumbnailIsStale(thumbnailUrl.current) && initial.items.length > 0) scheduleThumbnail(2000);
     for (const item of figureItems(initial))
       ownedFigures.current.add(figureApiId(canvasId, item.id));
     // Learn which figures the API already has, then catch up any that changed.

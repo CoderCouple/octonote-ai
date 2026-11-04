@@ -46,6 +46,24 @@ function fingerprint(item: FigureItem): string {
   return hash(JSON.stringify([2, item.source, item.placements ?? null])).toString(16);
 }
 
+/** Draws one figure from its code and saves the picture. */
+export async function uploadFigurePicture(
+  canvasId: string,
+  figureId: string,
+  title: string,
+  draw: { source: string; placements?: unknown },
+): Promise<void> {
+  const item = { ...draw, id: figureId, type: "figure" } as unknown as FigureItem;
+  const { blob, width, height } = await renderFigurePng(item, MAX_EXPORT_WIDTH);
+  await clientApi.put(`/canvases/${canvasId}/figures/${figureId}`, {
+    title,
+    width,
+    height,
+    contentHash: fingerprint(item),
+    png: await toBase64(blob),
+  });
+}
+
 async function toBase64(blob: Blob): Promise<string> {
   const buf = new Uint8Array(await blob.arrayBuffer());
   let binary = "";

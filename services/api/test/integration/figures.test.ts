@@ -259,6 +259,69 @@ describe("canvas figures", () => {
     expect(saved.thumbnailUrl).toMatch(new RegExp(`/f/${id}\\.png\\?v=1$`));
   });
 
+  describe("figures exist from the moment a canvas is saved", () => {
+    const FIG = "fig_5915b249-fe9c-42f2-ac0f-1964f8ee682a";
+    const onCanvas = (id = FIG) => ({
+      version: 1,
+      items: [{ id, type: "figure", x: 0, y: 0, w: 10, h: 10, source: "title Vocab\nA > B", autoSize: true }],
+    });
+    const embed = { blocks: [{ type: "figure", props: { figureId: FIG } }] };
+    const save = (id: string, document: unknown) => h.canvases.update(id, { document } as never, alice.id);
+
+    it("a canvas saved without ever being opened still has working links for its owner", async () => {
+      const c = await canvas();
+      await save(c.id, onCanvas());
+      const view = await h.figures.get(FIG, alice.id);
+      expect(view).toMatchObject({ title: "Vocab", imageUrl: null, canEdit: true });
+      expect(view.draw?.source).toContain("A > B");
+      expect(await statusOf(h.figures.get(FIG, bob.id))).toBe(404);
+      expect(await statusOf(h.figures.get(FIG, null))).toBe(404);
+    });
+
+    it("once the picture exists there's nothing left to draw", async () => {
+      const c = await canvas();
+      await save(c.id, onCanvas());
+      await h.figures.upsert(c.id, FIG, input(), alice.id);
+      expect((await h.figures.get(FIG, alice.id)).draw).toBeNull();
+    });
+
+    it("a viewer can't draw it, and isn't handed the code", async () => {
+      const c = await canvas();
+      await save(c.id, onCanvas());
+      await h.shares.add({ resourceKind: "canvas", resourceId: c.id, email: bob.email, role: "viewer" }, alice);
+      expect(await h.figures.get(FIG, bob.id)).toMatchObject({ canEdit: false, draw: null });
+    });
+
+    it("removes records with no picture when the figure goes, and keeps ones with a picture", async () => {
+      const c = await canvas();
+      const pictured = generateId("fig");
+      await h.figures.upsert(c.id, pictured, input(), alice.id);
+      await save(c.id, onCanvas());
+      await save(c.id, { version: 1, items: [] });
+      expect(await statusOf(h.figures.get(FIG, alice.id))).toBe(404);
+      expect((await h.figures.get(pictured, alice.id)).title).toBe("Login flow");
+    });
+
+    it("a note written before its canvas still makes the figure public when published", async () => {
+      const n = await h.pages.create(alice.workspaceId, { title: "N" }, alice.id);
+      await h.pages.update(n.id, { document: embed }, alice.id);
+      const c = await canvas();
+      await save(c.id, onCanvas());
+      await h.settings.setPublished("page", n.id, true, alice.id);
+      expect((await h.figures.get(FIG, null)).public).toBe(true);
+    });
+
+    it("someone can't claim a figure by naming its id in their own note before it exists", async () => {
+      const mine = await h.pages.create(bob.workspaceId, { title: "Mine" }, bob.id);
+      await h.pages.update(mine.id, { document: embed }, bob.id);
+      await h.settings.setPublished("page", mine.id, true, bob.id);
+      const c = await canvas();
+      await save(c.id, onCanvas());
+      expect(await statusOf(h.figures.get(FIG, null))).toBe(404);
+      expect(await statusOf(h.figures.get(FIG, bob.id))).toBe(404);
+    });
+  });
+
   it("deletes the row and its image", async () => {
     const c = await canvas();
     const id = generateId("fig");

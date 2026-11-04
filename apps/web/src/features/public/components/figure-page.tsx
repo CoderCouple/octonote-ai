@@ -3,9 +3,10 @@
 /** A figure's own page, /f/<id>: the picture, its links, and publishing for its owner. */
 import { Check, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { setFigurePublishedClientApi, type FigureView } from "@/features/canvas/api/figures-client-api";
+import { getFigureWithPicture } from "@/features/canvas/lib/figure-picture";
 import {
   FIGURE_LINK_LABELS,
   figureAudience,
@@ -19,6 +20,19 @@ export function FigurePage({ figure: initial }: { figure: FigureView }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const links = figureLinks(figure);
+
+  // A canvas made by the CLI or an assistant: an editor's browser draws the picture.
+  const drawable = !initial.imageUrl && Boolean(initial.draw);
+  useEffect(() => {
+    if (!drawable) return;
+    let live = true;
+    void getFigureWithPicture(initial.id)
+      .then((next) => live && setFigure(next))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [drawable, initial.id]);
 
   const togglePublished = async () => {
     setBusy(true);
@@ -56,7 +70,7 @@ export function FigurePage({ figure: initial }: { figure: FigureView }) {
           />
         ) : (
           <p className="py-12 text-center text-sm text-neutral-600">
-            This figure's picture appears once its canvas has been opened.
+            {figure.draw ? "Drawing this figure…" : "This figure's picture appears once its canvas has been opened."}
           </p>
         )}
       </div>

@@ -1,7 +1,5 @@
-import {
-  getCanvasSummaryClientApi,
-  getFigureClientApi,
-} from "@/features/canvas";
+import { getCanvasSummaryClientApi } from "@/features/canvas";
+import { getFigureWithPicture } from "@/features/canvas/lib/figure-picture";
 import type { CanvasReferenceResolver } from "./canvas-reference-context";
 
 /** In-app: the permission-checked summary endpoint; project canvases open inside their project. */
@@ -21,7 +19,7 @@ export const appCanvasResolver: CanvasReferenceResolver = {
   },
   resolveFigure: async (figureId) => {
     try {
-      const f = await getFigureClientApi(figureId);
+      const f = await getFigureWithPicture(figureId);
       return {
         title: f.title,
         imageUrl: f.imageUrl,

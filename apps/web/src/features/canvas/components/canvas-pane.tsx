@@ -180,6 +180,7 @@ export function CanvasPane({
           canvasId={canvas.id}
           initialDocument={canvas.document}
           initialThumbnailUrl={canvas.thumbnailUrl}
+          inProject={Boolean(canvas.projectId)}
           readOnly={!editable}
           autoShape={autoShape}
           onSaveStateChange={setSaveState}

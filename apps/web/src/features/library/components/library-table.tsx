@@ -38,6 +38,7 @@ import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
 import { EmptyTableState, type EmptyKind } from "@/components/empty-state";
 import { AnalyticsSheet } from "@/features/analytics";
 import { ThumbnailBackfill } from "@/features/canvas/components/thumbnail-backfill";
+import { thumbnailIsStale } from "@/features/canvas/constants";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -245,7 +246,7 @@ export function LibraryTable({
             .filter(
               (r) =>
                 (r.kind === "canvas" || r.kind === "project") &&
-                !r.thumbnailUrl,
+                thumbnailIsStale(r.thumbnailUrl),
             )
             .map((r) => r.id)}
         />

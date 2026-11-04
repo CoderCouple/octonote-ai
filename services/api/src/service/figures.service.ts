@@ -13,6 +13,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { figureApiId } from "@octonote/shared";
 import { SUPABASE_CLIENT } from "../auth/supabase.tokens";
 import { BadRequest, Conflict, NotFound, ServerError } from "../common/error/error-factory";
 import { ChangeEventsService } from "../common/change-events.service";
@@ -65,6 +66,10 @@ export interface FigureView extends Omit<FigureDto, "canvasId"> {
   canPublish: boolean;
   /** Anyone can open it, signed out. */
   public: boolean;
+  /** Can change the canvas, so their browser can draw a missing picture. */
+  canEdit: boolean;
+  /** What to draw, when the picture is missing and this viewer can make it. */
+  draw: { source: string; placements?: unknown } | null;
 }
 
 export interface FigureImage {
@@ -182,13 +187,45 @@ export class FiguresService {
     const canvasAccess = await this.viewAccess(actorUserId, { kind: "canvas", id: row.canvasId });
     const inApp = canvasAccess ? await this.canvasAppHref(row.canvasId) : null;
     const canvasHref = inApp ?? (await this.canvasPublicHref(row.canvasId));
+    const canEdit = canvasAccess?.role === "owner" || canvasAccess?.role === "editor";
     return {
       ...this.toDto(row),
       canvasId: canvasHref ? row.canvasId : null,
       canvasHref,
       canPublish: canvasAccess?.role === "owner",
       public: await this.canSee(row, null),
+      canEdit,
+      draw: canEdit && !row.imagePath ? await this.drawing(row) : null,
     };
+  }
+
+  /**
+   * Gives every figure on a saved canvas its record, so it has a link from the
+   * start. Pictures come later. Records with no picture whose figure has gone are
+   * removed; ones with a picture stay, since notes may still show them.
+   */
+  async syncCanvasRows(canvasId: string, workspaceId: string, document: unknown, actorUserId: string): Promise<void> {
+    const raw = (document as { items?: { id?: unknown; type?: unknown; source?: unknown }[] } | null)?.items;
+    const wanted = new Map<string, string>();
+    for (const item of Array.isArray(raw) ? raw : []) {
+      if (item?.type !== "figure" || typeof item.id !== "string") continue;
+      const title = /^\s*title\s+(.+)$/m.exec(String(item.source ?? ""))?.[1]?.trim();
+      wanted.set(figureApiId(canvasId, item.id), title || "Figure");
+    }
+    const existing = await this.db
+      .select({ id: canvasFigures.id, imagePath: canvasFigures.imagePath })
+      .from(canvasFigures)
+      .where(eq(canvasFigures.canvasId, canvasId));
+    const gone = existing.filter((r) => !r.imagePath && !wanted.has(r.id)).map((r) => r.id);
+    if (gone.length) await this.db.delete(canvasFigures).where(inArray(canvasFigures.id, gone));
+    const had = new Set(existing.map((r) => r.id));
+    const missing = [...wanted].filter(([id]) => !had.has(id));
+    if (missing.length) {
+      await this.db
+        .insert(canvasFigures)
+        .values(missing.map(([id, title]) => ({ id, canvasId, workspaceId, title, createdByUserId: actorUserId })))
+        .onConflictDoNothing();
+    }
   }
 
   /** The stored picture, if you can see the figure. Skips the download when `ifNoneMatch` is current. */
@@ -254,8 +291,8 @@ export class FiguresService {
 
   /**
    * Records which figures a note shows, after a save. A new one only counts if
-   * the person saving could already see it, or anyone could write a figure's id
-   * into their own note, publish it, and expose someone's private figure.
+   * the person saving can see it, or anyone could write a figure's id into their
+   * own note, publish it, and expose someone's private figure.
    */
   async syncNoteEmbeds(pageId: string, document: unknown, actorUserId: string): Promise<void> {
     const ids = new Set(figureIdsIn(document));
@@ -273,10 +310,11 @@ export class FiguresService {
     for (const figureId of ids) {
       if (had.has(figureId)) continue;
       const row = await this.row(figureId);
-      if (!row || !(await this.canSee(row, actorUserId))) continue;
+      // Not there yet (the note was written first): checked once someone asks for it.
+      if (row && !(await this.canSee(row, actorUserId))) continue;
       await this.db
         .insert(figureEmbeds)
-        .values({ pageId, figureId, addedByUserId: actorUserId })
+        .values({ pageId, figureId, addedByUserId: actorUserId, verified: Boolean(row) })
         .onConflictDoNothing();
     }
   }
@@ -291,14 +329,37 @@ export class FiguresService {
   private async canSee(row: Row, actorUserId: string | null): Promise<boolean> {
     if (row.publishedAt) return true;
     if (await this.canRead(actorUserId, { kind: "canvas", id: row.canvasId })) return true;
-    const embeds = await this.db
-      .select({ pageId: figureEmbeds.pageId })
-      .from(figureEmbeds)
-      .where(eq(figureEmbeds.figureId, row.id));
-    for (const { pageId } of embeds) {
-      if (await this.canRead(actorUserId, { kind: "page", id: pageId })) return true;
+    const embeds = await this.db.select().from(figureEmbeds).where(eq(figureEmbeds.figureId, row.id));
+    for (const embed of embeds) {
+      if (!(await this.canRead(actorUserId, { kind: "page", id: embed.pageId }))) continue;
+      if (embed.verified || (await this.verifyEmbed(row, embed))) return true;
     }
     return false;
+  }
+
+  /** A note saved before its figure existed counts only if whoever saved it can see the figure. */
+  private async verifyEmbed(row: Row, embed: typeof figureEmbeds.$inferSelect): Promise<boolean> {
+    if (!embed.addedByUserId || !(await this.canRead(embed.addedByUserId, { kind: "canvas", id: row.canvasId }))) {
+      return false;
+    }
+    await this.db
+      .update(figureEmbeds)
+      .set({ verified: true })
+      .where(and(eq(figureEmbeds.pageId, embed.pageId), eq(figureEmbeds.figureId, row.id)));
+    return true;
+  }
+
+  private async drawing(row: Row): Promise<FigureView["draw"]> {
+    const [canvas] = await this.db
+      .select({ document: canvases.document })
+      .from(canvases)
+      .where(eq(canvases.id, row.canvasId))
+      .limit(1);
+    const items = (canvas?.document as { items?: { id?: unknown; type?: unknown; source?: unknown; placements?: unknown }[] } | null)?.items;
+    const item = (Array.isArray(items) ? items : []).find(
+      (i) => i?.type === "figure" && typeof i.id === "string" && figureApiId(row.canvasId, i.id) === row.id,
+    );
+    return typeof item?.source === "string" ? { source: item.source, placements: item.placements } : null;
   }
 
   private async canRead(actorUserId: string | null, locator: ResourceLocator): Promise<boolean> {

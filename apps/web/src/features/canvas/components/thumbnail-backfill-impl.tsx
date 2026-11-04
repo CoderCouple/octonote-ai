@@ -42,7 +42,10 @@ export function ThumbnailBackfillImpl({
           const canvas = await clientApi.get<Canvas>(`/canvases/${canvasId}`);
           const doc = toCanvasDocument(canvas.document);
           if (doc.items.length === 0) continue;
-          if (await uploadCanvasThumbnail(doc, canvasId, null)) madeAny = true;
+          const made = await uploadCanvasThumbnail(doc, canvasId, canvas.thumbnailUrl, {
+            inProject: Boolean(canvas.projectId),
+          });
+          if (made) madeAny = true;
         } catch (err) {
           // Viewers can't update the canvas; empty or broken ones are skipped.
           console.warn("Thumbnail backfill skipped", id, err);

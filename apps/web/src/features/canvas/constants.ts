@@ -10,6 +10,13 @@ export const canvasKeys = {
 
 /** Supabase Storage bucket for canvas PNG thumbnails (see supabase/storage.sql). */
 export const THUMBNAIL_BUCKET = "canvas-thumbnails";
+/** Marks thumbnails drawn the current way; change it to redraw every older one. */
+export const THUMBNAIL_FILE_PREFIX = "v2-";
+
+/** Missing, or drawn the old way. Old ones keep showing until the new one is ready. */
+export function thumbnailIsStale(url: string | null | undefined): boolean {
+  return !url?.includes(`/${THUMBNAIL_FILE_PREFIX}`);
+}
 
 /**
  * Fired on a note (`data-figure-drop-zone`) when a figure is dragged there

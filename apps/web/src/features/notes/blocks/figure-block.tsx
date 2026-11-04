@@ -140,7 +140,8 @@ function FigureCard({
 
   const shown = {
     title: live.data?.title ?? title,
-    imageUrl: live.data?.imageUrl ?? imageUrl,
+    // Once looked up, trust the answer: the stored address has no picture behind it yet.
+    imageUrl: live.data ? live.data.imageUrl : imageUrl,
     width: live.data?.width || width,
     height: live.data?.height || height,
   };
@@ -229,9 +230,13 @@ function FigureCard({
             </button>
           ) : null}
           {figureId ? (
-            <Link href={`/f/${figureId}`} className={`${ACTION} lg:opacity-0`}>
+            <Link
+              href={`/f/${figureId}`}
+              aria-label="Figure link"
+              title="Figure link"
+              className={`${ACTION} lg:opacity-0`}
+            >
               <Link2 className="size-3.5" />
-              Figure link
             </Link>
           ) : null}
         </div>

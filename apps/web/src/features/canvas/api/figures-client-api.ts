@@ -23,6 +23,9 @@ export interface FigureView extends Omit<FigureSummary, "canvasId"> {
   canPublish: boolean;
   /** Anyone can open it, signed out. */
   public: boolean;
+  canEdit: boolean;
+  /** What to draw, when the picture is missing and this viewer can make it. */
+  draw: { source: string; placements?: unknown } | null;
 }
 
 export function listCanvasFiguresClientApi(canvasId: string) {

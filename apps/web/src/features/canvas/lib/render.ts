@@ -61,6 +61,15 @@ async function inlineImages(doc: CanvasDocument): Promise<CanvasDocument> {
   return { ...doc, items };
 }
 
+/**
+ * Pictures normally stop at 2x. With `fill` a small drawing is also drawn up to
+ * `maxWidth`: it's vector, so it stays sharp instead of being stretched later.
+ */
+function pngScale(width: number, maxWidth: number, fill = false): number {
+  const fit = maxWidth / Math.max(1, width);
+  return fill ? Math.min(8, fit) : Math.min(2, fit);
+}
+
 /** `title`: false on the canvas, where the title is drawn above the figure's border. */
 function figureSvg(item: FigureItem, title = true) {
   return renderSourceSvg(item.source, {
@@ -75,7 +84,7 @@ function figureSvg(item: FigureItem, title = true) {
 /** The canvas (or some of its items) as a PNG at most `maxWidth` pixels wide. */
 export async function renderCanvasPng(
   doc: CanvasDocument,
-  { ids, maxWidth }: { ids?: string[]; maxWidth: number },
+  { ids, maxWidth, fill }: { ids?: string[]; maxWidth: number; fill?: boolean },
 ): Promise<Blob | null> {
   const wanted = ids ? new Set(ids) : null;
   const items = wanted ? doc.items.filter((i) => wanted.has(i.id)) : doc.items;
@@ -100,13 +109,14 @@ export async function renderCanvasPng(
     ids,
     iconSet: "eraser",
   });
-  return svgToPng(svg, width, height, Math.min(2, maxWidth / Math.max(1, width)));
+  return svgToPng(svg, width, height, pngScale(width, maxWidth, fill));
 }
 
 /** One figure's diagram as a PNG (what notes embed), with its natural size. */
 export async function renderFigurePng(
   item: FigureItem,
   maxWidth: number,
+  { fill }: { fill?: boolean } = {},
 ): Promise<{ blob: Blob; width: number; height: number }> {
   await ready();
   const rendered = await figureSvg(item);
@@ -121,7 +131,7 @@ export async function renderFigurePng(
     svg,
     rendered.width,
     rendered.height,
-    Math.min(2, maxWidth / Math.max(1, rendered.width)),
+    pngScale(rendered.width, maxWidth, fill),
   );
   return { blob, width: rendered.width, height: rendered.height };
 }
