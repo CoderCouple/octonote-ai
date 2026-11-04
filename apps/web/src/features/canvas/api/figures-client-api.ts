@@ -6,11 +6,23 @@ export interface FigureSummary {
   canvasId: string;
   canvasTitle?: string;
   title: string;
+  /** The figure's page, /f/<id>. */
+  url: string;
   imageUrl: string | null;
+  publishedAt: string | null;
   width: number;
   height: number;
   contentHash: string | null;
   updatedAt: string;
+}
+
+/** One figure as you may see it: the canvas only appears if you can reach it. */
+export interface FigureView extends Omit<FigureSummary, "canvasId"> {
+  canvasId: string | null;
+  canvasHref: string | null;
+  canPublish: boolean;
+  /** Anyone can open it, signed out. */
+  public: boolean;
 }
 
 export function listCanvasFiguresClientApi(canvasId: string) {
@@ -22,5 +34,10 @@ export function listWorkspaceFiguresClientApi(workspaceId: string) {
 }
 
 export function getFigureClientApi(figureId: string) {
-  return clientApi.get<FigureSummary>(`/figures/${figureId}`);
+  return clientApi.get<FigureView>(`/figures/${figureId}`);
+}
+
+export function setFigurePublishedClientApi(figureId: string, published: boolean) {
+  const path = `/figures/${figureId}/publish`;
+  return published ? clientApi.post<FigureView>(path, {}) : clientApi.delete<FigureView>(path);
 }

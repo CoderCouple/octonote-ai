@@ -11,6 +11,8 @@ import { PermissionsService, type ResolvedAccess } from "../common/permissions.s
 import { PagesRepository, type PageSummaryRow } from "../db/repository/pages.repository";
 import { toPage, type Page } from "../model/page.model";
 import { NotebookPlacement } from "./lib/notebook-placement";
+import { documentWithFigureLinks, withFigureLinks } from "./lib/figure-urls";
+import { FiguresService } from "./figures.service";
 import { WorkspacesService } from "./workspaces.service";
 import { PlanLimitsService } from "../common/plan-limits.service";
 
@@ -25,6 +27,7 @@ export class PagesService {
     private readonly workspacesService: WorkspacesService,
     private readonly changeEvents: ChangeEventsService,
     private readonly planLimits: PlanLimitsService,
+    private readonly figures: FiguresService,
   ) {}
 
   async listStandalone(workspaceId: string, actorUserId: string): Promise<PageSummaryRow[]> {
@@ -74,14 +77,16 @@ export class PagesService {
     const existing = await this.pagesRepo.findById(pageId);
     if (!existing) throw NotFound("Page not found.");
 
+    const document = patch.document !== undefined ? documentWithFigureLinks(patch.document) : undefined;
     const updated = await this.pagesRepo.updateById(pageId, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
-      ...(patch.document !== undefined ? { document: patch.document as never } : {}),
-      ...(patch.contentMd !== undefined ? { contentMd: patch.contentMd } : {}),
+      ...(document !== undefined ? { document: document as never } : {}),
+      ...(patch.contentMd !== undefined ? { contentMd: withFigureLinks(patch.contentMd) } : {}),
       ...(patch.settings !== undefined ? { settings: patch.settings as never } : {}),
       updatedAt: new Date(),
     });
     if (!updated) throw NotFound("Page not found.");
+    if (document !== undefined) await this.figures.syncNoteEmbeds(pageId, document, actorUserId);
 
     // Document bodies are large and saved on every debounce; audit the fact, not the content.
     await this.changeEvents.record({

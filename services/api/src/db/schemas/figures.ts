@@ -1,5 +1,6 @@
-import { index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 import { canvases } from "./canvases";
+import { pages } from "./pages";
 import { users } from "./users";
 import { workspaces } from "./workspaces";
 
@@ -30,11 +31,37 @@ export const canvasFigures = pgTable(
     createdByUserId: text("created_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    /** Published by itself: public at /f/<id> even while its canvas stays private. */
+    publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
     canvasIdx: index("canvas_figures_canvas_id_idx").on(table.canvasId),
     workspaceIdx: index("canvas_figures_workspace_id_idx").on(table.workspaceId),
+  }),
+);
+
+/**
+ * Which notes show which figures. Whoever can read the note can see the
+ * figure, so a row is only added when the person saving the note could already
+ * see the figure (figure ids aren't secret). No foreign key to the figure:
+ * deleting one on the canvas and undoing brings the same id back.
+ */
+export const figureEmbeds = pgTable(
+  "figure_embeds",
+  {
+    pageId: text("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    figureId: text("figure_id").notNull(),
+    addedByUserId: text("added_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.pageId, table.figureId] }),
+    figureIdx: index("figure_embeds_figure_id_idx").on(table.figureId),
   }),
 );

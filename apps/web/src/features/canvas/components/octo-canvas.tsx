@@ -7,6 +7,7 @@ import {
   type CanvasChangeMeta,
   type CanvasDocument,
   type CommentAuthor,
+  type FigureItem,
   type OctoCanvasHandle,
 } from "@octonote/octodraw";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -30,6 +31,7 @@ import { CANVAS_THEMES, useCanvasColorScheme } from "../lib/octodraw-theme";
 import { rearrangeDocument, type RearrangeDirection } from "../lib/rearrange";
 import { uploadCanvasThumbnail } from "../lib/thumbnail";
 import { FigureCodePane } from "./figure-code-pane";
+import { FigureShareMenu } from "./figure-share-menu";
 
 const SAVE_DEBOUNCE_MS = 1200;
 // Thumbnails are expensive (render + upload); refresh them far less often than saves.
@@ -150,6 +152,21 @@ export function OctoCanvas({
       }
     }, FIGURE_SYNC_DEBOUNCE_MS);
   }, [canvasId]);
+
+  // Share needs the figure's row and picture now, not after the next save.
+  const prepareFigures = useCallback(async () => {
+    if (!knownFigures.current) {
+      const figures = await listCanvasFiguresClientApi(canvasId);
+      knownFigures.current = new Map(figures.map((f) => [f.id, f.contentHash ?? ""]));
+    }
+    await syncFigures(docRef.current, canvasId, knownFigures.current, ownedFigures.current);
+  }, [canvasId]);
+  const figureShare = useCallback(
+    (figure: FigureItem) => (
+      <FigureShareMenu figureId={figureApiId(canvasId, figure.id)} prepare={prepareFigures} />
+    ),
+    [canvasId, prepareFigures],
+  );
 
   // The document the API has. Compared against this (not the opened
   // document), so undoing back to how the canvas opened is saved too.
@@ -327,6 +344,7 @@ export function OctoCanvas({
         themes={CANVAS_THEMES}
         onUploadImage={readOnly ? undefined : onUploadImage}
         onOpenFigure={readOnly ? undefined : setCodeFigureId}
+        figureShare={readOnly ? undefined : figureShare}
         style={{ position: "absolute", inset: 0 }}
       />
       {codeFigure && codeFigure.type === "figure" ? (

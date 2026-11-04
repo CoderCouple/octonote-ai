@@ -36,7 +36,8 @@ export interface FigureTarget {
   imageUrl: string | null;
   width: number;
   height: number;
-  href: string;
+  /** Where to open its canvas; null when the viewer can only see the figure. */
+  href: string | null;
 }
 
 const noAccess: CanvasReferenceResolver = {

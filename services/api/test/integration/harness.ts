@@ -156,6 +156,11 @@ export class FakeSupabase {
         data: { signedUrl: `https://storage.test/signed/${bucket}/${path}?e=${seconds}` },
         error: null,
       }),
+      download: async (path: string) => {
+        const stored = this.uploads.get(`${bucket}/${path}`);
+        if (!stored) return { data: null, error: { message: "Object not found" } };
+        return { data: new Blob([new Uint8Array(stored.bytes)]), error: null };
+      },
       getPublicUrl: (path: string) => ({
         data: { publicUrl: `https://storage.test/${bucket}/${path}` },
       }),
@@ -279,13 +284,14 @@ export async function createHarness() {
   const promotions = new PromotionsService(db, planLimits, workspaces, stripe as never, productAnalytics);
   const adminAudit = new AdminAuditService(db);
   const partners = new PartnersService(db, promotions, planLimits, adminAudit);
+  const figures = new FiguresService(db, permissions, workspaces, sharingRepo, changeEvents, supabase as never);
 
   const services = {
     cliTokens: new CliTokensService(new CliTokensRepository(db), new UsersRepository(db), productAnalytics),
     oauth: new OAuthService(new OAuthRepository(db), new UsersRepository(db), productAnalytics),
     permissions,
     workspaces,
-    pages: new PagesService(pagesRepo, permissions, placement, workspaces, changeEvents, planLimits),
+    pages: new PagesService(pagesRepo, permissions, placement, workspaces, changeEvents, planLimits, figures),
     canvases: new CanvasesService(
       canvasesRepo,
       permissions,
@@ -334,7 +340,7 @@ export async function createHarness() {
     get votes() {
       return new VotesService(db, this.public);
     },
-    figures: new FiguresService(db, permissions, workspaces, supabase as never),
+    figures,
     planLimits,
     promotions,
     billing: new BillingService(

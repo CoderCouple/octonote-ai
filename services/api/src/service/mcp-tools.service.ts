@@ -104,7 +104,7 @@ export class McpToolsService {
 
   /** A canvas as the card draws it, figures as their stored pictures. */
   private async outline(canvas: { id: string; document: unknown }, userId: string) {
-    const stored = new Map((await this.figures.listForCanvas(canvas.id, userId)).map((f) => [f.id, f.imageUrl]));
+    const stored = await this.figures.signedImagesForCanvas(canvas.id, userId);
     const raw = (canvas.document as { items?: { id?: unknown; type?: unknown }[] } | null)?.items;
     const images = new Map<string, string>();
     for (const it of Array.isArray(raw) ? raw : []) {
@@ -222,7 +222,8 @@ export class McpToolsService {
       .then((s) => (s.published ? s.publicUrl : null))
       .catch(() => null);
     const html = async (document: unknown) => {
-      const out = await noteDocumentToAnchoredHtml(document);
+      // The card has no sign-in, so its pictures use short-lived links.
+      const out = await noteDocumentToAnchoredHtml(await this.figures.withSignedImages(document));
       return out.length > PREVIEW_HTML_MAX ? `${out.slice(0, PREVIEW_HTML_MAX)}<p>…</p>` : out;
     };
     const editable = (role: string) => role === "editor" || role === "owner";
@@ -352,6 +353,10 @@ export class McpToolsService {
   // --- Publish, share, delete (only when the person asked) -------------------
 
   async setPublished(userId: string, input: { id: string; published: boolean }) {
+    if (input.id.startsWith("fig_")) {
+      const figure = await this.figures.setPublished(input.id, input.published, userId);
+      return { id: input.id, published: Boolean(figure.publishedAt), publicUrl: figure.publishedAt ? figure.url : null };
+    }
     const state = await this.settings.setPublished(kindOf(input.id), input.id, input.published, userId);
     return { id: input.id, published: state.published, publicUrl: state.published ? state.publicUrl : null };
   }

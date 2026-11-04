@@ -10,7 +10,7 @@
  */
 import { createReactBlockSpec } from "@blocknote/react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Group } from "lucide-react";
+import { ExternalLink, Group, Link2 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useCanvasReferenceResolver } from "./canvas-reference-context";
@@ -18,6 +18,8 @@ import { useCanvasReferenceResolver } from "./canvas-reference-context";
 const MIN_PCT = 25;
 const HANDLE =
   "bg-foreground-strong/70 absolute z-10 rounded-full opacity-0 transition-opacity group-hover/figure:opacity-100";
+const ACTION =
+  "bg-background/95 text-foreground-strong inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium shadow-sm transition-opacity group-hover/figure:opacity-100 focus-visible:opacity-100";
 const clampPct = (n: number) =>
   Math.min(100, Math.max(MIN_PCT, Number.isFinite(n) ? n : 100));
 
@@ -210,24 +212,29 @@ function FigureCard({
       <div className="relative overflow-hidden rounded-lg border bg-white p-2">
         {image}
         {/* Opening the canvas is an explicit action, not a click on the image. */}
-        {href ? (
-          <Link
-            href={href}
-            className="bg-background/95 text-foreground-strong absolute top-2 right-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium opacity-0 shadow-sm transition-opacity group-hover/figure:opacity-100 focus-visible:opacity-100"
-          >
-            <ExternalLink className="size-3.5" />
-            Open canvas
-          </Link>
-        ) : resolver.openFigure && figureId ? (
-          <button
-            type="button"
-            onClick={() => resolver.openFigure!(figureId)}
-            className="bg-background/95 text-foreground-strong absolute top-2 right-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium shadow-sm transition-opacity group-hover/figure:opacity-100 focus-visible:opacity-100 lg:opacity-0"
-          >
-            <ExternalLink className="size-3.5" />
-            See on canvas
-          </button>
-        ) : null}
+        <div className="absolute top-2 right-2 flex items-center gap-1.5">
+          {href ? (
+            <Link href={href} className={`${ACTION} opacity-0`}>
+              <ExternalLink className="size-3.5" />
+              Open canvas
+            </Link>
+          ) : resolver.openFigure && figureId ? (
+            <button
+              type="button"
+              onClick={() => resolver.openFigure!(figureId)}
+              className={`${ACTION} lg:opacity-0`}
+            >
+              <ExternalLink className="size-3.5" />
+              See on canvas
+            </button>
+          ) : null}
+          {figureId ? (
+            <Link href={`/f/${figureId}`} className={`${ACTION} lg:opacity-0`}>
+              <Link2 className="size-3.5" />
+              Figure link
+            </Link>
+          ) : null}
+        </div>
       </div>
       {shown.title ? (
         <figcaption className="text-muted-foreground mt-2 flex items-center justify-center gap-1.5 text-center text-sm">

@@ -268,6 +268,18 @@ export function registerItems(program: Command) {
       .argument("<id>", "any Octonote id")
       .action(
         action(async (ctx, ref: string) => {
+          // A figure publishes by itself; its canvas stays private.
+          if (ref.startsWith("fig_")) {
+            const path = `/figures/${ref}/publish`;
+            const figure = await (published
+              ? ctx.api.post<{ url: string }>(path, {})
+              : ctx.api.delete<{ url: string }>(path));
+            emit(
+              { kind: "figure", id: ref, published, publicUrl: published ? figure.url : null },
+              (d) => (d.published ? `Published: ${d.publicUrl}` : `Unpublished figure ${d.id}`),
+            );
+            return;
+          }
           const { kind, id } = parseRef(ref);
           const state = await setPublished(ctx, kind, id, published);
           emit(

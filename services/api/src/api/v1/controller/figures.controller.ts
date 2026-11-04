@@ -1,11 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, Req, Res, UseGuards } from "@nestjs/common";
+import type { FastifyReply } from "fastify";
 import { z } from "zod";
 import type { OptionalAuthRequest } from "../../../auth/optional-supabase-auth.guard";
 import { OptionalSupabaseAuthGuard } from "../../../auth/optional-supabase-auth.guard";
 import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
 import { ZodValidationPipe } from "../../../common/zod-validation.pipe";
-import { FiguresService, type FigureDto } from "../../../service/figures.service";
+import { FiguresService, type FigureDto, type FigureView } from "../../../service/figures.service";
 
 const IdParam = new ZodValidationPipe(z.string().min(1).max(64));
 const FigureInputSchema = z.object({
@@ -62,13 +63,46 @@ export class FiguresController {
     return this.figures.listForWorkspace(workspaceId, req.user.id);
   }
 
-  /** One figure for an embed; optional auth so link-shared canvases work signed out. */
+  /** The picture. Checked on every request, so unpublishing takes effect at once. */
+  @Get("figures/:figureId/image")
+  @UseGuards(OptionalSupabaseAuthGuard)
+  async image(
+    @Param("figureId", IdParam) figureId: string,
+    @Req() req: OptionalAuthRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    const { bytes, etag } = await this.figures.image(figureId, req.user?.id ?? null, req.headers["if-none-match"]);
+    reply.header("cache-control", "private, no-cache").header("etag", etag).header("x-content-type-options", "nosniff");
+    if (!bytes) return reply.status(304).send();
+    return reply.type("image/png").send(bytes);
+  }
+
+  /** Publish one figure by itself. */
+  @Post("figures/:figureId/publish")
+  @UseGuards(SupabaseAuthGuard)
+  async publish(
+    @Param("figureId", IdParam) figureId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<FigureView> {
+    return this.figures.setPublished(figureId, true, req.user.id);
+  }
+
+  @Delete("figures/:figureId/publish")
+  @UseGuards(SupabaseAuthGuard)
+  async unpublish(
+    @Param("figureId", IdParam) figureId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<FigureView> {
+    return this.figures.setPublished(figureId, false, req.user.id);
+  }
+
+  /** One figure; optional auth so public and link-shared ones work signed out. */
   @Get("figures/:figureId")
   @UseGuards(OptionalSupabaseAuthGuard)
   get(
     @Param("figureId", IdParam) figureId: string,
     @Req() req: OptionalAuthRequest,
-  ): Promise<FigureDto> {
+  ): Promise<FigureView> {
     return this.figures.get(figureId, req.user?.id ?? null);
   }
 }

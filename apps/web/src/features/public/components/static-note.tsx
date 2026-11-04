@@ -170,14 +170,16 @@ function renderBlock(b: Block, key: number): ReactNode {
 
           style={{ width: `${Number(p.widthPct) || 100}%` }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- plain HTML on purpose: same URL the editor loads */}
-          <img
-            src={String(p.imageUrl)}
-            alt={String(p.title || "Figure")}
-            width={Number(p.width) || undefined}
-            height={Number(p.height) || undefined}
-            className="h-auto w-full rounded-lg border"
-          />
+          <a href={p.figureId ? `/f/${String(p.figureId)}` : undefined}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- plain HTML on purpose: same URL the editor loads */}
+            <img
+              src={String(p.imageUrl)}
+              alt={String(p.title || "Figure")}
+              width={Number(p.width) || undefined}
+              height={Number(p.height) || undefined}
+              className="h-auto w-full rounded-lg border"
+            />
+          </a>
           {p.title ? (
             <figcaption className="mt-1 text-sm font-medium">
               {String(p.title)}

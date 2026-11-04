@@ -27,7 +27,7 @@ export const appCanvasResolver: CanvasReferenceResolver = {
         imageUrl: f.imageUrl,
         width: f.width,
         height: f.height,
-        href: `/c/${f.canvasId}`,
+        href: f.canvasHref,
       };
     } catch {
       return null;

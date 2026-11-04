@@ -1,9 +1,13 @@
 /**
  * Canvas figures: editors save a figure's PNG at a fixed path (so embeds
- * always show the latest); anyone who can view the canvas can read it.
+ * always show the latest). Who can see one is tested below.
  */
+import { readFileSync } from "fs";
+import { join } from "path";
 import { generateId } from "@octonote/shared";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { pages } from "../../src/db/schemas/pages";
 import { createHarness, statusOf, type Harness } from "./harness";
 
 let h: Harness;
@@ -37,7 +41,7 @@ describe("canvas figures", () => {
     const id = generateId("fig");
     const first = await h.figures.upsert(c.id, id, input(), alice.id);
     expect(first).toMatchObject({ id, canvasId: c.id, title: "Login flow", width: 640, height: 360 });
-    expect(first.imageUrl).toMatch(new RegExp(`canvas-figures/${id}\\.png\\?v=\\d+$`));
+    expect(first.imageUrl).toMatch(new RegExp(`/f/${id}\\.png\\?v=\\d+$`));
     const upload = h.supabase.uploads.get(`canvas-figures/${id}.png`);
     expect(upload?.options).toMatchObject({ upsert: true, contentType: "image/png" });
 
@@ -82,6 +86,162 @@ describe("canvas figures", () => {
     const id = generateId("fig");
     await h.figures.upsert(c.id, id, input(), alice.id);
     expect(await statusOf(h.figures.upsert(other.id, id, input(), alice.id))).toBe(409);
+  });
+
+  describe("who can see a figure", () => {
+    const note = () => h.pages.create(alice.workspaceId, { title: "Note" }, alice.id);
+    const embed = (figureId: string) => ({ blocks: [{ id: "b1", type: "figure", props: { figureId, imageUrl: "" }, children: [] }] });
+    async function figure(on?: { id: string }) {
+      const c = on ?? (await canvas());
+      const id = generateId("fig");
+      await h.figures.upsert(c.id, id, input(), alice.id);
+      return { c, id };
+    }
+    const sees = async (id: string, who: string | null) =>
+      h.figures.image(id, who).then(() => true, () => false);
+
+    it("keeps a private figure's picture from outsiders, the same as one that doesn't exist", async () => {
+      const { id } = await figure();
+      expect(await sees(id, alice.id)).toBe(true);
+      expect(await sees(id, bob.id)).toBe(false);
+      expect(await sees(id, null)).toBe(false);
+      expect(await statusOf(h.figures.image(id, null))).toBe(404);
+      expect(await statusOf(h.figures.image(generateId("fig"), null))).toBe(404);
+    });
+
+    it("follows the canvas being published, and stops when it's unpublished", async () => {
+      const { c, id } = await figure();
+      await h.settings.setPublished("canvas", c.id, true, alice.id);
+      expect(await sees(id, null)).toBe(true);
+      await h.settings.setPublished("canvas", c.id, false, alice.id);
+      expect(await sees(id, null)).toBe(false);
+    });
+
+    it("follows the project holding the canvas", async () => {
+      const project = await h.projects.create(alice.workspaceId, { name: "P" }, alice.id);
+      const { id } = await figure({ id: project.canvasId! });
+      expect(await sees(id, null)).toBe(false);
+      await h.settings.setPublished("project", project.project.id, true, alice.id);
+      expect(await sees(id, null)).toBe(true);
+    });
+
+    it("works signed out on a link-shared canvas", async () => {
+      const { c, id } = await figure();
+      await h.settings.setGeneralAccess("canvas", c.id, { linkAccess: "anyone_with_link", linkRole: "viewer" }, alice.id);
+      expect(await sees(id, null)).toBe(true);
+    });
+
+    it("a published note makes the figure public without revealing its canvas", async () => {
+      const { c, id } = await figure();
+      const n = await note();
+      await h.pages.update(n.id, { document: embed(id) }, alice.id);
+      expect(await sees(id, null)).toBe(false);
+      await h.settings.setPublished("page", n.id, true, alice.id);
+      expect(await sees(id, null)).toBe(true);
+      const view = await h.figures.get(id, null);
+      expect(view.canvasId).toBeNull();
+      expect(view.canvasHref).toBeNull();
+      expect(view.canPublish).toBe(false);
+      expect(await statusOf(h.canvases.getOne(c.id, null))).not.toBe(200);
+
+      // Taking the figure out of the note ends it.
+      await h.pages.update(n.id, { document: { blocks: [] } }, alice.id);
+      expect(await sees(id, null)).toBe(false);
+    });
+
+    it("someone a note is shared with sees the figures in it", async () => {
+      const { id } = await figure();
+      const n = await note();
+      await h.pages.update(n.id, { document: embed(id) }, alice.id);
+      await h.shares.add({ resourceKind: "page", resourceId: n.id, email: bob.email, role: "viewer" }, alice);
+      expect(await sees(id, bob.id)).toBe(true);
+    });
+
+    it("writing someone's figure id into your own published note exposes nothing", async () => {
+      const { id } = await figure();
+      const mine = await h.pages.create(bob.workspaceId, { title: "Mine" }, bob.id);
+      await h.pages.update(mine.id, { document: embed(id) }, bob.id);
+      await h.settings.setPublished("page", mine.id, true, bob.id);
+      expect(await sees(id, null)).toBe(false);
+      expect(await sees(id, bob.id)).toBe(false);
+    });
+
+    it("publishes one figure by itself: only the owner can, and the canvas stays private", async () => {
+      const { c, id } = await figure();
+      const other = await figure({ id: c.id });
+      await h.shares.add({ resourceKind: "canvas", resourceId: c.id, email: bob.email, role: "editor" }, alice);
+      expect(await statusOf(h.figures.setPublished(id, true, bob.id))).toBe(403);
+
+      const view = await h.figures.setPublished(id, true, alice.id);
+      expect(view.publishedAt).not.toBeNull();
+      expect(await sees(id, null)).toBe(true);
+      expect(await sees(other.id, null)).toBe(false);
+      expect((await h.figures.get(id, null)).canvasHref).toBeNull();
+      expect(await statusOf(h.canvases.getOne(c.id, null))).not.toBe(200);
+
+      await h.figures.setPublished(id, false, alice.id);
+      expect(await sees(id, null)).toBe(false);
+    });
+
+    it("skips sending a picture the browser already has", async () => {
+      const { id } = await figure();
+      const first = await h.figures.image(id, alice.id);
+      expect(first.bytes?.length).toBeGreaterThan(0);
+      expect((await h.figures.image(id, alice.id, first.etag)).bytes).toBeNull();
+    });
+
+    it("moves old Storage links to the figure's own link when a note is saved", async () => {
+      const { id } = await figure();
+      const n = await note();
+      const old = `https://x.supabase.co/storage/v1/object/public/canvas-figures/${id}.png?v=1`;
+      const saved = await h.pages.update(
+        n.id,
+        { document: { blocks: [{ type: "figure", props: { figureId: id, imageUrl: old } }] }, contentMd: `![a](${old}#octonote-figure=${id})` },
+        alice.id,
+      );
+      expect(JSON.stringify(saved.document)).not.toContain("supabase.co");
+      expect(JSON.stringify(saved.document)).toContain(`/f/${id}.png?v=1`);
+      expect(saved.contentMd).toContain(`/f/${id}.png?v=1#octonote-figure=${id}`);
+    });
+
+    it("assistant cards get short-lived links, since they have no sign-in", async () => {
+      const { c, id } = await figure();
+      expect((await h.figures.signedImagesForCanvas(c.id, alice.id)).get(id)).toContain("signed");
+      expect(await statusOf(h.figures.signedImagesForCanvas(c.id, bob.id))).not.toBe(200);
+      expect(JSON.stringify(await h.figures.withSignedImages(embed(id)))).toContain("signed");
+    });
+  });
+
+  describe("figures and notes from before figures had their own links", () => {
+    const migration = (file: string) =>
+      readFileSync(join(__dirname, "../../drizzle", file), "utf8").split("--> statement-breakpoint");
+
+    it("notes keep showing their figures: old links move, and readers keep access", async () => {
+      const c = await canvas();
+      const id = generateId("fig");
+      await h.figures.upsert(c.id, id, input(), alice.id);
+      const n = await h.pages.create(alice.workspaceId, { title: "Old note" }, alice.id);
+      const old = `https://abc.supabase.co/storage/v1/object/public/canvas-figures/${id}.png?v=1`;
+      // Written straight to the table, as notes saved before this change were.
+      await h.db
+        .update(pages)
+        .set({
+          document: { blocks: [{ type: "paragraph", children: [{ type: "figure", props: { figureId: id, imageUrl: old } }] }] },
+          contentMd: `![Flow](${old}#octonote-figure=${id})`,
+        })
+        .where(eq(pages.id, n.id));
+      await h.settings.setPublished("page", n.id, true, alice.id);
+      expect(await h.figures.image(id, null).then(() => true, () => false)).toBe(false);
+
+      await h.db.execute(sql.raw(migration("0029_figure_links.sql").at(-1)!));
+      for (const statement of migration("0030_figure_links_in_notes.sql")) await h.db.execute(sql.raw(statement));
+
+      expect((await h.figures.image(id, null)).bytes?.length).toBeGreaterThan(0);
+      const { page } = await h.pages.getOne(n.id, alice.id);
+      expect(JSON.stringify(page.document)).toContain(`https://octonote.ai/f/${id}.png?v=1`);
+      expect(JSON.stringify(page.document)).not.toContain("supabase.co");
+      expect(page.contentMd).toBe(`![Flow](https://octonote.ai/f/${id}.png?v=1#octonote-figure=${id})`);
+    });
   });
 
   it("deletes the row and its image", async () => {

@@ -3,18 +3,26 @@
  *
  * The canvas editor exports each changed figure as a PNG and PUTs it here;
  * the API overwrites the figure's fixed object in the `canvas-figures` bucket
- * (service role), so embeds always show the latest picture. Reads follow the
- * canvas's own permissions — a figure is exactly as visible as its canvas.
+ * (service role), so embeds always show the latest picture.
+ *
+ * Every figure has its own link (/f/<id>) and image (/f/<id>.png). You can see
+ * one if you can read its canvas or a note that shows it (by sharing, or because
+ * either is published, directly or through its project or notebook), or if the
+ * figure was published by itself. Seeing a figure doesn't reveal its canvas.
  */
 import { Inject, Injectable } from "@nestjs/common";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { SUPABASE_CLIENT } from "../auth/supabase.tokens";
 import { BadRequest, Conflict, NotFound, ServerError } from "../common/error/error-factory";
-import { PermissionsService } from "../common/permissions.service";
+import { ChangeEventsService } from "../common/change-events.service";
+import { PermissionsService, type ResourceLocator } from "../common/permissions.service";
 import { Database, DRIZZLE } from "../db/database.module";
 import { canvases } from "../db/schemas/canvases";
-import { canvasFigures } from "../db/schemas/figures";
+import { SharingRepository } from "../db/repository/sharing.repository";
+import { canvasFigures, figureEmbeds } from "../db/schemas/figures";
+import { appUrl } from "./lib/resource-url";
+import { figureIdsIn } from "./lib/figure-urls";
 import { WorkspacesService } from "./workspaces.service";
 
 export const FIGURES_BUCKET = "canvas-figures";
@@ -36,15 +44,39 @@ export interface FigureDto {
   canvasId: string;
   canvasTitle?: string;
   title: string;
-  /** Public URL with a version query, so a changed image isn't served from cache. */
+  /** The figure's page. */
+  url: string;
+  /** Its image, with a version query so a changed picture is fetched again. */
   imageUrl: string | null;
+  /** Published by itself (not through its canvas or a note). */
+  publishedAt: string | null;
   width: number;
   height: number;
   contentHash: string | null;
   updatedAt: string;
 }
 
+/** One figure as its viewer may see it: the canvas is named only if they can reach it. */
+export interface FigureView extends Omit<FigureDto, "canvasId"> {
+  canvasId: string | null;
+  /** Where this viewer can open the canvas; null if they can't. */
+  canvasHref: string | null;
+  /** Can publish or unpublish it by itself. */
+  canPublish: boolean;
+  /** Anyone can open it, signed out. */
+  public: boolean;
+}
+
+export interface FigureImage {
+  /** Null when the caller's `ifNoneMatch` is still current. */
+  bytes: Buffer | null;
+  etag: string;
+}
+
 type Row = typeof canvasFigures.$inferSelect;
+
+/** How long a signed picture link lasts, for places without a sign-in (assistant cards). */
+const SIGNED_IMAGE_SECONDS = 60 * 60;
 
 @Injectable()
 export class FiguresService {
@@ -52,6 +84,8 @@ export class FiguresService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly permissions: PermissionsService,
     private readonly workspaces: WorkspacesService,
+    private readonly sharing: SharingRepository,
+    private readonly changeEvents: ChangeEventsService,
     @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
   ) {}
 
@@ -142,12 +176,176 @@ export class FiguresService {
       .map((r) => ({ ...this.toDto(r.figure), canvasTitle: r.canvasTitle }));
   }
 
-  /** One figure, if you can view its canvas (signed out works for link-shared canvases). */
-  async get(figureId: string, actorUserId: string | null): Promise<FigureDto> {
+  /** One figure, if you can see it (see the top of this file); otherwise 404. */
+  async get(figureId: string, actorUserId: string | null): Promise<FigureView> {
+    const row = await this.visibleRow(figureId, actorUserId);
+    const canvasAccess = await this.viewAccess(actorUserId, { kind: "canvas", id: row.canvasId });
+    const inApp = canvasAccess ? await this.canvasAppHref(row.canvasId) : null;
+    const canvasHref = inApp ?? (await this.canvasPublicHref(row.canvasId));
+    return {
+      ...this.toDto(row),
+      canvasId: canvasHref ? row.canvasId : null,
+      canvasHref,
+      canPublish: canvasAccess?.role === "owner",
+      public: await this.canSee(row, null),
+    };
+  }
+
+  /** The stored picture, if you can see the figure. Skips the download when `ifNoneMatch` is current. */
+  async image(figureId: string, actorUserId: string | null, ifNoneMatch?: string): Promise<FigureImage> {
+    const row = await this.visibleRow(figureId, actorUserId);
+    if (!row.imagePath) throw NotFound("Figure not found.");
+    const etag = `"${row.updatedAt.getTime()}"`;
+    if (ifNoneMatch === etag) return { bytes: null, etag };
+    const { data, error } = await this.supabase.storage.from(FIGURES_BUCKET).download(row.imagePath);
+    if (error || !data) throw NotFound("Figure not found.");
+    return { bytes: Buffer.from(await data.arrayBuffer()), etag };
+  }
+
+  /** Publish one figure by itself. Same right as publishing its canvas. */
+  async setPublished(figureId: string, published: boolean, actorUserId: string): Promise<FigureView> {
+    const existing = await this.row(figureId);
+    if (!existing) throw NotFound("Figure not found.");
+    const access = await this.permissions.require(actorUserId, { kind: "canvas", id: existing.canvasId }, "manage");
+    if (published && !existing.imagePath) throw Conflict("This figure's picture isn't ready yet. Try again in a moment.");
+    await this.db
+      .update(canvasFigures)
+      .set({ publishedAt: published ? (existing.publishedAt ?? new Date()) : null })
+      .where(eq(canvasFigures.id, figureId));
+    await this.changeEvents.record({
+      workspaceId: access.workspaceId,
+      userId: actorUserId,
+      entityType: "canvas",
+      entityId: existing.canvasId,
+      action: published ? "figure.publish" : "figure.unpublish",
+      patch: { figureId },
+    });
+    return this.get(figureId, actorUserId);
+  }
+
+  /**
+   * Short-lived picture links for a canvas's figures, by figure id. For places
+   * with no sign-in of their own, such as assistant cards.
+   */
+  async signedImagesForCanvas(canvasId: string, actorUserId: string): Promise<Map<string, string>> {
+    await this.permissions.require(actorUserId, { kind: "canvas", id: canvasId }, "view");
+    const rows = await this.db.select().from(canvasFigures).where(eq(canvasFigures.canvasId, canvasId));
+    return this.signedImages(rows);
+  }
+
+  /**
+   * Replaces the pictures in a note with short-lived links, for the same places.
+   * Only for someone who can read the note: it shows them these figures anyway.
+   */
+  async withSignedImages(document: unknown): Promise<unknown> {
+    const ids = figureIdsIn(document);
+    if (!ids.length) return document;
+    const rows = await this.db.select().from(canvasFigures).where(inArray(canvasFigures.id, ids));
+    const signed = await this.signedImages(rows);
+    const swap = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(swap);
+      if (!value || typeof value !== "object") return value;
+      const out = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, swap(v)]));
+      const url = typeof out.figureId === "string" ? signed.get(out.figureId) : undefined;
+      return url ? { ...out, imageUrl: url } : out;
+    };
+    return swap(document);
+  }
+
+  /**
+   * Records which figures a note shows, after a save. A new one only counts if
+   * the person saving could already see it, or anyone could write a figure's id
+   * into their own note, publish it, and expose someone's private figure.
+   */
+  async syncNoteEmbeds(pageId: string, document: unknown, actorUserId: string): Promise<void> {
+    const ids = new Set(figureIdsIn(document));
+    const existing = await this.db
+      .select({ figureId: figureEmbeds.figureId })
+      .from(figureEmbeds)
+      .where(eq(figureEmbeds.pageId, pageId));
+    const had = new Set(existing.map((e) => e.figureId));
+    const gone = [...had].filter((id) => !ids.has(id));
+    if (gone.length) {
+      await this.db
+        .delete(figureEmbeds)
+        .where(and(eq(figureEmbeds.pageId, pageId), inArray(figureEmbeds.figureId, gone)));
+    }
+    for (const figureId of ids) {
+      if (had.has(figureId)) continue;
+      const row = await this.row(figureId);
+      if (!row || !(await this.canSee(row, actorUserId))) continue;
+      await this.db
+        .insert(figureEmbeds)
+        .values({ pageId, figureId, addedByUserId: actorUserId })
+        .onConflictDoNothing();
+    }
+  }
+
+  private async visibleRow(figureId: string, actorUserId: string | null): Promise<Row> {
     const row = await this.row(figureId);
-    if (!row) throw NotFound("Figure not found.");
-    await this.permissions.require(actorUserId, { kind: "canvas", id: row.canvasId }, "view");
-    return this.toDto(row);
+    // The same answer for "doesn't exist" and "not yours", so ids reveal nothing.
+    if (!row || !(await this.canSee(row, actorUserId))) throw NotFound("Figure not found.");
+    return row;
+  }
+
+  private async canSee(row: Row, actorUserId: string | null): Promise<boolean> {
+    if (row.publishedAt) return true;
+    if (await this.canRead(actorUserId, { kind: "canvas", id: row.canvasId })) return true;
+    const embeds = await this.db
+      .select({ pageId: figureEmbeds.pageId })
+      .from(figureEmbeds)
+      .where(eq(figureEmbeds.figureId, row.id));
+    for (const { pageId } of embeds) {
+      if (await this.canRead(actorUserId, { kind: "page", id: pageId })) return true;
+    }
+    return false;
+  }
+
+  private async canRead(actorUserId: string | null, locator: ResourceLocator): Promise<boolean> {
+    return Boolean(await this.viewAccess(actorUserId, locator)) || Boolean(await this.publishedRoot(locator));
+  }
+
+  /** Access by account or link; null if none (or the item is gone). Publishing isn't counted here. */
+  private async viewAccess(actorUserId: string | null, locator: ResourceLocator) {
+    return this.permissions.require(actorUserId, locator, "view").catch(() => null);
+  }
+
+  /** The item itself or the ancestor that makes it public, if any. */
+  private async publishedRoot(locator: ResourceLocator) {
+    let cursor: ResourceLocator | null = locator;
+    while (cursor) {
+      const found: Awaited<ReturnType<SharingRepository["findResource"]>> = await this.sharing.findResource(cursor.kind, cursor.id);
+      if (!found) return null;
+      if (found.publishedAt) return found;
+      cursor = found.parent;
+    }
+    return null;
+  }
+
+  private async canvasAppHref(canvasId: string): Promise<string> {
+    const canvas = await this.sharing.findResource("canvas", canvasId);
+    return canvas?.parent?.kind === "project" ? `/p/${canvas.parent.id}?view=canvas` : `/c/${canvasId}`;
+  }
+
+  private async canvasPublicHref(canvasId: string): Promise<string | null> {
+    const root = await this.publishedRoot({ kind: "canvas", id: canvasId });
+    if (!root?.publicSlug) return null;
+    if (root.kind === "canvas" || root.kind === "project") return `/pub/${root.publicSlug}`;
+    return `/pub/${root.publicSlug}/canvas/${canvasId}`;
+  }
+
+  private async signedImages(rows: Row[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    await Promise.all(
+      rows.map(async (row) => {
+        if (!row.imagePath) return;
+        const { data } = await this.supabase.storage
+          .from(FIGURES_BUCKET)
+          .createSignedUrl(row.imagePath, SIGNED_IMAGE_SECONDS);
+        if (data?.signedUrl) out.set(row.id, data.signedUrl);
+      }),
+    );
+    return out;
   }
 
   private async row(figureId: string): Promise<Row | null> {
@@ -160,14 +358,14 @@ export class FiguresService {
   }
 
   private toDto(row: Row): FigureDto {
-    const base = row.imagePath
-      ? this.supabase.storage.from(FIGURES_BUCKET).getPublicUrl(row.imagePath).data.publicUrl
-      : null;
+    const url = `${appUrl()}/f/${row.id}`;
     return {
       id: row.id,
       canvasId: row.canvasId,
       title: row.title,
-      imageUrl: base ? `${base}?v=${row.updatedAt.getTime()}` : null,
+      url,
+      imageUrl: row.imagePath ? `${url}.png?v=${row.updatedAt.getTime()}` : null,
+      publishedAt: row.publishedAt?.toISOString() ?? null,
       width: row.width,
       height: row.height,
       contentHash: row.contentHash,

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type Ref } from 'react';
+import { memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { detectDiagramType } from '../dsl/detect';
 import type { IconSet } from '../icons/resolve';
@@ -145,6 +145,8 @@ export interface OctoCanvasProps {
   onMention?: (event: { thread: CommentThread; message: CommentMessage; mentioned: CommentAuthor[] }) => void;
   /** Stores a pasted or dropped image and returns its URL; without it images are kept as data URLs. */
   onUploadImage?: (file: File) => Promise<string>;
+  /** Contents of a selected figure's Share menu (links, publishing). No button without it. */
+  figureShare?: (figure: FigureItem) => ReactNode;
   /** Called when presentation mode starts (with the slide index), changes slide, or ends (null). */
   onPresentChange?: (slide: number | null) => void;
   /** Starter boards for the empty-canvas gallery and the insert palette (default: the built-in ones; spread CANVAS_TEMPLATES to add to them). */
@@ -1965,6 +1967,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
           onArrange={arrange}
           onRotate={rotatable ? rotateSelected : undefined}
           onExportFigure={single?.type === 'figure' ? (action) => (setBarMenu(null), exportFigure(single.id, action)) : undefined}
+          figureShare={single?.type === 'figure' && props.figureShare ? () => props.figureShare!(single) : undefined}
           onOpenFigure={single?.type === 'figure' && onOpenFigure ? () => onOpenFigure(single.id) : undefined}
           onAskAi={single?.type === 'figure' && onAskAi ? () => onAskAi(single.id) : undefined}
           onEnter={single?.type === 'figure' ? () => enterFigure(single.id) : undefined}

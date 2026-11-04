@@ -349,7 +349,7 @@ export class McpController {
       {
         title: "Publish to the web",
         description:
-          "Make an item a public, read-only web page and return its publicUrl, or unpublish it. Publishing a notebook publishes everything in it.",
+          "Make an item a public, read-only web page and return its publicUrl, or unpublish it. Publishing a notebook publishes everything in it. A canvas figure (fig_…) can be published by itself; its canvas stays private.",
         inputSchema: { id, published: z.boolean().default(true).describe("false unpublishes") },
         annotations: OUTWARD,
         _meta: CARD,

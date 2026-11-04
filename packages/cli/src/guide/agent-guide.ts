@@ -87,6 +87,7 @@ frame, code, image, icon, pen and figure, each with x, y, w, h.
 ## Publish and share
   octonote publish <id>        # → publicUrl (a public, read-only page)
   octonote unpublish <id>
+  octonote publish fig_…       # one canvas figure by itself; its canvas stays private
   octonote share <id> --email person@example.com --role viewer|editor
   octonote share <id> --link view|edit|off   # anyone with the app link
 Publishing a notebook publishes everything inside it.

@@ -33,7 +33,7 @@ import {
 // "Mixed". Every choice is one `onStyle` call, which the canvas commits as a
 // single undo step.
 
-export type BarMenu = 'shape' | 'color' | 'stroke' | 'text' | 'line' | 'start' | 'end' | 'arrange' | 'more' | 'link' | 'export';
+export type BarMenu = 'shape' | 'color' | 'stroke' | 'text' | 'line' | 'start' | 'end' | 'arrange' | 'more' | 'link' | 'export' | 'share';
 
 export interface SelectionBarProps {
   box: Box;
@@ -50,6 +50,8 @@ export interface SelectionBarProps {
   onArrange: (move: LayerMove) => void;
   onRotate?: (degrees: number | 'reset') => void;
   onExportFigure?: (action: { download: ExportFormat } | { copy: CopyFormat }) => void;
+  /** The host's contents for a figure's Share menu; no button without it. */
+  figureShare?: () => ReactNode;
   onOpenFigure?: () => void;
   onAskAi?: () => void;
   onEnter?: () => void;
@@ -267,6 +269,18 @@ export function SelectionBar(props: SelectionBarProps) {
                   {label}
                 </button>
               ))}
+            </Popover>
+          )}
+        </span>
+      )}
+      {props.figureShare && (
+        <span className="occ-menu-anchor">
+          <button type="button" className="occ-bar-btn" data-bar="" data-menu="share" onClick={() => toggle('share')} aria-expanded={menu === 'share'} title="Share this figure: copy its link, or publish it" aria-label="Share this figure">
+            <Glyph d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1" />
+          </button>
+          {menu === 'share' && (
+            <Popover role="menu" label="Share this figure" below={below} onClose={() => onMenu(null)} className="occ-menu">
+              {props.figureShare()}
             </Popover>
           )}
         </span>
