@@ -14,6 +14,7 @@ import { emptyOctodrawDocument, isOctodrawDocument } from "@octonote/content/ser
 import { NotebookPlacement } from "./lib/notebook-placement";
 import { WorkspacesService } from "./workspaces.service";
 import { PlanLimitsService } from "../common/plan-limits.service";
+import { documentWithFigureLinks, withFigureLinks } from "./lib/figure-urls";
 
 const MEMBER_ROLES = ["OWNER", "ADMIN", "MEMBER"] as const;
 
@@ -128,8 +129,10 @@ export class CanvasesService {
     }
     const updated = await this.canvasesRepo.updateById(canvasId, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
-      ...(patch.document !== undefined ? { document: patch.document as never } : {}),
-      ...(patch.thumbnailUrl !== undefined ? { thumbnailUrl: patch.thumbnailUrl } : {}),
+      ...(patch.document !== undefined ? { document: documentWithFigureLinks(patch.document) as never } : {}),
+      ...(patch.thumbnailUrl !== undefined
+        ? { thumbnailUrl: patch.thumbnailUrl && withFigureLinks(patch.thumbnailUrl) }
+        : {}),
       ...(patch.settings !== undefined ? { settings: patch.settings as never } : {}),
       updatedAt: new Date(),
     });

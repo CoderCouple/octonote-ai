@@ -218,6 +218,13 @@
       "when": 1793821591718,
       "tag": "0030_figure_links_in_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793830550796,
+      "tag": "0031_figure_links_in_canvases",
+      "breakpoints": true
     }
   ]
 }

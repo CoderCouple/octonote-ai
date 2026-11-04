@@ -7,6 +7,7 @@ import { join } from "path";
 import { generateId } from "@octonote/shared";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { canvases } from "../../src/db/schemas/canvases";
 import { pages } from "../../src/db/schemas/pages";
 import { createHarness, statusOf, type Harness } from "./harness";
 
@@ -242,6 +243,20 @@ describe("canvas figures", () => {
       expect(JSON.stringify(page.document)).not.toContain("supabase.co");
       expect(page.contentMd).toBe(`![Flow](https://octonote.ai/f/${id}.png?v=1#octonote-figure=${id})`);
     });
+  });
+
+  it("moves a canvas thumbnail's old Storage link: migration, and on save", async () => {
+    const c = await canvas();
+    const id = generateId("fig");
+    const old = `https://abc.supabase.co/storage/v1/object/public/canvas-figures/${id}.png?v=1`;
+    await h.db.update(canvases).set({ thumbnailUrl: old }).where(eq(canvases.id, c.id));
+    const statements = readFileSync(join(__dirname, "../../drizzle/0031_figure_links_in_canvases.sql"), "utf8").split("--> statement-breakpoint");
+    for (const statement of statements) await h.db.execute(sql.raw(statement));
+    expect((await h.canvases.getOne(c.id, alice.id)).canvas.thumbnailUrl).toBe(`https://octonote.ai/f/${id}.png?v=1`);
+
+    process.env.SUPABASE_URL = "https://abc.supabase.co";
+    const saved = await h.canvases.update(c.id, { thumbnailUrl: old }, alice.id);
+    expect(saved.thumbnailUrl).toMatch(new RegExp(`/f/${id}\\.png\\?v=1$`));
   });
 
   it("deletes the row and its image", async () => {
