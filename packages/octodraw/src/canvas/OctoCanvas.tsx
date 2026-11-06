@@ -1418,17 +1418,25 @@ export function OctoCanvas(props: OctoCanvasProps) {
   };
 
   // ---- figures ----
+  const followLevel = useRef<{ id: string; until: number } | null>(null);
   const onFigureSize = useCallback(
     (id: string, size: { width: number; height: number }) => {
       const item = getItem(docRef.current, id);
-      if (!item || item.type !== 'figure' || item.autoSize === false) return;
-      if (Math.abs(item.w - size.width) < 1 && Math.abs(item.h - size.height) < 1) return;
-      const next = resolveLines(updateItem(docRef.current, id, { w: size.width, h: size.height }));
-      commit(next, { silent: true });
-      if (followFigure.current === id) {
+      if (!item || item.type !== 'figure') return;
+      const resize = item.autoSize !== false && (Math.abs(item.w - size.width) >= 1 || Math.abs(item.h - size.height) >= 1);
+      // After a level change the figure reports its size more than once (new layout, then its header): fit each time.
+      const level = followLevel.current?.id === id && performance.now() < followLevel.current.until;
+      if (!resize && !level) return;
+      const next = resize ? resolveLines(updateItem(docRef.current, id, { w: size.width, h: size.height })) : docRef.current;
+      if (resize) commit(next, { silent: true });
+      const box = resize ? { ...item, w: size.width, h: size.height } : item;
+      if (level) {
+        cameraTouched.current = true;
+        fitBox(box);
+      } else if (followFigure.current === id) {
         followFigure.current = null;
         cameraTouched.current = true;
-        fitBox({ ...item, w: size.width, h: size.height });
+        fitBox(box);
       } else if (!cameraTouched.current) {
         const all = boundsOf(next.items);
         if (all) fitBox(all);
@@ -1436,6 +1444,11 @@ export function OctoCanvas(props: OctoCanvasProps) {
     },
     [commit, fitBox],
   );
+
+  // Opening a level inside a figure (or going back up) resizes it: fit the figure once it has its new size.
+  const onFigureLevel = useCallback((id: string) => {
+    followLevel.current = { id, until: performance.now() + 1500 };
+  }, []);
 
   const registerFigure = useCallback((id: string, handle: OctoDiagramHandle | null) => {
     if (handle) figureRefs.current.set(id, handle);
@@ -1810,6 +1823,7 @@ export function OctoCanvas(props: OctoCanvasProps) {
                   iconSet={iconSet}
                   figureProps={figureProps}
                   onSize={onFigureSize}
+                  onLevel={onFigureLevel}
                   onAskAi={onAskAi}
                   register={registerFigure}
                   onPlacements={onFigurePlacements}
@@ -2491,6 +2505,7 @@ const FigureView = memo(function FigureView({
   iconSet,
   figureProps,
   onSize,
+  onLevel,
   onAskAi,
   register,
   onPlacements,
@@ -2511,6 +2526,8 @@ const FigureView = memo(function FigureView({
   iconSet: IconSet;
   figureProps?: Partial<OctoDiagramProps>;
   onSize: (id: string, size: { width: number; height: number }) => void;
+  /** The figure opened a level or went back up. */
+  onLevel: (id: string) => void;
   onAskAi?: (figureId: string | null) => void;
 }) {
   const title = figureLabel(item.source);
@@ -2518,6 +2535,14 @@ const FigureView = memo(function FigureView({
   const ref = useCallback((handle: OctoDiagramHandle | null) => register(item.id, handle), [register, item.id]);
   const onPlacementsChange = useCallback((next: ViewPlacements) => onPlacements(item.id, next), [onPlacements, item.id]);
   const onSourceChange = useCallback((next: string, meta: SourceChangeMeta) => onSource?.(item.id, next, meta), [onSource, item.id]);
+  const hostFocusChange = figureProps?.onFocusChange;
+  const onFocusChange = useCallback(
+    (focus: string | null) => {
+      onLevel(item.id);
+      hostFocusChange?.(focus);
+    },
+    [onLevel, item.id, hostFocusChange],
+  );
   return (
     <div data-item-id={item.id} className={`occ-item occ-figure${entered ? ' occ-figure-entered' : ''}${selected ? ' occ-figure-selected' : ''}`} style={{ position: 'absolute', left: item.x, top: item.y, width: item.w, height: item.h, opacity: item.opacity }}>
       <div className="occ-figure-tab">{title}</div>
@@ -2541,6 +2566,7 @@ const FigureView = memo(function FigureView({
           detailsPanel={entered && item.w >= 640}
           onSelect={figureProps?.onSelect ?? noop}
           onContentSize={onContentSize}
+          onFocusChange={onFocusChange}
           onAskAi={onAskAi ? () => onAskAi(item.id) : undefined}
           style={{ width: '100%', height: '100%' }}
         />
