@@ -6,7 +6,7 @@ import {
   parseDiagram,
 } from "@octonote/octodraw";
 import { X } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { type DslTokenKind, highlightDsl } from "../lib/dsl-highlight";
 
@@ -24,6 +24,20 @@ const TOKEN_CLASS: Record<DslTokenKind, string> = {
   string: "text-code-string",
   label: "text-code-variable",
 };
+
+// The pane's width, remembered on this device; the reader drags its left edge.
+const WIDTH_KEY = "octonote.figureCodeWidth";
+const MIN_WIDTH = 300;
+const DEFAULT_WIDTH = 420;
+
+function savedWidth(): number {
+  try {
+    const n = Number(localStorage.getItem(WIDTH_KEY));
+    return Number.isFinite(n) && n >= MIN_WIDTH ? n : DEFAULT_WIDTH;
+  } catch {
+    return DEFAULT_WIDTH;
+  }
+}
 
 // Shared by the coloured layer and the textarea on top of it, so the caret lines up with the text.
 const CODE_TEXT = "p-3 font-mono text-[13px] leading-relaxed whitespace-pre";
@@ -43,6 +57,24 @@ export function FigureCodePane({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const pane = useRef<HTMLElement>(null);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  useEffect(() => setWidth(savedWidth()), []);
+  const resizeTo = (next: number) => {
+    // Leave at least 120px of canvas visible.
+    const room =
+      (pane.current?.parentElement?.clientWidth ?? window.innerWidth) - 120;
+    const w = Math.round(Math.max(MIN_WIDTH, Math.min(next, room)));
+    setWidth(w);
+    return w;
+  };
+  const save = (w: number) => {
+    try {
+      localStorage.setItem(WIDTH_KEY, String(w));
+    } catch {
+      // Remembering the width is a convenience only.
+    }
+  };
   const colored = useRef<HTMLPreElement>(null);
   const lines = useMemo(() => highlightDsl(source), [source]);
   const title = figureTitle(source) ?? "Figure";
@@ -60,8 +92,10 @@ export function FigureCodePane({
 
   return (
     <aside
+      ref={pane}
+      style={{ width: `min(${width}px, 100%)` }}
       aria-label={`Code of ${title}`}
-      className="bg-code-background text-code-foreground border-code-comment/25 absolute inset-y-0 right-0 z-30 flex w-[min(420px,100%)] flex-col border-l shadow-lg"
+      className="bg-code-background text-code-foreground border-code-comment/25 absolute inset-y-0 right-0 z-30 flex flex-col border-l shadow-lg"
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.stopPropagation();
@@ -69,6 +103,40 @@ export function FigureCodePane({
         }
       }}
     >
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize code"
+        aria-valuenow={width}
+        aria-valuemin={MIN_WIDTH}
+        tabIndex={0}
+        title="Drag to resize · double-click to reset"
+        className="hover:bg-code-attr/40 focus-visible:bg-code-attr/60 absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize touch-none outline-none"
+        onPointerDown={(e) => {
+          e.preventDefault();
+          const startX = e.clientX;
+          const startWidth = pane.current?.offsetWidth ?? width;
+          let last = startWidth;
+          const move = (ev: PointerEvent) => {
+            last = resizeTo(startWidth + (startX - ev.clientX));
+          };
+          const up = () => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", up);
+            document.body.style.cursor = "";
+            save(last);
+          };
+          document.body.style.cursor = "col-resize";
+          window.addEventListener("pointermove", move);
+          window.addEventListener("pointerup", up);
+        }}
+        onDoubleClick={() => save(resizeTo(DEFAULT_WIDTH))}
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+          e.preventDefault();
+          save(resizeTo(width + (e.key === "ArrowLeft" ? 40 : -40)));
+        }}
+      />
       <header className="border-code-comment/25 flex h-11 shrink-0 items-center gap-2 border-b px-3">
         <span className="text-code-comment text-xs font-medium tracking-wide uppercase">
           Code
