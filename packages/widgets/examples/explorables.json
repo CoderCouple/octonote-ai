@@ -130,7 +130,8 @@
         "caption": "Illustrative annual compounding; excludes taxes and fees."
       }
     ],
-    "note": "Your original $1,000 grows by earning returns on both the initial amount and accumulated returns. Try changing the rate or years to see the effect."
+    "note": "Your original $1,000 grows by earning returns on both the initial amount and accumulated returns. Try changing the rate or years to see the effect.",
+    "compare": true
   },
   {
     "schemaVersion": "1.0",
@@ -959,6 +960,303 @@
           }
         },
         "highlight": "abs(au - d) < 1"
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "dice-six",
+    "title": "At least one six",
+    "badge": "Probability",
+    "description": "Pick how many dice to roll, then run the experiment and watch the estimate settle onto the theory.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "n",
+        "label": "Dice per roll",
+        "min": 1,
+        "max": 12,
+        "value": 4
+      }
+    ],
+    "values": [
+      {
+        "name": "theory",
+        "formula": "1 - (5/6)^n"
+      }
+    ],
+    "views": [
+      {
+        "type": "sentence",
+        "text": "Roll [n] dice. The chance that at least one shows a six is 1 − (5/6)^n = **{theory|percent}**."
+      },
+      {
+        "type": "simulation",
+        "trials": "1000",
+        "outcome": "binomial(n, 1/6)",
+        "success": "outcome >= 1",
+        "expected": "theory",
+        "label": "Rolls with a six",
+        "histogram": true
+      }
+    ],
+    "note": "The histogram counts how many sixes each roll had."
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "vector-sum",
+    "title": "Adding vectors",
+    "badge": "Vectors",
+    "description": "Drag the tips of a and b. Their sum goes from the start of a to the end of b.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "ax",
+        "label": "a x",
+        "min": -6,
+        "max": 6,
+        "step": 0.5,
+        "value": 3,
+        "hidden": true
+      },
+      {
+        "kind": "slider",
+        "id": "ay",
+        "label": "a y",
+        "min": -4,
+        "max": 4,
+        "step": 0.5,
+        "value": 1,
+        "hidden": true
+      },
+      {
+        "kind": "slider",
+        "id": "bx",
+        "label": "b x",
+        "min": -6,
+        "max": 6,
+        "step": 0.5,
+        "value": -1,
+        "hidden": true
+      },
+      {
+        "kind": "slider",
+        "id": "by",
+        "label": "b y",
+        "min": -4,
+        "max": 4,
+        "step": 0.5,
+        "value": 2,
+        "hidden": true
+      }
+    ],
+    "views": [
+      {
+        "type": "plane",
+        "x": [
+          -8,
+          8
+        ],
+        "y": [
+          -5,
+          5
+        ],
+        "shapes": [
+          {
+            "kind": "vector",
+            "to": [
+              "ax",
+              "ay"
+            ],
+            "label": "a",
+            "color": "blue"
+          },
+          {
+            "kind": "vector",
+            "from": [
+              "ax",
+              "ay"
+            ],
+            "to": [
+              "ax + bx",
+              "ay + by"
+            ],
+            "label": "b",
+            "color": "green"
+          },
+          {
+            "kind": "vector",
+            "to": [
+              "ax + bx",
+              "ay + by"
+            ],
+            "label": "a + b",
+            "color": "orange"
+          }
+        ],
+        "handles": [
+          {
+            "inputs": [
+              "ax",
+              "ay"
+            ],
+            "at": [
+              "ax",
+              "ay"
+            ],
+            "color": "blue"
+          },
+          {
+            "inputs": [
+              "bx",
+              "by"
+            ],
+            "at": [
+              "ax + bx",
+              "ay + by"
+            ],
+            "color": "green"
+          }
+        ]
+      },
+      {
+        "type": "formula",
+        "text": "a + b = ({ax}, {ay}) + ({bx}, {by}) = ({ax + bx}, {ay + by})"
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "unit-circle",
+    "title": "Sine and cosine on the unit circle",
+    "badge": "Trigonometry",
+    "description": "Drag the point around the circle. Cosine is how far across it is; sine is how far up.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "t",
+        "label": "Angle",
+        "min": 0,
+        "max": 360,
+        "step": 1,
+        "value": 40,
+        "play": true,
+        "format": {
+          "suffix": "°"
+        }
+      }
+    ],
+    "values": [
+      {
+        "name": "c",
+        "formula": "cos(t * pi / 180)"
+      },
+      {
+        "name": "s",
+        "formula": "sin(t * pi / 180)"
+      }
+    ],
+    "views": [
+      {
+        "type": "plane",
+        "x": [
+          -1.6,
+          1.6
+        ],
+        "y": [
+          -1.25,
+          1.25
+        ],
+        "shapes": [
+          {
+            "kind": "circle",
+            "center": [
+              "0",
+              "0"
+            ],
+            "r": "1",
+            "color": "gray"
+          },
+          {
+            "kind": "segment",
+            "from": [
+              "0",
+              "0"
+            ],
+            "to": [
+              "c",
+              "s"
+            ],
+            "color": "gray"
+          },
+          {
+            "kind": "segment",
+            "from": [
+              "0",
+              "0"
+            ],
+            "to": [
+              "c",
+              "0"
+            ],
+            "label": "cos",
+            "color": "blue"
+          },
+          {
+            "kind": "segment",
+            "from": [
+              "c",
+              "0"
+            ],
+            "to": [
+              "c",
+              "s"
+            ],
+            "label": "sin",
+            "color": "orange"
+          }
+        ],
+        "handles": [
+          {
+            "inputs": [
+              "t"
+            ],
+            "at": [
+              "c",
+              "s"
+            ],
+            "label": "{t|0}°",
+            "color": "purple"
+          }
+        ]
+      },
+      {
+        "type": "stats",
+        "items": [
+          {
+            "label": "Cosine (across)",
+            "value": "c",
+            "format": {
+              "decimals": 3
+            },
+            "tone": "auto"
+          },
+          {
+            "label": "Sine (up)",
+            "value": "s",
+            "format": {
+              "decimals": 3
+            },
+            "tone": "auto"
+          }
+        ]
+      },
+      {
+        "type": "input",
+        "input": "t"
       }
     ]
   }

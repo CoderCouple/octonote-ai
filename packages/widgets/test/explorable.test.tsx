@@ -13,8 +13,12 @@ import {
   validateDocument,
   aggregate,
   chartData,
+  evaluate,
+  compile,
   lintWidget,
   lookup,
+  runSimulation,
+  seededRandom,
   solveInput,
   validateWidget,
   WidgetSpecRenderer,
@@ -447,5 +451,72 @@ describe("input sweep checker", () => {
 
   it("catches numbers too long for a stat", () => {
     expect(lint({ inputs: [rate], views: [{ type: "stats", items: [{ label: "Huge", value: "10^rate", format: { decimals: 2 } }] }] })[0]).toMatch(/too long for a stat. Use style "compact"/);
+  });
+});
+
+describe("compare, simulations and the plane", () => {
+  const issues = (extra: object) => {
+    const r = validateWidget({ schemaVersion: "1.0", type: "widget", id: "w", title: "W", inputs: [{ kind: "slider", id: "n", label: "n", min: 1, max: 10, value: 2 }], ...extra });
+    return r.ok ? [] : r.issues.map((i) => `${i.path}: ${i.message}`);
+  };
+
+  it("pins settings and shows how stats moved from them", () => {
+    render(<WidgetSpecRenderer spec={byId("compound-simulator")} />);
+    fireEvent.click(screen.getByRole("button", { name: "Pin to compare" }));
+    drag("Annual return", 9);
+    const notes = [...document.querySelectorAll(".wg-xstat__pinned")].map((n) => n.textContent);
+    // The initial investment didn't change, so only the future value has a note.
+    expect(notes).toEqual(["Pinned $1,426 (+$1,387)"]);
+    expect(document.querySelectorAll(".wg-chart__ghost").length).toBe(2);
+    fireEvent.click(screen.getByRole("button", { name: "Unpin" }));
+    expect(document.querySelectorAll(".wg-chart__ghost").length).toBe(0);
+  });
+
+  it("random numbers only work inside simulations, and are seeded there", () => {
+    expect(evaluate(compile("dice()"), {})).toBeNaN();
+    const a = seededRandom(7);
+    const b = seededRandom(7);
+    expect([a(), a(), a()]).toEqual([b(), b(), b()]);
+    expect(issues({ values: [{ name: "r", formula: "random()" }], views: [{ type: "stats", items: [{ label: "r", value: "r + n" }] }] })).toEqual([
+      "values.0.formula: Random numbers only work in a simulation's outcome; elsewhere a formula must give the same answer every time",
+    ]);
+    expect(issues({ views: [{ type: "simulation", trials: "100", outcome: "n * 2" }] })).toEqual([
+      "views.0.outcome: The outcome never draws a random number, so every trial is the same. Use random(), coin(), chance(p), dice(), dicesum() or binomial().",
+    ]);
+  });
+
+  it("simulations are reproducible and settle near the theory", () => {
+    const view = { type: "simulation" as const, trials: "20000", outcome: "binomial(n, 1/6)", success: "outcome >= 1", expected: "1 - (5/6)^n" };
+    const one = runSimulation(view, { n: 4 }, 3);
+    expect(runSimulation(view, { n: 4 }, 3)).toEqual(one);
+    const share = one.hits!.reduce((x, y) => x + y, 0) / one.hits!.length;
+    expect(Math.abs(share - (1 - (5 / 6) ** 4))).toBeLessThan(0.015);
+    const sums = runSimulation({ type: "simulation", trials: "5000", outcome: "dicesum(2)" }, {}, 1).outcomes;
+    expect(Math.min(...sums)).toBe(2);
+    expect(Math.max(...sums)).toBe(12);
+  });
+
+  it("runs a simulation from the page", () => {
+    render(<WidgetSpecRenderer spec={byId("dice-six")} />);
+    fireEvent.click(screen.getByRole("button", { name: "Run 1,000 trials" }));
+    expect(screen.getByRole("button", { name: "Run again" })).toBeTruthy();
+    expect(document.querySelector(".wg-sim__theory")!.textContent).toBe("51.8%");
+  });
+
+  it("plane points move freely with the keyboard: left/right for x, up/down for y", () => {
+    render(<WidgetSpecRenderer spec={byId("vector-sum")} />);
+    // Hidden inputs get no sliders; the points are the controls.
+    expect(screen.queryByRole("slider", { name: "a x" })).toBeNull();
+    const a = screen.getAllByRole("slider", { name: /^Drag point \(a x and a y\)/ })[0]!;
+    fireEvent.keyDown(a, { key: "ArrowRight" });
+    fireEvent.keyDown(a, { key: "ArrowUp" });
+    expect(document.querySelector(".wg-formula")!.textContent).toBe("a + b = (3.5, 1.5) + (-1, 2) = (2.5, 3.5)");
+  });
+
+  it("checks plane formulas and handle inputs", () => {
+    expect(issues({ views: [{ type: "plane", x: [-5, 5], y: [-5, 5], shapes: [{ kind: "point", at: ["n", "m"] }], handles: [{ inputs: ["zz"], at: ["n", "0"] }] }] })).toEqual([
+      'views.0.shapes.0.at.1: Unknown name "m"',
+      'views.0.handles.0.inputs.0: No input has id "zz"',
+    ]);
   });
 });

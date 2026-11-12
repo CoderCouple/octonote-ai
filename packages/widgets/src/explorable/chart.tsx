@@ -30,7 +30,7 @@ export function niceTicks(min: number, max: number, count = 5): number[] {
 }
 
 /** Width of an element, following resizes. Falls back to `fallback` where it can't be measured. */
-function useWidth(fallback: number) {
+export function useWidth(fallback: number) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(fallback);
   useEffect(() => {
@@ -53,7 +53,11 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
   const tableId = useId();
   const [active, setActive] = useState<number | null>(null);
   const overlay = useRef<SVGSVGElement>(null);
-  const tables = useRuntime()?.spec.data;
+  const runtime = useRuntime();
+  const tables = runtime?.spec.data;
+  const pinnedScope = runtime?.pinned;
+  // The pinned settings' lines, drawn dashed behind the live ones.
+  const ghost = useMemo(() => (pinnedScope ? chartData(view, pinnedScope, (tables ?? []) as DataTable[]) : undefined), [view, pinnedScope, tables]);
   const data = useMemo(() => chartData(view, scope, (tables ?? []) as DataTable[]), [view, scope, tables]);
   const categories = data.categories;
   // One row per x, holding each series' value there (NaN where a series has none).
@@ -67,7 +71,7 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
   const xText = (x: number) => (categories ? (categories[x] ?? "") : formatNumber(x, xFormat));
   const marks = (view.marks ?? []).map((m) => ({ ...m, xv: m.x !== undefined ? valueOf(m.x, scope) : undefined, yv: m.y !== undefined ? valueOf(m.y, scope) : undefined }));
 
-  const finite = points.flatMap((p) => p.ys).filter(Number.isFinite);
+  const finite = [...points.flatMap((p) => p.ys), ...(ghost?.series.flat().map((p) => p.y) ?? [])].filter(Number.isFinite);
   const dataMin = finite.length ? Math.min(...finite) : 0;
   const dataMax = finite.length ? Math.max(...finite) : 1;
   // Marks on the y axis widen the range so they stay visible.
@@ -198,6 +202,17 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
                   </g>
                 );
               })}
+          {ghost && kind !== "bar" && kind !== "scatter"
+            ? ghost.series.map((pts, j) => {
+                if (series[j]!.style === "points" || ghost.categories) return null;
+                const far = (y: number) => Math.max(yMin - (yMax - yMin) * 10, Math.min(yMax + (yMax - yMin) * 10, y));
+                const d = pts
+                  .filter((p) => Number.isFinite(p.y))
+                  .map((p, i) => `${i ? "L" : "M"} ${sx(p.x).toFixed(1)} ${syFree(far(p.y)).toFixed(1)}`)
+                  .join(" ");
+                return d ? <path key={`ghost-${j}`} d={d} className={cx("wg-chart__ghost", `wg-c-${series[j]!.color}`)} clipPath={`url(#${clipId})`} /> : null;
+              })
+            : null}
           {marks.map((m, i) => {
             const x = m.xv !== undefined && Number.isFinite(m.xv) && m.xv >= xMin && m.xv <= xMax ? sx(m.xv) : undefined;
             const y = m.yv !== undefined && Number.isFinite(m.yv) && inRange(m.yv) ? sy(m.yv) : undefined;
@@ -253,6 +268,12 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
             {s.label}
           </li>
         ))}
+        {ghost ? (
+          <li>
+            <span className="wg-swatch wg-swatch--ghost" />
+            Pinned
+          </li>
+        ) : null}
       </ul>
       {view.caption ? <figcaption className="wg-chart__caption">{renderTemplate(view.caption, scope, currency)}</figcaption> : null}
       <table id={tableId} className="wg-visually-hidden">

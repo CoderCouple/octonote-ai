@@ -13,6 +13,9 @@ Make it direct:
 - A sentence with draggable numbers often beats sliders: "If you invest [principal] at [rate] for [years] years you'll have {balance|currency}." ([input] inline, {formula|format} live.)
 - Let the reader drag the thing itself: chart handles placed by formulas (a point at x: a, y: a^2 on a parabola sets a; a point at (1, m + b) sets the slope), drag on circles, grids and meters.
 - Give time-like sliders play: true.
+- Probability: a simulation view. Each trial's outcome draws random numbers (coin(), dice(), dicesum(n), binomial(n, p), chance(p), normal(m, sd)); success and expected show the estimate settling onto the theory. Random functions only work there.
+- Geometry and vectors: a plane view with points, segments, vectors, polygons, circles, curves and text from formulas; handles with two inputs move freely. Mark inputs hidden when dragging is the control.
+- "What if" comparisons: compare: true lets the reader pin settings and see the difference.
 - Use real data when the question is about the real world: a data table, data series as points beside a formula line, reference marks that follow inputs, a table view with the current row highlighted. Only include numbers you are confident of, and say where they come from in the note.
 
 Formats:

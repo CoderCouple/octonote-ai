@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
-import { compile, FormulaError, isConstant, isFunction, namesIn } from "./expr.js";
-import { templateNames } from "./format.js";
+import { compile, FormulaError, isConstant, isFunction, namesIn, usesRandom } from "./expr.js";
+import { parseTemplate, templateNames } from "./format.js";
 
 export const WIDGET_LIMITS = {
   tables: 6,
@@ -15,6 +15,7 @@ export const WIDGET_LIMITS = {
   segments: 8,
   gridCells: 200,
   questions: 60,
+  trials: 20_000,
   sliderSteps: 10_000,
 } as const;
 
@@ -55,6 +56,7 @@ const slider = z
     format: numberFormatSchema,
     labels: z.array(short).max(20).optional().describe("A word for each step from min, e.g. Easy, Medium, Hard. Shown instead of the number."),
     play: z.boolean().optional().describe("Show a play button that sweeps the value from min to max, e.g. to watch years pass."),
+    hidden: z.boolean().optional().describe("No slider: the reader sets it only by dragging (a handle or a plane point). Use when the drag is the control, e.g. vector components."),
   })
   .describe("A number the learner drags.");
 const toggle = z.object({ kind: z.literal("toggle"), id: name, label: short, value: z.boolean() }).describe("1 when on, 0 when off.");
@@ -191,9 +193,45 @@ export const tableView = view("table", {
   highlight: formula.optional().describe("A formula per row (column names and inputs); rows where it's true stand out, e.g. year == pickYear."),
   limit: z.number().int().min(1).max(WIDGET_LIMITS.rows).optional().describe("Show at most this many rows, then a 'show all' button."),
 });
+export const simulationView = view("simulation", {
+  trials: formula.describe("How many trials per run, e.g. 1000, or an input. At most 20000."),
+  outcome: formula.describe(
+    "One trial's result, drawing random numbers: random() (0-1), coin() (0 or 1), chance(p) (1 with probability p), dice(sides), dicesum(n, sides), binomial(n, p) (successes in n tries), normal(mean, sd). Inputs work too. E.g. binomial(n, 1/6) counts sixes in n dice.",
+  ),
+  success: formula.optional().describe("When a trial counts as a success, using outcome, e.g. outcome >= 1. Then the share of successes is shown."),
+  expected: formula.optional().describe("What theory says: the share of successes (with success) or the mean outcome (without). Drawn as a line the estimate settles onto, e.g. 1 - (5/6)^n."),
+  label: short.optional().describe('What is being estimated, e.g. "At least one six".'),
+  histogram: z.boolean().optional().describe("Also show how often each outcome came up."),
+});
+const pair = z.tuple([formula, formula]).describe("[x, y], each a formula.");
+const planeShape = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("point"), at: pair, label: template.optional(), color: color.optional() }),
+  z.object({ kind: z.literal("segment"), from: pair, to: pair, label: template.optional(), color: color.optional(), dashed: z.boolean().optional() }),
+  z.object({ kind: z.literal("vector"), from: pair.optional().describe("Defaults to the origin."), to: pair, label: template.optional(), color: color.optional() }),
+  z.object({ kind: z.literal("polygon"), points: z.array(pair).min(3).max(12), label: template.optional(), color: color.optional() }),
+  z.object({ kind: z.literal("circle"), center: pair, r: formula, color: color.optional(), dashed: z.boolean().optional() }),
+  z.object({ kind: z.literal("function"), y: formula.describe("A formula in x."), label: template.optional(), color: color.optional() }),
+  z.object({ kind: z.literal("text"), at: pair, text: template, color: color.optional() }),
+]);
+export const planeView = view("plane", {
+  x: z.tuple([z.number(), z.number()]).describe("Visible x range, e.g. [-5, 5]."),
+  y: z.tuple([z.number(), z.number()]).describe("Visible y range. Keep the same span per unit as x so circles stay round."),
+  shapes: z.array(planeShape).min(1).max(24),
+  handles: z
+    .array(
+      z.object({
+        inputs: z.array(name).min(1).max(2).describe("One input, or two for a point dragged freely: the first follows x, the second y."),
+        at: pair.describe("Where the handle is; usually built from its inputs."),
+        label: template.optional(),
+        color: color.optional(),
+      }),
+    )
+    .max(4)
+    .optional(),
+});
 export const inputView = view("input", { input: name.describe("Where to place that input's control. Inputs not placed this way go at the end.") });
 
-export const widgetView = z.discriminatedUnion("type", [statsView, chartView, barsView, circleView, gridView, donutView, meterView, stackedView, formulaView, textView, sentenceView, tableView, questionsView, inputView]);
+export const widgetView = z.discriminatedUnion("type", [statsView, chartView, barsView, circleView, gridView, donutView, meterView, stackedView, formulaView, textView, sentenceView, tableView, simulationView, planeView, questionsView, inputView]);
 
 export const dataTableSchema = z
   .object({
@@ -247,6 +285,7 @@ export const widgetShape = {
     .describe("Named numbers, worked out in order: a formula, a lookup in a table, or an aggregate of a column. Each may use inputs and earlier values."),
   views: z.array(widgetView).min(1).max(WIDGET_LIMITS.views),
   note: template.optional().describe("A footnote, e.g. assumptions."),
+  compare: z.boolean().optional().describe("Show a Pin button: the reader pins the current settings, changes them, and compares. Charts keep the pinned lines dashed; stats show the pinned number and the difference."),
 };
 
 type Issue = { code: "custom"; message: string; path: (string | number)[] };
@@ -260,6 +299,9 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
   };
   const check = (source: string, path: (string | number)[], extra: string[] = [], kind: "formula" | "template" = "formula") => {
     try {
+      const randomAllowed = path.includes("outcome");
+      const trees = kind === "formula" ? [compile(source)] : parseTemplate(source).flatMap((part) => (typeof part === "string" ? [] : [compile(part.formula)]));
+      if (!randomAllowed && trees.some(usesRandom)) addIssue({ code: "custom", message: "Random numbers only work in a simulation's outcome; elsewhere a formula must give the same answer every time", path: [...base, ...path] });
       const names = kind === "formula" ? namesIn(compile(source)) : templateNames(source);
       for (const n of names) if (!known.has(n) && !extra.includes(n)) addIssue({ code: "custom", message: `Unknown name "${n}"`, path: [...base, ...path] });
     } catch (error) {
@@ -418,6 +460,49 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
         f(v.max, ["max"]);
         break;
       }
+      case "plane": {
+        if (v.x[0] >= v.x[1]) addIssue({ code: "custom", message: "x range must go from low to high", path: [...base, ...path, "x"] });
+        if (v.y[0] >= v.y[1]) addIssue({ code: "custom", message: "y range must go from low to high", path: [...base, ...path, "y"] });
+        const p2 = (pt: readonly [string, string] | undefined, key: (string | number)[]) => {
+          if (!pt) return;
+          f(pt[0], [...key, 0]);
+          f(pt[1], [...key, 1]);
+        };
+        v.shapes.forEach((shape, j) => {
+          const at = ["shapes", j];
+          if (shape.kind === "point" || shape.kind === "text") p2(shape.at, [...at, "at"]);
+          if (shape.kind === "segment" || shape.kind === "vector") {
+            p2(shape.from, [...at, "from"]);
+            p2(shape.to, [...at, "to"]);
+          }
+          if (shape.kind === "polygon") shape.points.forEach((pt, k) => p2(pt, [...at, "points", k]));
+          if (shape.kind === "circle") {
+            p2(shape.center, [...at, "center"]);
+            f(shape.r, [...at, "r"]);
+          }
+          if (shape.kind === "function") f(shape.y, [...at, "y"], ["x"]);
+          if ("label" in shape) t(shape.label, [...at, "label"]);
+          if (shape.kind === "text") t(shape.text, [...at, "text"]);
+        });
+        v.handles?.forEach((h, j) => {
+          h.inputs.forEach((id, k) => draggable(id, [...path, "handles", j, "inputs", k]));
+          p2(h.at, ["handles", j, "at"]);
+          t(h.label, ["handles", j, "label"]);
+        });
+        break;
+      }
+      case "simulation": {
+        f(v.trials, ["trials"]);
+        f(v.outcome, ["outcome"]);
+        f(v.success, ["success"], ["outcome"]);
+        f(v.expected, ["expected"]);
+        try {
+          if (!usesRandom(compile(v.outcome))) addIssue({ code: "custom", message: "The outcome never draws a random number, so every trial is the same. Use random(), coin(), chance(p), dice(), dicesum() or binomial().", path: [...base, ...path, "outcome"] });
+        } catch {
+          // Reported above.
+        }
+        break;
+      }
       case "table": {
         const table = tableAt(v.data, [...path, "data"]);
         v.columns?.forEach((c, j) => columnAt(table, c, [...path, "columns", j], false));
@@ -502,9 +587,9 @@ export function splitSentence(text: string): (string | { input: string })[] {
   return parts;
 }
 
-/** Inputs that a view shows itself, so they don't also get a slider at the end. */
-export function placedInputs(views: readonly WidgetView[]): Set<string> {
-  const placed = new Set<string>();
+/** Inputs that a view shows itself (or that are hidden), so they don't also get a slider at the end. */
+export function placedInputs(views: readonly WidgetView[], inputs: readonly WidgetInput[] = []): Set<string> {
+  const placed = new Set<string>(inputs.filter((i) => i.kind === "slider" && i.hidden).map((i) => i.id));
   for (const v of views) {
     if (v.type === "input") placed.add(v.input);
     if (v.type === "sentence") for (const part of splitSentence(v.text)) if (typeof part !== "string") placed.add(part.input);

@@ -18,6 +18,7 @@ export { inputValues, keyStep, solveInput } from "./explorable/interact.js";
 export { aggregate, lookup, rowScope } from "./explorable/data.js";
 export { lintWidget } from "./explorable/lint.js";
 export { WIDGET_GUIDE, widgetToolDefinition } from "./explorable/ai.js";
+export { runSimulation, seededRandom } from "./explorable/simulation.js";
 export type { WidgetIssue } from "./explorable/lint.js";
 export type { DataColumn, DataTable } from "./explorable/data.js";
 export type { WidgetRuntime } from "./explorable/interact.js";

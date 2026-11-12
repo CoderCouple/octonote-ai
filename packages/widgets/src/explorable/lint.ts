@@ -68,6 +68,20 @@ export function lintWidget(spec: Spec): WidgetIssue[] {
       view.handles?.forEach((h) => (readAll(h.x), readAll(h.y), read.add(h.input)));
     }
     if (view.type === "bars") view.items?.forEach((item) => readAll(item.value));
+    if (view.type === "plane") {
+      const pair = (p?: readonly [string, string]) => p && (readAll(p[0]), readAll(p[1]));
+      for (const shape of view.shapes) {
+        if ("at" in shape) pair(shape.at);
+        if ("from" in shape) pair(shape.from);
+        if ("to" in shape) pair(shape.to);
+        if ("center" in shape) (pair(shape.center), readAll(shape.r));
+        if ("points" in shape) shape.points.forEach(pair);
+        if (shape.kind === "function") readAll(shape.y);
+        if ("label" in shape) readAll(shape.label, "template");
+        if (shape.kind === "text") readAll(shape.text, "template");
+      }
+      view.handles?.forEach((h) => (pair(h.at), h.inputs.forEach((id) => read.add(id))));
+    }
     if (view.type === "stacked") view.segments.forEach((s) => readAll(s.value));
   }
   if (spec.note) readAll(spec.note, "template");

@@ -7,6 +7,8 @@ import { formatNumber, renderTemplate, type NumberFormat } from "./format.js";
 import { Icon } from "./icons.js";
 import { rowScope, type DataTable } from "./data.js";
 import { Sentence, useInputDrag, useRuntime } from "./interact.js";
+import { PlaneView } from "./plane.js";
+import { SimulationView } from "./simulation.js";
 import { valueOf } from "./runtime.js";
 import { splitSentence, type NumberFormatSpec, type PaletteColor, type WidgetView } from "./schema.js";
 
@@ -27,6 +29,7 @@ function withCurrency(format: NumberFormatSpec, currency?: string): NumberFormat
 const fill = (template: string | undefined, scope: Scope, currency?: string) => (template ? renderTemplate(template, scope, currency) : undefined);
 
 export function StatsView({ view, scope, currency }: ViewProps<"stats">) {
+  const pinned = useRuntime()?.pinned;
   return (
     <dl className={cx("wg-xstats", view.items.length === 1 && "wg-xstats--single")}>
       {view.items.map((item, i) => {
@@ -37,10 +40,24 @@ export function StatsView({ view, scope, currency }: ViewProps<"stats">) {
             <dt className="wg-xstat__label">{item.label}</dt>
             <dd className={cx("wg-xstat__value", `wg-tone-${tone}`)}>{item.display ? fill(item.display, scope, currency) : formatNumber(value, withCurrency(item.format, currency))}</dd>
             {item.note ? <dd className="wg-xstat__note">{fill(item.note, scope, currency)}</dd> : null}
+            {pinned && !item.display ? <PinnedNote now={value} then={valueOf(item.value, pinned)} format={withCurrency(item.format, currency)} /> : null}
           </div>
         );
       })}
     </dl>
+  );
+}
+
+/** The pinned value under a stat, and how far the live one has moved from it. */
+function PinnedNote({ now, then, format }: { now: number; then: number; format: NumberFormat }) {
+  const diff = now - then;
+  // Numbers the change didn't touch need no note.
+  if (!Number.isFinite(then) || Math.abs(diff) < 1e-9 * Math.max(1, Math.abs(then))) return null;
+  return (
+    <dd className="wg-xstat__pinned">
+      Pinned {formatNumber(then, format)}
+      <span className={cx("wg-xstat__delta", diff > 0 ? "wg-tone-positive" : "wg-tone-negative")}> ({formatNumber(diff, { ...format, signed: true })})</span>
+    </dd>
   );
 }
 
@@ -342,6 +359,10 @@ export function WidgetViewRenderer({ view, scope, currency }: { view: Exclude<Wi
       );
     case "table":
       return <TableView view={view} scope={scope} currency={currency} />;
+    case "simulation":
+      return <SimulationView view={view} scope={scope} />;
+    case "plane":
+      return <PlaneView view={view} scope={scope} currency={currency} />;
     case "sentence":
       return <Sentence parts={splitSentence(view.text)} render={(part, i) => <RichText key={i} text={renderTemplate(part, scope, currency)} />} />;
     case "questions":

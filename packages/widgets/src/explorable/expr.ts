@@ -33,8 +33,66 @@ function gcd(a: number, b: number): number {
   return a;
 }
 
+/** Functions that draw random numbers; they only work inside a simulation. */
+const RANDOM: Record<string, (r: () => number, ...args: number[]) => number> = {
+  random: (r) => r(),
+  coin: (r) => (r() < 0.5 ? 1 : 0),
+  chance: (r, p = 0.5) => (r() < p ? 1 : 0),
+  dice: (r, sides = 6) => {
+    const n = Math.round(sides);
+    return n >= 2 && n <= 1000 ? 1 + Math.floor(r() * n) : NaN;
+  },
+  /** Successes in n tries that each succeed with chance p, e.g. sixes in n dice: binomial(n, 1/6). */
+  binomial: (r, n, p) => {
+    const count = Math.round(n);
+    if (!(count >= 0 && count <= 1000)) return NaN;
+    let hits = 0;
+    for (let i = 0; i < count; i++) if (r() < p) hits++;
+    return hits;
+  },
+  /** The total of n dice. */
+  dicesum: (r, n, sides = 6) => {
+    const count = Math.round(n);
+    const faces = Math.round(sides);
+    if (!(count >= 0 && count <= 1000 && faces >= 2 && faces <= 1000)) return NaN;
+    let total = 0;
+    for (let i = 0; i < count; i++) total += 1 + Math.floor(r() * faces);
+    return total;
+  },
+  normal: (r, mean = 0, sd = 1) => {
+    // Box-Muller.
+    const u = 1 - r();
+    const v = r();
+    return mean + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  },
+};
+export const RANDOM_FUNCTIONS = Object.keys(RANDOM);
+
+/** Whether a formula draws random numbers. */
+export function usesRandom(expr: Expr): boolean {
+  switch (expr.k) {
+    case "call":
+      return !!own(RANDOM, expr.fn) || expr.args.some(usesRandom);
+    case "un":
+      return usesRandom(expr.a);
+    case "bin":
+      return usesRandom(expr.a) || usesRandom(expr.b);
+    case "cond":
+      return usesRandom(expr.c) || usesRandom(expr.a) || usesRandom(expr.b);
+    default:
+      return false;
+  }
+}
+
 /** Every function a formula may call, with its allowed argument counts. */
 export const FUNCTIONS: Record<string, { arity: [number, number]; fn: (...args: number[]) => number }> = {
+  random: { arity: [0, 0], fn: () => NaN },
+  coin: { arity: [0, 0], fn: () => NaN },
+  chance: { arity: [1, 1], fn: () => NaN },
+  dice: { arity: [0, 1], fn: () => NaN },
+  normal: { arity: [0, 2], fn: () => NaN },
+  binomial: { arity: [2, 2], fn: () => NaN },
+  dicesum: { arity: [1, 2], fn: () => NaN },
   abs: { arity: [1, 1], fn: Math.abs },
   sqrt: { arity: [1, 1], fn: Math.sqrt },
   cbrt: { arity: [1, 1], fn: Math.cbrt },
@@ -217,29 +275,34 @@ export function namesIn(expr: Expr, into = new Set<string>()): Set<string> {
 
 export type Scope = Readonly<Record<string, number>>;
 
-/** Evaluates a parsed formula. Unknown names are NaN; results that aren't finite are NaN. */
-export function evaluate(expr: Expr, scope: Scope): number {
-  const value = run(expr, scope);
+/**
+ * Evaluates a parsed formula. Unknown names are NaN; results that aren't finite are NaN.
+ * `random` feeds random(), coin(), dice() and the like: only simulations pass one,
+ * so everywhere else those are NaN and formulas stay repeatable.
+ */
+export function evaluate(expr: Expr, scope: Scope, random?: () => number): number {
+  const value = run(expr, scope, random);
   return Number.isFinite(value) ? value : NaN;
 }
 
-function run(e: Expr, s: Scope): number {
+function run(e: Expr, s: Scope, r?: () => number): number {
   switch (e.k) {
     case "num":
       return e.v;
     case "var":
       return Object.prototype.hasOwnProperty.call(s, e.name) ? s[e.name]! : (own(CONSTANTS, e.name) ?? NaN);
     case "un":
-      return e.op === "-" ? -run(e.a, s) : run(e.a, s) ? 0 : 1;
+      return e.op === "-" ? -run(e.a, s, r) : run(e.a, s, r) ? 0 : 1;
     case "cond":
-      return run(e.c, s) ? run(e.a, s) : run(e.b, s);
+      return run(e.c, s, r) ? run(e.a, s, r) : run(e.b, s, r);
     case "call":
-      return own(FUNCTIONS, e.fn)!.fn(...e.args.map((arg) => run(arg, s)));
+      if (own(RANDOM, e.fn)) return r ? own(RANDOM, e.fn)!(r, ...e.args.map((arg) => run(arg, s, r))) : NaN;
+      return own(FUNCTIONS, e.fn)!.fn(...e.args.map((arg) => run(arg, s, r)));
     case "bin": {
-      const a = run(e.a, s);
-      if (e.op === "&&") return a ? (run(e.b, s) ? 1 : 0) : 0;
-      if (e.op === "||") return a ? 1 : run(e.b, s) ? 1 : 0;
-      const b = run(e.b, s);
+      const a = run(e.a, s, r);
+      if (e.op === "&&") return a ? (run(e.b, s, r) ? 1 : 0) : 0;
+      if (e.op === "||") return a ? 1 : run(e.b, s, r) ? 1 : 0;
+      const b = run(e.b, s, r);
       switch (e.op) {
         case "+":
           return a + b;

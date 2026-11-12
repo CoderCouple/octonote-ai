@@ -19,6 +19,12 @@ Accessible React UI widgets in two layers.
   - Charts can be line, area, bar or `scatter`. `marks` draw reference lines or labelled points that follow inputs.
   - Bars can come from a table. A `table` view highlights rows by formula.
   - `grouping: false` (or the `year` template format) prints years as 2024, not 2,024.
+- **More ways to explore.**
+  - `compare: true` adds Pin to compare. Charts keep the pinned lines dashed, and stats show the pinned number and the difference.
+  - `simulation` runs seeded trials:
+    - Random functions (`coin()`, `dice()`, `dicesum(n)`, `binomial(n, p)`, `chance(p)`, `normal(m, sd)`) work only in a simulation's outcome. Everywhere else formulas stay repeatable.
+    - A run plays out over a second and a half: the share or mean counts up, a running estimate settles onto `expected`, and there's an optional histogram.
+  - `plane` is a coordinate plane (à la Mafs) with points, segments, vectors, polygons, circles, curves and text, all placed by formulas. Its handles take one or two inputs (dragging them moves freely), arrow keys move them, and sliders can be `hidden` when dragging is the control.
 - **Input sweep checker.** `lintWidget` moves every input through its range, and all of them to their extremes together. It reports:
   - values that break (with the setting that breaks them);
   - `percent` formats fed percentages;

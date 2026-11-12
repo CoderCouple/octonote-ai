@@ -1,8 +1,8 @@
-import { Component, useMemo, type ReactNode } from "react";
+import { Component, useMemo, useState, type ReactNode } from "react";
 import { cx, useWidgets, type Theme } from "../provider.js";
 import { renderTemplate } from "./format.js";
 import { WidgetInputControl } from "./inputs.js";
-import { useWidget } from "./runtime.js";
+import { computeScope, useWidget, type InputValues } from "./runtime.js";
 import { RuntimeProvider } from "./interact.js";
 import { placedInputs, widgetSpecSchema, type WidgetBlock, type WidgetSpec } from "./schema.js";
 import { WidgetViewRenderer } from "./views.js";
@@ -12,8 +12,10 @@ type WidgetContent = Omit<WidgetBlock, "type" | "id">;
 /** An explorable widget card: inputs, values computed from them, and views that update live. */
 export function Widget({ spec, className }: { spec: WidgetContent; className?: string }) {
   const { inputs, scope, setInput, reset, changed } = useWidget(spec);
-  const runtime = useMemo(() => ({ spec, inputs, scope, setInput }), [spec, inputs, scope, setInput]);
-  const placed = placedInputs(spec.views);
+  const [pin, setPin] = useState<InputValues | null>(null);
+  const pinned = useMemo(() => (pin ? computeScope(spec, pin) : undefined), [spec, pin]);
+  const runtime = useMemo(() => ({ spec, inputs, scope, setInput, pinned }), [spec, inputs, scope, setInput, pinned]);
+  const placed = placedInputs(spec.views, spec.inputs);
   const loose = spec.inputs.filter((input) => !placed.has(input.id));
   const byId = new Map(spec.inputs.map((input) => [input.id, input]));
   const control = (id: string) => {
@@ -25,8 +27,19 @@ export function Widget({ spec, className }: { spec: WidgetContent; className?: s
     <section className={cx("wg-widget", className)} aria-label={spec.title}>
       <header className="wg-widget__header">
         <h3 className="wg-widget__title">{spec.title}</h3>
+        {spec.compare ? (
+          <button
+            type="button"
+            className={cx("wg-widget__reset", pin && "wg-widget__pin--on")}
+            aria-pressed={!!pin}
+            title={pin ? "Stop comparing" : "Keep these settings to compare against"}
+            onClick={() => setPin((p) => (p ? null : { ...inputs }))}
+          >
+            {pin ? "Unpin" : "Pin to compare"}
+          </button>
+        ) : null}
         {changed ? (
-          <button type="button" className="wg-widget__reset" onClick={reset}>
+          <button type="button" className={cx("wg-widget__reset", spec.compare && "wg-widget__reset--after")} onClick={reset}>
             Reset
           </button>
         ) : null}

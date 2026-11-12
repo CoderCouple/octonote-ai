@@ -11,6 +11,8 @@ export interface WidgetRuntime {
   inputs: InputValues;
   scope: Scope;
   setInput: (id: string, value: number) => void;
+  /** The pinned settings' scope, when the reader has pinned some to compare against. */
+  pinned?: Scope;
 }
 
 const RuntimeContext = createContext<WidgetRuntime | null>(null);
