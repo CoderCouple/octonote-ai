@@ -13,6 +13,10 @@ export interface MindmapState {
   /** Nodes the learner has had on screen; the map is complete once all have been. */
   seen: Record<string, true>;
   completed: boolean;
+  /** Test-yourself mode: topics stay hidden until the learner reveals them. */
+  recall?: { revealed: Record<string, true> };
+  /** Stepping through: branches open one at a time. */
+  stepping?: boolean;
 }
 
 export interface MindmapNodeRenderInfo {
@@ -98,7 +102,38 @@ export function useMindmap(props: MindmapProps) {
         return { ...s, offsets: { ...s.offsets, [nodeId]: { x: old.x + dx, y: old.y + dy } } };
       });
     },
-    expandAll: () => setState((s) => ({ ...s, collapsed: {} })),
+    expandAll: () => setState((s) => ({ ...s, collapsed: {}, stepping: false })),
+    /** Hide every topic but the centre; the learner recalls each before revealing it. */
+    startRecall() {
+      setState((s) => ({ ...s, collapsed: {}, recall: { revealed: {} } }));
+      emit({ type: "activity.started" });
+    },
+    stopRecall: () => setState((s) => ({ ...s, recall: undefined })),
+    isHidden: (nodeId: string) => !!state.recall && !state.recall.revealed[nodeId] && byId.get(nodeId)?.parent !== undefined,
+    reveal(nodeId: string) {
+      if (!state.recall || state.recall.revealed[nodeId]) return;
+      const revealed = { ...state.recall.revealed, [nodeId]: true as const };
+      setState((s) => ({ ...s, recall: { revealed } }));
+      emit({ type: "node.toggled", nodeId, expanded: true });
+      if (Object.keys(revealed).length >= nodes.length - 1) emit({ type: "activity.completed" });
+    },
+    /** Back to the centre; then each "next" opens one more branch, in reading order. */
+    stepThrough() {
+      const collapsed: Record<string, boolean> = {};
+      for (const n of nodes) if (n.parent !== undefined && nodes.some((c) => c.parent === n.id)) collapsed[n.id] = true;
+      setState((s) => ({ ...s, collapsed, stepping: true }));
+    },
+    showNext(): string | undefined {
+      // The first visible topic that still has hidden children.
+      const next = layout.nodes.find((p) => p.hasChildren && !p.expanded);
+      if (!next) {
+        setState((s) => ({ ...s, stepping: false }));
+        return undefined;
+      }
+      setState((s) => ({ ...s, collapsed: { ...s.collapsed, [next.node.id]: false } }));
+      emit({ type: "node.toggled", nodeId: next.node.id, expanded: true });
+      return next.node.id;
+    },
     resetLayout: () => setState((s) => ({ ...s, offsets: {} })),
   };
 }
@@ -204,6 +239,13 @@ export function Mindmap(props: MindmapProps) {
     });
   };
 
+  const reveal = (nodeId: string) => {
+    map.reveal(nodeId);
+    setAnnouncement(`Revealed: ${map.labelOf(nodeId)}`);
+  };
+  const recallTotal = map.byId.size - 1;
+  const recallCount = state.recall ? Object.keys(state.recall.revealed).length : 0;
+
   const toggle = (p: PlacedNode) => {
     if (!p.hasChildren) return;
     map.setExpanded(p.node.id, !p.expanded);
@@ -238,7 +280,8 @@ export function Mindmap(props: MindmapProps) {
         break;
       case "Enter":
       case " ":
-        toggle(p);
+        if (map.isHidden(p.node.id)) reveal(p.node.id);
+        else toggle(p);
         break;
       case "F2":
         if (props.editable) setEditing(p.node.id);
@@ -304,7 +347,10 @@ export function Mindmap(props: MindmapProps) {
     if (pointers.current.size < 2) pinch.current = null;
     if (drag?.kind === "node") {
       if (drag.moved) map.move(drag.id, drag.dx, drag.dy);
-      else select(drag.id);
+      else {
+        select(drag.id);
+        if (map.isHidden(drag.id)) reveal(drag.id);
+      }
     }
     setDrag(null);
   };
@@ -328,6 +374,36 @@ export function Mindmap(props: MindmapProps) {
           Fit
         </button>
         <span className="ix-toolbar__spacer" />
+        {state.recall ? (
+          <>
+            <span className="ix-small ix-mindmap__progress" aria-live="polite">
+              Revealed {recallCount} of {recallTotal}
+            </span>
+            <button type="button" className="ix-button ix-button--ghost" onClick={map.stopRecall}>
+              Show all
+            </button>
+          </>
+        ) : (
+          <button type="button" className="ix-button ix-button--ghost" onClick={map.startRecall} title="Hide the topics and try to remember each before revealing it">
+            Test yourself
+          </button>
+        )}
+        {state.stepping ? (
+          <button
+            type="button"
+            className="ix-button ix-button--primary"
+            onClick={() => {
+              const opened = map.showNext();
+              setAnnouncement(opened ? `Opened ${map.labelOf(opened)}` : "Every branch is open");
+            }}
+          >
+            Show next
+          </button>
+        ) : (
+          <button type="button" className="ix-button ix-button--ghost" onClick={map.stepThrough} title="Start from the central idea and open one branch at a time">
+            Step through
+          </button>
+        )}
         {Object.keys(state.collapsed).some((k) => state.collapsed[k]) ? (
           <button type="button" className="ix-button ix-button--ghost" onClick={map.expandAll}>
             Expand all
@@ -366,7 +442,8 @@ export function Mindmap(props: MindmapProps) {
           <div role="tree" aria-label={props.title ?? "Mind map"} className="ix-mindmap__tree">
             {layout.nodes.map((p) => {
               const pos = positions.get(p.node.id)!;
-              const label = map.labelOf(p.node.id);
+              const hidden = map.isHidden(p.node.id);
+              const label = hidden ? "Hidden topic: what goes here? Press Enter to reveal" : map.labelOf(p.node.id);
               const isSelected = p.node.id === focusId;
               return (
                 <div
@@ -385,7 +462,7 @@ export function Mindmap(props: MindmapProps) {
                   tabIndex={isSelected ? 0 : -1}
                   data-node-id={p.node.id}
                   data-branch={p.branch < 0 ? undefined : p.branch % 6}
-                  className={cx("ix-mindmap__node", p.depth === 0 && "ix-mindmap__node--root", isSelected && "ix-mindmap__node--selected", drag?.kind === "node" && drag.id === p.node.id && drag.moved && "ix-mindmap__node--dragging")}
+                  className={cx("ix-mindmap__node", p.depth === 0 && "ix-mindmap__node--root", hidden && "ix-mindmap__node--hidden", isSelected && "ix-mindmap__node--selected", drag?.kind === "node" && drag.id === p.node.id && drag.moved && "ix-mindmap__node--dragging")}
                   style={{ transform: `translate(${pos.x}px, ${pos.y}px)`, width: NODE_W, height: NODE_H }}
                   onKeyDown={(e) => onItemKeyDown(e, p)}
                   onFocus={() => setSelected(p.node.id)}
@@ -414,8 +491,8 @@ export function Mindmap(props: MindmapProps) {
                       }}
                     />
                   ) : (
-                    <span className="ix-mindmap__label" title={label}>
-                      {props.renderNode ? props.renderNode({ node: p.node, label, depth: p.depth, expanded: p.expanded, hasChildren: p.hasChildren, selected: isSelected }) : label}
+                    <span className="ix-mindmap__label" title={hidden ? undefined : label}>
+                      {hidden ? "?" : props.renderNode ? props.renderNode({ node: p.node, label, depth: p.depth, expanded: p.expanded, hasChildren: p.hasChildren, selected: isSelected }) : label}
                     </span>
                   )}
                   {p.hasChildren ? (
@@ -438,7 +515,7 @@ export function Mindmap(props: MindmapProps) {
         </div>
       </div>
 
-      {selectedNode ? (
+      {selectedNode && !map.isHidden(selectedNode.id) ? (
         <div className="ix-mindmap__detail">
           <p className="ix-mindmap__detail-title">{map.labelOf(selectedNode.id)}</p>
           {selectedNode.note ? <p className="ix-muted">{selectedNode.note}</p> : null}

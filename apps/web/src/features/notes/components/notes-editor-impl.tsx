@@ -33,7 +33,7 @@ import { updateNoteClientApi } from "../api/notes-client-api";
 import { appCanvasResolver } from "../blocks/app-canvas-resolver";
 import { CanvasPickerDialog } from "../blocks/canvas-picker-dialog";
 import { ComposeAiDialog } from "../blocks/compose-ai-dialog";
-import { INTERACTIVE_LABELS, starterSpec } from "../blocks/interactive-block";
+import { INTERACTIVE_LABELS, NoteWorkspaceContext, starterSpec } from "../blocks/interactive-block";
 import { VideoDialog } from "../blocks/manim-video-block";
 import { FigurePickerDialog } from "../blocks/figure-picker-dialog";
 import { uploadNoteImage } from "../lib/upload-image";
@@ -409,6 +409,8 @@ export function NotesEditor({
 
   return (
     <CanvasReferenceContext.Provider value={appCanvasResolver}>
+      {/* Blocks that create things next to the note (a canvas from a mind map) need its workspace. */}
+      <NoteWorkspaceContext.Provider value={workspaceId}>
       <div
         ref={dropZoneRef}
         data-figure-drop-zone={readOnly ? undefined : ""}
@@ -476,6 +478,7 @@ export function NotesEditor({
           </>
         )}
       </div>
+      </NoteWorkspaceContext.Provider>
     </CanvasReferenceContext.Provider>
   );
 }

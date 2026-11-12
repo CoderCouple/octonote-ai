@@ -33,4 +33,4 @@ export { parseModelOutput, parseSpec, sessionToolDefinition } from "./ai.js";
 export type { ParseOptions, ToolDefinition } from "./ai.js";
 export { seededRandom, shuffle } from "./shuffle.js";
 export { normalizeSpec } from "./normalize.js";
-export { outlineToMindmap, outlineToMindmapNodes } from "./outline.js";
+export { mindmapToMermaid, mindmapToOutline, outlineToMindmap, outlineToMindmapNodes } from "./outline.js";

@@ -18,14 +18,34 @@ import "@octonote/interactive/styles.css";
 import "@octonote/motion/styles.css";
 import "@octonote/compose/styles.css";
 import { createReactBlockSpec } from "@blocknote/react";
-import { checkBlock, customEntry, defaultCatalog, type Issue } from "@octonote/compose";
+import {
+  checkBlock,
+  customEntry,
+  defaultCatalog,
+  type Issue,
+} from "@octonote/compose";
 import { BlockView } from "@octonote/compose/react";
-import { defaultComponents, InteractiveProvider, webStorageStore } from "@octonote/interactive";
+import {
+  defaultComponents,
+  InteractiveProvider,
+  mindmapToMermaid,
+  webStorageStore,
+  type MindmapNode,
+} from "@octonote/interactive";
 import { webWidgetStore, WidgetsProvider } from "@octonote/widgets";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import { Code2, Loader2, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Code2, Loader2, Network, Sparkles } from "lucide-react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createCanvasClientApi } from "@/features/canvas/api/canvases-client-api";
+import { RESOURCE_PATH } from "@/features/sharing";
 import { Button } from "@/components/ui/button";
 import { clientApi } from "@/lib/api/client-fetch";
 
@@ -50,13 +70,32 @@ export function starterSpec(kind: string): string {
 }
 
 // Progress (answers, known cards) stays in the reader's browser, per block.
-const store = typeof window === "undefined" ? undefined : webStorageStore(window.localStorage, "octonote-block:");
+const store =
+  typeof window === "undefined"
+    ? undefined
+    : webStorageStore(window.localStorage, "octonote-block:");
+
+/** The note's workspace, for actions that create things next to it (e.g. a canvas from a mind map). */
+export const NoteWorkspaceContext = createContext<string | null>(null);
 // Each reader's widget settings (slider positions and the like), kept per block.
-const widgetStore = typeof window === "undefined" ? undefined : webWidgetStore(window.localStorage, "octonote-widget:");
+const widgetStore =
+  typeof window === "undefined"
+    ? undefined
+    : webWidgetStore(window.localStorage, "octonote-widget:");
 
 /** TeX in widget formula lines, typeset with KaTeX (trust off: no links, classes or styles from content). */
 function renderMath(tex: string) {
-  return <span dangerouslySetInnerHTML={{ __html: katex.renderToString(tex, { throwOnError: false, trust: false, displayMode: false }) }} />;
+  return (
+    <span
+      dangerouslySetInnerHTML={{
+        __html: katex.renderToString(tex, {
+          throwOnError: false,
+          trust: false,
+          displayMode: false,
+        }),
+      }}
+    />
+  );
 }
 
 export const InteractiveBlock = createReactBlockSpec(
@@ -71,7 +110,9 @@ export const InteractiveBlock = createReactBlockSpec(
   {
     toExternalHTML: ({ block }) => (
       <pre>
-        <code className={`language-${block.props.kind}`}>{block.props.spec}</code>
+        <code className={`language-${block.props.kind}`}>
+          {block.props.spec}
+        </code>
       </pre>
     ),
     render: ({ block, editor }) => (
@@ -86,16 +127,27 @@ export const InteractiveBlock = createReactBlockSpec(
   },
 );
 
-type Check = { ok: true; block: Parameters<typeof BlockView>[0]["block"] } | { ok: false; issues: Issue[] };
+type Check =
+  | { ok: true; block: Parameters<typeof BlockView>[0]["block"] }
+  | { ok: false; issues: Issue[] };
 
 function check(kind: string, spec: string, id: string): Check {
   let value: unknown;
   try {
     value = JSON.parse(spec || "{}");
   } catch (error) {
-    return { ok: false, issues: [{ path: "", message: `Not valid JSON: ${(error as Error).message}` }] };
+    return {
+      ok: false,
+      issues: [
+        { path: "", message: `Not valid JSON: ${(error as Error).message}` },
+      ],
+    };
   }
-  if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, issues: [{ path: "", message: "The spec must be a JSON object" }] };
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return {
+      ok: false,
+      issues: [{ path: "", message: "The spec must be a JSON object" }],
+    };
   const result = checkBlock(notesCatalog, { ...(value as object), kind }, id);
   return result.ok ? result : { ok: false, issues: result.issues };
 }
@@ -130,13 +182,30 @@ function InteractiveView({
       <div className="group bg-card relative overflow-hidden rounded-xl border">
         {editable ? (
           <header className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
-            <span className="text-muted-foreground text-xs font-medium">{label}</span>
+            <span className="text-muted-foreground text-xs font-medium">
+              {label}
+            </span>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setMode((m) => (m === "ai" ? "view" : "ai"))} aria-pressed={mode === "ai"}>
+              {kind === "mindmap" && result.ok ? (
+                <OpenAsCanvas spec={result.block} />
+              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => setMode((m) => (m === "ai" ? "view" : "ai"))}
+                aria-pressed={mode === "ai"}
+              >
                 <Sparkles className="size-3.5" />
                 Ask AI
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setMode((m) => (m === "json" ? "view" : "json"))} aria-pressed={mode === "json"}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => setMode((m) => (m === "json" ? "view" : "json"))}
+                aria-pressed={mode === "json"}
+              >
                 <Code2 className="size-3.5" />
                 Edit JSON
               </Button>
@@ -144,20 +213,43 @@ function InteractiveView({
           </header>
         ) : null}
 
-        {editable && mode === "ai" ? <AskAi kind={kind} spec={spec} disabled={!result.ok} onDone={(next) => (update({ spec: next }), setMode("view"))} /> : null}
+        {editable && mode === "ai" ? (
+          <AskAi
+            kind={kind}
+            spec={spec}
+            disabled={!result.ok}
+            onDone={(next) => (update({ spec: next }), setMode("view"))}
+          />
+        ) : null}
         {editable && (mode === "json" || !result.ok) ? (
-          <JsonEditor kind={kind} spec={spec} id={id} onSave={(next) => (update({ spec: next }), setMode("view"))} onCancel={result.ok ? () => setMode("view") : undefined} />
+          <JsonEditor
+            kind={kind}
+            spec={spec}
+            id={id}
+            onSave={(next) => (update({ spec: next }), setMode("view"))}
+            onCancel={result.ok ? () => setMode("view") : undefined}
+          />
         ) : null}
 
         <div className="p-3">
           {result.ok ? (
-            <InteractiveProvider components={defaultComponents} theme={theme} store={store}>
-              <WidgetsProvider theme={theme} store={widgetStore} renderMath={renderMath}>
+            <InteractiveProvider
+              components={defaultComponents}
+              theme={theme}
+              store={store}
+            >
+              <WidgetsProvider
+                theme={theme}
+                store={widgetStore}
+                renderMath={renderMath}
+              >
                 <BlockView block={result.block} theme={theme} />
               </WidgetsProvider>
             </InteractiveProvider>
           ) : !editable ? (
-            <p className="text-muted-foreground text-sm">This {label.toLowerCase()} couldn't be shown.</p>
+            <p className="text-muted-foreground text-sm">
+              This {label.toLowerCase()} couldn't be shown.
+            </p>
           ) : null}
         </div>
       </div>
@@ -166,7 +258,19 @@ function InteractiveView({
 }
 
 /** Edit the spec as JSON. Problems show as you type; only a valid spec can be saved. */
-function JsonEditor({ kind, spec, id, onSave, onCancel }: { kind: string; spec: string; id: string; onSave: (spec: string) => void; onCancel?: () => void }) {
+function JsonEditor({
+  kind,
+  spec,
+  id,
+  onSave,
+  onCancel,
+}: {
+  kind: string;
+  spec: string;
+  id: string;
+  onSave: (spec: string) => void;
+  onCancel?: () => void;
+}) {
   const [draft, setDraft] = useState(() => pretty(spec));
   useEffect(() => setDraft(pretty(spec)), [spec]);
   const result = useMemo(() => check(kind, draft, id), [kind, draft, id]);
@@ -180,7 +284,10 @@ function JsonEditor({ kind, spec, id, onSave, onCancel }: { kind: string; spec: 
         className="bg-muted/40 h-64 w-full resize-y rounded-md border p-3 font-mono text-xs outline-none"
       />
       {result.ok ? null : (
-        <ul className="text-destructive mt-2 max-h-28 list-disc overflow-auto pl-5 text-xs" role="alert">
+        <ul
+          className="text-destructive mt-2 max-h-28 list-disc overflow-auto pl-5 text-xs"
+          role="alert"
+        >
           {result.issues.slice(0, 6).map((issue, i) => (
             <li key={i}>
               {issue.path ? <code>{issue.path}</code> : null} {issue.message}
@@ -194,7 +301,11 @@ function JsonEditor({ kind, spec, id, onSave, onCancel }: { kind: string; spec: 
             Cancel
           </Button>
         ) : null}
-        <Button size="sm" disabled={!result.ok} onClick={() => onSave(JSON.stringify(JSON.parse(draft)))}>
+        <Button
+          size="sm"
+          disabled={!result.ok}
+          onClick={() => onSave(JSON.stringify(JSON.parse(draft)))}
+        >
           Apply
         </Button>
       </div>
@@ -203,7 +314,17 @@ function JsonEditor({ kind, spec, id, onSave, onCancel }: { kind: string; spec: 
 }
 
 /** Ask the AI to change this block ("make it harder", "add two more cards"). */
-function AskAi({ kind, spec, disabled, onDone }: { kind: string; spec: string; disabled: boolean; onDone: (spec: string) => void }) {
+function AskAi({
+  kind,
+  spec,
+  disabled,
+  onDone,
+}: {
+  kind: string;
+  spec: string;
+  disabled: boolean;
+  onDone: (spec: string) => void;
+}) {
   const [instruction, setInstruction] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -215,10 +336,15 @@ function AskAi({ kind, spec, disabled, onDone }: { kind: string; spec: string; d
     setBusy(true);
     setError(null);
     try {
-      const result = await clientApi.post<{ kind: string; spec: Record<string, unknown> }>("/ai/blocks/edit", { kind, spec: JSON.parse(spec), instruction });
+      const result = await clientApi.post<{
+        kind: string;
+        spec: Record<string, unknown>;
+      }>("/ai/blocks/edit", { kind, spec: JSON.parse(spec), instruction });
       onDone(JSON.stringify(result.spec));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "The AI couldn't change this block.");
+      setError(
+        e instanceof Error ? e.message : "The AI couldn't change this block.",
+      );
     } finally {
       setBusy(false);
     }
@@ -237,12 +363,20 @@ function AskAi({ kind, spec, disabled, onDone }: { kind: string; spec: string; d
           ref={input}
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
-          placeholder={disabled ? "Fix the JSON errors first" : "e.g. Make it harder, add a slider for years"}
+          placeholder={
+            disabled
+              ? "Fix the JSON errors first"
+              : "e.g. Make it harder, add a slider for years"
+          }
           disabled={disabled || busy}
           aria-label="What should change?"
           className="bg-background flex-1 rounded-md border px-3 py-1.5 text-sm outline-none"
         />
-        <Button type="submit" size="sm" disabled={disabled || busy || !instruction.trim()}>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={disabled || busy || !instruction.trim()}
+        >
           {busy ? <Loader2 className="size-4 animate-spin" /> : "Change"}
         </Button>
       </div>
@@ -260,12 +394,63 @@ function pretty(spec: string): string {
 }
 
 function useIsDark() {
-  const [dark, setDark] = useState(() => typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
+  const [dark, setDark] = useState(
+    () =>
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("dark"),
+  );
   useEffect(() => {
     const root = document.documentElement;
-    const observer = new MutationObserver(() => setDark(root.classList.contains("dark")));
+    const observer = new MutationObserver(() =>
+      setDark(root.classList.contains("dark")),
+    );
     observer.observe(root, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
   }, []);
   return dark;
+}
+
+/** Turns a mind map into an editable Octonote canvas (via mermaid) and opens it in a new tab. */
+function OpenAsCanvas({ spec }: { spec: unknown }) {
+  const workspaceId = useContext(NoteWorkspaceContext);
+  const [state, setState] = useState<"idle" | "busy" | "failed">("idle");
+  const block = spec as { spec?: { title?: string; nodes?: MindmapNode[] } };
+  const nodes = block.spec?.nodes;
+  if (!workspaceId || !nodes?.length) return null;
+  const open = async () => {
+    setState("busy");
+    // Open the tab now, while we still have the click, and point it at the canvas once it exists.
+    const tab = window.open("", "_blank");
+    try {
+      const root = nodes.find((n) => n.parent === undefined);
+      const canvas = await createCanvasClientApi(workspaceId, {
+        title: (block.spec?.title ?? root?.label ?? "Mind map").slice(0, 120),
+        mermaid: mindmapToMermaid(nodes),
+      });
+      const url = RESOURCE_PATH.canvas(canvas.id);
+      if (tab) tab.location.href = url;
+      else window.location.href = url;
+      setState("idle");
+    } catch {
+      tab?.close();
+      setState("failed");
+    }
+  };
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 gap-1.5 text-xs"
+      onClick={() => void open()}
+      disabled={state === "busy"}
+      title="Make an editable canvas from this mind map"
+    >
+      {state === "busy" ? (
+        <Loader2 className="size-3.5 animate-spin" />
+      ) : (
+        <Network className="size-3.5" />
+      )}
+      {state === "failed" ? "Couldn't create canvas" : "Open as canvas"}
+    </Button>
+  );
 }

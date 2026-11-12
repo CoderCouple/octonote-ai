@@ -1411,3 +1411,21 @@
   color: var(--ix-accent);
   background: var(--ix-accent-soft);
 }
+
+/* Mind map: test yourself and step through */
+
+.ix-mindmap__node--hidden {
+  border-style: dashed;
+  background: var(--ix-surface-muted);
+  cursor: pointer;
+}
+.ix-mindmap__node--hidden .ix-mindmap__label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ix-muted);
+}
+.ix-mindmap__progress {
+  font-weight: 600;
+  color: var(--ix-accent);
+  font-variant-numeric: tabular-nums;
+}

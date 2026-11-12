@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import water from "../examples/water-cycle-practice.json" with { type: "json" };
-import { checkResponse, defaultRegistry, normalizeSpec, expectedResponse, gradeQuiz, isAnswered, Mcq, parseNumber, Quiz, redactQuiz, type McqSpec, type Question, type QuizSpec } from "../src/index.js";
+import { checkResponse, defaultRegistry, Mindmap, mindmapToMermaid, mindmapToOutline, normalizeSpec, expectedResponse, gradeQuiz, isAnswered, Mcq, parseNumber, Quiz, redactQuiz, type McqSpec, type Question, type QuizSpec } from "../src/index.js";
 
 afterEach(cleanup);
 
@@ -230,5 +230,50 @@ describe("learning loop: confidence and review rounds", () => {
     // The score is still the first-round one.
     expect(document.querySelector(".ix-summary__percent")!.textContent).toBe("100%");
     expect(screen.queryByRole("button", { name: /Review the/ })).toBeNull();
+  });
+});
+
+describe("mind maps that teach", () => {
+  const nodes = [
+    { id: "root", label: "Water cycle" },
+    { id: "a", label: "Evaporation", parent: "root", note: "Heat turns water to vapour." },
+    { id: "b", label: "Condensation", parent: "root" },
+    { id: "a1", label: "From oceans", parent: "a" },
+    { id: "b1", label: "Clouds", parent: "b" },
+  ];
+
+  it("test yourself: topics are hidden until revealed, and counted", () => {
+    render(<Mindmap nodes={nodes} />);
+    fireEvent.click(screen.getByRole("button", { name: "Test yourself" }));
+    expect(screen.getAllByRole("treeitem", { name: /Hidden topic/ })).toHaveLength(4);
+    expect(screen.getByText("Revealed 0 of 4")).toBeTruthy();
+    const hidden = screen.getAllByRole("treeitem", { name: /Hidden topic/ })[0]!;
+    fireEvent.keyDown(hidden, { key: "Enter" });
+    expect(screen.getByText("Revealed 1 of 4")).toBeTruthy();
+    expect(screen.getByRole("treeitem", { name: "Evaporation" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show all" }));
+    expect(screen.queryAllByRole("treeitem", { name: /Hidden topic/ })).toHaveLength(0);
+  });
+
+  it("step through: back to the centre, then one branch at a time", () => {
+    render(<Mindmap nodes={nodes} />);
+    fireEvent.click(screen.getByRole("button", { name: "Step through" }));
+    const visible = () => screen.getAllByRole("treeitem").map((n) => n.getAttribute("aria-label"));
+    expect(visible()).toEqual(["Water cycle", "Evaporation", "Condensation"]);
+    fireEvent.click(screen.getByRole("button", { name: "Show next" }));
+    expect(visible()).toEqual(["Water cycle", "Evaporation", "From oceans", "Condensation"]);
+    fireEvent.click(screen.getByRole("button", { name: "Show next" }));
+    expect(visible()).toContain("Clouds");
+    fireEvent.click(screen.getByRole("button", { name: "Show next" }));
+    expect(screen.getByRole("button", { name: "Step through" })).toBeTruthy();
+  });
+
+  it("exports to an outline and to a mermaid flowchart that labels can't break", () => {
+    expect(mindmapToOutline(nodes, { b: "Condensing" })).toBe("# Water cycle\n\n- Evaporation\n  - From oceans\n- Condensing\n  - Clouds");
+    const mermaid = mindmapToMermaid([...nodes, { id: "x", label: 'Say "hi" ]] --> evil[', parent: "root" }]);
+    expect(mermaid.split("\n")[0]).toBe("flowchart LR");
+    expect(mermaid).toContain('n0(("Water cycle"))');
+    expect(mermaid).toContain(`n5["Say 'hi' )) --> evil("]`);
+    expect(mermaid).toContain("n0 --> n1");
   });
 });

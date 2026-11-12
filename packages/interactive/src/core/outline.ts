@@ -87,3 +87,50 @@ export function outlineToMindmap(markdown: string, options: { id: string; title?
     nodes: outlineToMindmapNodes(markdown, options.title),
   };
 }
+
+/** Children of each node, in the order they were given. */
+function childrenOf(nodes: readonly MindmapNode[]): Map<string | undefined, MindmapNode[]> {
+  const map = new Map<string | undefined, MindmapNode[]>();
+  for (const node of nodes) map.set(node.parent, [...(map.get(node.parent) ?? []), node]);
+  return map;
+}
+
+/** A mind map as a Markdown outline: the centre as a heading, then nested bullets. */
+export function mindmapToOutline(nodes: readonly MindmapNode[], labels: Readonly<Record<string, string>> = {}): string {
+  const children = childrenOf(nodes);
+  const root = children.get(undefined)?.[0];
+  if (!root) return "";
+  const label = (n: MindmapNode) => (labels[n.id] ?? n.label).replace(/\s+/g, " ").trim();
+  const lines = [`# ${label(root)}`, ""];
+  const walk = (parent: MindmapNode, depth: number) => {
+    for (const child of children.get(parent.id) ?? []) {
+      lines.push(`${"  ".repeat(depth)}- ${label(child)}`);
+      walk(child, depth + 1);
+    }
+  };
+  walk(root, 0);
+  return lines.join("\n");
+}
+
+/**
+ * A mind map as a mermaid flowchart (left to right), which Octonote turns into
+ * an editable canvas. Node ids are rewritten, and characters that would end a
+ * label early are swapped for look-alikes (mermaid readers stop at the first
+ * closing bracket, quoted or not), so nothing in the map can change the diagram.
+ */
+export function mindmapToMermaid(nodes: readonly MindmapNode[], labels: Readonly<Record<string, string>> = {}): string {
+  const ids = new Map(nodes.map((n, i) => [n.id, `n${i}`]));
+  const clean = (text: string, root: boolean) => {
+    const t = text.replace(/\s+/g, " ").trim().replace(/"/g, "'").replace(/<br\s*\/?>/gi, " ");
+    // Boxes close with ], the centre circle with )).
+    return root ? t.replace(/\(/g, "[").replace(/\)/g, "]") : t.replace(/\[/g, "(").replace(/\]/g, ")");
+  };
+  const lines = ["flowchart LR"];
+  for (const node of nodes) {
+    const root = node.parent === undefined;
+    const label = clean(labels[node.id] ?? node.label, root);
+    lines.push(root ? `  ${ids.get(node.id)}(("${label}"))` : `  ${ids.get(node.id)}["${label}"]`);
+  }
+  for (const node of nodes) if (node.parent !== undefined && ids.has(node.parent)) lines.push(`  ${ids.get(node.parent)} --> ${ids.get(node.id)}`);
+  return lines.join("\n");
+}

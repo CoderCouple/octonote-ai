@@ -19,6 +19,13 @@ import "@octonote/interactive/styles.css";
   - `categorize`: a chip per group for each item, which works by keyboard and touch;
   - `short_answer`: after checking, the model answer and rubric appear and the learner marks it. In a quiz review, marking re-scores the quiz.
   Every kind answers with a list of strings, so server grading works the same for all of them. `redactQuiz` strips every kind's answers, and shuffles order items. `checkResponse`, `expectedResponse` and `isAnswered` are exported. `normalizeSpec` fixes the usual slips (a bare number answer, blanks as strings, items as strings, groups named by text).
+- **Learning loop.**
+  - Practice asks "How sure are you?" (Guessing / Fairly sure / Certain). When certainty and the result disagree, the feedback says so, and events carry the confidence.
+  - At the end, a review round asks again only what was missed on the first try or guessed. The first-round score is kept.
+- **Mind maps that teach.**
+  - "Test yourself" hides every topic but the centre until the learner reveals it, with a count.
+  - "Step through" starts at the centre and opens one branch at a time.
+  - `mindmapToOutline` and `mindmapToMermaid` export a map. The mermaid is safe against hostile labels, and the notes app uses it for "Open as canvas" (an editable Octonote canvas).
 - **Specs are data, never code.** `defaultRegistry.validate(input)` checks versions, ids, answers, sizes and mind map structure, and never throws. Invalid specs render a safe message; a crashing activity can't take the page down.
 - **AI-friendly.** `sessionToolDefinition()` gives a provider-neutral tool with a JSON Schema. `normalizeSpec()` fixes common model mistakes first (missing ids, answers as indexes or text, options as strings, nested mind map trees, Markdown outlines).
 - **Secure assessments.** Send `redactQuiz(quiz)` to the browser, keep the full quiz on your server, and grade with `gradeQuiz` behind a `grader`.
