@@ -7,7 +7,7 @@ import type { WidgetInput, WidgetSpec } from "./schema.js";
 
 /** What views need to change inputs directly: the spec, the current values and a setter. */
 export interface WidgetRuntime {
-  spec: Pick<WidgetSpec, "inputs" | "values" | "currency">;
+  spec: Pick<WidgetSpec, "inputs" | "values" | "currency" | "data">;
   inputs: InputValues;
   scope: Scope;
   setInput: (id: string, value: number) => void;

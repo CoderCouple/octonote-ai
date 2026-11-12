@@ -12,6 +12,13 @@ Accessible React UI widgets in two layers.
   - Circles (by their edge), grids (by cell) and meters (along the bar) take `drag: inputId`.
   - Sliders can have `play` to sweep through their range.
   - Every draggable thing is also a keyboard slider. A Reset button appears once anything has changed.
+- **Real data.**
+  - `data` holds tables (up to 6 tables of 500 rows).
+  - Values can be formulas, `lookup`s (a column read at a point, interpolated, e.g. the population in the chosen year) or `aggregate`s (sum, mean, min, max, count, first or last, optionally `where`).
+  - Chart series can plot a table (`data`, `x` column, `y` formula per row). They can be drawn as lines or as `points` over a formula line, and a text column gives categories.
+  - Charts can be line, area, bar or `scatter`. `marks` draw reference lines or labelled points that follow inputs.
+  - Bars can come from a table. A `table` view highlights rows by formula.
+  - `grouping: false` (or the `year` template format) prints years as 2024, not 2,024.
 - **Safe formulas.** A small Pratt parser, never `eval`. Validation reports unknown names, cycles, bad ranges, and handles that can't move.
 
 **Content blocks from JSON:** heading, paragraph, list, quote, divider, callout, definition, steps, code (with copy), takeaway, comparison table, stats, timeline, progress, and tabs/accordion holding other blocks.

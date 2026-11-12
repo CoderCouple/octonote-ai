@@ -1425,3 +1425,74 @@
 .wg-widget__reset + .wg-widget__badge {
   margin-left: 0;
 }
+
+/* Data: tables and chart marks */
+
+.wg-xtable {
+  overflow-x: auto;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+}
+.wg-xtable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.wg-xtable th,
+.wg-xtable td {
+  padding: 7px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--wg-border);
+  white-space: nowrap;
+}
+.wg-xtable th {
+  font-weight: 600;
+  color: var(--wg-muted);
+  background: var(--wg-surface-muted);
+}
+.wg-xtable tr:last-child td {
+  border-bottom: 0;
+}
+.wg-xtable__num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+.wg-xtable__lit td {
+  color: var(--wg-fg-strong);
+  font-weight: 650;
+  background: var(--wg-accent-soft);
+  transition: background var(--wg-duration) var(--wg-ease);
+}
+.wg-xtable__more {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-top: 1px solid var(--wg-border);
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--wg-accent);
+  background: var(--wg-surface);
+  cursor: pointer;
+}
+
+.wg-chart__mark line {
+  stroke: var(--wg-c);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+.wg-chart__mark circle {
+  fill: var(--wg-c);
+  stroke: var(--wg-surface);
+  stroke-width: 2;
+  transition: cx 200ms var(--wg-ease), cy 200ms var(--wg-ease);
+}
+.wg-chart__mark-label {
+  font-size: 12px;
+  font-weight: 650;
+  fill: var(--wg-c);
+  paint-order: stroke;
+  stroke: var(--wg-surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}

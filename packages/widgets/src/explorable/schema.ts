@@ -3,6 +3,10 @@ import { compile, FormulaError, isConstant, isFunction, namesIn } from "./expr.j
 import { templateNames } from "./format.js";
 
 export const WIDGET_LIMITS = {
+  tables: 6,
+  rows: 500,
+  columns: 8,
+  marks: 8,
   inputs: 8,
   values: 40,
   views: 16,
@@ -35,6 +39,7 @@ export const numberFormatSchema = z
     prefix: z.string().max(8).optional(),
     suffix: z.string().max(12).optional(),
     signed: z.boolean().optional(),
+    grouping: z.boolean().optional().describe("false drops thousands separators, for years: 2024 not 2,024."),
   })
   .optional();
 
@@ -81,10 +86,29 @@ export const statsView = view("stats", {
     .max(4),
 });
 export const chartView = view("chart", {
-  chart: z.enum(["line", "area", "bar"]).optional().describe('Defaults to "line".'),
-  x: z.object({ from: z.number(), to: z.number(), step: z.number().positive().optional(), label: short.optional(), format: numberFormatSchema }).describe("The x range. Series formulas use x and may use inputs: to show a range set by an input, set to a large value and use a formula with x <= years."),
+  chart: z.enum(["line", "area", "bar", "scatter"]).optional().describe('Defaults to "line". "scatter" shows points only, for data.'),
+  x: z
+    .object({ from: z.number().optional(), to: z.number().optional(), step: z.number().positive().optional(), label: short.optional(), format: numberFormatSchema })
+    .describe("The x range. Formula series are sampled from `from` to `to` (both needed then); data series bring their own x, and the range defaults to theirs."),
   xTo: formula.optional().describe("Optional formula for the end of the x range, e.g. years. Capped at x.to."),
-  series: z.array(z.object({ label: short, y: formula.describe("A formula in x, e.g. principal * (1 + rate/100)^x."), color: color.optional() })).min(1).max(WIDGET_LIMITS.series),
+  series: z
+    .array(
+      z.object({
+        label: short,
+        y: formula.describe("A formula in x, e.g. principal * (1 + rate/100)^x. For a data series, a formula per row using its column names (and inputs), e.g. people / 1e9."),
+        data: name.optional().describe("Plot this table's rows instead of sampling a formula."),
+        x: name.optional().describe("For a data series: the column for x. Defaults to the table's first column. A text column makes the chart categorical."),
+        style: z.enum(["line", "points"]).optional().describe('"points" draws dots only, e.g. measured data over a formula line. Defaults to the chart type.'),
+        color: color.optional(),
+      }),
+    )
+    .min(1)
+    .max(WIDGET_LIMITS.series),
+  marks: z
+    .array(z.object({ x: formula.optional(), y: formula.optional(), label: template.optional(), color: color.optional() }))
+    .max(WIDGET_LIMITS.marks)
+    .optional()
+    .describe("Reference lines and points that can follow inputs: x only draws a vertical line, y only a horizontal one, both a labelled point (e.g. you are here)."),
   y: z.object({ min: z.number().optional(), max: z.number().optional(), format: numberFormatSchema, label: short.optional() }).optional(),
   caption: template.optional(),
   handles: z
@@ -102,7 +126,10 @@ export const chartView = view("chart", {
     .describe("Points the reader drags to change an input, e.g. a point on the line at (1, m + b) that sets the slope m. The widget works out the input's value from where the point is dropped."),
 });
 export const barsView = view("bars", {
-  items: z.array(z.object({ label: short, value: formula, color: color.optional() })).min(1).max(12),
+  items: z.array(z.object({ label: short, value: formula, color: color.optional() })).min(1).max(12).optional().describe("Bars from formulas; or give data, label and value for one bar per row."),
+  data: name.optional(),
+  label: name.optional().describe("With data: the column that names each bar."),
+  value: formula.optional().describe("With data: a formula per row using its column names, e.g. gdp / population."),
   format: numberFormatSchema,
   max: formula.optional().describe("The value of a full bar. Defaults to the largest item."),
 });
@@ -157,9 +184,54 @@ export const questionsView = view("questions", {
   level: formula.describe("Which level to ask from, usually a difficulty slider."),
   questions: z.array(z.object({ level: z.number().int().min(0).max(20), prompt: short, answer: text })).min(1).max(WIDGET_LIMITS.questions),
 });
+export const tableView = view("table", {
+  data: name,
+  columns: z.array(name).min(1).max(WIDGET_LIMITS.columns).optional().describe("Which columns to show, in order. Defaults to all."),
+  formats: z.record(z.string(), numberFormatSchema).optional().describe("Number formats by column name."),
+  highlight: formula.optional().describe("A formula per row (column names and inputs); rows where it's true stand out, e.g. year == pickYear."),
+  limit: z.number().int().min(1).max(WIDGET_LIMITS.rows).optional().describe("Show at most this many rows, then a 'show all' button."),
+});
 export const inputView = view("input", { input: name.describe("Where to place that input's control. Inputs not placed this way go at the end.") });
 
-export const widgetView = z.discriminatedUnion("type", [statsView, chartView, barsView, circleView, gridView, donutView, meterView, stackedView, formulaView, textView, sentenceView, questionsView, inputView]);
+export const widgetView = z.discriminatedUnion("type", [statsView, chartView, barsView, circleView, gridView, donutView, meterView, stackedView, formulaView, textView, sentenceView, tableView, questionsView, inputView]);
+
+export const dataTableSchema = z
+  .object({
+    name,
+    columns: z
+      .array(z.object({ name, label: short.optional(), text: z.boolean().optional().describe("Words (countries, months), not numbers.") }))
+      .min(1)
+      .max(WIDGET_LIMITS.columns)
+      .describe("The first column is what lookups interpolate along, so make it numeric (e.g. year) unless the table is only for bars or a table view."),
+    rows: z.array(z.array(z.union([z.number().finite(), z.string().max(80)])).min(1).max(WIDGET_LIMITS.columns)).min(1).max(WIDGET_LIMITS.rows),
+  })
+  .describe("Real numbers for the widget: one entry per row, in column order.");
+
+const valueSchema = z.union([
+  z.object({ name, formula }),
+  z
+    .object({
+      name,
+      lookup: z.object({
+        data: name,
+        column: name,
+        at: formula.describe("Where to read the column, along the table's first column, e.g. year."),
+        mode: z.enum(["interpolate", "step"]).optional().describe('Defaults to "interpolate" between rows.'),
+      }),
+    })
+    .describe("A column read at a point, e.g. the population in the chosen year."),
+  z
+    .object({
+      name,
+      aggregate: z.object({
+        data: name,
+        column: name,
+        op: z.enum(["sum", "mean", "min", "max", "count", "first", "last"]),
+        where: formula.optional().describe("Only rows where this is true (column names and inputs), e.g. year <= upTo."),
+      }),
+    })
+    .describe("A column summarised over rows."),
+]);
 
 export const widgetShape = {
   title: short,
@@ -167,11 +239,12 @@ export const widgetShape = {
   description: text.optional(),
   currency: z.string().regex(/^[A-Z]{3}$/).optional().describe("Default currency for currency formats. Defaults to USD."),
   inputs: z.array(widgetInput).max(WIDGET_LIMITS.inputs),
+  data: z.array(dataTableSchema).max(WIDGET_LIMITS.tables).optional().describe("Tables of real numbers that charts, bars, table views and values read."),
   values: z
-    .array(z.object({ name, formula }))
+    .array(valueSchema)
     .max(WIDGET_LIMITS.values)
     .optional()
-    .describe("Named formulas, worked out in order. Each may use inputs and earlier values."),
+    .describe("Named numbers, worked out in order: a formula, a lookup in a table, or an aggregate of a column. Each may use inputs and earlier values."),
   views: z.array(widgetView).min(1).max(WIDGET_LIMITS.views),
   note: template.optional().describe("A footnote, e.g. assumptions."),
 };
@@ -207,10 +280,64 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
       addIssue({ code: "custom", message: "value must be one of the options' values", path: [...base, "inputs", i, "value"] });
     }
   });
+  // Tables: unique names, rows that fit their columns, numbers where numbers belong.
+  const tables = new Map<string, NonNullable<typeof spec.data>[number]>();
+  spec.data?.forEach((table, i) => {
+    const path = ["data", i];
+    if (tables.has(table.name)) addIssue({ code: "custom", message: `A table named "${table.name}" already exists`, path: [...base, ...path, "name"] });
+    tables.set(table.name, table);
+    const names = new Set<string>();
+    table.columns.forEach((c, j) => {
+      if (names.has(c.name)) addIssue({ code: "custom", message: `Column "${c.name}" appears twice`, path: [...base, ...path, "columns", j, "name"] });
+      names.add(c.name);
+    });
+    let reported = 0;
+    table.rows.forEach((row, r) => {
+      if (reported >= 3) return;
+      if (row.length !== table.columns.length) {
+        reported++;
+        addIssue({ code: "custom", message: `Row has ${row.length} values but there are ${table.columns.length} columns`, path: [...base, ...path, "rows", r] });
+        return;
+      }
+      row.forEach((cell, j) => {
+        const text = !!table.columns[j]!.text;
+        if (text !== (typeof cell === "string") && reported < 3) {
+          reported++;
+          addIssue({ code: "custom", message: text ? `Column "${table.columns[j]!.name}" is text; use a string` : `Column "${table.columns[j]!.name}" is numeric; use a number (or mark the column text)`, path: [...base, ...path, "rows", r, j] });
+        }
+      });
+    });
+  });
+  /** The table, if it exists; reports it otherwise. */
+  const tableAt = (name: string | undefined, path: (string | number)[]) => {
+    if (name === undefined) return undefined;
+    const table = tables.get(name);
+    if (!table) addIssue({ code: "custom", message: `No table named "${name}"${tables.size ? ` (tables: ${[...tables.keys()].join(", ")})` : ""}`, path: [...base, ...path] });
+    return table;
+  };
+  const numericColumns = (table: { columns: { name: string; text?: boolean }[] }) => table.columns.filter((c) => !c.text).map((c) => c.name);
+  const columnAt = (table: { columns: { name: string; text?: boolean }[] } | undefined, column: string | undefined, path: (string | number)[], numeric = true) => {
+    if (!table || column === undefined) return;
+    const c = table.columns.find((x) => x.name === column);
+    if (!c) addIssue({ code: "custom", message: `No column "${column}" (columns: ${table.columns.map((x) => x.name).join(", ")})`, path: [...base, ...path] });
+    else if (numeric && c.text) addIssue({ code: "custom", message: `Column "${column}" is text; this needs numbers`, path: [...base, ...path] });
+  };
+
   spec.values?.forEach((v, i) => {
     // A value may only use what comes before it, so there are no cycles.
-    check(v.formula, ["values", i, "formula"]);
-    add(v.name, ["values", i, "name"]);
+    const path = ["values", i];
+    if ("formula" in v) check(v.formula, [...path, "formula"]);
+    else if ("lookup" in v) {
+      const table = tableAt(v.lookup.data, [...path, "lookup", "data"]);
+      columnAt(table, v.lookup.column, [...path, "lookup", "column"]);
+      if (table?.columns[0]?.text) addIssue({ code: "custom", message: `Lookups read along the first column, and "${table.columns[0].name}" is text`, path: [...base, ...path, "lookup"] });
+      check(v.lookup.at, [...path, "lookup", "at"]);
+    } else {
+      const table = tableAt(v.aggregate.data, [...path, "aggregate", "data"]);
+      if (v.aggregate.op !== "count") columnAt(table, v.aggregate.column, [...path, "aggregate", "column"]);
+      if (v.aggregate.where) check(v.aggregate.where, [...path, "aggregate", "where"], table ? numericColumns(table) : []);
+    }
+    add(v.name, [...path, "name"]);
   });
 
   const placed = new Set<string>();
@@ -235,10 +362,34 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
         break;
       case "chart": {
         const step = v.x.step ?? 1;
-        if (v.x.from >= v.x.to) addIssue({ code: "custom", message: "x.from must be below x.to", path: [...base, ...path, "x", "to"] });
-        else if ((v.x.to - v.x.from) / step + 1 > WIDGET_LIMITS.chartPoints) addIssue({ code: "custom", message: `At most ${WIDGET_LIMITS.chartPoints} points; use a bigger step`, path: [...base, ...path, "x", "step"] });
+        const sampled = v.series.some((s) => !s.data);
+        if (sampled && (v.x.from === undefined || v.x.to === undefined)) addIssue({ code: "custom", message: "Formula series need x.from and x.to", path: [...base, ...path, "x"] });
+        else if (v.x.from !== undefined && v.x.to !== undefined) {
+          if (v.x.from >= v.x.to) addIssue({ code: "custom", message: "x.from must be below x.to", path: [...base, ...path, "x", "to"] });
+          else if (sampled && (v.x.to - v.x.from) / step + 1 > WIDGET_LIMITS.chartPoints) addIssue({ code: "custom", message: `At most ${WIDGET_LIMITS.chartPoints} points; use a bigger step`, path: [...base, ...path, "x", "step"] });
+        }
         f(v.xTo, ["xTo"]);
-        v.series.forEach((s, j) => f(s.y, ["series", j, "y"], ["x"]));
+        let categorical: string | undefined;
+        v.series.forEach((s, j) => {
+          if (!s.data) {
+            if (s.x) addIssue({ code: "custom", message: "x picks a column, so it needs data", path: [...base, ...path, "series", j, "x"] });
+            return f(s.y, ["series", j, "y"], ["x"]);
+          }
+          const table = tableAt(s.data, [...path, "series", j, "data"]);
+          if (!table) return;
+          const xColumn = s.x ?? table.columns[0]!.name;
+          columnAt(table, xColumn, [...path, "series", j, "x"], false);
+          if (table.columns.find((c) => c.name === xColumn)?.text) categorical ??= table.name;
+          f(s.y, ["series", j, "y"], numericColumns(table));
+        });
+        if (categorical && v.series.some((s) => s.data !== categorical))
+          addIssue({ code: "custom", message: `With text along x, every series must come from table "${categorical}"`, path: [...base, ...path, "series"] });
+        v.marks?.forEach((m, j) => {
+          if (m.x === undefined && m.y === undefined) addIssue({ code: "custom", message: "Give x, y or both", path: [...base, ...path, "marks", j] });
+          f(m.x, ["marks", j, "x"]);
+          f(m.y, ["marks", j, "y"]);
+          t(m.label, ["marks", j, "label"]);
+        });
         t(v.caption, ["caption"]);
         v.handles?.forEach((h, j) => {
           draggable(h.input, [...path, "handles", j, "input"]);
@@ -255,10 +406,24 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
         });
         break;
       }
-      case "bars":
-        v.items.forEach((item, j) => f(item.value, ["items", j, "value"]));
+      case "bars": {
+        if (!v.items === !v.data) addIssue({ code: "custom", message: "Give items, or data with label and value", path: [...base, ...path] });
+        v.items?.forEach((item, j) => f(item.value, ["items", j, "value"]));
+        if (v.data) {
+          const table = tableAt(v.data, [...path, "data"]);
+          if (!v.label || !v.value) addIssue({ code: "custom", message: "Bars from data need label (a column) and value (a formula per row)", path: [...base, ...path] });
+          columnAt(table, v.label, [...path, "label"], false);
+          if (table && v.value) f(v.value, ["value"], numericColumns(table));
+        }
         f(v.max, ["max"]);
         break;
+      }
+      case "table": {
+        const table = tableAt(v.data, [...path, "data"]);
+        v.columns?.forEach((c, j) => columnAt(table, c, [...path, "columns", j], false));
+        if (table && v.highlight) f(v.highlight, ["highlight"], numericColumns(table));
+        break;
+      }
       case "circle":
         f(v.radius, ["radius"]);
         f(v.value, ["value"]);
@@ -310,11 +475,12 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
 }
 
 /** Whether any of the formulas uses the input through a named value. */
-function dependsOn(spec: { values?: { name: string; formula: string }[] }, input: string, formulas: string[]): boolean {
+function dependsOn(spec: { values?: z.infer<typeof valueSchema>[] }, input: string, formulas: string[]): boolean {
   const uses = new Set([input]);
   for (const v of spec.values ?? []) {
+    const source = "formula" in v ? v.formula : "lookup" in v ? v.lookup.at : (v.aggregate.where ?? "0");
     try {
-      if ([...namesIn(compile(v.formula))].some((n) => uses.has(n))) uses.add(v.name);
+      if ([...namesIn(compile(source))].some((n) => uses.has(n))) uses.add(v.name);
     } catch {
       // Reported elsewhere.
     }

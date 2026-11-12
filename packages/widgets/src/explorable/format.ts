@@ -12,17 +12,20 @@ export interface NumberFormat {
   suffix?: string;
   /** Show + for positive numbers, e.g. for changes. */
   signed?: boolean;
+  /** Thousands separators; false for years (2024, not 2,024). */
+  grouping?: boolean;
 }
 
 const formatters = new Map<string, Intl.NumberFormat>();
 
 function formatter(format: NumberFormat, locale?: string): Intl.NumberFormat {
-  const key = JSON.stringify([format.style, format.decimals, format.currency, format.signed, locale]);
+  const key = JSON.stringify([format.style, format.decimals, format.currency, format.signed, format.grouping, locale]);
   let f = formatters.get(key);
   if (!f) {
     const decimals = format.decimals;
     const options: Intl.NumberFormatOptions = {
       signDisplay: format.signed ? "exceptZero" : "auto",
+      useGrouping: format.grouping ?? true,
       ...(decimals !== undefined ? { minimumFractionDigits: decimals, maximumFractionDigits: decimals } : { maximumFractionDigits: 2 }),
     };
     if (format.style === "currency") {
@@ -66,6 +69,7 @@ export const TEMPLATE_FORMATS: Record<string, NumberFormat> = {
   compact: { style: "compact" },
   signed: { signed: true },
   "signed-currency": { style: "currency", signed: true },
+  year: { decimals: 0, grouping: false },
 };
 
 export type TemplatePart = string | { formula: string; format?: string };

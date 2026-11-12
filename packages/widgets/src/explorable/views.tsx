@@ -5,7 +5,8 @@ import { Chart } from "./chart.js";
 import type { Scope } from "./expr.js";
 import { formatNumber, renderTemplate, type NumberFormat } from "./format.js";
 import { Icon } from "./icons.js";
-import { Sentence, useInputDrag } from "./interact.js";
+import { rowScope, type DataTable } from "./data.js";
+import { Sentence, useInputDrag, useRuntime } from "./interact.js";
 import { valueOf } from "./runtime.js";
 import { splitSentence, type NumberFormatSpec, type PaletteColor, type WidgetView } from "./schema.js";
 
@@ -197,12 +198,21 @@ export function StackedView({ view, scope, currency }: ViewProps<"stacked">) {
 }
 
 export function BarsView({ view, scope, currency }: ViewProps<"bars">) {
-  const values = view.items.map((item) => valueOf(item.value, scope));
+  const tables = useRuntime()?.spec.data as DataTable[] | undefined;
+  const table = view.data ? tables?.find((t) => t.name === view.data) : undefined;
+  // Bars from formulas, or one per row of a table.
+  const items: { label: string; value: number; color?: PaletteColor }[] = table
+    ? table.rows.slice(0, 30).map((row) => {
+        const li = table.columns.findIndex((c) => c.name === view.label);
+        return { label: String(row[li] ?? ""), value: valueOf(view.value, rowScope(table, row, scope)) };
+      })
+    : (view.items ?? []).map((item) => ({ label: item.label, value: valueOf(item.value, scope), color: item.color }));
+  const values = items.map((item) => item.value);
   const max = view.max ? valueOf(view.max, scope) : Math.max(...values.filter(Number.isFinite), 0);
   const format = withCurrency(view.format, currency);
   return (
     <ul className="wg-hbars">
-      {view.items.map((item, i) => (
+      {items.map((item, i) => (
         <li key={i} className="wg-hbars__item">
           <span className="wg-hbars__label">{item.label}</span>
           <span className="wg-hbars__track">
@@ -212,6 +222,48 @@ export function BarsView({ view, scope, currency }: ViewProps<"bars">) {
         </li>
       ))}
     </ul>
+  );
+}
+
+export function TableView({ view, scope, currency }: ViewProps<"table">) {
+  const tables = useRuntime()?.spec.data as DataTable[] | undefined;
+  const table = tables?.find((t) => t.name === view.data);
+  const [all, setAll] = useState(false);
+  if (!table) return null;
+  const columns = (view.columns ?? table.columns.map((c) => c.name)).map((name) => ({ index: table.columns.findIndex((c) => c.name === name), column: table.columns.find((c) => c.name === name)! })).filter((c) => c.index >= 0);
+  const limit = view.limit ?? table.rows.length;
+  const rows = all ? table.rows : table.rows.slice(0, limit);
+  const lit = (row: (number | string)[]) => (view.highlight ? !!valueOf(view.highlight, rowScope(table, row, scope)) : false);
+  return (
+    <div className="wg-xtable">
+      <table>
+        <thead>
+          <tr>
+            {columns.map(({ column }) => (
+              <th key={column.name} className={cx(!column.text && "wg-xtable__num")}>
+                {column.label ?? column.name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, r) => (
+            <tr key={r} className={cx(lit(row) && "wg-xtable__lit")} aria-current={lit(row) ? "true" : undefined}>
+              {columns.map(({ column, index }) => (
+                <td key={column.name} className={cx(!column.text && "wg-xtable__num")}>
+                  {column.text ? String(row[index]) : formatNumber(Number(row[index]), withCurrency(view.formats?.[column.name], currency))}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {table.rows.length > limit ? (
+        <button type="button" className="wg-xtable__more" onClick={() => setAll((a) => !a)}>
+          {all ? "Show fewer" : `Show all ${table.rows.length} rows`}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -288,6 +340,8 @@ export function WidgetViewRenderer({ view, scope, currency }: { view: Exclude<Wi
           <RichText text={renderTemplate(view.text, scope, currency)} />
         </p>
       );
+    case "table":
+      return <TableView view={view} scope={scope} currency={currency} />;
     case "sentence":
       return <Sentence parts={splitSentence(view.text)} render={(part, i) => <RichText key={i} text={renderTemplate(part, scope, currency)} />} />;
     case "questions":

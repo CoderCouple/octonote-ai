@@ -15,9 +15,11 @@ export { TEMPLATE_FORMATS, formatNumber, parseTemplate, renderTemplate } from ".
 export type { NumberFormat } from "./explorable/format.js";
 export { ICONS, PALETTE, WIDGET_LIMITS, checkWidget, placedInputs, splitSentence, widgetBlockSchema, widgetInput, widgetSpecSchema, widgetView } from "./explorable/schema.js";
 export { inputValues, keyStep, solveInput } from "./explorable/interact.js";
+export { aggregate, lookup, rowScope } from "./explorable/data.js";
+export type { DataColumn, DataTable } from "./explorable/data.js";
 export type { WidgetRuntime } from "./explorable/interact.js";
 export type { IconName, PaletteColor, WidgetBlock, WidgetInput, WidgetSpec, WidgetView } from "./explorable/schema.js";
-export { computeScope, initialInputs, sampleChart, useWidget, valueOf } from "./explorable/runtime.js";
+export { computeScope, initialInputs, chartData, sampleChart, useWidget, valueOf } from "./explorable/runtime.js";
 export { Chart, niceTicks } from "./explorable/chart.js";
 export { Slider, WidgetInputControl } from "./explorable/inputs.js";
 export { Widget, WidgetSpecRenderer, validateWidget } from "./explorable/widget.js";

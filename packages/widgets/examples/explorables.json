@@ -640,5 +640,326 @@
         "text": "At x = [a], the curve rises {slope|1} for every 1 step right, so the derivative of x² there is **{slope|1}** (which is 2x)."
       }
     ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "world-population",
+    "title": "World population since 1950",
+    "badge": "Data",
+    "description": "Pick a year to read the population and see how fast it was growing.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "year",
+        "label": "Year",
+        "min": 1950,
+        "max": 2020,
+        "value": 1985,
+        "play": true,
+        "format": {
+          "decimals": 0,
+          "grouping": false
+        }
+      }
+    ],
+    "data": [
+      {
+        "name": "pop",
+        "columns": [
+          {
+            "name": "year",
+            "label": "Year"
+          },
+          {
+            "name": "people",
+            "label": "People (billions)"
+          }
+        ],
+        "rows": [
+          [
+            1950,
+            2.499
+          ],
+          [
+            1960,
+            3.019
+          ],
+          [
+            1970,
+            3.695
+          ],
+          [
+            1980,
+            4.444
+          ],
+          [
+            1990,
+            5.316
+          ],
+          [
+            2000,
+            6.149
+          ],
+          [
+            2010,
+            6.986
+          ],
+          [
+            2020,
+            7.841
+          ]
+        ]
+      }
+    ],
+    "values": [
+      {
+        "name": "now",
+        "lookup": {
+          "data": "pop",
+          "column": "people",
+          "at": "year"
+        }
+      },
+      {
+        "name": "start",
+        "aggregate": {
+          "data": "pop",
+          "column": "people",
+          "op": "first"
+        }
+      },
+      {
+        "name": "pick",
+        "formula": "year"
+      }
+    ],
+    "views": [
+      {
+        "type": "stats",
+        "items": [
+          {
+            "label": "Population",
+            "value": "now",
+            "format": {
+              "decimals": 2,
+              "suffix": " billion"
+            },
+            "note": "in {year|year}"
+          },
+          {
+            "label": "Compared with 1950",
+            "value": "now / start",
+            "format": {
+              "decimals": 2,
+              "suffix": "×"
+            }
+          }
+        ]
+      },
+      {
+        "type": "chart",
+        "chart": "area",
+        "x": {
+          "label": "Year",
+          "format": {
+            "decimals": 0,
+            "grouping": false
+          }
+        },
+        "series": [
+          {
+            "label": "World population (billions)",
+            "data": "pop",
+            "y": "people",
+            "color": "teal"
+          }
+        ],
+        "y": {
+          "min": 0,
+          "format": {
+            "decimals": 0,
+            "suffix": " bn"
+          }
+        },
+        "marks": [
+          {
+            "x": "year",
+            "y": "now",
+            "label": "{year|year}: {now|2} bn",
+            "color": "orange"
+          }
+        ]
+      },
+      {
+        "type": "input",
+        "input": "year"
+      },
+      {
+        "type": "table",
+        "data": "pop",
+        "formats": {
+          "year": {
+            "decimals": 0,
+            "grouping": false
+          },
+          "people": {
+            "decimals": 2
+          }
+        },
+        "highlight": "year == round(pick / 10) * 10"
+      }
+    ],
+    "note": "Approximate UN estimates (World Population Prospects 2022); years between decades are interpolated."
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "kepler",
+    "title": "Kepler's third law",
+    "badge": "Astronomy",
+    "description": "The dots are the real planets. The line is one rule: a year lasts distance^1.5. Drag the green point to place your own planet.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "d",
+        "label": "Your planet's distance",
+        "min": 0.5,
+        "max": 32,
+        "step": 0.5,
+        "value": 12,
+        "format": {
+          "decimals": 1,
+          "suffix": " AU"
+        }
+      }
+    ],
+    "data": [
+      {
+        "name": "planets",
+        "columns": [
+          {
+            "name": "planet",
+            "label": "Planet",
+            "text": true
+          },
+          {
+            "name": "au",
+            "label": "Distance (AU)"
+          },
+          {
+            "name": "orbit",
+            "label": "Year (Earth years)"
+          }
+        ],
+        "rows": [
+          [
+            "Mercury",
+            0.39,
+            0.24
+          ],
+          [
+            "Venus",
+            0.72,
+            0.62
+          ],
+          [
+            "Earth",
+            1.0,
+            1.0
+          ],
+          [
+            "Mars",
+            1.52,
+            1.88
+          ],
+          [
+            "Jupiter",
+            5.2,
+            11.86
+          ],
+          [
+            "Saturn",
+            9.54,
+            29.46
+          ],
+          [
+            "Uranus",
+            19.19,
+            84.01
+          ],
+          [
+            "Neptune",
+            30.07,
+            164.8
+          ]
+        ]
+      }
+    ],
+    "values": [
+      {
+        "name": "T",
+        "formula": "d^1.5"
+      }
+    ],
+    "views": [
+      {
+        "type": "chart",
+        "chart": "line",
+        "x": {
+          "from": 0,
+          "to": 32,
+          "step": 0.25,
+          "label": "Distance from the Sun (AU)"
+        },
+        "series": [
+          {
+            "label": "Rule: T = d^1.5",
+            "y": "x^1.5",
+            "color": "blue"
+          },
+          {
+            "label": "Planets",
+            "data": "planets",
+            "x": "au",
+            "y": "orbit",
+            "color": "orange",
+            "style": "points"
+          }
+        ],
+        "y": {
+          "min": 0,
+          "format": {
+            "decimals": 0
+          }
+        },
+        "handles": [
+          {
+            "input": "d",
+            "x": "d",
+            "y": "T",
+            "label": "{T|1} years",
+            "color": "green"
+          }
+        ]
+      },
+      {
+        "type": "sentence",
+        "text": "A planet [d] from the Sun would take **{T|1} Earth years** to go round once."
+      },
+      {
+        "type": "table",
+        "data": "planets",
+        "formats": {
+          "au": {
+            "decimals": 2
+          },
+          "orbit": {
+            "decimals": 2
+          }
+        },
+        "highlight": "abs(au - d) < 1"
+      }
+    ]
   }
 ]

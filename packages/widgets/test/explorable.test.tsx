@@ -11,6 +11,9 @@ import {
   renderTemplate,
   sampleChart,
   validateDocument,
+  aggregate,
+  chartData,
+  lookup,
   solveInput,
   validateWidget,
   WidgetSpecRenderer,
@@ -338,5 +341,70 @@ describe("direct manipulation", () => {
     expect(screen.getByRole("button", { name: "Play years invested" })).toBeTruthy();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+});
+
+describe("data", () => {
+  const pop = { name: "pop", columns: [{ name: "year" }, { name: "people" }], rows: [[1950, 2.5], [1960, 3.0], [1970, 3.7]] };
+  const spec = (extra: object) => ({ schemaVersion: "1.0", type: "widget", id: "w", title: "W", inputs: [{ kind: "slider", id: "y", label: "Year", min: 1950, max: 1970, value: 1955 }], ...extra });
+  const issues = (extra: object) => {
+    const r = validateWidget(spec(extra));
+    return r.ok ? [] : r.issues.map((i) => `${i.path}: ${i.message}`);
+  };
+
+  it("looks up and summarises columns", () => {
+    expect(lookup(pop, "people", 1955)).toBeCloseTo(2.75);
+    expect(lookup(pop, "people", 1955, "step")).toBe(2.5);
+    expect(lookup(pop, "people", 1900)).toBe(2.5);
+    expect(lookup(pop, "people", 2000)).toBe(3.7);
+    expect(aggregate(pop, "people", "max", {})).toBe(3.7);
+    expect(aggregate(pop, "people", "count", { upTo: 1960 }, "year <= upTo")).toBe(2);
+    expect(aggregate(pop, "people", "mean", {})).toBeCloseTo(3.0667, 3);
+  });
+
+  it("feeds values from tables, in order", () => {
+    const scope = computeScope({ data: [pop], values: [{ name: "now", lookup: { data: "pop", column: "people", at: "y" } }, { name: "twice", formula: "now * 2" }] } as never, { y: 1965 });
+    expect(scope.now).toBeCloseTo(3.35);
+    expect(scope.twice).toBeCloseTo(6.7);
+  });
+
+  it("explains table mistakes", () => {
+    const views = [{ type: "text", text: "x" }];
+    expect(issues({ data: [{ name: "t", columns: [{ name: "a" }, { name: "b" }], rows: [[1, 2], [3]] }], views })).toEqual(["data.0.rows.1: Row has 1 values but there are 2 columns"]);
+    expect(issues({ data: [{ name: "t", columns: [{ name: "a" }], rows: [["one"]] }], views })).toEqual(['data.0.rows.0.0: Column "a" is numeric; use a number (or mark the column text)']);
+    expect(issues({ data: [pop], values: [{ name: "v", lookup: { data: "pops", column: "people", at: "y" } }], views })).toEqual(['values.0.lookup.data: No table named "pops" (tables: pop)']);
+    expect(issues({ data: [pop], values: [{ name: "v", lookup: { data: "pop", column: "size", at: "y" } }], views })).toEqual(["values.0.lookup.column: No column \"size\" (columns: year, people)"]);
+    expect(issues({ data: [pop], views: [{ type: "chart", x: {}, series: [{ label: "f", y: "x^2" }] }] })).toEqual(["views.0.x: Formula series need x.from and x.to"]);
+    expect(issues({ data: [pop], views: [{ type: "chart", x: {}, series: [{ label: "p", data: "pop", y: "people * 1e9" }] }] })).toEqual([]);
+    expect(issues({ data: [pop], views: [{ type: "bars", data: "pop", label: "year" }] })).toEqual(["views.0: Bars from data need label (a column) and value (a formula per row)"]);
+  });
+
+  it("mixes formula and data series on one chart, and text along x makes categories", () => {
+    const planets = { name: "p", columns: [{ name: "name", text: true }, { name: "au" }, { name: "orbit" }], rows: [["Earth", 1, 1], ["Mars", 1.52, 1.88]] };
+    const mixed = chartData({ type: "chart", x: { from: 0, to: 2, step: 1 }, series: [{ label: "rule", y: "x^1.5" }, { label: "planets", data: "p", x: "au", y: "orbit" }] }, {}, [planets]);
+    expect(mixed.xs).toEqual([0, 1, 1.52, 2]);
+    expect(mixed.series[1]).toEqual([{ x: 1, y: 1 }, { x: 1.52, y: 1.88 }]);
+    const cats = chartData({ type: "chart", chart: "bar", x: {}, series: [{ label: "orbit", data: "p", y: "orbit" }] }, {}, [planets]);
+    expect(cats.categories).toEqual(["Earth", "Mars"]);
+    expect(cats.xs).toEqual([0, 1]);
+  });
+
+  it("population: lookup, marks, year format and the highlighted row follow the slider", () => {
+    render(<WidgetSpecRenderer spec={byId("world-population")} />);
+    expect(screen.getByText("4.88 billion")).toBeTruthy();
+    expect(screen.getByText("in 1985")).toBeTruthy();
+    drag("Year", 2003);
+    expect(screen.getByText("in 2003")).toBeTruthy();
+    expect(document.querySelector(".wg-chart__mark-label")!.textContent).toBe("2003: 6.40 bn");
+    const lit = document.querySelector(".wg-xtable__lit")!;
+    expect(within(lit as HTMLElement).getByText("2000")).toBeTruthy();
+  });
+
+  it("Kepler: the dragged planet and the real ones agree with the rule", () => {
+    render(<WidgetSpecRenderer spec={byId("kepler")} />);
+    const handle = screen.getByRole("slider", { name: /^Your planet's distance \(drag/ });
+    fireEvent.keyDown(handle, { key: "Home" });
+    expect(document.querySelector(".wg-sentence")!.textContent).toContain("0.5 AU from the Sun would take 0.4 Earth years");
+    expect(screen.getByRole("cell", { name: "Neptune" })).toBeTruthy();
   });
 });
