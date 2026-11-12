@@ -72,7 +72,8 @@
         "label": "Years invested",
         "min": 1,
         "max": 30,
-        "value": 12
+        "value": 12,
+        "play": true
       }
     ],
     "values": [
@@ -137,7 +138,7 @@
     "id": "circle-geometry",
     "title": "Circle geometry",
     "badge": "Mathematics",
-    "description": "Change the radius and watch how the circle's area grows.",
+    "description": "Drag the circle's edge, or the slider, and watch how the area grows.",
     "inputs": [
       {
         "kind": "slider",
@@ -162,7 +163,8 @@
         "format": {
           "decimals": 1
         },
-        "note": "square units"
+        "note": "square units",
+        "drag": "r"
       }
     ],
     "note": "Doubling the radius quadruples the area."
@@ -173,7 +175,7 @@
     "id": "fraction-explorer",
     "title": "Fraction explorer",
     "badge": "Mathematics",
-    "description": "Understand fractions by filling portions of a whole.",
+    "description": "Click or drag across the squares to fill portions of a whole.",
     "inputs": [
       {
         "kind": "slider",
@@ -191,7 +193,8 @@
       {
         "type": "grid",
         "total": "12",
-        "filled": "n"
+        "filled": "n",
+        "drag": "n"
       },
       {
         "type": "stats",
@@ -254,7 +257,8 @@
         "max": "240",
         "icon": "car",
         "label": "{distance} km",
-        "note": "Distance = speed × time"
+        "note": "Distance = speed × time",
+        "drag": "speed"
       }
     ]
   },
@@ -294,7 +298,7 @@
     "id": "linear-function",
     "title": "Linear function explorer",
     "badge": "Algebra",
-    "description": "Change the slope and see how a straight line responds.",
+    "description": "Drag the two points, or use the sliders, and see how the line responds.",
     "inputs": [
       {
         "kind": "slider",
@@ -304,12 +308,21 @@
         "max": 5,
         "step": 0.5,
         "value": 2
+      },
+      {
+        "kind": "slider",
+        "id": "b",
+        "label": "Intercept (b)",
+        "min": -10,
+        "max": 10,
+        "step": 1,
+        "value": 1
       }
     ],
     "views": [
       {
         "type": "formula",
-        "text": "y = {m}x + 1"
+        "text": "y = {m}x + {b}"
       },
       {
         "type": "chart",
@@ -319,15 +332,31 @@
         },
         "series": [
           {
-            "label": "y value",
-            "y": "m * x + 1"
+            "label": "y = mx + b",
+            "y": "m * x + b"
           }
         ],
         "y": {
           "min": -20,
           "max": 20
         },
-        "caption": "Graph of y = mx + 1"
+        "handles": [
+          {
+            "input": "b",
+            "x": "0",
+            "y": "b",
+            "label": "b = {b}",
+            "color": "green"
+          },
+          {
+            "input": "m",
+            "x": "2",
+            "y": "2*m + b",
+            "label": "slope {m}",
+            "color": "orange"
+          }
+        ],
+        "caption": "The green point sets where the line crosses the y-axis; the orange one tilts it."
       }
     ]
   },
@@ -455,6 +484,160 @@
             "answer": "720°"
           }
         ]
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "investment-sentence",
+    "title": "Investing, in one sentence",
+    "badge": "Finance",
+    "description": "Drag the blue numbers left and right.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "principal",
+        "label": "Amount invested",
+        "min": 100,
+        "max": 20000,
+        "step": 100,
+        "value": 1000,
+        "format": {
+          "style": "currency"
+        }
+      },
+      {
+        "kind": "slider",
+        "id": "rate",
+        "label": "Annual return",
+        "min": 0,
+        "max": 15,
+        "step": 0.5,
+        "value": 7,
+        "format": {
+          "suffix": "%"
+        }
+      },
+      {
+        "kind": "slider",
+        "id": "years",
+        "label": "Years",
+        "min": 1,
+        "max": 40,
+        "value": 15,
+        "play": true
+      }
+    ],
+    "values": [
+      {
+        "name": "balance",
+        "formula": "principal * (1 + rate/100)^years"
+      },
+      {
+        "name": "gain",
+        "formula": "balance - principal"
+      }
+    ],
+    "views": [
+      {
+        "type": "sentence",
+        "text": "If you invest [principal] at [rate] a year for [years] years, you'll end up with **{balance|currency}**, and {gain|currency} of that is interest."
+      },
+      {
+        "type": "chart",
+        "chart": "area",
+        "x": {
+          "from": 0,
+          "to": 40,
+          "label": "Years"
+        },
+        "xTo": "years",
+        "series": [
+          {
+            "label": "Balance",
+            "y": "principal * (1 + rate/100)^x",
+            "color": "green"
+          },
+          {
+            "label": "Money you put in",
+            "y": "principal",
+            "color": "gray"
+          }
+        ],
+        "y": {
+          "format": {
+            "style": "currency"
+          }
+        }
+      },
+      {
+        "type": "input",
+        "input": "years"
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "tangent-slope",
+    "title": "Slope of a curve",
+    "badge": "Calculus",
+    "description": "Drag the point along the curve. The orange line touches the curve there, and its slope is the derivative.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "a",
+        "label": "Point at x",
+        "min": -3,
+        "max": 3,
+        "step": 0.1,
+        "value": 1
+      }
+    ],
+    "values": [
+      {
+        "name": "slope",
+        "formula": "2 * a"
+      }
+    ],
+    "views": [
+      {
+        "type": "chart",
+        "x": {
+          "from": -3,
+          "to": 3,
+          "step": 0.1
+        },
+        "series": [
+          {
+            "label": "y = x²",
+            "y": "x^2",
+            "color": "blue"
+          },
+          {
+            "label": "Tangent line",
+            "y": "slope * (x - a) + a^2",
+            "color": "orange"
+          }
+        ],
+        "y": {
+          "min": -2,
+          "max": 9
+        },
+        "handles": [
+          {
+            "input": "a",
+            "x": "a",
+            "y": "a^2",
+            "label": "slope {slope|1}",
+            "color": "orange"
+          }
+        ]
+      },
+      {
+        "type": "sentence",
+        "text": "At x = [a], the curve rises {slope|1} for every 1 step right, so the derivative of x² there is **{slope|1}** (which is 2x)."
       }
     ]
   }

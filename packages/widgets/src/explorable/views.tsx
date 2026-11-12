@@ -1,12 +1,13 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { cx } from "../provider.js";
 import { RichText } from "../rich-text.js";
 import { Chart } from "./chart.js";
 import type { Scope } from "./expr.js";
 import { formatNumber, renderTemplate, type NumberFormat } from "./format.js";
 import { Icon } from "./icons.js";
+import { Sentence, useInputDrag } from "./interact.js";
 import { valueOf } from "./runtime.js";
-import type { NumberFormatSpec, PaletteColor, WidgetView } from "./schema.js";
+import { splitSentence, type NumberFormatSpec, type PaletteColor, type WidgetView } from "./schema.js";
 
 type ViewOf<T extends WidgetView["type"]> = Extract<WidgetView, { type: T }>;
 
@@ -45,14 +46,24 @@ export function StatsView({ view, scope, currency }: ViewProps<"stats">) {
 export function CircleView({ view, scope, currency }: ViewProps<"circle">) {
   const r = Math.max(0, valueOf(view.radius, scope));
   const size = 120;
-  const drawn = Number.isFinite(r) ? Math.max(2, (r / view.max) * (size / 2 - 6)) : 0;
+  const toPx = (radius: number) => (Number.isFinite(radius) ? Math.max(2, (Math.max(0, radius) / view.max) * (size / 2 - 6)) : 0);
+  const drawn = toPx(r);
   const value = view.value ? valueOf(view.value, scope) : undefined;
+  const svg = useRef<SVGSVGElement>(null);
+  const control = useInputDrag(view.drag, (event) => {
+    const box = svg.current?.getBoundingClientRect();
+    if (!box) return undefined;
+    const scale = size / box.width;
+    const distance = Math.hypot(event.clientX - (box.left + box.width / 2), event.clientY - (box.top + box.height / 2)) * scale;
+    return (s) => Math.abs(toPx(valueOf(view.radius, s)) - distance);
+  });
   return (
     <div className="wg-circle">
-      <svg width={size} height={size} viewBox={`${-size / 2} ${-size / 2} ${size} ${size}`} aria-hidden="true">
+      <svg ref={svg} width={size} height={size} viewBox={`${-size / 2} ${-size / 2} ${size} ${size}`} aria-hidden={control ? undefined : true} className={cx(control && "wg-draggable")} {...control?.drag}>
         <circle r={drawn} className="wg-circle__shape" />
         <line x1={0} y1={0} x2={drawn} y2={0} className="wg-circle__radius" />
         <circle r={2.8} className="wg-circle__centre" />
+        {control ? <circle cx={drawn} cy={0} r={7} className="wg-handle" {...control.slider} /> : null}
       </svg>
       {value !== undefined ? (
         <div className="wg-circle__text" role="status">
@@ -68,15 +79,25 @@ export function CircleView({ view, scope, currency }: ViewProps<"circle">) {
 export function GridView({ view, scope }: ViewProps<"grid">) {
   const total = Math.max(0, Math.min(200, Math.round(valueOf(view.total, scope) || 0)));
   const filled = Math.max(0, Math.min(total, Math.round(valueOf(view.filled, scope) || 0)));
+  const control = useInputDrag(view.drag, (event) => {
+    // The cell under the pointer (pointer capture keeps events on the grid itself).
+    const cell = typeof document !== "undefined" && document.elementFromPoint ? document.elementFromPoint(event.clientX, event.clientY) : (event.target as Element);
+    const index = cell instanceof HTMLElement && cell.dataset.cell !== undefined ? Number(cell.dataset.cell) : undefined;
+    if (index === undefined) return undefined;
+    // Clicking the last filled cell empties it, so you can get back to zero.
+    const target = event.type === "pointerdown" && index + 1 === filled ? index : index + 1;
+    return (s) => Math.abs(Math.round(valueOf(view.filled, s)) - target);
+  });
   return (
     <div
-      className="wg-grid"
-      role="img"
-      aria-label={`${filled} of ${total} parts filled`}
+      className={cx("wg-grid", control && "wg-draggable")}
+      {...(control ? { ...control.slider, ...control.drag } : { role: "img" })}
+      aria-label={control ? control.slider["aria-label"] : `${filled} of ${total} parts filled`}
+      aria-valuetext={control ? `${filled} of ${total} filled` : undefined}
       style={{ gridTemplateColumns: `repeat(${view.columns ?? Math.min(total, 12)}, minmax(0, 1fr))` }}
     >
       {Array.from({ length: total }, (_, i) => (
-        <span key={i} className={cx("wg-grid__cell", i < filled && `wg-grid__cell--on wg-c-${view.color ?? "blue"}`)} />
+        <span key={i} data-cell={i} className={cx("wg-grid__cell", i < filled && `wg-grid__cell--on wg-c-${view.color ?? "blue"}`)} />
       ))}
     </div>
   );
@@ -112,6 +133,16 @@ export function MeterView({ view, scope, currency }: ViewProps<"meter">) {
   const max = valueOf(view.max, scope);
   const percent = max > 0 && Number.isFinite(value) ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   const label = fill(view.label, scope, currency);
+  const track = useRef<HTMLDivElement>(null);
+  const control = useInputDrag(view.drag, (event) => {
+    const box = track.current?.getBoundingClientRect();
+    if (!box || !box.width) return undefined;
+    const share = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+    return (s) => {
+      const m = valueOf(view.max, s);
+      return Math.abs(valueOf(view.value, s) / (m || 1) - share);
+    };
+  });
   return (
     <div className="wg-meter">
       <div className="wg-meter__header">
@@ -124,9 +155,16 @@ export function MeterView({ view, scope, currency }: ViewProps<"meter">) {
         )}
         {label ? <span className="wg-meter__label">{label}</span> : null}
       </div>
-      <div className="wg-meter__track" role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-valuetext={label}>
-        <div className={cx("wg-meter__bar", `wg-c-${view.color ?? "blue"}`)} style={{ width: `${percent}%` }} />
-      </div>
+      {control ? (
+        <div ref={track} className="wg-meter__track wg-draggable" {...control.drag} {...control.slider}>
+          <div className={cx("wg-meter__bar", `wg-c-${view.color ?? "blue"}`)} style={{ width: `${percent}%` }} />
+          <span className="wg-meter__knob" style={{ left: `${percent}%` }} aria-hidden="true" />
+        </div>
+      ) : (
+        <div className="wg-meter__track" role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-valuetext={label}>
+          <div className={cx("wg-meter__bar", `wg-c-${view.color ?? "blue"}`)} style={{ width: `${percent}%` }} />
+        </div>
+      )}
       {view.note ? <p className="wg-xstat__note">{fill(view.note, scope, currency)}</p> : null}
     </div>
   );
@@ -250,6 +288,8 @@ export function WidgetViewRenderer({ view, scope, currency }: { view: Exclude<Wi
           <RichText text={renderTemplate(view.text, scope, currency)} />
         </p>
       );
+    case "sentence":
+      return <Sentence parts={splitSentence(view.text)} render={(part, i) => <RichText key={i} text={renderTemplate(part, scope, currency)} />} />;
     case "questions":
       return <QuestionsView view={view} scope={scope} />;
   }

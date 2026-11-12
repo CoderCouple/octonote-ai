@@ -3,15 +3,17 @@ import { cx, useWidgets, type Theme } from "../provider.js";
 import { renderTemplate } from "./format.js";
 import { WidgetInputControl } from "./inputs.js";
 import { useWidget } from "./runtime.js";
-import { widgetSpecSchema, type WidgetBlock, type WidgetSpec } from "./schema.js";
+import { RuntimeProvider } from "./interact.js";
+import { placedInputs, widgetSpecSchema, type WidgetBlock, type WidgetSpec } from "./schema.js";
 import { WidgetViewRenderer } from "./views.js";
 
 type WidgetContent = Omit<WidgetBlock, "type" | "id">;
 
 /** An explorable widget card: inputs, values computed from them, and views that update live. */
 export function Widget({ spec, className }: { spec: WidgetContent; className?: string }) {
-  const { inputs, scope, setInput } = useWidget(spec);
-  const placed = new Set(spec.views.flatMap((v) => (v.type === "input" ? [v.input] : [])));
+  const { inputs, scope, setInput, reset, changed } = useWidget(spec);
+  const runtime = useMemo(() => ({ spec, inputs, scope, setInput }), [spec, inputs, scope, setInput]);
+  const placed = placedInputs(spec.views);
   const loose = spec.inputs.filter((input) => !placed.has(input.id));
   const byId = new Map(spec.inputs.map((input) => [input.id, input]));
   const control = (id: string) => {
@@ -23,13 +25,20 @@ export function Widget({ spec, className }: { spec: WidgetContent; className?: s
     <section className={cx("wg-widget", className)} aria-label={spec.title}>
       <header className="wg-widget__header">
         <h3 className="wg-widget__title">{spec.title}</h3>
+        {changed ? (
+          <button type="button" className="wg-widget__reset" onClick={reset}>
+            Reset
+          </button>
+        ) : null}
         {spec.badge ? <span className="wg-widget__badge">{spec.badge}</span> : null}
       </header>
       {spec.description ? <p className="wg-widget__description">{spec.description}</p> : null}
-      <WidgetBoundary>
-        {spec.views.map((view, i) => (view.type === "input" ? control(view.input) : <WidgetViewRenderer key={i} view={view} scope={scope} currency={spec.currency} />))}
-        {loose.length ? <div className="wg-widget__inputs">{loose.map((input) => control(input.id))}</div> : null}
-      </WidgetBoundary>
+      <RuntimeProvider value={runtime}>
+        <WidgetBoundary>
+          {spec.views.map((view, i) => (view.type === "input" ? control(view.input) : <WidgetViewRenderer key={i} view={view} scope={scope} currency={spec.currency} />))}
+          {loose.length ? <div className="wg-widget__inputs">{loose.map((input) => control(input.id))}</div> : null}
+        </WidgetBoundary>
+      </RuntimeProvider>
       {spec.note ? <p className="wg-widget__note">{renderTemplate(spec.note, scope, spec.currency)}</p> : null}
     </section>
   );

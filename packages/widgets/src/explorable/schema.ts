@@ -49,6 +49,7 @@ const slider = z
     value: z.number().describe("Starting value."),
     format: numberFormatSchema,
     labels: z.array(short).max(20).optional().describe("A word for each step from min, e.g. Easy, Medium, Hard. Shown instead of the number."),
+    play: z.boolean().optional().describe("Show a play button that sweeps the value from min to max, e.g. to watch years pass."),
   })
   .describe("A number the learner drags.");
 const toggle = z.object({ kind: z.literal("toggle"), id: name, label: short, value: z.boolean() }).describe("1 when on, 0 when off.");
@@ -59,6 +60,8 @@ const select = z
 export const widgetInput = z.discriminatedUnion("kind", [slider, toggle, select]);
 
 const tone = z.enum(["default", "positive", "negative", "accent", "auto"]).optional().describe('"auto" is green when the value is above 0 and red below.');
+
+const drag = name.optional().describe("An input the reader can set by dragging this view directly (it keeps its slider too).");
 
 const view = <T extends string, S extends z.ZodRawShape>(type: T, shape: S) => z.object({ type: z.literal(type), ...shape });
 
@@ -84,6 +87,19 @@ export const chartView = view("chart", {
   series: z.array(z.object({ label: short, y: formula.describe("A formula in x, e.g. principal * (1 + rate/100)^x."), color: color.optional() })).min(1).max(WIDGET_LIMITS.series),
   y: z.object({ min: z.number().optional(), max: z.number().optional(), format: numberFormatSchema, label: short.optional() }).optional(),
   caption: template.optional(),
+  handles: z
+    .array(
+      z.object({
+        input: name.describe("The input this handle sets."),
+        x: formula.describe("Where the handle is, in chart coordinates; may use inputs and values."),
+        y: formula,
+        label: template.optional(),
+        color: color.optional(),
+      }),
+    )
+    .max(4)
+    .optional()
+    .describe("Points the reader drags to change an input, e.g. a point on the line at (1, m + b) that sets the slope m. The widget works out the input's value from where the point is dropped."),
 });
 export const barsView = view("bars", {
   items: z.array(z.object({ label: short, value: formula, color: color.optional() })).min(1).max(12),
@@ -97,12 +113,14 @@ export const circleView = view("circle", {
   value: formula.optional().describe("A number shown beside the circle, e.g. pi * r^2."),
   format: numberFormatSchema,
   note: template.optional(),
+  drag: drag.describe("An input set by dragging the circle's edge."),
 });
 export const gridView = view("grid", {
   total: formula.describe("How many cells. At most 200."),
   filled: formula,
   color: color.optional(),
   columns: z.number().int().min(1).max(50).optional(),
+  drag: drag.describe("An input set by clicking or dragging across the cells."),
 });
 export const donutView = view("donut", {
   value: formula.describe("A ratio from 0 to 1."),
@@ -119,6 +137,7 @@ export const meterView = view("meter", {
   label: template.optional().describe("Shown at the right, e.g. {distance} km."),
   note: template.optional(),
   color: color.optional(),
+  drag: drag.describe("An input set by dragging along the bar."),
 });
 export const stackedView = view("stacked", {
   segments: z.array(z.object({ label: short, value: formula, color: color.optional() })).min(1).max(WIDGET_LIMITS.segments),
@@ -126,13 +145,21 @@ export const stackedView = view("stacked", {
 });
 export const formulaView = view("formula", { text: template.describe("A centred formula line, e.g. y = {m}x + {b}.") });
 export const textView = view("text", { text: template, muted: z.boolean().optional() });
+export const sentenceView = view("sentence", {
+  text: z
+    .string()
+    .trim()
+    .min(1)
+    .max(600)
+    .describe("A sentence the reader changes by dragging its numbers: [id] is an input shown inline (drag or use arrow keys), {formula|format} a live value. E.g. If you invest [principal] at [rate] for [years] years you'll have {balance|currency}. Inputs used here don't also get a slider unless placed with an input view."),
+});
 export const questionsView = view("questions", {
   level: formula.describe("Which level to ask from, usually a difficulty slider."),
   questions: z.array(z.object({ level: z.number().int().min(0).max(20), prompt: short, answer: text })).min(1).max(WIDGET_LIMITS.questions),
 });
 export const inputView = view("input", { input: name.describe("Where to place that input's control. Inputs not placed this way go at the end.") });
 
-export const widgetView = z.discriminatedUnion("type", [statsView, chartView, barsView, circleView, gridView, donutView, meterView, stackedView, formulaView, textView, questionsView, inputView]);
+export const widgetView = z.discriminatedUnion("type", [statsView, chartView, barsView, circleView, gridView, donutView, meterView, stackedView, formulaView, textView, sentenceView, questionsView, inputView]);
 
 export const widgetShape = {
   title: short,
@@ -187,6 +214,13 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
   });
 
   const placed = new Set<string>();
+  const inputIds = new Set(spec.inputs.map((input) => input.id));
+  const draggable = (id: string | undefined, path: (string | number)[]) => {
+    if (id === undefined) return;
+    const input = spec.inputs.find((x) => x.id === id);
+    if (!input) addIssue({ code: "custom", message: `No input has id "${id}"`, path: [...base, ...path] });
+    else if (input.kind === "toggle") addIssue({ code: "custom", message: `"${id}" is a toggle; only sliders and selects can be dragged`, path: [...base, ...path] });
+  };
   spec.views.forEach((v, i) => {
     const path = ["views", i];
     const f = (source: string | undefined, key: (string | number)[], extra?: string[]) => source && check(source, [...path, ...key], extra);
@@ -206,6 +240,19 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
         f(v.xTo, ["xTo"]);
         v.series.forEach((s, j) => f(s.y, ["series", j, "y"], ["x"]));
         t(v.caption, ["caption"]);
+        v.handles?.forEach((h, j) => {
+          draggable(h.input, [...path, "handles", j, "input"]);
+          f(h.x, ["handles", j, "x"]);
+          f(h.y, ["handles", j, "y"]);
+          t(h.label, ["handles", j, "label"]);
+          // A handle that doesn't move with its input can't be dragged.
+          try {
+            if (!namesIn(compile(h.x)).has(h.input) && !namesIn(compile(h.y)).has(h.input) && !dependsOn(spec, h.input, [h.x, h.y]))
+              addIssue({ code: "custom", message: `The handle's x and y don't depend on "${h.input}", so dragging it can't change anything`, path: [...base, ...path, "handles", j] });
+          } catch {
+            // Reported above.
+          }
+        });
         break;
       }
       case "bars":
@@ -216,10 +263,12 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
         f(v.radius, ["radius"]);
         f(v.value, ["value"]);
         t(v.note, ["note"]);
+        draggable(v.drag, [...path, "drag"]);
         break;
       case "grid":
         f(v.total, ["total"]);
         f(v.filled, ["filled"]);
+        draggable(v.drag, [...path, "drag"]);
         break;
       case "donut":
         f(v.value, ["value"]);
@@ -232,6 +281,7 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
         f(v.max, ["max"]);
         t(v.label, ["label"]);
         t(v.note, ["note"]);
+        draggable(v.drag, [...path, "drag"]);
         break;
       case "stacked":
         v.segments.forEach((s, j) => f(s.value, ["segments", j, "value"]));
@@ -239,6 +289,12 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
       case "formula":
       case "text":
         t(v.text, ["text"]);
+        break;
+      case "sentence":
+        for (const part of splitSentence(v.text)) {
+          if (typeof part === "string") t(part, ["text"]);
+          else if (!inputIds.has(part.input)) addIssue({ code: "custom", message: `No input has id "${part.input}" (inputs go in [brackets], live values in {braces})`, path: [...base, ...path, "text"] });
+        }
         break;
       case "questions":
         f(v.level, ["level"]);
@@ -251,6 +307,43 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
     }
   });
   if (spec.note) check(spec.note, ["note"], [], "template");
+}
+
+/** Whether any of the formulas uses the input through a named value. */
+function dependsOn(spec: { values?: { name: string; formula: string }[] }, input: string, formulas: string[]): boolean {
+  const uses = new Set([input]);
+  for (const v of spec.values ?? []) {
+    try {
+      if ([...namesIn(compile(v.formula))].some((n) => uses.has(n))) uses.add(v.name);
+    } catch {
+      // Reported elsewhere.
+    }
+  }
+  return formulas.some((source) => [...namesIn(compile(source))].some((n) => uses.has(n)));
+}
+
+/** Splits a sentence into template text and [input] slots. */
+export function splitSentence(text: string): (string | { input: string })[] {
+  const parts: (string | { input: string })[] = [];
+  const pattern = /\[([A-Za-z_][A-Za-z0-9_]*)\]/g;
+  let last = 0;
+  for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    parts.push({ input: match[1]! });
+    last = pattern.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+/** Inputs that a view shows itself, so they don't also get a slider at the end. */
+export function placedInputs(views: readonly WidgetView[]): Set<string> {
+  const placed = new Set<string>();
+  for (const v of views) {
+    if (v.type === "input") placed.add(v.input);
+    if (v.type === "sentence") for (const part of splitSentence(v.text)) if (typeof part !== "string") placed.add(part.input);
+  }
+  return placed;
 }
 
 /** A widget as a block inside a content document. */

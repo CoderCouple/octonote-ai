@@ -1257,3 +1257,171 @@
     height: 28px;
   }
 }
+
+/* Direct manipulation: inline numbers, handles, drag targets, play and reset */
+
+.wg-sentence {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.9;
+  color: var(--wg-fg-strong);
+}
+
+.wg-inline {
+  display: inline-block;
+  margin: 0 1px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 650;
+  line-height: 1.45;
+  color: var(--wg-accent);
+  background: var(--wg-accent-soft);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.wg-inline--number {
+  cursor: ew-resize;
+  border-bottom: 2px dotted color-mix(in srgb, var(--wg-accent) 60%, transparent);
+  border-radius: 6px 6px 2px 2px;
+}
+.wg-inline--number:active {
+  background: color-mix(in srgb, var(--wg-accent) 22%, var(--wg-accent-soft));
+}
+.wg-inline--toggle:not(.wg-inline--on) {
+  color: var(--wg-muted);
+  background: var(--wg-surface-sunken);
+  text-decoration: line-through;
+}
+.wg-inline:focus-visible {
+  outline: 2px solid var(--wg-focus);
+  outline-offset: 2px;
+}
+
+.wg-draggable {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.wg-draggable:active {
+  cursor: grabbing;
+}
+.wg-draggable:focus-visible,
+.wg-handle:focus-visible {
+  outline: 2px solid var(--wg-focus);
+  outline-offset: 3px;
+}
+
+.wg-handle {
+  fill: var(--wg-c, var(--wg-accent));
+  stroke: var(--wg-surface);
+  stroke-width: 2.5;
+  cursor: grab;
+  touch-action: none;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.25));
+}
+.wg-handle:active {
+  cursor: grabbing;
+}
+.wg-handle__halo {
+  fill: var(--wg-c, var(--wg-accent));
+  opacity: 0.16;
+  pointer-events: none;
+  animation: wg-halo 1.8s var(--wg-ease) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes wg-halo {
+  0%, 100% { transform: scale(0.85); opacity: 0.22; }
+  50% { transform: scale(1.15); opacity: 0.08; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wg-handle__halo { animation: none; }
+}
+
+.wg-chart__handles {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.wg-chart__handles .wg-handle {
+  pointer-events: auto;
+}
+.wg-chart__handle-label {
+  font-size: 12px;
+  font-weight: 650;
+  fill: var(--wg-c, var(--wg-fg-strong));
+  paint-order: stroke;
+  stroke: var(--wg-surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.wg-meter__track.wg-draggable {
+  position: relative;
+  overflow: visible;
+}
+.wg-meter__knob {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--wg-surface);
+  border: 2px solid var(--wg-accent);
+  box-shadow: var(--wg-shadow);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.wg-slider__end {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.wg-play {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--wg-border-strong);
+  border-radius: 50%;
+  font-size: 10px;
+  color: var(--wg-accent);
+  background: var(--wg-surface);
+  cursor: pointer;
+}
+.wg-play[aria-pressed="true"] {
+  color: var(--wg-accent-fg);
+  background: var(--wg-accent);
+  border-color: var(--wg-accent);
+}
+.wg-play:focus-visible,
+.wg-widget__reset:focus-visible {
+  outline: 2px solid var(--wg-focus);
+  outline-offset: 2px;
+}
+
+.wg-widget__reset {
+  margin-left: auto;
+  padding: 2px 10px;
+  border: 1px solid var(--wg-border-strong);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--wg-muted);
+  background: var(--wg-surface);
+  cursor: pointer;
+}
+.wg-widget__reset:hover {
+  color: var(--wg-fg-strong);
+}
+.wg-widget__reset + .wg-widget__badge {
+  margin-left: 0;
+}

@@ -1,8 +1,9 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from "react";
 import { cx } from "../provider.js";
 import { formatNumber, renderTemplate, type NumberFormat } from "./format.js";
 import type { Scope } from "./expr.js";
-import { sampleChart } from "./runtime.js";
+import { useInputDrag } from "./interact.js";
+import { sampleChart, valueOf } from "./runtime.js";
 import type { PaletteColor, WidgetView } from "./schema.js";
 
 type ChartView = Extract<WidgetView, { type: "chart" }>;
@@ -50,6 +51,7 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
   const [ref, width] = useWidth(640);
   const tableId = useId();
   const [active, setActive] = useState<number | null>(null);
+  const overlay = useRef<SVGSVGElement>(null);
   const points = useMemo(() => sampleChart(view, scope), [view, scope]);
   const series = view.series.map((s, i) => ({ ...s, color: s.color ?? DEFAULT_COLORS[i % DEFAULT_COLORS.length]! }));
   const yFormat: NumberFormat = { ...view.y?.format, ...(currency && view.y?.format?.style === "currency" && !view.y.format.currency ? { currency } : {}) };
@@ -75,7 +77,11 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
   const plotH = height - pad.top - pad.bottom;
   const band = kind === "bar" ? plotW / Math.max(1, points.length) : 0;
   const sx = (x: number) => (kind === "bar" ? pad.left + band * (points.findIndex((p) => p.x === x) + 0.5) : pad.left + ((x - xMin) / (xMax - xMin || 1)) * plotW);
-  const sy = (y: number) => pad.top + (1 - (Math.min(Math.max(y, yMin), yMax) - yMin) / (yMax - yMin || 1)) * plotH;
+  /** Unclamped, for lines: they're clipped at the plot's edge instead of flattened onto it. */
+  const syFree = (y: number) => pad.top + (1 - (y - yMin) / (yMax - yMin || 1)) * plotH;
+  const sy = (y: number) => syFree(Math.min(Math.max(y, yMin), yMax));
+  const inRange = (y: number) => y >= yMin - 1e-9 && y <= yMax + 1e-9;
+  const clipId = `${tableId.replace(/:/g, "")}-clip`;
 
   // X ticks: every point when there are few, otherwise round values.
   const xTicks = points.length <= 13 ? points.map((p) => p.x) : niceTicks(xMin, xEnd, Math.max(3, Math.floor(plotW / 70))).filter((t) => t >= xMin && t <= xEnd);
@@ -116,6 +122,11 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
         onBlur={() => setActive(null)}
       >
         <svg width={width} height={height} aria-hidden="true" onPointerMove={pick} onPointerLeave={() => setActive(null)}>
+          <defs>
+            <clipPath id={clipId}>
+              <rect x={pad.left - 6} y={pad.top - 6} width={plotW + 12} height={plotH + 12} />
+            </clipPath>
+          </defs>
           {yTicks.map((t) => (
             <g key={t}>
               <line x1={pad.left} x2={width - pad.right} y1={sy(t)} y2={sy(t)} className="wg-chart__grid" />
@@ -145,20 +156,22 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
                 }),
               )
             : series.map((s, j) => {
+                // Far-off values are capped so the path stays drawable; the clip hides them.
+                const far = (y: number) => Math.max(yMin - (yMax - yMin) * 10, Math.min(yMax + (yMax - yMin) * 10, y));
                 const line = points
                   .filter((p) => Number.isFinite(p.ys[j]))
-                  .map((p, i) => `${i ? "L" : "M"} ${sx(p.x).toFixed(1)} ${sy(p.ys[j]!).toFixed(1)}`)
+                  .map((p, i) => `${i ? "L" : "M"} ${sx(p.x).toFixed(1)} ${syFree(far(p.ys[j]!)).toFixed(1)}`)
                   .join(" ");
                 if (!line) return null;
                 const finitePoints = points.filter((p) => Number.isFinite(p.ys[j]));
                 const area = `${line} L ${sx(finitePoints[finitePoints.length - 1]!.x).toFixed(1)} ${sy(Math.max(yMin, 0)).toFixed(1)} L ${sx(finitePoints[0]!.x).toFixed(1)} ${sy(Math.max(yMin, 0)).toFixed(1)} Z`;
                 return (
-                  <g key={j} className={`wg-c-${s.color}`}>
+                  <g key={j} className={`wg-c-${s.color}`} clipPath={`url(#${clipId})`}>
                     {kind === "area" ? <path d={area} className="wg-chart__area" /> : null}
                     <path d={line} className="wg-chart__line" />
                     {showDots
-                      ? points.map((p, i) => (Number.isFinite(p.ys[j]) ? <circle key={i} cx={sx(p.x)} cy={sy(p.ys[j]!)} r={active === i ? 5 : 3.2} className="wg-chart__dot" /> : null))
-                      : activePoint && Number.isFinite(activePoint.ys[j])
+                      ? points.map((p, i) => (Number.isFinite(p.ys[j]) && inRange(p.ys[j]!) ? <circle key={i} cx={sx(p.x)} cy={sy(p.ys[j]!)} r={active === i ? 5 : 3.2} className="wg-chart__dot" /> : null))
+                      : activePoint && Number.isFinite(activePoint.ys[j]) && inRange(activePoint.ys[j]!)
                         ? <circle cx={sx(activePoint.x)} cy={sy(activePoint.ys[j]!)} r={5} className="wg-chart__dot" />
                         : null}
                   </g>
@@ -166,6 +179,13 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
               })}
           {activePoint && kind !== "bar" ? <line x1={sx(activePoint.x)} x2={sx(activePoint.x)} y1={pad.top} y2={pad.top + plotH} className="wg-chart__guide" /> : null}
         </svg>
+        {view.handles?.length && kind !== "bar" ? (
+          <svg ref={overlay} width={width} height={height} className="wg-chart__handles">
+            {view.handles.map((handle, i) => (
+              <ChartHandle key={i} handle={handle} scope={scope} sx={sx} sy={sy} overlay={overlay} width={width} height={height} currency={currency} />
+            ))}
+          </svg>
+        ) : null}
         {activePoint ? (
           <div className="wg-chart__tip" style={{ left: tipLeft }} role="status">
             <p className="wg-chart__tip-x">
@@ -212,5 +232,35 @@ export function Chart({ view, scope, currency }: { view: ChartView; scope: Scope
         </tbody>
       </table>
     </figure>
+  );
+}
+
+type Handle = NonNullable<ChartView["handles"]>[number];
+
+/** A point the reader drags to set an input; it sits where its x and y formulas put it. */
+function ChartHandle({ handle, scope, sx, sy, overlay, width, height, currency }: { handle: Handle; scope: Scope; sx: (x: number) => number; sy: (y: number) => number; overlay: RefObject<SVGSVGElement | null>; width: number; height: number; currency?: string }) {
+  const control = useInputDrag(handle.input, (event) => {
+    const box = overlay.current?.getBoundingClientRect();
+    if (!box || !box.width) return undefined;
+    const px = ((event.clientX - box.left) / box.width) * width;
+    const py = ((event.clientY - box.top) / box.height) * height;
+    return (s) => Math.hypot(sx(valueOf(handle.x, s)) - px, sy(valueOf(handle.y, s)) - py);
+  });
+  const x = valueOf(handle.x, scope);
+  const y = valueOf(handle.y, scope);
+  if (!control || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const cx0 = sx(x);
+  const cy0 = sy(y);
+  const label = handle.label ? renderTemplate(handle.label, scope, currency) : undefined;
+  return (
+    <g className={cx("wg-chart__handle", `wg-c-${handle.color ?? "orange"}`)}>
+      <circle cx={cx0} cy={cy0} r={16} className="wg-handle__halo" aria-hidden="true" />
+      <circle cx={cx0} cy={cy0} r={7.5} className="wg-handle" {...control.slider} {...control.drag} />
+      {label ? (
+        <text x={Math.min(cx0 + 12, width - 4)} y={cy0 - 12} textAnchor={cx0 + 12 > width - 80 ? "end" : "start"} className="wg-chart__handle-label" aria-hidden="true">
+          {label}
+        </text>
+      ) : null}
+    </g>
   );
 }

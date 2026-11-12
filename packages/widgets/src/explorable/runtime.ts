@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { compile, evaluate, type Scope } from "./expr.js";
 import type { WidgetBlock, WidgetInput, WidgetSpec } from "./schema.js";
 
@@ -49,10 +49,11 @@ export function sampleChart(view: Extract<WidgetBlock["views"][number], { type: 
 export function useWidget(spec: Pick<WidgetSpec, "inputs" | "values">) {
   const [inputs, setInputs] = useState(() => initialInputs(spec.inputs));
   const scope = useMemo(() => computeScope(spec, inputs), [spec, inputs]);
-  return {
-    inputs,
-    scope,
-    setInput: (id: string, value: number) => setInputs((current) => (current[id] === value ? current : { ...current, [id]: value })),
-    reset: () => setInputs(initialInputs(spec.inputs)),
-  };
+  const setInput = useCallback((id: string, value: number) => setInputs((current) => (current[id] === value ? current : { ...current, [id]: value })), []);
+  const reset = useCallback(() => setInputs(initialInputs(spec.inputs)), [spec.inputs]);
+  const changed = useMemo(() => {
+    const start = initialInputs(spec.inputs);
+    return Object.keys(start).some((id) => start[id] !== inputs[id]);
+  }, [spec.inputs, inputs]);
+  return { inputs, scope, setInput, reset, changed };
 }

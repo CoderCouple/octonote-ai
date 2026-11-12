@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import examples from "../examples/explorables.json" with { type: "json" };
 import {
   computeScope,
@@ -11,12 +11,20 @@ import {
   renderTemplate,
   sampleChart,
   validateDocument,
+  solveInput,
   validateWidget,
   WidgetSpecRenderer,
   type WidgetSpec,
 } from "../src/index.js";
 
 afterEach(cleanup);
+
+// jsdom has no PointerEvent; a MouseEvent carries the same position and button.
+if (typeof window.PointerEvent === "undefined") {
+  window.PointerEvent = class extends MouseEvent {
+    pointerId = 1;
+  } as unknown as typeof PointerEvent;
+}
 
 const byId = (id: string) => examples.find((e) => e.id === id) as unknown as WidgetSpec;
 const slider = (name: string) => screen.getByRole("slider", { name }) as HTMLInputElement;
@@ -185,7 +193,7 @@ describe("widgets in the page", () => {
     drag("Radius", 10);
     expect(screen.getByText("314.2")).toBeTruthy();
 
-    expect(screen.getByRole("img", { name: "7 of 12 parts filled" })).toBeTruthy();
+    expect(screen.getByRole("slider", { name: /^Filled sections \(drag/ }).getAttribute("aria-valuetext")).toBe("7 of 12 filled");
     expect(screen.getByText("7/12")).toBeTruthy();
     expect(screen.getByText("58.3%")).toBeTruthy();
 
@@ -193,7 +201,8 @@ describe("widgets in the page", () => {
     expect(screen.getByRole("img", { name: "Expected successes: 80%" })).toBeTruthy();
 
     drag("Speed", 90);
-    expect(screen.getByRole("meter").getAttribute("aria-valuetext")).toBe("180 km");
+    expect(screen.getByText("180 km")).toBeTruthy();
+    expect(screen.getByRole("slider", { name: /^Speed \(drag/ }).getAttribute("aria-valuetext")).toBe("90 km/h");
   });
 
   it("budget segments always add up", () => {
@@ -225,5 +234,109 @@ describe("widgets in the page", () => {
   it("shows a safe message for an invalid widget", () => {
     render(<WidgetSpecRenderer spec={{ type: "widget" }} />);
     expect(screen.getByRole("alert").textContent).toContain("couldn't be shown");
+  });
+});
+
+describe("direct manipulation", () => {
+  const spec = (extra: object) => ({ schemaVersion: "1.0", type: "widget", id: "w", title: "W", ...extra });
+  const issues = (extra: object) => {
+    const r = validateWidget(spec(extra));
+    return r.ok ? [] : r.issues.map((i) => `${i.path}: ${i.message}`);
+  };
+
+  it("checks handles, drags and sentences", () => {
+    const inputs = [
+      { kind: "slider", id: "m", label: "m", min: 0, max: 5, value: 1 },
+      { kind: "toggle", id: "on", label: "On", value: true },
+    ];
+    expect(issues({ inputs, views: [{ type: "chart", x: { from: 0, to: 5 }, series: [{ label: "y", y: "m*x" }], handles: [{ input: "m", x: "1", y: "2" }] }] })).toEqual([
+      `views.0.handles.0: The handle's x and y don't depend on "m", so dragging it can't change anything`,
+    ]);
+    expect(issues({ inputs, views: [{ type: "circle", radius: "m", max: 5, drag: "on" }] })).toEqual(['views.0.drag: "on" is a toggle; only sliders and selects can be dragged']);
+    expect(issues({ inputs, views: [{ type: "sentence", text: "Set [m] and [nope]: {m * 2}" }] })).toEqual([
+      'views.0.text: No input has id "nope" (inputs go in [brackets], live values in {braces})',
+    ]);
+    // A handle may follow its input through a named value.
+    expect(issues({ inputs, values: [{ name: "top", formula: "m + 1" }], views: [{ type: "chart", x: { from: 0, to: 5 }, series: [{ label: "y", y: "x" }], handles: [{ input: "m", x: "1", y: "top" }] }] })).toEqual([]);
+  });
+
+  it("works out an input from where something was dragged, for any formula", () => {
+    const runtime = {
+      spec: { inputs: [{ kind: "slider" as const, id: "a", label: "a", min: -3, max: 3, step: 0.1, value: 1 }], values: [{ name: "y", formula: "a^2" }] },
+      inputs: { a: 1 },
+      scope: { a: 1, y: 1 },
+      setInput: () => {},
+    };
+    // The point on y = x² nearest to (2, 4) is at a = 2.
+    expect(solveInput(runtime, "a", (s) => Math.hypot(s.a! - 2, s.y! - 4))).toBe(2);
+    expect(solveInput(runtime, "a", (s) => Math.abs(s.y! - 2.25))).toBe(-1.5);
+  });
+
+  it("sentences show inputs inline: arrow keys change them and the text follows", () => {
+    render(<WidgetSpecRenderer spec={byId("investment-sentence")} />);
+    const sentence = () => document.querySelector(".wg-sentence")!.textContent;
+    expect(sentence()).toContain("If you invest $1,000 at 7% a year for 15 years, you'll end up with $2,759");
+    const rate = screen.getByRole("slider", { name: "Annual return" });
+    fireEvent.keyDown(rate, { key: "ArrowRight" });
+    expect(sentence()).toContain("at 7.5% a year");
+    fireEvent.keyDown(rate, { key: "End" });
+    expect(sentence()).toContain("at 15% a year");
+    // Inputs in a sentence don't get a second control, unless placed: years is.
+    expect(screen.queryAllByRole("slider", { name: "Annual return" })).toHaveLength(1);
+    expect(screen.getAllByRole("slider", { name: "Years" })).toHaveLength(2);
+  });
+
+  it("dragging a sentence number steps through its values", () => {
+    render(<WidgetSpecRenderer spec={byId("investment-sentence")} />);
+    const years = screen.getAllByRole("slider", { name: "Years" }).find((el) => el.tagName === "SPAN")!;
+    fireEvent.pointerDown(years, { clientX: 100, button: 0 });
+    fireEvent.pointerMove(years, { clientX: 100 + 6.2 * 5 });
+    fireEvent.pointerUp(years, { clientX: 131 });
+    expect(years.getAttribute("aria-valuetext")).toBe("20");
+  });
+
+  it("clicking a grid cell fills up to it", () => {
+    render(<WidgetSpecRenderer spec={byId("fraction-explorer")} />);
+    const cell = document.querySelector("[data-cell='2']")!;
+    fireEvent.pointerDown(cell, { button: 0 });
+    fireEvent.pointerUp(cell);
+    expect(screen.getByText("3/12")).toBeTruthy();
+  });
+
+  it("chart handles are keyboard sliders too", () => {
+    render(<WidgetSpecRenderer spec={byId("tangent-slope")} />);
+    const handle = screen.getByRole("slider", { name: /^Point at x \(drag/ });
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(document.querySelector(".wg-sentence")!.textContent).toContain("At x = 1.1, the curve rises 2.2");
+  });
+
+  it("reset puts every input back", () => {
+    render(<WidgetSpecRenderer spec={byId("compound-interest")} />);
+    expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
+    drag("Annual return", 10);
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(slider("Annual return").value).toBe("7");
+    expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
+  });
+
+  it("play sweeps a slider to its end", () => {
+    let now = 0;
+    let queued: FrameRequestCallback[] = [];
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => queued.push(cb));
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+    render(<WidgetSpecRenderer spec={byId("compound-simulator")} />);
+    fireEvent.click(screen.getByRole("button", { name: "Play years invested" }));
+    for (let i = 0; i < 40; i++)
+      act(() => {
+        now += 250;
+        const run = queued;
+        queued = [];
+        run.forEach((cb) => cb(now));
+      });
+    expect(slider("Years invested").value).toBe("30");
+    expect(screen.getByRole("button", { name: "Play years invested" })).toBeTruthy();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 });

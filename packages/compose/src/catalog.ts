@@ -168,7 +168,7 @@ const widgetEntry: CatalogEntry = {
   kind: "widget",
   library: "widgets",
   summary:
-    "An explorable: sliders, toggles or choices drive named formulas, and stats, charts, circles, fraction grids, donuts, meters, stacked bars or a question bank update live.",
+    "An explorable: sliders, toggles or choices drive named formulas, and stats, charts, circles, fraction grids, donuts, meters, stacked bars or a question bank update live. Prefer direct manipulation: a sentence with draggable numbers ([input] inline, {value} live), chart handles the reader drags (a point on the curve at (a, a^2) that sets a), drag on circles, grids and meters, and play on a time-like slider.",
   useWhen: [
     "The idea is a relationship between quantities the learner can vary: growth, rates, proportions, probability, geometry, physics, budgets, functions.",
     "'What happens if…' questions, where trying values teaches more than reading.",
