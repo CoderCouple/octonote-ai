@@ -34,3 +34,5 @@ export type { ParseOptions, ToolDefinition } from "./ai.js";
 export { seededRandom, shuffle } from "./shuffle.js";
 export { normalizeSpec } from "./normalize.js";
 export { mindmapToMermaid, mindmapToOutline, outlineToMindmap, outlineToMindmapNodes } from "./outline.js";
+export { lintActivity, lintQuestions } from "./lint.js";
+export type { ActivityIssue } from "./lint.js";

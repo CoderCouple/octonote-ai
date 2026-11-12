@@ -24,6 +24,7 @@ export function sessionToolDefinition(registry: ActivityRegistry = defaultRegist
       "Create a study session: a titled list of interactive activities rendered as components.",
       `Set schemaVersion to "${SCHEMA_VERSION}" everywhere and give every activity, card, question, option, pair and node a short id unique in its list.`,
       "Write plain text only: no HTML, no markdown, no code.",
+      "Questions can be answered in eight ways (see `kind`): choose the one that tests the idea best, e.g. fill_blank for a key term, numeric for a calculation, order for a sequence of steps or events, categorize for sorting examples into groups, short_answer for explaining why. Avoid answers given away by the question, a right option much longer than the rest, and \"all of the above\".",
       "Activity types:",
       kinds,
     ].join("\n"),

@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import water from "../examples/water-cycle-practice.json" with { type: "json" };
-import { checkResponse, defaultRegistry, Mindmap, mindmapToMermaid, mindmapToOutline, normalizeSpec, expectedResponse, gradeQuiz, isAnswered, Mcq, parseNumber, Quiz, redactQuiz, type McqSpec, type Question, type QuizSpec } from "../src/index.js";
+import digestive from "../examples/digestive-system.json" with { type: "json" };
+import { checkResponse, defaultRegistry, lintActivity, lintQuestions, Mindmap, mindmapToMermaid, mindmapToOutline, normalizeSpec, expectedResponse, gradeQuiz, isAnswered, Mcq, parseNumber, Quiz, redactQuiz, type McqSpec, type Question, type QuizSpec } from "../src/index.js";
 
 afterEach(cleanup);
 
@@ -275,5 +276,35 @@ describe("mind maps that teach", () => {
     expect(mermaid).toContain('n0(("Water cycle"))');
     expect(mermaid).toContain(`n5["Say 'hi' )) --> evil("]`);
     expect(mermaid).toContain("n0 --> n1");
+  });
+});
+
+describe("item-writing checker", () => {
+  const lint = (question: object) => lintQuestions([{ id: "q", prompt: "P", ...question } as Question]).map((i) => `${i.path}: ${i.message}`);
+  const opts = (...texts: string[]) => texts.map((text, i) => ({ id: String.fromCharCode(97 + i), text }));
+
+  it("passes the examples", () => {
+    for (const example of [digestive, water]) {
+      const r = defaultRegistry.validate(example);
+      expect(r.ok ? lintActivity(r.spec) : r.issues).toEqual([]);
+    }
+  });
+
+  it("catches answers given away by the question or by their length", () => {
+    expect(lint({ prompt: "Which gas do plants take in for photosynthesis, carbon dioxide or oxygen?", options: opts("Carbon dioxide", "Nitrogen", "Helium"), correct: ["a"] })[0]).toMatch(/appears in the question itself/);
+    expect(lint({ options: opts("Red", "Blue", "The one that scatters most in the atmosphere"), correct: ["c"] })[0]).toMatch(/much longer than the others/);
+  });
+
+  it("catches all of the above, repeats and all-correct options", () => {
+    expect(lint({ options: opts("A", "B", "All of the above"), correct: ["c"] })[0]).toMatch(/Avoid "All of the above"/);
+    expect(lint({ options: opts("Same", "same.", "Other"), correct: ["c"] })[0]).toMatch(/repeats another option/);
+    expect(lint({ kind: "multiple", options: opts("A", "B"), correct: ["a", "b"] })[0]).toMatch(/Every option is correct/);
+  });
+
+  it("catches self-answering blanks, exact decimals, trivial orders and empty groups", () => {
+    expect(lint({ kind: "fill_blank", prompt: "Photosynthesis is the process of ___, as photosynthesis needs light.", blanks: [{ accept: ["photosynthesis"] }] })[0]).toMatch(/already appears in the sentence/);
+    expect(lint({ kind: "numeric", answer: { value: 9.81 } })[0]).toMatch(/no tolerance.*e\.g\. 0\.05/);
+    expect(lint({ kind: "order", items: opts("x", "y") })[0]).toMatch(/coin flip/);
+    expect(lint({ kind: "categorize", groups: opts("G", "H"), items: [{ id: "i", text: "I", group: "a" }] })[0]).toMatch(/Nothing belongs in "H"/);
   });
 });
