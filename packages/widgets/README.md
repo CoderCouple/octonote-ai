@@ -19,6 +19,19 @@ Accessible React UI widgets in two layers.
   - Charts can be line, area, bar or `scatter`. `marks` draw reference lines or labelled points that follow inputs.
   - Bars can come from a table. A `table` view highlights rows by formula.
   - `grouping: false` (or the `year` template format) prints years as 2024, not 2,024.
+- **Input sweep checker.** `lintWidget` moves every input through its range, and all of them to their extremes together. It reports:
+  - values that break (with the setting that breaks them);
+  - `percent` formats fed percentages;
+  - donuts outside 0–1;
+  - meters and circles that overflow;
+  - grids over 200 cells;
+  - charts hidden by a fixed range;
+  - stats too long to fit;
+  - inputs that change nothing;
+  - handles that start off the chart.
+- **Writing with models.** `widgetToolDefinition()` gives a model the schema and `WIDGET_GUIDE`.
+  - `pnpm eval` (needs `ANTHROPIC_API_KEY`) has Claude build widgets for eight questions. Validation and sweep problems go back to it, with up to two repairs.
+  - It reports first-try and repaired results, and how often Claude reaches for direct manipulation. Results land in `scripts/out/`, and the playground's "Written by Claude" tab shows them.
 - **Safe formulas.** A small Pratt parser, never `eval`. Validation reports unknown names, cycles, bad ranges, and handles that can't move.
 
 **Content blocks from JSON:** heading, paragraph, list, quote, divider, callout, definition, steps, code (with copy), takeaway, comparison table, stats, timeline, progress, and tabs/accordion holding other blocks.

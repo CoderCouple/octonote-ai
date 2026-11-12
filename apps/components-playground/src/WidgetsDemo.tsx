@@ -3,7 +3,10 @@ import guide from "@octonote/widgets/examples/digestive-guide.json";
 import explorables from "@octonote/widgets/examples/explorables.json";
 import { Badge, Button, Card, Dialog, documentToolDefinition, IconButton, parseDocument, Switch, ToastProvider, Tooltip, useToast, WidgetRenderer, WidgetSpecRenderer, WidgetsProvider, type Theme } from "@octonote/widgets";
 
-type Source = "explorables" | "example" | "controls" | "paste";
+// Widgets Claude wrote in the last `pnpm --filter @octonote/widgets eval` run, if any.
+const GENERATED = Object.values(import.meta.glob<{ id: string }>("../../../packages/widgets/scripts/out/*.json", { eager: true, import: "default" }));
+
+type Source = "explorables" | "generated" | "example" | "controls" | "paste";
 
 export function WidgetsDemo({ theme }: { theme: Theme }) {
   const [source, setSource] = useState<Source>("explorables");
@@ -19,6 +22,7 @@ export function WidgetsDemo({ theme }: { theme: Theme }) {
             {(
               [
                 ["explorables", "Explorables"],
+                ...(GENERATED.length ? ([["generated", "Written by Claude"]] as const) : []),
                 ["example", "Content document"],
                 ["controls", "Controls"],
                 ["paste", "Paste JSON"],
@@ -34,6 +38,13 @@ export function WidgetsDemo({ theme }: { theme: Theme }) {
         {source === "explorables" ? (
           <div className="pg-gallery">
             {explorables.map((spec) => (
+              <WidgetSpecRenderer key={spec.id} spec={spec} />
+            ))}
+          </div>
+        ) : null}
+        {source === "generated" ? (
+          <div className="pg-gallery">
+            {GENERATED.map((spec) => (
               <WidgetSpecRenderer key={spec.id} spec={spec} />
             ))}
           </div>

@@ -13,6 +13,7 @@ import {
   validateDocument,
   aggregate,
   chartData,
+  lintWidget,
   lookup,
   solveInput,
   validateWidget,
@@ -406,5 +407,45 @@ describe("data", () => {
     fireEvent.keyDown(handle, { key: "Home" });
     expect(document.querySelector(".wg-sentence")!.textContent).toContain("0.5 AU from the Sun would take 0.4 Earth years");
     expect(screen.getByRole("cell", { name: "Neptune" })).toBeTruthy();
+  });
+});
+
+describe("input sweep checker", () => {
+  const lint = (extra: object) => {
+    const r = validateWidget({ schemaVersion: "1.0", type: "widget", id: "w", title: "W", ...extra });
+    if (!r.ok) throw new Error(JSON.stringify(r.issues));
+    return lintWidget(r.spec).map((i) => `${i.path}: ${i.message}`);
+  };
+  const rate = { kind: "slider", id: "rate", label: "Rate", min: 0, max: 20, value: 5 };
+
+  it("passes every example", () => {
+    for (const e of examples) {
+      const r = validateWidget(e);
+      expect([e.id, r.ok ? lintWidget(r.spec) : r.issues]).toEqual([e.id, []]);
+    }
+  });
+
+  it("finds values that break somewhere in the range, and says where", () => {
+    expect(lint({ inputs: [rate], values: [{ name: "years", formula: "70 / rate" }], views: [{ type: "stats", items: [{ label: "Doubling time", value: "years" }] }] })).toEqual([
+      'values.0: "years" isn\'t a number when rate = 0 (division by zero, or a root or log of a negative number). Guard the formula, e.g. with max() or a condition, or narrow the input\'s range.',
+      'views.0.items.0: "Doubling time" shows a dash when rate = 0 (division by zero, or a root or log of a negative number).',
+    ]);
+  });
+
+  it("catches percent formats fed percentages, donuts above 1 and overflowing meters", () => {
+    expect(lint({ inputs: [rate], views: [{ type: "stats", items: [{ label: "Rate", value: "rate", format: { style: "percent" } }] }] })[0]).toMatch(/expects a ratio \(0.35 → 35%\), but the value is 5 when the starting values, so it would read 500%/);
+    expect(lint({ inputs: [rate], views: [{ type: "donut", value: "rate" }] })[0]).toMatch(/ratio from 0 to 1, but it's 5 when the starting values. Divide by 100\?/);
+    expect(lint({ inputs: [rate], views: [{ type: "meter", value: "rate * 10", max: "100" }] })[0]).toMatch(/value 110 is above max 100 when rate = 11/);
+  });
+
+  it("catches inputs that change nothing, and charts hidden by a fixed range", () => {
+    expect(lint({ inputs: [rate, { kind: "slider", id: "idle", label: "Idle", min: 0, max: 1, value: 0 }], views: [{ type: "stats", items: [{ label: "R", value: "rate" }] }, { type: "input", input: "idle" }] })).toEqual([
+      'inputs.1: "idle" doesn\'t change anything the reader sees: no view uses it, or a value built from it. Use it or remove it.',
+    ]);
+    expect(lint({ inputs: [rate], views: [{ type: "chart", x: { from: 0, to: 10 }, series: [{ label: "y", y: "x * 100 + rate" }], y: { min: 0, max: 50 } }] })[0]).toMatch(/^views.0.y: Most of the chart is outside its fixed y range \(0 to 50\)/);
+  });
+
+  it("catches numbers too long for a stat", () => {
+    expect(lint({ inputs: [rate], views: [{ type: "stats", items: [{ label: "Huge", value: "10^rate", format: { decimals: 2 } }] }] })[0]).toMatch(/too long for a stat. Use style "compact"/);
   });
 });
