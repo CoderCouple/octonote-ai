@@ -446,3 +446,11 @@ body {
   border-color: currentColor;
   font-weight: 600;
 }
+
+/* Long package names never push the page sideways on phones. */
+.pg-libraries button,
+.pg-libraries code,
+.pg-libraries__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
