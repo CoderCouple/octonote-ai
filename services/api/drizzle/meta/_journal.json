@@ -246,6 +246,13 @@
       "when": 1794512758290,
       "tag": "0034_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794514641087,
+      "tag": "0035_user_ai_keys",
+      "breakpoints": true
     }
   ]
 }

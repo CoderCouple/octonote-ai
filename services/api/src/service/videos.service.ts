@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { HttpStatus, Inject, Injectable, Logger, type OnModuleInit } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, Logger, Optional, type OnModuleInit } from "@nestjs/common";
+import { AiKeysService } from "./ai-keys.service";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { and, count, eq, gte, notInArray } from "drizzle-orm";
 import { SUPABASE_CLIENT } from "../auth/supabase.tokens";
@@ -60,6 +61,7 @@ export class VideosService implements OnModuleInit {
     @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
     private readonly planLimits: PlanLimitsService,
     private readonly workspaces: WorkspacesService,
+    @Optional() private readonly keys?: AiKeysService,
   ) {}
 
   /** Jobs don't survive a restart: anything unfinished is marked failed so its block can offer a retry. */
@@ -81,7 +83,8 @@ export class VideosService implements OnModuleInit {
     if (this.planLimits.enforced && (await this.planLimits.planOf(input.workspaceId)) !== "pro") {
       throw new AppError(ErrorCode.PLAN_LIMIT, "Explainer videos are part of Pro.", HttpStatus.PAYMENT_REQUIRED);
     }
-    if (!process.env.ANTHROPIC_API_KEY?.trim() || !process.env.MANIM_WORKER_URL?.trim()) {
+    const ownKey = (await this.keys?.keyFor(userId)) ?? null;
+    if (!(ownKey || process.env.ANTHROPIC_API_KEY?.trim()) || !process.env.MANIM_WORKER_URL?.trim()) {
       throw new AppError(ErrorCode.SERVER_ERROR, "Video generation isn't set up on this server.", HttpStatus.SERVICE_UNAVAILABLE);
     }
     const [recent] = await this.db
@@ -126,7 +129,9 @@ export class VideosService implements OnModuleInit {
     if (!row) return;
     try {
       const [manim, compose, { default: Anthropic }] = await Promise.all([loadManim(), loadCompose(), import("@anthropic-ai/sdk")]);
-      const model = compose.anthropicModel(new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! }), process.env.COMPOSE_MODEL?.trim() || "claude-opus-5-5");
+      // The person's own key when they have one (the render itself still runs on our worker).
+      const apiKey = ((await this.keys?.keyFor(row.createdByUserId)) ?? null) || process.env.ANTHROPIC_API_KEY!;
+      const model = compose.anthropicModel(new Anthropic({ apiKey }), process.env.COMPOSE_MODEL?.trim() || "claude-opus-5-5");
       const renderer = manim.workerRenderer(process.env.MANIM_WORKER_URL!, process.env.MANIM_WORKER_TOKEN);
       const video = await manim.generateVideo({
         concept: row.concept,

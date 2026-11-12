@@ -9,9 +9,11 @@ import {
 import { BILLING_CONFIG, BillingService, STRIPE_CLIENT } from "../service/billing.service";
 import { FiguresController } from "../api/v1/controller/figures.controller";
 import { AiController } from "../api/v1/controller/ai.controller";
+import { AiKeyController } from "../api/v1/controller/ai-key.controller";
 import { ChatController } from "../api/v1/controller/chat.controller";
 import { AiVideosController, VideosController } from "../api/v1/controller/videos.controller";
 import { VideosService } from "../service/videos.service";
+import { AiKeysService } from "../service/ai-keys.service";
 import { ChatService } from "../service/chat.service";
 import { ComposeAiService } from "../service/compose-ai.service";
 import { FiguresService } from "../service/figures.service";
@@ -70,6 +72,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     WorkspacesController,
     FeedbackController,
     AiController,
+    AiKeyController,
     ChatController,
     AiVideosController,
     VideosController,
@@ -104,6 +107,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     NotebooksService,
     ProjectsService,
     PagesService,
+    AiKeysService,
     ComposeAiService,
     ChatService,
     VideosService,

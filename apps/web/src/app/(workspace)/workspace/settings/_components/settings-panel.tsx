@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Sun,
   Trash2,
+  Sparkles,
   Terminal,
   User as UserIcon,
   UserPlus,
@@ -60,6 +61,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { BillingSection } from "./billing-section";
+import { AiSection } from "./ai-section";
 import { CliSection } from "./cli-section";
 import { ConnectedAppsSection } from "./connected-apps-section";
 import { CreatorSection } from "./creator-section";
@@ -102,6 +104,7 @@ const SECTIONS = [
   { id: "workspace", label: "Workspace", icon: Building2 },
   { id: "memberships", label: "Memberships", icon: Layers },
   { id: "billing", label: "Plan & billing", icon: CreditCard },
+  { id: "ai", label: "AI", icon: Sparkles },
   { id: "cli", label: "CLI & agents", icon: Terminal },
   { id: "connected-apps", label: "Connected apps", icon: Bot },
   { id: "creator", label: "Creator program", icon: Handshake },
@@ -204,6 +207,7 @@ export function SettingsPanel({
           activeWorkspaceId={activeWorkspaceId}
         />
         <BillingSection workspaceId={workspace.id} />
+        <AiSection />
         <CliSection />
         <ConnectedAppsSection />
         {creator ? <CreatorSection creator={creator} /> : null}

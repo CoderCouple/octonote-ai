@@ -1,4 +1,5 @@
-import { HttpStatus, Injectable } from "@nestjs/common";
+import { HttpStatus, Injectable, Optional } from "@nestjs/common";
+import { AiKeysService } from "./ai-keys.service";
 import { AppError } from "../common/error/app-error";
 import { ErrorCode } from "../common/error/error-codes";
 
@@ -32,29 +33,47 @@ export interface InteractiveProblem {
 export class ComposeAiService {
   private readonly recent = new Map<string, number[]>();
 
+  /** Without the keys service (some tests), everyone uses the server's key. */
+  constructor(@Optional() private readonly keys?: AiKeysService) {}
+
+  /**
+   * The API key for this person's AI calls: their own when they've added one
+   * (bring your own key), else the server's. `own` says which.
+   */
+  private async keyFor(userId: string): Promise<{ apiKey: string; own: boolean }> {
+    const own = (await this.keys?.keyFor(userId)) ?? null;
+    if (own) return { apiKey: own, own: true };
+    const server = process.env.ANTHROPIC_API_KEY?.trim();
+    if (!server) throw new AppError(ErrorCode.SERVER_ERROR, "AI isn't set up on this server. You can add your own Anthropic key in Settings → AI.", HttpStatus.SERVICE_UNAVAILABLE);
+    return { apiKey: server, own: false };
+  }
+
   /** Notes may embed every catalog kind, including sandboxed custom apps (user decision 2026-11-11). */
   private async catalog() {
     const compose = await loadCompose();
     return { compose, catalog: compose.defaultCatalog.with(compose.customEntry) };
   }
 
-  private async model() {
-    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-    if (!apiKey) throw new AppError(ErrorCode.SERVER_ERROR, "AI isn't set up on this server.", HttpStatus.SERVICE_UNAVAILABLE);
+  private async model(userId: string) {
+    const { apiKey } = await this.keyFor(userId);
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const compose = await loadCompose();
     return compose.anthropicModel(new Anthropic({ apiKey }), process.env.COMPOSE_MODEL?.trim() || "claude-opus-5-5");
   }
 
-  /** Counts one AI call against the person's hourly allowance (shared by every AI feature), or refuses. */
-  useAiCall(userId: string) {
+  /**
+   * Counts one AI call against the person's hourly allowance (shared by every
+   * AI feature), or refuses. People using their own key pay for their calls,
+   * so they have no allowance.
+   */
+  async useAiCall(userId: string) {
+    if ((await this.keys?.keyFor(userId)) ?? null) return;
     this.limit(userId);
   }
 
-  /** The Anthropic client and model, for features that talk to Claude directly (the in-app chat). */
-  async anthropic() {
-    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-    if (!apiKey) throw new AppError(ErrorCode.SERVER_ERROR, "AI isn't set up on this server.", HttpStatus.SERVICE_UNAVAILABLE);
+  /** The Anthropic client and model for this person, for features that talk to Claude directly (the in-app chat). */
+  async anthropic(userId: string) {
+    const { apiKey } = await this.keyFor(userId);
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     return { client: new Anthropic({ apiKey }), model: process.env.CHAT_MODEL?.trim() || process.env.COMPOSE_MODEL?.trim() || "claude-opus-5-5" };
   }
@@ -81,8 +100,8 @@ export class ComposeAiService {
 
   /** Writes a note section for a request: text plus whatever interactive blocks fit, as markdown. */
   async compose(userId: string, request: string): Promise<{ markdown: string; strategy: string; kinds: string[] }> {
-    this.limit(userId);
-    const [{ compose, catalog }, model] = await Promise.all([this.catalog(), this.model()]);
+    await this.useAiCall(userId);
+    const [{ compose, catalog }, model] = await Promise.all([this.catalog(), this.model(userId)]);
     try {
       const { response, plan } = await compose.compose({ question: request, model, catalog, allowCustom: true });
       return { markdown: compose.responseToMarkdown(response), strategy: plan.strategy, kinds: response.blocks.map((b) => b.kind) };
@@ -93,8 +112,8 @@ export class ComposeAiService {
 
   /** Changes one interactive block as asked ("make it harder", "add two cards"). */
   async editBlock(userId: string, input: { kind: string; spec: Record<string, unknown>; instruction: string }): Promise<{ kind: string; spec: Record<string, unknown> }> {
-    this.limit(userId);
-    const [{ compose, catalog }, model] = await Promise.all([this.catalog(), this.model()]);
+    await this.useAiCall(userId);
+    const [{ compose, catalog }, model] = await Promise.all([this.catalog(), this.model(userId)]);
     const current = compose.restoreResponse(catalog, { blocks: [{ id: "b1", ...input.spec, kind: input.kind }] });
     if (!current) throw new AppError(ErrorCode.VALIDATION_ERROR, "Fix this block's errors before asking the AI to change it.", HttpStatus.UNPROCESSABLE_ENTITY);
     let result: { kind: string; spec: Record<string, unknown> } | null = null;

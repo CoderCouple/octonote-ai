@@ -452,8 +452,8 @@ export class ChatService {
     signal?: AbortSignal,
   ): Promise<void> {
     const workspaceId = await this.tools.workspaceId(userId, input.workspaceId);
-    this.ai.useAiCall(userId);
-    const { client, model } = await this.ai.anthropic();
+    await this.ai.useAiCall(userId);
+    const { client, model } = await this.ai.anthropic(userId);
 
     let thread = input.threadId
       ? await this.ownThread(userId, input.threadId)
