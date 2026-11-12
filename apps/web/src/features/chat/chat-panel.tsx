@@ -84,7 +84,7 @@ const MENTION_ICONS = {
   block: LayoutDashboard,
 } as const;
 
-export function ChatPanel() {
+export function ChatPanelBody() {
   const { open, setOpen, workspaceId } = useChat();
   const here = useHere();
   const [threadId, setThreadId] = useState<string | undefined>();
