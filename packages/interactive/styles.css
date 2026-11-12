@@ -1388,3 +1388,26 @@
   color: var(--ix-danger);
   font-weight: 700;
 }
+
+/* Confidence and review rounds */
+
+.ix-confidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.ix-feedback__note {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.875rem;
+  color: var(--ix-fg);
+}
+.ix-round {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--ix-radius-sm);
+  font-size: 0.875rem;
+  color: var(--ix-accent);
+  background: var(--ix-accent-soft);
+}

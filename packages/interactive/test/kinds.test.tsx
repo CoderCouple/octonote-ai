@@ -195,3 +195,40 @@ describe("fixing model slips in the new kinds", () => {
     expect(written!.sample).toBe("A model answer.");
   });
 });
+
+describe("learning loop: confidence and review rounds", () => {
+  const two = [q("q-choice"), q("q-number")];
+  const answerChoice = (id: string) => fireEvent.click(screen.getByRole("radio", { name: id }));
+
+  it("records how sure the learner was and says so when it disagrees with the result", () => {
+    const events: { type: string; confidence?: string }[] = [];
+    render(<Mcq questions={two} onEvent={(e) => events.push(e)} />);
+    fireEvent.click(screen.getByRole("button", { name: "Certain" }));
+    answerChoice("Infiltration");
+    check();
+    expect(feedback()).toContain("You were certain");
+    expect(events.find((e) => e.type === "question.answered")?.confidence).toBe("sure");
+  });
+
+  it("review round asks again only what was missed or guessed, and keeps the first-try score", () => {
+    render(<Mcq questions={two} allowRetry={false} />);
+    // 1: right but guessed.
+    fireEvent.click(screen.getByRole("button", { name: "Guessing" }));
+    answerChoice("Transpiration");
+    check();
+    expect(feedback()).toContain("you were guessing");
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    // 2: right and sure.
+    fireEvent.change(screen.getByLabelText("Your answer"), { target: { value: "3" } });
+    check();
+    expect(document.querySelector(".ix-summary__percent")!.textContent).toBe("100%");
+    fireEvent.click(screen.getByRole("button", { name: "Review the 1 that need it" }));
+    expect(screen.getByText(/Review round/)).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /^Question \d/ })).toHaveLength(1);
+    answerChoice("Transpiration");
+    check();
+    // The score is still the first-round one.
+    expect(document.querySelector(".ix-summary__percent")!.textContent).toBe("100%");
+    expect(screen.queryByRole("button", { name: /Review the/ })).toBeNull();
+  });
+});

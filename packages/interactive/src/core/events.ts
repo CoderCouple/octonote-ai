@@ -16,7 +16,7 @@ export type ActivityEvent =
   | (EventBase & { type: "card.flipped"; cardId: string; side: "front" | "back" })
   | (EventBase & { type: "card.marked"; cardId: string; known: boolean })
   | (EventBase & { type: "hint.shown"; itemId: string })
-  | (EventBase & { type: "question.answered"; questionId: string; selected: string[]; correct?: boolean })
+  | (EventBase & { type: "question.answered"; questionId: string; selected: string[]; correct?: boolean; confidence?: "guess" | "unsure" | "sure" })
   | (EventBase & { type: "quiz.submitted"; responses: Record<string, string[]> })
   | (EventBase & { type: "match.attempted"; leftId: string; rightId: string; correct: boolean })
   | (EventBase & { type: "node.toggled"; nodeId: string; expanded: boolean })
