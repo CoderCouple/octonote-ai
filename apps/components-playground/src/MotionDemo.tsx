@@ -1,22 +1,31 @@
 import { useMemo, useState } from "react";
-import journey from "@octonote/motion/examples/food-journey.json";
+import binarySearch from "@octonote/motion/examples/binary-search.json";
+import bubbleSort from "@octonote/motion/examples/bubble-sort.json";
+import circleArea from "@octonote/motion/examples/circle-area.json";
+import compoundGrowth from "@octonote/motion/examples/compound-growth.json";
+import pythagoras from "@octonote/motion/examples/pythagoras.json";
+import sineWave from "@octonote/motion/examples/sine-wave.json";
+import tcpHandshake from "@octonote/motion/examples/tcp-handshake.json";
 import { CountUp, DrawPath, FadeIn, Highlight, parseScene, ScaleIn, ScenePlayer, sceneToolDefinition, Stagger, Typewriter, type Theme } from "@octonote/motion";
 
-type Source = "scene" | "primitives" | "paste";
+const EXAMPLES = [pythagoras, sineWave, circleArea, bubbleSort, binarySearch, tcpHandshake, compoundGrowth];
+
+type Source = "gallery" | "primitives" | "paste";
 
 export function MotionDemo({ theme }: { theme: Theme }) {
-  const [source, setSource] = useState<Source>("scene");
-  const [pasted, setPasted] = useState(() => JSON.stringify(journey, null, 2));
+  const [source, setSource] = useState<Source>("gallery");
+  const [index, setIndex] = useState(0);
+  const [pasted, setPasted] = useState(() => JSON.stringify(EXAMPLES[0], null, 2));
   const parsed = useMemo(() => parseScene(pasted), [pasted]);
 
   return (
     <div className="mo-root" data-mo-theme={theme}>
       <div className="pg-bar">
-        <p className="pg-hint">Animated explainers from validated JSON, and the building blocks for animating your own UI.</p>
+        <p className="pg-hint">Animated explainers from validated JSON, played in the browser: scrub, step, speed up, go fullscreen or download as video.</p>
         <div className="pg-subtabs" role="tablist" aria-label="Motion demo">
           {(
             [
-              ["scene", "Explainer scene"],
+              ["gallery", "Explainers"],
               ["primitives", "Building blocks"],
               ["paste", "Paste JSON"],
             ] as const
@@ -28,16 +37,27 @@ export function MotionDemo({ theme }: { theme: Theme }) {
         </div>
       </div>
 
-      {source === "scene" ? <ScenePlayer spec={journey} theme={theme} /> : null}
+      {source === "gallery" ? (
+        <>
+          <div className="pg-row-wrap pg-examples">
+            {EXAMPLES.map((e, i) => (
+              <button key={e.id} type="button" className="pg-chip" aria-pressed={i === index} onClick={() => setIndex(i)}>
+                {e.title}
+              </button>
+            ))}
+          </div>
+          <ScenePlayer key={EXAMPLES[index]!.id} spec={EXAMPLES[index]} theme={theme} />
+        </>
+      ) : null}
       {source === "primitives" ? <Primitives /> : null}
       {source === "paste" ? (
         <div className="pg-split">
           <div className="pg-panel">
-            <label htmlFor="pg-motion-json">A scene. Edit steps or positions and watch it replay.</label>
-            <textarea id="pg-motion-json" value={pasted} onChange={(e) => setPasted(e.target.value)} spellCheck={false} rows={20} />
+            <label htmlFor="pg-motion-json">A scene. Edit it and watch it replay.</label>
+            <textarea id="pg-motion-json" value={pasted} onChange={(e) => setPasted(e.target.value)} spellCheck={false} rows={22} />
             <details>
               <summary>The tool definition for models</summary>
-              <pre>{JSON.stringify(sceneToolDefinition(), null, 2)}</pre>
+              <pre>{JSON.stringify(sceneToolDefinition(), null, 2).slice(0, 20000)}</pre>
             </details>
           </div>
           <ScenePlayer spec={parsed.ok ? parsed.spec : pasted} theme={theme} />
@@ -85,7 +105,7 @@ function Primitives() {
       </section>
       <section>
         <h3 className="pg-card-title">DrawPath</h3>
-        <svg viewBox="0 0 400 90" className="pg-draw" aria-label="A wavy line, like peristalsis">
+        <svg viewBox="0 0 400 90" className="pg-draw" aria-label="A wavy line">
           <DrawPath d="M 10 45 C 60 0, 100 90, 150 45 S 240 0, 290 45 S 360 90, 390 45" duration={1600} stroke="currentColor" strokeWidth={4} strokeLinecap="round" />
         </svg>
       </section>

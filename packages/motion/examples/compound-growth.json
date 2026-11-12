@@ -1,0 +1,199 @@
+{
+  "schemaVersion": "2.0",
+  "type": "scene",
+  "id": "compound-growth",
+  "title": "Simple vs compound growth",
+  "elements": [
+    {
+      "id": "ax",
+      "shape": "axes",
+      "x": [
+        0,
+        30,
+        5
+      ],
+      "y": [
+        0,
+        8000,
+        2000
+      ],
+      "width": 11,
+      "height": 5.0,
+      "at": [
+        -0.6,
+        0.6
+      ],
+      "xLabel": "years",
+      "yLabel": "$",
+      "hidden": true
+    },
+    {
+      "id": "simple",
+      "shape": "plot",
+      "axes": "ax",
+      "y": "1000 + 70 * x",
+      "color": "blue",
+      "hidden": true
+    },
+    {
+      "id": "compound",
+      "shape": "plot",
+      "axes": "ax",
+      "y": "1000 * 1.07^x",
+      "color": "green",
+      "hidden": true
+    },
+    {
+      "id": "ls",
+      "shape": "text",
+      "text": "simple: +$70 a year",
+      "at": {
+        "axes": "ax",
+        "x": 24,
+        "y": 1700
+      },
+      "size": 0.32,
+      "color": "blue",
+      "hidden": true
+    },
+    {
+      "id": "lc",
+      "shape": "text",
+      "text": "compound: ×1.07 a year",
+      "at": {
+        "axes": "ax",
+        "x": 17,
+        "y": 5600
+      },
+      "size": 0.32,
+      "color": "green",
+      "hidden": true
+    },
+    {
+      "id": "rider",
+      "shape": "dot",
+      "r": 0.12,
+      "at": {
+        "axes": "ax",
+        "x": 0,
+        "y": 1000
+      },
+      "color": "yellow",
+      "hidden": true
+    },
+    {
+      "id": "total",
+      "shape": "number",
+      "value": 1000,
+      "prefix": "$",
+      "at": [
+        5.3,
+        3.7
+      ],
+      "size": 0.6,
+      "color": "green",
+      "hidden": true
+    }
+  ],
+  "steps": [
+    {
+      "caption": "Invest $1,000 at 7% a year.",
+      "actions": [
+        {
+          "do": "draw",
+          "target": "ax"
+        },
+        {
+          "do": "fadeIn",
+          "target": "total",
+          "delay": 0.6
+        }
+      ]
+    },
+    {
+      "caption": "Simple interest adds the same $70 every year: a straight line.",
+      "actions": [
+        {
+          "do": "draw",
+          "target": "simple",
+          "duration": 2.2,
+          "ease": "linear"
+        },
+        {
+          "do": "fadeIn",
+          "target": "ls",
+          "delay": 1.6
+        }
+      ]
+    },
+    {
+      "caption": "Compound interest earns 7% on everything so far, so each year's gain is bigger.",
+      "actions": [
+        {
+          "do": "grow",
+          "target": "rider"
+        },
+        {
+          "do": "draw",
+          "target": "compound",
+          "duration": 4,
+          "ease": "linear",
+          "delay": 0.3
+        },
+        {
+          "do": "trace",
+          "target": "rider",
+          "along": "compound",
+          "duration": 4,
+          "delay": 0.3
+        },
+        {
+          "do": "count",
+          "target": "total",
+          "to": 7612,
+          "duration": 4,
+          "delay": 0.3,
+          "ease": "in"
+        },
+        {
+          "do": "fadeIn",
+          "target": "lc",
+          "delay": 3
+        }
+      ]
+    },
+    {
+      "caption": "After 30 years the gap is huge: $7,612 versus $3,100.",
+      "actions": [
+        {
+          "do": "camera",
+          "focus": [
+            2.6,
+            1.0
+          ],
+          "zoom": 1.3
+        },
+        {
+          "do": "indicate",
+          "target": "total",
+          "delay": 1.2
+        }
+      ],
+      "hold": 1.5
+    },
+    {
+      "caption": "That's the power of earning interest on interest.",
+      "actions": [
+        {
+          "do": "camera",
+          "focus": [
+            0,
+            0
+          ],
+          "zoom": 1
+        }
+      ],
+      "hold": 1.5
+    }
+  ]
+}

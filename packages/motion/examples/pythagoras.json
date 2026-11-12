@@ -1,0 +1,318 @@
+{
+  "schemaVersion": "2.0",
+  "type": "scene",
+  "id": "pythagoras",
+  "title": "Why a² + b² = c²",
+  "elements": [
+    {
+      "id": "tri",
+      "shape": "polygon",
+      "points": [
+        [
+          -2,
+          -0.7
+        ],
+        [
+          0.4,
+          -0.7
+        ],
+        [
+          -2,
+          1.1
+        ]
+      ],
+      "color": "ink",
+      "fill": true,
+      "hidden": true
+    },
+    {
+      "id": "la",
+      "shape": "text",
+      "text": "a",
+      "at": [
+        -1.75,
+        0.15
+      ],
+      "color": "blue",
+      "size": 0.42,
+      "hidden": true
+    },
+    {
+      "id": "lb",
+      "shape": "text",
+      "text": "b",
+      "at": [
+        -0.8,
+        -0.45
+      ],
+      "color": "green",
+      "size": 0.42,
+      "hidden": true
+    },
+    {
+      "id": "lc",
+      "shape": "text",
+      "text": "c",
+      "at": [
+        -0.95,
+        0.05
+      ],
+      "color": "orange",
+      "size": 0.42,
+      "hidden": true
+    },
+    {
+      "id": "sa",
+      "shape": "polygon",
+      "points": [
+        [
+          -2,
+          -0.7
+        ],
+        [
+          -2,
+          1.1
+        ],
+        [
+          -3.8,
+          1.1
+        ],
+        [
+          -3.8,
+          -0.7
+        ]
+      ],
+      "color": "blue",
+      "fill": true,
+      "hidden": true
+    },
+    {
+      "id": "sb",
+      "shape": "polygon",
+      "points": [
+        [
+          -2,
+          -0.7
+        ],
+        [
+          0.4,
+          -0.7
+        ],
+        [
+          0.4,
+          -3.1
+        ],
+        [
+          -2,
+          -3.1
+        ]
+      ],
+      "color": "green",
+      "fill": true,
+      "hidden": true
+    },
+    {
+      "id": "sc",
+      "shape": "polygon",
+      "points": [
+        [
+          0.4,
+          -0.7
+        ],
+        [
+          -2,
+          1.1
+        ],
+        [
+          -0.2,
+          3.5
+        ],
+        [
+          2.2,
+          1.7
+        ]
+      ],
+      "color": "orange",
+      "fill": true,
+      "hidden": true
+    },
+    {
+      "id": "na",
+      "shape": "number",
+      "value": 0,
+      "at": [
+        -2.9,
+        0.2
+      ],
+      "size": 0.55,
+      "color": "blue",
+      "hidden": true
+    },
+    {
+      "id": "nb",
+      "shape": "number",
+      "value": 0,
+      "at": [
+        -0.8,
+        -1.9
+      ],
+      "size": 0.55,
+      "color": "green",
+      "hidden": true
+    },
+    {
+      "id": "nc",
+      "shape": "number",
+      "value": 0,
+      "at": [
+        0.1,
+        1.4
+      ],
+      "size": 0.55,
+      "color": "orange",
+      "hidden": true
+    },
+    {
+      "id": "sides",
+      "shape": "math",
+      "tex": "a = 3,\\ b = 4,\\ c = 5",
+      "at": [
+        4.6,
+        2.2
+      ],
+      "size": 0.5,
+      "hidden": true
+    },
+    {
+      "id": "sum",
+      "shape": "math",
+      "tex": "9 + 16 = 25",
+      "at": [
+        4.6,
+        0.8
+      ],
+      "size": 0.65,
+      "hidden": true
+    },
+    {
+      "id": "rule",
+      "shape": "math",
+      "tex": "a^2 + b^2 = c^2",
+      "at": [
+        4.6,
+        -0.6
+      ],
+      "size": 0.75,
+      "color": "yellow",
+      "hidden": true
+    }
+  ],
+  "steps": [
+    {
+      "caption": "Take a right triangle with sides 3, 4 and 5.",
+      "actions": [
+        {
+          "do": "draw",
+          "target": "tri"
+        },
+        {
+          "do": "write",
+          "target": [
+            "la",
+            "lb",
+            "lc"
+          ],
+          "stagger": 0.3,
+          "delay": 0.8
+        },
+        {
+          "do": "write",
+          "target": "sides",
+          "delay": 1.2
+        }
+      ]
+    },
+    {
+      "caption": "Build a square on each side.",
+      "actions": [
+        {
+          "do": "draw",
+          "target": [
+            "sa",
+            "sb",
+            "sc"
+          ],
+          "stagger": 0.5
+        }
+      ]
+    },
+    {
+      "caption": "The squares' areas are 3², 4² and 5².",
+      "actions": [
+        {
+          "do": "show",
+          "target": [
+            "na",
+            "nb",
+            "nc"
+          ]
+        },
+        {
+          "do": "count",
+          "target": "na",
+          "to": 9
+        },
+        {
+          "do": "count",
+          "target": "nb",
+          "to": 16,
+          "delay": 0.4
+        },
+        {
+          "do": "count",
+          "target": "nc",
+          "to": 25,
+          "delay": 0.8
+        }
+      ]
+    },
+    {
+      "caption": "The two smaller squares add up exactly to the biggest one.",
+      "actions": [
+        {
+          "do": "indicate",
+          "target": [
+            "sa",
+            "sb"
+          ],
+          "stagger": 0.3
+        },
+        {
+          "do": "indicate",
+          "target": "sc",
+          "delay": 0.8
+        },
+        {
+          "do": "write",
+          "target": "sum",
+          "delay": 0.4
+        }
+      ]
+    },
+    {
+      "caption": "That holds for every right triangle: a² + b² = c².",
+      "actions": [
+        {
+          "do": "write",
+          "target": "rule"
+        },
+        {
+          "do": "circumscribe",
+          "target": "rule",
+          "delay": 1.2
+        }
+      ],
+      "hold": 2
+    }
+  ]
+}

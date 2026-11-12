@@ -213,7 +213,7 @@
   animation: mo-pulse 1.4s var(--mo-ease) infinite;
 }
 
-.mo-caption {
+.mo-caption-unused {
   display: flex;
   gap: 10px;
   align-items: baseline;
@@ -266,10 +266,72 @@
   border-color: var(--mo-accent);
 }
 
+.mo-timeline {
+  position: relative;
+}
+
 .mo-scrubber {
-  flex: 1;
-  min-width: 60px;
+  width: 100%;
+  margin: 0;
   accent-color: var(--mo-accent);
+}
+
+/* Step boundaries on the scrubber. */
+.mo-markers {
+  position: absolute;
+  inset: 0 8px;
+  pointer-events: none;
+}
+
+.mo-markers span {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 10px;
+  background: var(--mo-muted);
+  border-radius: 1px;
+  opacity: 0.6;
+  transform: translate(-1px, -50%);
+}
+
+.mo-time {
+  font-size: 0.8125rem;
+  color: var(--mo-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mo-spacer {
+  flex: 1;
+}
+
+.mo-button--wide {
+  width: auto;
+  padding: 0 12px;
+  font-size: 0.8125rem;
+  border-radius: 999px;
+}
+
+.mo-stage--portrait {
+  max-width: 420px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.mo-player:fullscreen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px;
+  background: var(--mo-surface);
+}
+
+.mo-player:fullscreen .mo-stage {
+  max-height: 80vh;
+  aspect-ratio: auto;
+}
+
+.mo-player:fullscreen .mo-svg {
+  max-height: 80vh;
 }
 
 .mo-speed select {
@@ -370,7 +432,7 @@
 
 @media (max-width: 520px) {
   .mo-player { padding: 12px; }
-  .mo-caption { font-size: 0.9375rem; }
+  .mo-caption-unused { font-size: 0.9375rem; }
   .mo-speed { display: none; }
 }
 

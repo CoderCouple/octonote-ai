@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "2.0",
+  "type": "scene",
+  "id": "bubble-sort",
+  "title": "One pass of bubble sort",
+  "elements": [
+    { "id": "b5", "shape": "rect", "w": 1, "h": 1, "radius": 0.12, "label": "5", "color": "blue", "fill": true },
+    { "id": "b2", "shape": "rect", "w": 1, "h": 1, "radius": 0.12, "label": "2", "color": "blue", "fill": true },
+    { "id": "b4", "shape": "rect", "w": 1, "h": 1, "radius": 0.12, "label": "4", "color": "blue", "fill": true },
+    { "id": "b1", "shape": "rect", "w": 1, "h": 1, "radius": 0.12, "label": "1", "color": "blue", "fill": true },
+    { "id": "b3", "shape": "rect", "w": 1, "h": 1, "radius": 0.12, "label": "3", "color": "blue", "fill": true },
+    { "id": "row", "shape": "group", "children": ["b5", "b2", "b4", "b1", "b3"], "layout": "row", "gap": 0.3, "at": [0, 0.4], "hidden": true },
+    { "id": "rule", "shape": "text", "text": "Compare neighbours. If the left one is bigger, swap them.", "at": [0, 2.4], "size": 0.4, "color": "muted", "hidden": true }
+  ],
+  "steps": [
+    { "caption": "Five numbers, in no particular order.", "actions": [
+      { "do": "fadeIn", "target": "row" },
+      { "do": "write", "target": "rule", "delay": 0.6 }
+    ] },
+    { "caption": "5 is bigger than 2, so they swap.", "actions": [
+      { "do": "indicate", "target": ["b5", "b2"] },
+      { "do": "move", "target": "b5", "by": [1.3, 0], "delay": 0.8 },
+      { "do": "move", "target": "b2", "by": [-1.3, 0], "delay": 0.8 }
+    ] },
+    { "caption": "5 is bigger than 4: swap again.", "actions": [
+      { "do": "indicate", "target": ["b5", "b4"] },
+      { "do": "move", "target": "b5", "by": [1.3, 0], "delay": 0.8 },
+      { "do": "move", "target": "b4", "by": [-1.3, 0], "delay": 0.8 }
+    ] },
+    { "caption": "And bigger than 1.", "actions": [
+      { "do": "indicate", "target": ["b5", "b1"] },
+      { "do": "move", "target": "b5", "by": [1.3, 0], "delay": 0.8 },
+      { "do": "move", "target": "b1", "by": [-1.3, 0], "delay": 0.8 }
+    ] },
+    { "caption": "And bigger than 3.", "actions": [
+      { "do": "indicate", "target": ["b5", "b3"] },
+      { "do": "move", "target": "b5", "by": [1.3, 0], "delay": 0.8 },
+      { "do": "move", "target": "b3", "by": [-1.3, 0], "delay": 0.8 }
+    ] },
+    { "caption": "After one pass the biggest number has bubbled to the end. Repeat until nothing swaps.", "actions": [
+      { "do": "color", "target": "b5", "to": "green" },
+      { "do": "flash", "target": "b5" }
+    ], "hold": 2 }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "2.0",
+  "type": "scene",
+  "id": "binary-search",
+  "title": "Binary search for 31",
+  "elements": [
+    { "id": "c0", "shape": "rect", "w": 1, "h": 1, "radius": 0.1, "label": "3", "color": "blue", "fill": true },
+    { "id": "c1", "shape": "rect", "w": 1, "h": 1, "radius": 0.1, "label": "8", "color": "blue", "fill": true },
+    { "id": "c2", "shape": "rect", "w": 1, "h": 1, "radius": 0.1, "label": "12", "color": "blue", "fill": true },
+    { "id": "c3", "shape": "rect", "w": 1, "h": 1, "radius": 0.1, "label": "17", "color": "blue", "fill": true },
+    { "id": "c4", "shape": "rect", "w": 1, "h": 1, "radius": 0.1, "label": "23", "color": "blue", "fill": true },
+    { "id": "c5", "shape": "rect", "w": 1, "h": 1, "radius": 0.1, "label": "31", "color": "blue", "fill": true },
+    { "id": "c6", "shape": "rect", "w": 1, "h": 1, "radius": 0.1, "label": "38", "color": "blue", "fill": true },
+    { "id": "c7", "shape": "rect", "w": 1, "h": 1, "radius": 0.1, "label": "44", "color": "blue", "fill": true },
+    { "id": "c8", "shape": "rect", "w": 1, "h": 1, "radius": 0.1, "label": "52", "color": "blue", "fill": true },
+    { "id": "arr", "shape": "group", "children": ["c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"], "layout": "row", "gap": 0.2, "at": [0, 0.6], "hidden": true },
+    { "id": "goal", "shape": "text", "text": "Looking for 31 in a sorted list", "at": [0, 2.5], "size": 0.42, "color": "muted", "hidden": true },
+    { "id": "mid", "shape": "text", "text": "▲ middle", "at": { "of": "c4", "side": "below", "gap": 0.25 }, "size": 0.36, "color": "yellow", "hidden": true }
+  ],
+  "steps": [
+    { "caption": "A sorted list lets us skip most of it.", "actions": [
+      { "do": "write", "target": "goal" },
+      { "do": "fadeIn", "target": "arr", "delay": 0.3 }
+    ] },
+    { "caption": "Check the middle: 23. 31 is bigger, so it can't be on the left.", "actions": [
+      { "do": "fadeIn", "target": "mid" },
+      { "do": "indicate", "target": "c4", "delay": 0.4 },
+      { "do": "color", "target": ["c0", "c1", "c2", "c3", "c4"], "to": "gray", "delay": 1.2, "stagger": 0.05 }
+    ] },
+    { "caption": "Middle of what's left: 38. 31 is smaller, so drop the right side.", "actions": [
+      { "do": "move", "target": "mid", "to": { "of": "c6", "side": "below", "gap": 0.25 } },
+      { "do": "indicate", "target": "c6", "delay": 0.8 },
+      { "do": "color", "target": ["c6", "c7", "c8"], "to": "gray", "delay": 1.5, "stagger": 0.05 }
+    ] },
+    { "caption": "Only 31 is left. Found it in 3 checks instead of 6.", "actions": [
+      { "do": "move", "target": "mid", "to": { "of": "c5", "side": "below", "gap": 0.25 } },
+      { "do": "color", "target": "c5", "to": "green", "delay": 0.8 },
+      { "do": "flash", "target": "c5", "delay": 0.8 },
+      { "do": "circumscribe", "target": "c5", "delay": 1.2 }
+    ], "hold": 2 }
+  ]
+}

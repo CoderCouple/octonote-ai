@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "2.0",
+  "type": "scene",
+  "id": "tcp-handshake",
+  "title": "The TCP three-way handshake",
+  "elements": [
+    { "id": "client", "shape": "rect", "w": 2.4, "h": 0.9, "radius": 0.15, "label": "Client", "color": "blue", "fill": true, "at": [-4.5, 2.7], "hidden": true },
+    { "id": "server", "shape": "rect", "w": 2.4, "h": 0.9, "radius": 0.15, "label": "Server", "color": "purple", "fill": true, "at": [4.5, 2.7], "hidden": true },
+    { "id": "lc", "shape": "line", "from": [-4.5, 2.1], "to": [-4.5, -2.6], "color": "muted", "stroke": 0.025, "hidden": true },
+    { "id": "ls", "shape": "line", "from": [4.5, 2.1], "to": [4.5, -2.6], "color": "muted", "stroke": 0.025, "hidden": true },
+    { "id": "syn", "shape": "arrow", "from": [-4.5, 1.5], "to": [4.5, 0.6], "label": "SYN", "color": "blue", "hidden": true },
+    { "id": "synack", "shape": "arrow", "from": [4.5, 0.1], "to": [-4.5, -0.8], "label": "SYN-ACK", "color": "purple", "hidden": true },
+    { "id": "ack", "shape": "arrow", "from": [-4.5, -1.3], "to": [4.5, -2.2], "label": "ACK", "color": "blue", "hidden": true },
+    { "id": "p1", "shape": "dot", "r": 0.13, "at": [-4.5, 1.5], "color": "yellow", "hidden": true },
+    { "id": "p2", "shape": "dot", "r": 0.13, "at": [4.5, 0.1], "color": "yellow", "hidden": true },
+    { "id": "p3", "shape": "dot", "r": 0.13, "at": [-4.5, -1.3], "color": "yellow", "hidden": true },
+    { "id": "open", "shape": "text", "text": "Connection open", "at": [0, -3.0], "size": 0.45, "color": "green", "weight": "bold", "hidden": true }
+  ],
+  "steps": [
+    { "caption": "Before sending data, a client and server agree to talk.", "actions": [
+      { "do": "fadeIn", "target": ["client", "server"], "stagger": 0.2 },
+      { "do": "draw", "target": ["lc", "ls"], "delay": 0.4 }
+    ] },
+    { "caption": "The client sends SYN: \"I'd like to connect.\"", "actions": [
+      { "do": "draw", "target": "syn" },
+      { "do": "trace", "target": "p1", "along": "syn", "duration": 1.4, "delay": 0.3 }
+    ] },
+    { "caption": "The server answers SYN-ACK: \"Got it, and me too.\"", "actions": [
+      { "do": "draw", "target": "synack" },
+      { "do": "trace", "target": "p2", "along": "synack", "duration": 1.4, "delay": 0.3 }
+    ] },
+    { "caption": "The client confirms with ACK.", "actions": [
+      { "do": "draw", "target": "ack" },
+      { "do": "trace", "target": "p3", "along": "ack", "duration": 1.4, "delay": 0.3 }
+    ] },
+    { "caption": "Three messages, and both sides know the other is listening.", "actions": [
+      { "do": "write", "target": "open" },
+      { "do": "flash", "target": ["client", "server"], "delay": 0.4 }
+    ], "hold": 2 }
+  ]
+}

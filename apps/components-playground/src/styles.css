@@ -433,3 +433,16 @@ body {
   gap: 20px;
   align-items: start;
 }
+
+.pg-examples {
+  margin: 0 0 14px;
+}
+
+.pg-examples .pg-chip {
+  cursor: pointer;
+}
+
+.pg-examples .pg-chip[aria-pressed="true"] {
+  border-color: currentColor;
+  font-weight: 600;
+}

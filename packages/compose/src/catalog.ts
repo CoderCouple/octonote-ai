@@ -1,5 +1,5 @@
 import { defaultRegistry, normalizeSpec, type ActivitySpecBase } from "@octonote/interactive";
-import { sceneSchema, validateScene, type Scene } from "@octonote/motion";
+import { SCENE_GUIDE, SCHEMA_VERSION, sceneSchema, validateScene, type Scene } from "@octonote/motion";
 import { contentBlock, documentSchema, widgetBlockSchema, type ContentBlock, type WidgetBlock } from "@octonote/widgets";
 import { z } from "zod/v4";
 import type { CustomBlock } from "./custom.js";
@@ -255,27 +255,34 @@ function activityEntry(type: string): CatalogEntry {
 const sceneEntry: CatalogEntry = {
   kind: "scene",
   library: "motion",
-  summary: "An animated, step-by-step explainer: shapes, arrows and counters revealed and moved on an 800×450 canvas, one caption per step.",
-  useWhen: ["Processes, flows and cycles where watching things move helps: digestion, the water cycle, a network request, an algorithm's steps."],
+  summary:
+    "An animated explainer in the style of 3Blue1Brown, played step by step with a caption per step: shapes, arrows, TeX, axes and plots drawn, written, moved, morphed and traced on a 16 × 9 canvas (origin at the centre, y up). Place things by relationship (below another element, in a row, at axis coordinates) rather than coordinates.",
+  useWhen: [
+    "Processes, flows and cycles where watching things move helps: a network request, an algorithm's steps, the water cycle.",
+    "Maths and science where motion shows structure: a shape turning into another, a point tracing a curve, a quantity growing.",
+  ],
   avoidWhen: ["Static facts.", "Anything a slider explores better: use a widget."],
   weight: "rich",
-  jsonSchema: memo(() => blockSchema("scene", toJson(sceneSchema), ["schemaVersion", "type", "id"])),
+  jsonSchema: memo(() => ({ ...blockSchema("scene", toJson(sceneSchema), ["schemaVersion", "type", "id"]), description: SCENE_GUIDE })),
   example: {
     kind: "scene",
-    title: "Request to a server",
+    title: "A request to a server",
     elements: [
-      { id: "browser", kind: "box", x: 60, y: 180, w: 160, h: 80, text: "Browser" },
-      { id: "server", kind: "box", x: 580, y: 180, w: 160, h: 80, text: "Server", hidden: true },
-      { id: "req", kind: "arrow", from: "browser", to: "server", label: "GET /", hidden: true },
+      { id: "browser", shape: "rect", w: 3, h: 1.4, radius: 0.2, label: "Browser", color: "blue", at: [-4.5, 0.5] },
+      { id: "server", shape: "rect", w: 3, h: 1.4, radius: 0.2, label: "Server", color: "green", at: [4.5, 0.5], hidden: true },
+      { id: "req", shape: "arrow", from: "browser", to: "server", label: "GET /", color: "orange", hidden: true },
+      { id: "packet", shape: "dot", r: 0.15, color: "yellow", at: [-3, 0.5], hidden: true },
     ],
     steps: [
-      { caption: "The browser starts a request.", actions: [{ do: "highlight", target: "browser" }] },
-      { caption: "It travels to the server.", actions: [{ do: "show", target: "server" }, { do: "show", target: "req" }] },
+      { caption: "The browser starts a request.", actions: [{ do: "draw", target: "browser" }] },
+      { caption: "It names the server it wants and what it is asking for.", actions: [{ do: "draw", target: "server" }, { do: "draw", target: "req" }] },
+      { caption: "The request travels across the network.", actions: [{ do: "show", target: "packet" }, { do: "trace", target: "packet", along: "req" }] },
+      { caption: "The server receives it.", actions: [{ do: "fadeOut", target: "packet" }, { do: "indicate", target: "server" }] },
     ],
   },
   validate(block, id) {
     const { kind: _kind, ...rest } = block;
-    const result = validateScene({ ...rest, schemaVersion: "1.0", type: "scene", id });
+    const result = validateScene({ ...rest, schemaVersion: SCHEMA_VERSION, type: "scene", id });
     return result.ok ? { ok: true, block: { kind: "scene", id, renderer: "motion", scene: result.spec } } : { ok: false, issues: result.issues };
   },
 };

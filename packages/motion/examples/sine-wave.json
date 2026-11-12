@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "2.0",
+  "type": "scene",
+  "id": "sine-wave",
+  "title": "Where the sine wave comes from",
+  "elements": [
+    { "id": "circle", "shape": "circle", "r": 1.5, "at": [-4.8, 0], "color": "blue", "hidden": true },
+    { "id": "center", "shape": "dot", "at": [-4.8, 0], "color": "muted", "hidden": true },
+    { "id": "ax", "shape": "axes", "x": [0, 6.3, 1], "y": [-1.2, 1.2, 1], "width": 8.6, "height": 3.6, "at": [2.6, 0], "xLabel": "θ", "hidden": true },
+    { "id": "dot", "shape": "dot", "r": 0.11, "at": [-3.3, 0], "color": "yellow", "hidden": true },
+    { "id": "wave", "shape": "plot", "axes": "ax", "y": "sin(x)", "color": "yellow", "hidden": true },
+    { "id": "label", "shape": "math", "tex": "y = \\sin\\theta", "at": [3.6, 2.4], "size": 0.6, "color": "yellow", "hidden": true },
+    { "id": "radius", "shape": "text", "text": "radius 1", "at": { "of": "circle", "side": "above", "gap": 0.3 }, "size": 0.35, "color": "muted", "hidden": true }
+  ],
+  "steps": [
+    { "caption": "Start with a circle of radius 1.", "actions": [
+      { "do": "draw", "target": "circle" },
+      { "do": "grow", "target": "center", "delay": 0.6 },
+      { "do": "fadeIn", "target": "radius", "delay": 0.8 }
+    ] },
+    { "caption": "On the right, angle runs along the bottom and height goes up.", "actions": [
+      { "do": "draw", "target": "ax" }
+    ] },
+    { "caption": "A point goes round the circle. Its height, plotted against the angle, traces a wave.", "actions": [
+      { "do": "grow", "target": "dot" },
+      { "do": "trace", "target": "dot", "along": "circle", "duration": 5, "delay": 0.4 },
+      { "do": "draw", "target": "wave", "duration": 5, "delay": 0.4, "ease": "linear" }
+    ] },
+    { "caption": "That wave is the sine function.", "actions": [
+      { "do": "write", "target": "label" },
+      { "do": "indicate", "target": "wave", "delay": 0.6 }
+    ], "hold": 2 }
+  ]
+}

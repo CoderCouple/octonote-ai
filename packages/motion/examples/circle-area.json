@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "2.0",
+  "type": "scene",
+  "id": "circle-area",
+  "title": "Unrolling a circle",
+  "elements": [
+    { "id": "circle", "shape": "circle", "r": 1.2, "at": [-4.2, 0.6], "color": "blue", "fill": true, "hidden": true },
+    { "id": "r", "shape": "line", "from": [-4.2, 0.6], "to": [-3.0, 0.6], "color": "yellow", "hidden": true },
+    { "id": "rl", "shape": "text", "text": "r", "at": [-3.6, 0.9], "size": 0.4, "color": "yellow", "hidden": true },
+    { "id": "tri", "shape": "polygon", "points": [[-1.2, -1.2], [6.34, -1.2], [-1.2, 0.0]], "color": "blue", "fill": true, "hidden": true },
+    { "id": "base", "shape": "brace", "from": [6.34, -1.35], "to": [-1.2, -1.35], "label": "2πr", "color": "muted", "hidden": true },
+    { "id": "height", "shape": "brace", "from": [-1.35, -1.2], "to": [-1.35, 0.0], "label": "r", "color": "muted", "hidden": true },
+    { "id": "area", "shape": "math", "tex": "\\frac{1}{2} \\cdot 2\\pi r \\cdot r = \\pi r^2", "at": [2.4, 2.4], "size": 0.65, "color": "yellow", "hidden": true }
+  ],
+  "steps": [
+    { "caption": "A circle with radius r.", "actions": [
+      { "do": "draw", "target": "circle" },
+      { "do": "draw", "target": "r", "delay": 0.8 },
+      { "do": "write", "target": "rl", "delay": 1.2 }
+    ] },
+    { "caption": "Imagine it made of thin rings. Unroll them and they stack into a triangle.", "actions": [
+      { "do": "fadeOut", "target": ["r", "rl"] },
+      { "do": "morph", "target": "circle", "into": "tri", "duration": 2.2, "delay": 0.3 }
+    ] },
+    { "caption": "The base is the circle's circumference, 2πr. The height is r.", "actions": [
+      { "do": "draw", "target": "base" },
+      { "do": "draw", "target": "height", "delay": 0.5 }
+    ] },
+    { "caption": "A triangle's area is half base times height, so the circle's area is πr².", "actions": [
+      { "do": "write", "target": "area" },
+      { "do": "circumscribe", "target": "area", "delay": 1.6 }
+    ], "hold": 2 }
+  ]
+}
