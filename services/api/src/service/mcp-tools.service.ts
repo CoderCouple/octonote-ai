@@ -115,17 +115,24 @@ export class McpToolsService {
     return canvasOutline(canvas.document, images);
   }
 
-  /** The person's own workspace (the one they own), as the CLI picks it. */
-  async workspaceId(userId: string): Promise<string> {
+  /**
+   * The workspace to work in: the one asked for when the person is a member
+   * (the in-app chat passes the open one), else their own, as the CLI picks it.
+   */
+  async workspaceId(userId: string, preferred?: string): Promise<string> {
     const rows = await this.members.listForUser(userId);
+    if (preferred) {
+      if (rows.some((m) => m.workspaceId === preferred)) return preferred;
+      throw NotFound("That workspace isn't one of yours.");
+    }
     const pick = rows.find((m) => m.role === "OWNER") ?? rows[0];
     if (!pick) throw NotFound("This account has no workspace yet. Open octonote.ai once to create one.");
     return pick.workspaceId;
   }
 
-  async resolveNotebook(userId: string, nameOrId: string): Promise<string> {
+  async resolveNotebook(userId: string, nameOrId: string, workspaceId?: string): Promise<string> {
     if (nameOrId.startsWith("ntb_")) return nameOrId;
-    const all = await this.notebooks.listForWorkspace(await this.workspaceId(userId), userId);
+    const all = await this.notebooks.listForWorkspace(await this.workspaceId(userId, workspaceId), userId);
     const exact = all.filter((n) => n.name === nameOrId);
     const loose = exact.length ? exact : all.filter((n) => n.name.toLowerCase() === nameOrId.toLowerCase());
     if (loose.length === 1) return loose[0]!.id;
@@ -135,9 +142,9 @@ export class McpToolsService {
 
   // --- Find ------------------------------------------------------------------
 
-  async list(userId: string, opts: { kind?: ItemRef["kind"]; notebook?: string } = {}): Promise<ItemRef[]> {
+  async list(userId: string, opts: { kind?: ItemRef["kind"]; notebook?: string; workspaceId?: string } = {}): Promise<ItemRef[]> {
     if (opts.notebook) {
-      const c = await this.notebooks.getContents(await this.resolveNotebook(userId, opts.notebook), userId);
+      const c = await this.notebooks.getContents(await this.resolveNotebook(userId, opts.notebook, opts.workspaceId), userId);
       const items = [
         ...c.notes.map((n) => ref("page", n.id, n.title, { notebookId: n.notebookId, updatedAt: n.updatedAt.toISOString() })),
         ...c.canvases.map((n) => ref("canvas", n.id, n.title, { notebookId: n.notebookId, updatedAt: n.updatedAt.toISOString() })),
@@ -145,7 +152,7 @@ export class McpToolsService {
       ];
       return opts.kind ? items.filter((i) => i.kind === opts.kind) : items;
     }
-    const ws = await this.workspaceId(userId);
+    const ws = await this.workspaceId(userId, opts.workspaceId);
     const want = (k: ItemRef["kind"]) => !opts.kind || opts.kind === k;
     const [notes, canvases, projects, notebooks] = await Promise.all([
       want("note") ? this.pages.listStandalone(ws, userId) : [],
@@ -161,16 +168,24 @@ export class McpToolsService {
     ].sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
   }
 
-  /** Title search (full-text search is a later feature), best matches first. */
-  async search(userId: string, query: string, limit = 20): Promise<ItemRef[]> {
+  /**
+   * Search titles and, for notes, their text, best matches first. A title hit
+   * counts most; words found in a note's text count too, so "notes about
+   * osmosis" finds a note that mentions it without the word in its title.
+   */
+  async search(userId: string, query: string, limit = 20, workspaceId?: string): Promise<ItemRef[]> {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-    const all = await this.list(userId);
+    const all = await this.list(userId, { workspaceId });
     if (!words.length) return all.slice(0, limit);
+    // Only notes this person can list are read, so access is the same as listing.
+    const texts = await this.pages.markdownFor(all.filter((i) => i.kind === "note").map((i) => i.id));
     const scored = all
       .map((item) => {
         const t = item.title.toLowerCase();
+        const body = texts.get(item.id)?.toLowerCase() ?? "";
         const hits = words.filter((w) => t.includes(w)).length;
-        return { item, score: hits ? hits * 10 + (t.startsWith(words[0]!) ? 5 : 0) : 0 };
+        const inText = words.filter((w) => body.includes(w)).length;
+        return { item, score: (hits ? hits * 10 + (t.startsWith(words[0]!) ? 5 : 0) : 0) + inText * 3 };
       })
       .filter((s) => s.score > 0)
       .sort((a, b) => b.score - a.score);
@@ -263,10 +278,10 @@ export class McpToolsService {
 
   // --- Write -----------------------------------------------------------------
 
-  async createNote(userId: string, input: { title: string; markdown?: string; notebook?: string }) {
-    const notebookId = input.notebook ? await this.resolveNotebook(userId, input.notebook) : undefined;
+  async createNote(userId: string, input: { title: string; markdown?: string; notebook?: string; workspaceId?: string }) {
+    const notebookId = input.notebook ? await this.resolveNotebook(userId, input.notebook, input.workspaceId) : undefined;
     const page = await this.noteMarkdown.create(
-      await this.workspaceId(userId),
+      await this.workspaceId(userId, input.workspaceId),
       { title: input.title.slice(0, 120) || "Untitled", ...(notebookId ? { notebookId } : {}), ...(input.markdown ? { markdown: input.markdown } : {}) },
       userId,
     );
@@ -282,10 +297,10 @@ export class McpToolsService {
     return ref("page", page.id, page.title);
   }
 
-  async createCanvas(userId: string, input: { title: string; mermaid?: string; notebook?: string }) {
-    const notebookId = input.notebook ? await this.resolveNotebook(userId, input.notebook) : undefined;
+  async createCanvas(userId: string, input: { title: string; mermaid?: string; notebook?: string; workspaceId?: string }) {
+    const notebookId = input.notebook ? await this.resolveNotebook(userId, input.notebook, input.workspaceId) : undefined;
     const canvas = await this.diagrams.create(
-      await this.workspaceId(userId),
+      await this.workspaceId(userId, input.workspaceId),
       { title: input.title.slice(0, 120) || "Untitled canvas", ...(notebookId ? { notebookId } : {}), ...(input.mermaid ? { mermaid: input.mermaid } : {}) },
       userId,
     );

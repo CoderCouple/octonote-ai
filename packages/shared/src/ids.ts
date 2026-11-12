@@ -37,6 +37,8 @@ export const ID_PREFIXES = {
   noteComment: "cmt",
   feedback: "fbk",
   video: "vid",
+  chatThread: "cht",
+  chatMessage: "chm",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

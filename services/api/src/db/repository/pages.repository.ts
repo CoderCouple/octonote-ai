@@ -57,6 +57,12 @@ export class PagesRepository extends BaseRepository<typeof pages> {
   }
 
   /** True if the project already has a non-deleted page (1:1 invariant). */
+  /** Notes' markdown by id (for text search over notes the caller can already list). */
+  async markdownByIds(ids: string[]): Promise<{ id: string; contentMd: string }[]> {
+    if (!ids.length) return [];
+    return this.db.select({ id: pages.id, contentMd: pages.contentMd }).from(pages).where(and(inArray(pages.id, ids), isNull(pages.deletedAt)));
+  }
+
   async hasActiveInProject(projectId: string): Promise<boolean> {
     return (await this.findActiveByProject(projectId)) !== null;
   }

@@ -18,6 +18,7 @@ import { serverSupportToken } from "@/lib/support-session-server";
 import { UpgradeNudge } from "@/features/billing";
 import { FeedbackProvider } from "@/features/feedback";
 import { AppAnalyticsGate } from "@/lib/product-analytics/app-analytics-gate";
+import { ChatPanel, ChatProvider, ChatToggle } from "@/features/chat";
 
 /** App pages never belong in search results. */
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -52,6 +53,7 @@ export default async function WorkspaceLayout({
       workspaceId={active.workspace.id}
       workspaceName={active.workspace.name}
     >
+    <ChatProvider workspaceId={active.workspace.id}>
     <SidebarProvider>
       <AppSidebar
         workspace={active.workspace}
@@ -69,12 +71,16 @@ export default async function WorkspaceLayout({
           <SidebarTrigger className="text-muted-foreground hover:text-foreground-strong size-8" />
           <Separator orientation="vertical" className="mr-1 !h-4" />
           <WorkspaceBreadcrumbs workspaceName={active.workspace.name} />
+          <ChatToggle />
         </header>
         <div className="flex-1 overflow-auto">{children}</div>
         <UpgradeNudge workspaceId={active.workspace.id} />
       </SidebarInset>
+      {/* The AI chat sits beside the page, on every page (⌘J). */}
+      <ChatPanel />
       <AppAnalyticsGate />
     </SidebarProvider>
+    </ChatProvider>
     </FeedbackProvider>
   );
 }

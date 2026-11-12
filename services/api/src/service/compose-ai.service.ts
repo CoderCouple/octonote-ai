@@ -46,6 +46,28 @@ export class ComposeAiService {
     return compose.anthropicModel(new Anthropic({ apiKey }), process.env.COMPOSE_MODEL?.trim() || "claude-opus-5-5");
   }
 
+  /** Counts one AI call against the person's hourly allowance (shared by every AI feature), or refuses. */
+  useAiCall(userId: string) {
+    this.limit(userId);
+  }
+
+  /** The Anthropic client and model, for features that talk to Claude directly (the in-app chat). */
+  async anthropic() {
+    const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+    if (!apiKey) throw new AppError(ErrorCode.SERVER_ERROR, "AI isn't set up on this server.", HttpStatus.SERVICE_UNAVAILABLE);
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    return { client: new Anthropic({ apiKey }), model: process.env.CHAT_MODEL?.trim() || process.env.COMPOSE_MODEL?.trim() || "claude-opus-5-5" };
+  }
+
+  /** Checks one block's spec; issues read like instructions, for a model to fix. */
+  async checkSpec(kind: string, spec: unknown): Promise<{ ok: true } | { ok: false; issues: { path: string; message: string }[] }> {
+    if (!spec || typeof spec !== "object" || Array.isArray(spec)) return { ok: false, issues: [{ path: "spec", message: "Must be a JSON object" }] };
+    const { compose, catalog } = await this.catalog();
+    if (!catalog.get(kind)) return { ok: false, issues: [{ path: "kind", message: `Unknown kind "${kind}"` }] };
+    const result = compose.checkBlock(catalog, { ...(spec as object), kind }, "b1");
+    return result.ok ? { ok: true } : { ok: false, issues: result.issues.slice(0, 12) };
+  }
+
   /** In-memory, per API instance: enough to stop runaway loops and abuse while we run one instance. */
   private limit(userId: string) {
     const now = Date.now();
@@ -176,7 +198,7 @@ export class ComposeAiService {
   }
 }
 
-function interactiveBlocks(document: unknown): Block[] {
+export function interactiveBlocks(document: unknown): Block[] {
   const found: Block[] = [];
   const visit = (blocks: unknown) => {
     if (!Array.isArray(blocks)) return;

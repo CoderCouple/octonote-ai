@@ -22,3 +22,4 @@ export * from "./support";
 export * from "./note-comments";
 export * from "./feedback";
 export * from "./videos";
+export * from "./chat";

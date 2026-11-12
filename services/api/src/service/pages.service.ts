@@ -37,6 +37,12 @@ export class PagesService {
     return this.pagesRepo.listStandalone(workspaceId);
   }
 
+  /** Markdown of notes by id, for searching text. Callers pass only ids the person can see. */
+  async markdownFor(ids: string[]): Promise<Map<string, string>> {
+    const rows = await this.pagesRepo.markdownByIds(ids.slice(0, 2000));
+    return new Map(rows.map((r) => [r.id, r.contentMd]));
+  }
+
   async getOne(
     pageId: string,
     actorUserId: string | null,
