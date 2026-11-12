@@ -71,7 +71,62 @@ function normalizePair(pair: Rec): Rec {
   return { ...rest, left: pair.left ?? term ?? a, right: pair.right ?? definition ?? b };
 }
 
+const TYPED_KINDS = new Set(["fill_blank", "numeric", "order", "categorize", "short_answer"]);
+
+/** Items or groups given as plain strings become { id, text }; records without ids get one. */
+function textEntriesWithIds(list: unknown, prefix: string): unknown {
+  return Array.isArray(list)
+    ? list.map((entry, i) => {
+        const text = str(entry);
+        if (text !== undefined) return { id: `${prefix}${i + 1}`, text };
+        if (isRecord(entry) && !str(entry.id)) return { ...entry, id: `${prefix}${i + 1}` };
+        return entry;
+      })
+    : list;
+}
+
+/** Questions answered by typing, ordering or sorting: fix their usual slips, and leave `answer` alone for numbers. */
+function normalizeTyped(question: Rec): Rec {
+  const { question: altPrompt, answer, correctAnswer, ...rest } = question;
+  const q: Rec = { ...rest, prompt: question.prompt ?? altPrompt };
+  const given = answer ?? correctAnswer;
+  switch (q.kind) {
+    case "numeric": {
+      const value = typeof given === "number" ? given : typeof given === "string" ? Number(given) : undefined;
+      q.answer = isRecord(given) ? given : value !== undefined && Number.isFinite(value) ? { value } : given;
+      break;
+    }
+    case "fill_blank": {
+      // Blanks as plain answers, lists of answers, or an `answer` instead of `blanks`.
+      const blanks = q.blanks ?? (given === undefined ? undefined : Array.isArray(given) ? given : [given]);
+      if (Array.isArray(blanks)) q.blanks = blanks.map((b) => (isRecord(b) ? b : { accept: Array.isArray(b) ? b.map(String) : [String(b)] }));
+      break;
+    }
+    case "order":
+      q.items = textEntriesWithIds(q.items, "item-");
+      break;
+    case "categorize": {
+      q.groups = textEntriesWithIds(q.groups, "group-");
+      const groups = Array.isArray(q.groups) ? q.groups.filter(isRecord) : [];
+      q.items = textEntriesWithIds(q.items, "item-");
+      // A group named by its text instead of its id.
+      if (Array.isArray(q.items))
+        q.items = q.items.map((item) => {
+          if (!isRecord(item) || typeof item.group !== "string" || groups.some((g) => g.id === item.group)) return item;
+          const byText = groups.find((g) => str(g.text)?.toLowerCase() === (item.group as string).toLowerCase());
+          return byText ? { ...item, group: byText.id } : item;
+        });
+      break;
+    }
+    case "short_answer":
+      if (q.sample === undefined && typeof given === "string") q.sample = given;
+      break;
+  }
+  return q;
+}
+
 function normalizeQuestion(question: Rec): Rec {
+  if (typeof question.kind === "string" && TYPED_KINDS.has(question.kind)) return normalizeTyped(question);
   const { question: altPrompt, answer, answerIndex, correctIndex, correctIndices, correctAnswer, ...rest } = question;
   const q: Rec = { ...rest, prompt: question.prompt ?? altPrompt };
 

@@ -3,8 +3,8 @@ export { SCHEMA_VERSION, activityFields, checkUniqueIds, idSchema, schemaVersion
 export type { IssueSink } from "./schemas/common.js";
 export { flashcardSchema, flashcardsSchema } from "./schemas/flashcards.js";
 export type { Flashcard, FlashcardsSpec } from "./schemas/flashcards.js";
-export { choiceSchema, mcqSchema, questionSchema, quizSchema } from "./schemas/questions.js";
-export type { Choice, McqSpec, Question, QuizSpec } from "./schemas/questions.js";
+export { BLANK, CHOICE_KINDS, choiceSchema, countBlanks, mcqSchema, QUESTION_KINDS, questionSchema, quizSchema } from "./schemas/questions.js";
+export type { Choice, McqSpec, Question, QuestionKind, QuizSpec } from "./schemas/questions.js";
 export { matchPairSchema, matchingSchema } from "./schemas/matching.js";
 export type { MatchPair, MatchingSpec } from "./schemas/matching.js";
 export { mindmapNodeSchema, mindmapSchema } from "./schemas/mindmap.js";
@@ -20,7 +20,9 @@ export type {
   SpecIssue,
   ValidationResult,
 } from "./registry.js";
-export { gradeQuestions, gradeQuiz, isAnswerCorrect, makeScore, redactQuiz } from "./grading.js";
+export { gradeQuestions, gradeQuiz, isAnswerCorrect, makeScore, redactQuiz, scrambled } from "./grading.js";
+export { checkResponse, expectedResponse, isAnswered, isChoice, kindOf, parseNumber, placements } from "./answers.js";
+export type { Check, Response } from "./answers.js";
 export type { GradeResult, QuestionResult, Responses, Score } from "./grading.js";
 export { REVIEW_INTERVALS_DAYS, orderByDue, scheduleReview } from "./review.js";
 export type { ReviewState } from "./review.js";

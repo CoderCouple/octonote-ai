@@ -11,6 +11,10 @@ export const LIMITS = {
   cards: 500,
   questions: 200,
   options: 10,
+  blanks: 10,
+  /** Items to order or sort into groups. */
+  items: 12,
+  groups: 6,
   pairs: 50,
   mindmapNodes: 2000,
   mindmapDepth: 12,

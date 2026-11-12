@@ -209,13 +209,13 @@ const activityGuidance: Record<string, Pick<CatalogEntry, "summary" | "useWhen" 
     example: { kind: "flashcards", title: "Key terms", cards: [{ id: "c1", front: "Principal", back: "The starting amount." }] },
   },
   mcq: {
-    summary: "Practice questions checked one at a time, with hints and why each option is right or wrong.",
+    summary: "Practice questions checked one at a time, with hints and why each option is right or wrong. Questions can be multiple choice, true/false, fill in the blank (___ in the prompt), a number (with tolerance and unit), put in order, sort into groups, or a short written answer marked against a rubric; mix them.",
     useWhen: ["Practising a concept just explained.", "Common misconceptions worth confronting."],
     avoidWhen: ["Quick factual lookups.", "A formal score is wanted: use quiz."],
     example: { kind: "mcq", questions: [{ id: "q1", prompt: "Which grows faster over 20 years?", options: [{ id: "a", text: "5% simple" }, { id: "b", text: "5% compound" }], correct: ["b"] }] },
   },
   quiz: {
-    summary: "A scored assessment: answer everything, submit, then review. Can be timed.",
+    summary: "A scored assessment: answer everything, submit, then review. Can be timed. Questions can be multiple choice, true/false, fill in the blank (___ in the prompt), a number (with tolerance and unit), put in order, sort into groups, or a short written answer marked against a rubric; mix them.",
     useWhen: ["The learner asks to be tested or wants to check understanding at the end of a lesson."],
     avoidWhen: ["Mid-explanation practice: use mcq.", "Casual questions."],
     example: { kind: "quiz", passingPercent: 70, questions: [{ id: "q1", prompt: "Compound interest earns interest on…", options: [{ id: "a", text: "The principal only" }, { id: "b", text: "Principal and past interest" }], correct: ["b"] }] },

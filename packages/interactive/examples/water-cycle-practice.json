@@ -1,0 +1,136 @@
+{
+  "schemaVersion": "1.0",
+  "type": "mcq",
+  "id": "water-cycle-practice",
+  "title": "The water cycle: practice",
+  "description": "Six ways to answer, one topic.",
+  "questions": [
+    {
+      "id": "q-blank",
+      "kind": "fill_blank",
+      "prompt": "Water vapour cools and turns back into liquid droplets in a process called ___. When the droplets grow heavy they fall as ___.",
+      "blanks": [
+        {
+          "accept": [
+            "condensation",
+            "condensing"
+          ]
+        },
+        {
+          "accept": [
+            "precipitation",
+            "rain"
+          ]
+        }
+      ],
+      "hint": "The first word is the opposite of evaporation.",
+      "explanation": "Condensation forms clouds; precipitation returns the water to the ground."
+    },
+    {
+      "id": "q-number",
+      "kind": "numeric",
+      "prompt": "Roughly what percentage of Earth's water is fresh water?",
+      "answer": {
+        "value": 3,
+        "tolerance": 1,
+        "unit": "%"
+      },
+      "explanation": "About 2.5–3%, and most of that is frozen in ice caps and glaciers."
+    },
+    {
+      "id": "q-order",
+      "kind": "order",
+      "prompt": "Put the stages of the water cycle in order, starting from the ocean.",
+      "items": [
+        {
+          "id": "evap",
+          "text": "Evaporation from the ocean"
+        },
+        {
+          "id": "cond",
+          "text": "Condensation into clouds"
+        },
+        {
+          "id": "precip",
+          "text": "Precipitation as rain or snow"
+        },
+        {
+          "id": "runoff",
+          "text": "Runoff back to rivers and the sea"
+        }
+      ]
+    },
+    {
+      "id": "q-groups",
+      "kind": "categorize",
+      "prompt": "Is each one a source of water vapour, or a way water returns to the ground?",
+      "groups": [
+        {
+          "id": "up",
+          "text": "Into the air"
+        },
+        {
+          "id": "down",
+          "text": "Back to the ground"
+        }
+      ],
+      "items": [
+        {
+          "id": "i1",
+          "text": "Evaporation",
+          "group": "up"
+        },
+        {
+          "id": "i2",
+          "text": "Transpiration from plants",
+          "group": "up"
+        },
+        {
+          "id": "i3",
+          "text": "Snowfall",
+          "group": "down"
+        },
+        {
+          "id": "i4",
+          "text": "Hail",
+          "group": "down"
+        },
+        {
+          "id": "i5",
+          "text": "Sublimation from ice",
+          "group": "up"
+        }
+      ]
+    },
+    {
+      "id": "q-written",
+      "kind": "short_answer",
+      "prompt": "Why does the water cycle need energy from the Sun?",
+      "rubric": "• The Sun heats water so it evaporates. • Evaporation needs energy (latent heat). • Without it, water wouldn't rise into the atmosphere.",
+      "sample": "The Sun's heat gives water molecules the energy to evaporate and rise as vapour; without that energy the cycle couldn't lift water into the air."
+    },
+    {
+      "id": "q-choice",
+      "prompt": "Which process moves water from plants into the air?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Transpiration",
+          "rationale": "Plants release water vapour through their leaves."
+        },
+        {
+          "id": "b",
+          "text": "Infiltration",
+          "rationale": "That's water soaking into the ground."
+        },
+        {
+          "id": "c",
+          "text": "Condensation"
+        }
+      ],
+      "correct": [
+        "a"
+      ]
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import { checkResponse, expectedResponse, isChoice } from "./answers.js";
+import { seededRandom, shuffle } from "./shuffle.js";
 import type { Question, QuizSpec } from "./schemas/questions.js";
 
 export interface Score {
@@ -9,14 +11,21 @@ export interface Score {
   passed?: boolean;
 }
 
-/** Selected option ids for each question id. */
+/** Each question's response, by question id (option ids, typed answers, an order…; see `Response`). */
 export type Responses = Record<string, readonly string[]>;
 
 export interface QuestionResult {
   questionId: string;
   correct: boolean;
   selected: string[];
+  /** For choice questions; empty otherwise. */
   correctOptionIds: string[];
+  /** The right answer in response form, for every kind (what to reveal). */
+  expected?: string[];
+  /** Which blanks, positions or items were right. */
+  parts?: boolean[];
+  /** A short answer that still needs marking. */
+  pending?: boolean;
   explanation?: string;
   /** Rationale for each option, by option id. */
   rationales?: Record<string, string>;
@@ -46,20 +55,24 @@ export function gradeQuestions(questions: readonly Question[], responses: Respon
   let earned = 0;
   let possible = 0;
   const results = questions.map((q): QuestionResult => {
-    if (!q.correct) throw new Error(`Question "${q.id}" has no answer key`);
     const points = q.points ?? 1;
-    // Ignore ids that aren't options, so a tampered response can't match by accident.
-    const optionIds = new Set(q.options.map((o) => o.id));
-    const selected = [...new Set(responses[q.id] ?? [])].filter((id) => optionIds.has(id));
-    const correct = isAnswerCorrect(q.correct, selected);
+    // Responses are capped, so a tampered one can't be huge; checkResponse ignores anything foreign.
+    const raw = (responses[q.id] ?? []).slice(0, 50).map((r) => String(r).slice(0, 2000));
+    // For choices, keep only real option ids, once each, so a tampered response can't match by accident.
+    const optionIds = new Set(q.options?.map((o) => o.id));
+    const selected = isChoice(q) ? [...new Set(raw)].filter((id) => optionIds.has(id)) : raw;
+    const check = checkResponse(q, selected);
     possible += points;
-    if (correct) earned += points;
-    const rationales = Object.fromEntries(q.options.filter((o) => o.rationale).map((o) => [o.id, o.rationale!]));
+    if (check.correct) earned += points;
+    const rationales = Object.fromEntries((q.options ?? []).filter((o) => o.rationale).map((o) => [o.id, o.rationale!]));
     return {
       questionId: q.id,
-      correct,
+      correct: check.correct,
       selected,
-      correctOptionIds: [...q.correct],
+      correctOptionIds: [...(q.correct ?? [])],
+      expected: expectedResponse(q),
+      ...(check.parts ? { parts: check.parts } : {}),
+      ...(check.pending ? { pending: true } : {}),
       ...(q.explanation ? { explanation: q.explanation } : {}),
       ...(Object.keys(rationales).length ? { rationales } : {}),
     };
@@ -80,9 +93,26 @@ export function redactQuiz(spec: QuizSpec): QuizSpec {
   return {
     ...spec,
     grading: "server",
-    questions: spec.questions.map(({ correct: _c, explanation: _e, ...q }) => ({
+    questions: spec.questions.map(({ correct: _c, explanation: _e, blanks: _b, answer: _a, rubric: _r, sample: _s, ...q }) => ({
       ...q,
-      options: q.options.map(({ rationale: _r, ...o }) => o),
+      ...(q.options ? { options: q.options.map(({ rationale: _x, ...o }) => o) } : {}),
+      // An order question's items are its answer, so they go out shuffled; groups are removed.
+      ...(q.items ? { items: (q.kind === "order" ? scrambled(q.items, q.id) : q.items).map(({ group: _g, ...item }) => item) } : {}),
     })),
   };
+}
+
+/** Items in a stable shuffled order that is never already the answer. */
+export function scrambled<T extends { id: string }>(items: readonly T[], seed: string): T[] {
+  if (items.length < 2) return [...items];
+  const out = shuffle(items, seededRandom(seedOf(seed)));
+  // Rotate when the shuffle happens to land on the right order.
+  return out.every((item, i) => item.id === items[i]!.id) ? [...out.slice(1), out[0]!] : out;
+}
+
+/** A stable number from a string, to shuffle the same way every time. */
+function seedOf(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
 }

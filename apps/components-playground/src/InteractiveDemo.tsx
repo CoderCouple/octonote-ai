@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import digestive from "@octonote/interactive/examples/digestive-system.json";
+import waterCycle from "@octonote/interactive/examples/water-cycle-practice.json";
 import {
   defaultRegistry,
   gradeQuiz,
@@ -19,7 +20,7 @@ import {
   type Theme,
 } from "@octonote/interactive";
 
-type Source = "example" | "generate" | "paste";
+type Source = "example" | "kinds" | "generate" | "paste";
 
 const STORE_PREFIX = "components-playground:";
 const store = webStorageStore(globalThis.localStorage, STORE_PREFIX);
@@ -69,7 +70,7 @@ export function InteractiveDemo({ theme }: { theme: Theme }) {
   const [pasted, setPasted] = useState(() => JSON.stringify(digestive.activities[2], null, 2));
   const pastedResult = useMemo(() => parseSpec(pasted), [pasted]);
 
-  const raw: unknown = source === "example" ? digestive : source === "generate" ? generated : pastedResult.ok ? pastedResult.spec : null;
+  const raw: unknown = source === "example" ? digestive : source === "kinds" ? waterCycle : source === "generate" ? generated : pastedResult.ok ? pastedResult.spec : null;
 
   // Only valid specs get the server-grading treatment; invalid ones go straight to the renderer's fallback.
   const shown = useMemo(() => {
@@ -121,6 +122,7 @@ export function InteractiveDemo({ theme }: { theme: Theme }) {
         {(
           [
             ["example", "Example session"],
+            ["kinds", "Question types"],
             ["generate", "Generate with Claude"],
             ["paste", "Paste JSON"],
           ] as const

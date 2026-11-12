@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { isAnswerCorrect, makeScore, type Question } from "../core/index.js";
+import { checkResponse, expectedResponse, isAnswered, makeScore, type Question } from "../core/index.js";
 import { useControllableState } from "../react/index.js";
-import { QuestionView, toggleSelection } from "./question-view.js";
+import { QuestionView } from "./question-view.js";
 import { ActivityFrame, cx, LiveRegion, ScoreSummary, useActivity, type ActivityProps } from "./ui.js";
 
 export interface McqAnswer {
+  /** The response (option ids, typed answers, an order…). */
   selected: string[];
+  /** A written answer checked but not yet marked. */
+  pending?: boolean;
   checked: boolean;
   correct: boolean;
   attempts: number;
@@ -48,6 +51,21 @@ export function useMcq(props: McqProps) {
 
   const update = (patch: Partial<McqAnswer>) => setState((s) => ({ ...s, answers: { ...s.answers, [question.id]: { ...answer, ...patch } } }));
 
+  /** Marks the answer and records the attempt. */
+  const finish = (response: string[]) => {
+    const { correct } = checkResponse(question, response);
+    const attempts = answer.attempts + 1;
+    const answers = { ...state.answers, [question.id]: { ...answer, selected: response, checked: true, pending: false, correct, attempts, firstTryCorrect: attempts === 1 && correct } };
+    const allChecked = questions.every((q) => (answers[q.id]?.checked && !answers[q.id]?.pending) || (answers[q.id]?.attempts ?? 0) > 0);
+    const completed = state.completed || allChecked;
+    setState({ ...state, answers, completed });
+    emit({ type: "question.answered", questionId: question.id, selected: response, correct });
+    if (completed && !state.completed) {
+      const earned = questions.filter((q) => answers[q.id]?.firstTryCorrect).length;
+      emit({ type: "activity.completed", score: makeScore(earned, questions.length) });
+    }
+  };
+
   return {
     id,
     state,
@@ -55,25 +73,23 @@ export function useMcq(props: McqProps) {
     answer,
     score,
     hintShown: !!state.hints[question.id],
-    toggle(optionId: string) {
-      if (answer.checked) return;
-      update({ selected: toggleSelection(question, answer.selected, optionId) });
+    canCheck: !answer.checked && isAnswered(question, answer.selected),
+    /** Changes the answer; while a written answer waits for marking, this is the mark. */
+    respond(next: string[]) {
+      if (answer.checked && !answer.pending) return;
+      if (answer.pending) {
+        if (!checkResponse(question, next).pending) finish(next);
+        return;
+      }
+      update({ selected: next });
     },
     check() {
-      if (answer.checked || answer.selected.length === 0) return;
-      const correct = isAnswerCorrect(question.correct ?? [], answer.selected);
-      const attempts = answer.attempts + 1;
-      const answers = { ...state.answers, [question.id]: { ...answer, checked: true, correct, attempts, firstTryCorrect: attempts === 1 && correct } };
-      const allChecked = questions.every((q) => answers[q.id]?.checked || (answers[q.id]?.attempts ?? 0) > 0);
-      const completed = state.completed || allChecked;
-      setState({ ...state, answers, completed });
-      emit({ type: "question.answered", questionId: question.id, selected: answer.selected, correct });
-      if (completed && !state.completed) {
-        const earned = questions.filter((q) => answers[q.id]?.firstTryCorrect).length;
-        emit({ type: "activity.completed", score: makeScore(earned, questions.length) });
-      }
+      if (answer.checked || !isAnswered(question, answer.selected)) return;
+      // A written answer is shown against the model answer first; the learner then marks it.
+      if (checkResponse(question, answer.selected).pending) return update({ checked: true, pending: true });
+      finish(answer.selected);
     },
-    retry: () => update({ checked: false, selected: [] }),
+    retry: () => update({ checked: false, pending: false, selected: [] }),
     showHint() {
       setState((s) => ({ ...s, hints: { ...s.hints, [question.id]: true } }));
       emit({ type: "hint.shown", itemId: question.id });
@@ -95,9 +111,12 @@ export function Mcq(props: McqProps) {
 
   const check = () => {
     mcq.check();
-    const correct = isAnswerCorrect(question.correct ?? [], answer.selected);
-    setAnnouncement(correct ? "Correct." : "Not quite.");
+    const result = checkResponse(question, answer.selected);
+    setAnnouncement(result.pending ? "Compare your answer with the model answer, then mark it." : result.correct ? "Correct." : "Not quite.");
   };
+  // Reveal the right answer once it's right, or when there are no retries.
+  const reveal = answer.correct || !allowRetry;
+  const finished = answer.checked && !answer.pending;
 
   return (
     <ActivityFrame type="mcq" title={props.title} description={props.description} label="Practice questions" theme={props.theme} className={props.className}>
@@ -125,13 +144,24 @@ export function Mcq(props: McqProps) {
         key={question.id}
         question={question}
         label={`Question ${state.index + 1} of ${total}`}
-        selected={answer.selected}
-        onToggle={mcq.toggle}
-        disabled={answer.checked}
-        feedback={answer.checked ? { correctOptionIds: answer.correct ? (question.correct ?? []) : allowRetry ? [] : (question.correct ?? []), rationales: rationalesOf(question), explanation: answer.correct || !allowRetry ? question.explanation : undefined } : undefined}
+        response={answer.selected}
+        onResponse={mcq.respond}
+        disabled={finished}
+        feedback={
+          answer.checked
+            ? {
+                correctOptionIds: reveal ? (question.correct ?? []) : [],
+                rationales: rationalesOf(question),
+                explanation: reveal || answer.pending ? question.explanation : undefined,
+                correct: answer.correct,
+                parts: answer.pending ? undefined : checkResponse(question, answer.selected).parts,
+                expected: reveal ? expectedResponse(question) : undefined,
+              }
+            : undefined
+        }
       />
 
-      {answer.checked ? (
+      {finished ? (
         <div className={cx("ix-feedback", answer.correct ? "ix-feedback--correct" : "ix-feedback--incorrect")}>
           <strong>{answer.correct ? "Correct!" : "Not quite."}</strong>
           {!answer.correct && allowRetry ? <span> Have another look and try again.</span> : null}
@@ -150,10 +180,10 @@ export function Mcq(props: McqProps) {
         ) : null}
         <span className="ix-toolbar__spacer" />
         {!answer.checked ? (
-          <button type="button" className="ix-button ix-button--primary" onClick={check} disabled={answer.selected.length === 0}>
+          <button type="button" className="ix-button ix-button--primary" onClick={check} disabled={!mcq.canCheck}>
             Check answer
           </button>
-        ) : !answer.correct && allowRetry ? (
+        ) : finished && !answer.correct && allowRetry ? (
           <button type="button" className="ix-button ix-button--primary" onClick={mcq.retry}>
             Try again
           </button>
@@ -176,5 +206,5 @@ export function Mcq(props: McqProps) {
 }
 
 function rationalesOf(question: Question): Record<string, string> {
-  return Object.fromEntries(question.options.filter((o) => o.rationale).map((o) => [o.id, o.rationale!]));
+  return Object.fromEntries((question.options ?? []).filter((o) => o.rationale).map((o) => [o.id, o.rationale!]));
 }

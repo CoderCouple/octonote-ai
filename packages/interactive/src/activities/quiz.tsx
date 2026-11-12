@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { gradeQuestions, shuffle, type GradeResult, type Question, type Responses } from "../core/index.js";
+import { gradeQuestions, isAnswered, isChoice, shuffle, type GradeResult, type Question, type Responses } from "../core/index.js";
 import { useControllableState, useInteractive, type QuizGrader } from "../react/index.js";
-import { QuestionView, toggleSelection } from "./question-view.js";
+import { QuestionView } from "./question-view.js";
 import { ActivityFrame, cx, LiveRegion, ScoreSummary, useActivity, type ActivityProps } from "./ui.js";
 
 export interface QuizState {
@@ -53,7 +53,7 @@ export function useQuiz(props: QuizProps) {
   const [error, setError] = useState<string | null>(null);
   const byId = new Map(questions.map((q) => [q.id, q]));
   const question = byId.get(state.order[state.index]!)!;
-  const unanswered = state.order.filter((qid) => !(state.responses[qid]?.length ?? 0)).length;
+  const unanswered = state.order.filter((qid) => !isAnswered(byId.get(qid)!, state.responses[qid] ?? [])).length;
 
   // Latest values for the timer, which outlives renders.
   const latest = useRef({ state, submitting });
@@ -95,11 +95,17 @@ export function useQuiz(props: QuizProps) {
     error,
     remaining,
     start: () => setState((s) => ({ ...s, phase: "answering", index: 0, startedAt: Date.now() })),
-    toggle(optionId: string) {
+    respond(next: string[]) {
       if (state.phase !== "answering") return;
-      const selected = toggleSelection(question, state.responses[question.id] ?? [], optionId);
-      setState((s) => ({ ...s, responses: { ...s.responses, [question.id]: selected } }));
-      emit({ type: "question.answered", questionId: question.id, selected });
+      setState((s) => ({ ...s, responses: { ...s.responses, [question.id]: next } }));
+      // Typed answers change with every key; only choices are worth an event each time.
+      if (isChoice(question)) emit({ type: "question.answered", questionId: question.id, selected: next });
+    },
+    /** After a client-graded quiz: the learner marks a written answer, and the score is worked out again. */
+    mark(questionId: string, response: string[]) {
+      if (state.phase !== "review" || props.grading === "server") return;
+      const responses = { ...state.responses, [questionId]: response };
+      setState((s) => ({ ...s, responses, result: gradeQuestions(questions, responses, props.passingPercent) }));
     },
     goTo: (index: number) => setState((s) => ({ ...s, index: Math.max(0, Math.min(index, s.order.length - 1)) })),
     submit,
@@ -188,13 +194,14 @@ export function Quiz(props: QuizProps) {
           {state.order.map((qid, i) => {
             const r = results.get(qid);
             return (
-              <div key={qid} className={cx("ix-review__item", r?.correct ? "ix-review__item--correct" : "ix-review__item--incorrect")}>
+              <div key={qid} className={cx("ix-review__item", r?.pending ? "ix-review__item--pending" : r?.correct ? "ix-review__item--correct" : "ix-review__item--incorrect")}>
                 <QuestionView
                   question={byId.get(qid)!}
-                  label={`Question ${i + 1} · ${r?.correct ? "Correct" : "Incorrect"}`}
-                  selected={state.responses[qid] ?? []}
-                  disabled
-                  feedback={r ? { correctOptionIds: r.correctOptionIds, rationales: r.rationales, explanation: r.explanation } : undefined}
+                  label={`Question ${i + 1} · ${r?.pending ? "Mark your answer" : r?.correct ? "Correct" : "Incorrect"}`}
+                  response={state.responses[qid] ?? []}
+                  onResponse={r?.pending ? (next) => quiz.mark(qid, next) : undefined}
+                  disabled={!r?.pending}
+                  feedback={r ? { correctOptionIds: r.correctOptionIds, rationales: r.rationales, explanation: r.explanation, correct: r.correct, parts: r.parts, expected: r.expected } : undefined}
                 />
               </div>
             );
@@ -210,7 +217,7 @@ export function Quiz(props: QuizProps) {
       <div className="ix-quiz__bar">
         <ol className="ix-dots" aria-label="Questions">
           {state.order.map((qid, i) => {
-            const answered = (state.responses[qid]?.length ?? 0) > 0;
+            const answered = isAnswered(byId.get(qid)!, state.responses[qid] ?? []);
             return (
               <li key={qid}>
                 <button
@@ -234,7 +241,7 @@ export function Quiz(props: QuizProps) {
       </div>
       {lowTime ? <LiveRegion message={quiz.remaining === 30 ? "30 seconds left" : ""} /> : null}
 
-      <QuestionView key={question.id} question={question} label={`Question ${state.index + 1} of ${total}`} selected={state.responses[question.id] ?? []} onToggle={quiz.toggle} disabled={quiz.submitting} />
+      <QuestionView key={question.id} question={question} label={`Question ${state.index + 1} of ${total}`} response={state.responses[question.id] ?? []} onResponse={quiz.respond} disabled={quiz.submitting} />
       {question.hint ? (
         <details className="ix-hint-toggle">
           <summary>Hint</summary>
