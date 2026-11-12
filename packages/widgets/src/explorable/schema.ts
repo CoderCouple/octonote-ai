@@ -413,7 +413,6 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
         if (sampled && (v.x.from === undefined || v.x.to === undefined)) addIssue({ code: "custom", message: "Formula series need x.from and x.to", path: [...base, ...path, "x"] });
         else if (v.x.from !== undefined && v.x.to !== undefined) {
           if (v.x.from >= v.x.to) addIssue({ code: "custom", message: "x.from must be below x.to", path: [...base, ...path, "x", "to"] });
-          else if (sampled && (v.x.to - v.x.from) / step + 1 > WIDGET_LIMITS.chartPoints) addIssue({ code: "custom", message: `At most ${WIDGET_LIMITS.chartPoints} points; use a bigger step`, path: [...base, ...path, "x", "step"] });
         }
         f(v.xTo, ["xTo"]);
         let categorical: string | undefined;

@@ -141,10 +141,15 @@ describe("widget validation", () => {
     expect(validateWidget(spec).ok).toBe(false);
   });
 
-  it("caps chart points", () => {
+  it("spaces out a step finer than a chart can show, rather than refusing it", () => {
     const spec = structuredClone(byId("linear-function")) as any;
     spec.views[1].x.step = 0.001;
-    expect(validateWidget(spec).ok).toBe(false);
+    const r = validateWidget(spec);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const points = sampleChart(r.spec.views[1] as never, computeScope(r.spec, { m: 1, b: 0 }));
+    expect(points.length).toBeLessThanOrEqual(241);
+    expect(points.at(-1)!.x).toBeCloseTo(5);
   });
 
   it("can sit inside a content document", () => {

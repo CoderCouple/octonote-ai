@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { WidgetStore } from "../provider.js";
 import { aggregate, lookup, rowScope, type DataTable } from "./data.js";
+import { WIDGET_LIMITS } from "./schema.js";
 import { compile, evaluate, type Scope } from "./expr.js";
 import type { WidgetBlock, WidgetInput, WidgetSpec } from "./schema.js";
 
@@ -67,8 +68,9 @@ type ChartView = Extract<WidgetBlock["views"][number], { type: "chart" }>;
 function sampleXs(view: ChartView, scope: Scope): number[] {
   const from = view.x.from ?? 0;
   const to = view.x.to ?? from;
-  const step = view.x.step ?? 1;
   const end = view.xTo ? Math.min(to, Math.max(from, valueOf(view.xTo, scope))) : to;
+  // A finer step than the chart can show is spaced out to its point limit rather than refused.
+  const step = Math.max(view.x.step ?? 1, (to - from) / (WIDGET_LIMITS.chartPoints - 1));
   // Count steps instead of adding floats, so 0.1 steps don't drift.
   const count = Math.floor((end - from) / step + 1e-9);
   return Array.from({ length: Math.max(0, count + 1) }, (_, i) => Number((from + i * step).toPrecision(12)));
