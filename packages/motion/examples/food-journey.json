@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "1.0",
+  "type": "scene",
+  "id": "food-journey",
+  "title": "The journey of a bite of food",
+  "width": 800,
+  "height": 420,
+  "elements": [
+    { "id": "mouth", "kind": "box", "x": 24, "y": 120, "w": 128, "h": 72, "text": "Mouth", "hidden": true },
+    { "id": "oesophagus", "kind": "box", "x": 180, "y": 120, "w": 128, "h": 72, "text": "Oesophagus", "hidden": true },
+    { "id": "stomach", "kind": "box", "x": 336, "y": 120, "w": 128, "h": 72, "text": "Stomach", "color": "orange", "hidden": true },
+    { "id": "small", "kind": "box", "x": 492, "y": 120, "w": 128, "h": 72, "text": "Small intestine", "color": "green", "hidden": true },
+    { "id": "large", "kind": "box", "x": 648, "y": 120, "w": 128, "h": 72, "text": "Large intestine", "color": "purple", "hidden": true },
+    { "id": "a1", "kind": "arrow", "from": "mouth", "to": "oesophagus", "hidden": true },
+    { "id": "a2", "kind": "arrow", "from": "oesophagus", "to": "stomach", "hidden": true },
+    { "id": "a3", "kind": "arrow", "from": "stomach", "to": "small", "hidden": true },
+    { "id": "a4", "kind": "arrow", "from": "small", "to": "large", "hidden": true },
+    { "id": "food", "kind": "circle", "x": 88, "y": 240, "r": 16, "color": "red", "hidden": true },
+    { "id": "foodLabel", "kind": "text", "x": 88, "y": 276, "text": "food", "size": 14, "align": "middle", "hidden": true },
+    { "id": "absorbedLabel", "kind": "text", "x": 400, "y": 318, "text": "Nutrients absorbed", "size": 16, "align": "middle", "hidden": true },
+    { "id": "absorbed", "kind": "counter", "x": 400, "y": 362, "value": 0, "suffix": "%", "size": 40, "hidden": true }
+  ],
+  "steps": [
+    {
+      "caption": "Digestion starts in the mouth: teeth break food apart and saliva starts on starch.",
+      "actions": [
+        { "do": "show", "target": "mouth" },
+        { "do": "show", "target": "food" },
+        { "do": "show", "target": "foodLabel" },
+        { "do": "highlight", "target": "mouth" }
+      ]
+    },
+    {
+      "caption": "Swallowing sends it down the oesophagus, pushed by waves of muscle.",
+      "actions": [
+        { "do": "show", "target": "a1" },
+        { "do": "show", "target": "oesophagus" },
+        { "do": "move", "target": "food", "x": 244, "y": 240 },
+        { "do": "move", "target": "foodLabel", "x": 244, "y": 276 },
+        { "do": "highlight", "target": "oesophagus" }
+      ]
+    },
+    {
+      "caption": "The stomach churns it with acid and pepsin into a thick liquid called chyme.",
+      "actions": [
+        { "do": "show", "target": "a2" },
+        { "do": "show", "target": "stomach" },
+        { "do": "move", "target": "food", "x": 400, "y": 240 },
+        { "do": "move", "target": "foodLabel", "x": 400, "y": 276 },
+        { "do": "text", "target": "foodLabel", "text": "chyme" },
+        { "do": "color", "target": "food", "color": "orange" },
+        { "do": "highlight", "target": "stomach" }
+      ]
+    },
+    {
+      "caption": "In the small intestine, enzymes finish the job and villi absorb most nutrients.",
+      "duration": 3200,
+      "actions": [
+        { "do": "show", "target": "a3" },
+        { "do": "show", "target": "small" },
+        { "do": "move", "target": "food", "x": 556, "y": 240 },
+        { "do": "move", "target": "foodLabel", "x": 556, "y": 276 },
+        { "do": "show", "target": "absorbedLabel" },
+        { "do": "show", "target": "absorbed" },
+        { "do": "count", "target": "absorbed", "value": 90 },
+        { "do": "highlight", "target": "small" }
+      ]
+    },
+    {
+      "caption": "The large intestine takes back water; what's left leaves the body.",
+      "actions": [
+        { "do": "show", "target": "a4" },
+        { "do": "show", "target": "large" },
+        { "do": "move", "target": "food", "x": 712, "y": 240 },
+        { "do": "move", "target": "foodLabel", "x": 712, "y": 276 },
+        { "do": "text", "target": "foodLabel", "text": "waste" },
+        { "do": "color", "target": "food", "color": "gray" },
+        { "do": "count", "target": "absorbed", "value": 95 },
+        { "do": "highlight", "target": "large" }
+      ]
+    },
+    {
+      "caption": "So the small intestine does most of the absorbing.",
+      "actions": [
+        { "do": "hide", "target": "food" },
+        { "do": "hide", "target": "foodLabel" },
+        { "do": "highlight", "target": "small" },
+        { "do": "highlight", "target": "absorbed" }
+      ]
+    }
+  ]
+}

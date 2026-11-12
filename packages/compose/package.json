@@ -1,0 +1,59 @@
+{
+  "name": "@octonote/compose",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Generative UI agent: answers a question by choosing and composing blocks from @octonote/widgets, @octonote/interactive and @octonote/motion, validating every block, repairing invalid ones and streaming the result.",
+  "sideEffects": [
+    "*.css"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react-entry.d.ts",
+      "import": "./dist/react-entry.js",
+      "default": "./dist/react-entry.js"
+    },
+    "./styles.css": "./styles.css"
+  },
+  "files": [
+    "dist",
+    "styles.css",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "eval": "tsx scripts/eval.ts",
+    "lint": "echo \"lint pending\""
+  },
+  "dependencies": {
+    "@octonote/interactive": "workspace:*",
+    "@octonote/motion": "workspace:*",
+    "@octonote/widgets": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "jsdom": "^25.0.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.9"
+  }
+}

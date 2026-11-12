@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "type": "document",
+  "id": "digestion-guide",
+  "title": "How digestion works",
+  "blocks": [
+    { "type": "paragraph", "text": "Digestion turns the food you eat into molecules small enough to pass into your **blood**. It happens in two ways at once: *mechanical* and *chemical*." },
+    { "type": "callout", "variant": "tip", "text": "Remember the order with the phrase **Many Old Stories Start Long ago**: mouth, oesophagus, stomach, small intestine, large intestine." },
+    {
+      "type": "steps",
+      "title": "The journey of a bite of food",
+      "items": [
+        { "title": "Mouth", "text": "Teeth break food apart and saliva starts digesting starch." },
+        { "title": "Oesophagus", "text": "Waves of muscle called *peristalsis* push food down." },
+        { "title": "Stomach", "text": "Acid and pepsin turn food into a thick liquid called chyme." },
+        { "title": "Small intestine", "text": "Enzymes finish the job and villi absorb the nutrients." },
+        { "title": "Large intestine", "text": "Water is taken back and the rest leaves the body." }
+      ]
+    },
+    { "type": "definition", "term": "Enzyme", "definition": "A protein that speeds up a chemical reaction without being used up.", "example": "Amylase breaks starch into sugars." },
+    {
+      "type": "comparison",
+      "caption": "Mechanical vs chemical digestion",
+      "columns": ["Mechanical", "Chemical"],
+      "rows": [
+        { "label": "What it does", "values": ["Breaks food into smaller pieces", "Breaks large molecules into small ones"] },
+        { "label": "How", "values": ["Chewing, churning", "Enzymes, acid, bile"] },
+        { "label": "Where", "values": ["Mouth, stomach", "Mouth to small intestine"] }
+      ],
+      "highlight": 1
+    },
+    {
+      "type": "stats",
+      "items": [
+        { "label": "Tract length", "value": "≈ 9 m", "detail": "in an adult" },
+        { "label": "Time to digest", "value": "24–72 h", "detail": "varies by meal" },
+        { "label": "Small intestine surface", "value": "≈ 30 m²", "detail": "thanks to villi" }
+      ]
+    },
+    {
+      "type": "tabs",
+      "tabs": [
+        { "label": "Carbohydrates", "blocks": [{ "type": "paragraph", "text": "Amylase in saliva and from the pancreas breaks starch into sugars such as glucose." }] },
+        { "label": "Proteins", "blocks": [{ "type": "paragraph", "text": "Pepsin starts in the stomach; pancreatic enzymes finish the job, leaving amino acids." }] },
+        { "label": "Fats", "blocks": [{ "type": "paragraph", "text": "Bile emulsifies fat, then lipase splits it into fatty acids and glycerol." }] }
+      ]
+    },
+    {
+      "type": "timeline",
+      "items": [
+        { "label": "0 s", "title": "First bite", "text": "Chewing and saliva." },
+        { "label": "≈ 10 s", "title": "Swallowing", "text": "Food reaches the stomach." },
+        { "label": "2–4 h", "title": "Leaving the stomach", "text": "Chyme moves into the small intestine." },
+        { "label": "≈ 6 h", "title": "Absorption done", "text": "Most nutrients are in the blood." }
+      ]
+    },
+    {
+      "type": "accordion",
+      "items": [
+        { "title": "Why does the stomach not digest itself?", "blocks": [{ "type": "paragraph", "text": "A thick layer of mucus protects its lining from acid and pepsin." }] },
+        { "title": "What does the rate of reaction depend on?", "blocks": [{ "type": "paragraph", "text": "Enzyme speed follows temperature and pH, e.g. pepsin works best near $pH \\approx 2$." }] }
+      ]
+    },
+    { "type": "code", "language": "python", "caption": "A toy model of the journey", "code": "organs = [\"mouth\", \"oesophagus\", \"stomach\", \"small intestine\", \"large intestine\"]\nfor step, organ in enumerate(organs, 1):\n    print(step, organ)" },
+    { "type": "progress", "label": "Chapter progress", "value": 60 },
+    { "type": "takeaway", "points": ["Mechanical digestion makes pieces smaller; chemical digestion makes molecules smaller.", "Most absorption happens in the small intestine, through the villi."] }
+  ]
+}

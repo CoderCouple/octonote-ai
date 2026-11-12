@@ -140,6 +140,21 @@ function renderBlock(b: Block, key: number): ReactNode {
           dangerouslySetInnerHTML={{ __html: math(p.latex, true) }}
         />
       ) : null;
+    case "manimVideo":
+      return (
+        <figure key={key} className="bg-muted/40 text-muted-foreground min-h-32 rounded-lg border p-4 text-sm">
+          <figcaption>Explainer video</figcaption>
+        </figure>
+      );
+    case "interactive": {
+      // Widgets and activities run in the browser; crawlers and the first paint get a summary.
+      const summary = interactiveSummary(String(p.kind ?? ""), String(p.spec ?? ""));
+      return (
+        <figure key={key} className="bg-muted/40 text-muted-foreground min-h-32 rounded-lg border p-4 text-sm">
+          <figcaption>{summary}</figcaption>
+        </figure>
+      );
+    }
     case "mermaid":
       // The diagram renders in the browser; crawlers get its source as text.
       return (
@@ -288,4 +303,33 @@ export function StaticNote({ document }: { document: unknown }) {
       {renderBlocks(blocks)}
     </div>
   );
+}
+
+const INTERACTIVE_NAMES: Record<string, string> = {
+  widget: "Interactive widget",
+  flashcards: "Flashcards",
+  mcq: "Practice questions",
+  quiz: "Quiz",
+  mindmap: "Mind map",
+  matching: "Matching exercise",
+  scene: "Animation",
+  custom: "Interactive app",
+};
+
+/** "Quiz: Final check · 4 questions", read from the spec without rendering it. */
+function interactiveSummary(kind: string, spec: string): string {
+  let value: Record<string, unknown> = {};
+  try {
+    value = JSON.parse(spec) as Record<string, unknown>;
+  } catch {
+    // Unreadable spec: the name alone.
+  }
+  const count = (key: string, noun: string) => {
+    if (!Array.isArray(value[key])) return "";
+    const n = (value[key] as unknown[]).length;
+    return ` · ${n} ${n === 1 ? noun.replace(/s$/, "") : noun}`;
+  };
+  const title = typeof value.title === "string" ? `: ${value.title.slice(0, 120)}` : "";
+  const detail = count("cards", "cards") || count("questions", "questions") || count("pairs", "pairs") || count("nodes", "topics") || count("steps", "steps");
+  return `${INTERACTIVE_NAMES[kind] ?? "Interactive block"}${title}${detail}`;
 }

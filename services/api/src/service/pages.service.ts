@@ -12,6 +12,7 @@ import { PagesRepository, type PageSummaryRow } from "../db/repository/pages.rep
 import { toPage, type Page } from "../model/page.model";
 import { NotebookPlacement } from "./lib/notebook-placement";
 import { documentWithFigureLinks, withFigureLinks } from "./lib/figure-urls";
+import { ComposeAiService } from "./compose-ai.service";
 import { FiguresService } from "./figures.service";
 import { WorkspacesService } from "./workspaces.service";
 import { PlanLimitsService } from "../common/plan-limits.service";
@@ -28,6 +29,7 @@ export class PagesService {
     private readonly changeEvents: ChangeEventsService,
     private readonly planLimits: PlanLimitsService,
     private readonly figures: FiguresService,
+    private readonly interactive: ComposeAiService,
   ) {}
 
   async listStandalone(workspaceId: string, actorUserId: string): Promise<PageSummaryRow[]> {
@@ -72,12 +74,21 @@ export class PagesService {
     return toPage(row);
   }
 
-  async update(pageId: string, patch: PageUpdate, actorUserId: string): Promise<Page> {
+  /**
+   * `interactive`: what to do with interactive blocks that don't validate.
+   * Editor autosaves "demote" them to code blocks (saving never gets stuck);
+   * markdown writes from the CLI and assistants "reject" with the reason.
+   */
+  async update(pageId: string, patch: PageUpdate, actorUserId: string, { interactive = "demote" }: { interactive?: "demote" | "reject" } = {}): Promise<Page> {
     const access = await this.permissions.require(actorUserId, { kind: "page", id: pageId }, "edit");
     const existing = await this.pagesRepo.findById(pageId);
     if (!existing) throw NotFound("Page not found.");
 
-    const document = patch.document !== undefined ? documentWithFigureLinks(patch.document) : undefined;
+    let document = patch.document !== undefined ? documentWithFigureLinks(patch.document) : undefined;
+    if (document !== undefined) {
+      if (interactive === "reject") await this.interactive.assertValid(document);
+      else document = await this.interactive.demoteInvalid(document);
+    }
     const updated = await this.pagesRepo.updateById(pageId, {
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(document !== undefined ? { document: document as never } : {}),

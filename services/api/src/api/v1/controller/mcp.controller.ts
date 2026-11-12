@@ -1,3 +1,5 @@
+import { ComposeAiService } from "../../../service/compose-ai.service";
+import { VideosService } from "../../../service/videos.service";
 import { All, Controller, Logger, Req, Res } from "@nestjs/common";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -14,6 +16,7 @@ import { VERSION_INFO } from "./mcp-version";
 
 const INSTRUCTIONS = `Octonote holds the user's notes (markdown documents), canvases (diagrams), projects (one note + one canvas side by side) and notebooks (folders).
 - Write notes in markdown: headings, lists, checklists, tables, code, quotes, images by URL, $inline math$, $$display math$$ and \`\`\`mermaid blocks.
+- Notes can embed live interactive blocks: explorable widgets with sliders and charts, flashcards, practice questions, quizzes, mind maps, matching, animated explainers and sandboxed mini-apps, each as a fence named after its kind holding JSON (\`\`\`quiz, \`\`\`widget…). Call interactive_block_format for the exact format before writing one; use them when doing teaches more than reading.
 - Draw canvases from a mermaid flowchart or class diagram; they become real, editable shapes. Add \`click Node href "https://…"\` lines to make boxes link somewhere (e.g. code on GitHub).
 - Ids carry their kind: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook. Notebooks can be named by exact name.
 - Always give the user the link (url, and publicUrl once published).
@@ -70,6 +73,8 @@ export class McpController {
     private readonly tools: McpToolsService,
     private readonly activity: ActivityService,
     private readonly comments: NoteCommentsService,
+    private readonly interactive: ComposeAiService,
+    private readonly videos: VideosService,
   ) {}
 
   @All()
@@ -245,6 +250,45 @@ export class McpController {
       async (args) => run(() => t.list(actor.id, args))(),
     );
 
+    tool(
+      "interactive_block_format",
+      {
+        title: "Interactive block format",
+        description:
+          "How to write an interactive block (widget, flashcards, mcq, quiz, mindmap, matching, scene, custom) into a note: when to use it, an example fence and its JSON Schema. Without a kind, lists the kinds.",
+        inputSchema: { kind: z.enum(["widget", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]).optional() },
+        annotations: READ,
+      },
+      async (args) => run(() => this.interactive.format(args.kind))(),
+    );
+    tool(
+      "create_video",
+      {
+        title: "Make an explainer video",
+        description:
+          "Start a 1-2 minute animated explainer video (Manim) of a concept, made by AI in a few minutes (Pro). Returns a ```video fence: put it in a note right away; the note shows progress and plays the video when it's ready.",
+        inputSchema: {
+          concept: z.string().min(3).max(1000).describe("What the video should explain, e.g. Why the area of a circle is pi r squared"),
+          orientation: z.enum(["landscape", "portrait"]).default("landscape"),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      },
+      async (args) =>
+        run(async () => {
+          const video = await this.videos.create(actor.id, { workspaceId: await t.workspaceId(actor.id), concept: args.concept, orientation: args.orientation });
+          return { id: video.id, status: video.status, fence: "```video\n" + JSON.stringify({ videoId: video.id }) + "\n```", next: "Add the fence to a note (create_note or update_note). Check progress with video_status." };
+        })(),
+    );
+    tool(
+      "video_status",
+      {
+        title: "Explainer video status",
+        description: "Where a video from create_video is: queued, storyboard, code, render (with scenes done), join, done (with its URL and chapters) or failed.",
+        inputSchema: { id: z.string().regex(/^vid_[0-9a-f-]{36}$/) },
+        annotations: READ,
+      },
+      async (args) => run(() => this.videos.get(args.id))(),
+    );
     tool(
       "create_note",
       {

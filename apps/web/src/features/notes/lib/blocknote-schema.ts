@@ -6,6 +6,8 @@ import {
 } from "@blocknote/core";
 import { CanvasReferenceBlock } from "../blocks/canvas-reference-block";
 import { FigureBlock } from "../blocks/figure-block";
+import { InteractiveBlock } from "../blocks/interactive-block";
+import { ManimVideoBlock } from "../blocks/manim-video-block";
 import { MathBlock, MathInline } from "../blocks/math";
 import { MermaidBlock } from "../blocks/mermaid-block";
 import { octoCodeBlockOptions } from "./code-highlighter";
@@ -24,6 +26,10 @@ export const octoBlockNoteSchema = BlockNoteSchema.create({
     figure: FigureBlock(),
     mathBlock: MathBlock(),
     mermaid: MermaidBlock(),
+    // Widgets, activities, animations and sandboxed apps from a validated JSON spec.
+    interactive: InteractiveBlock(),
+    // Manim explainer videos, by id; the video itself lives in storage.
+    manimVideo: ManimVideoBlock(),
   },
   inlineContentSpecs: {
     ...defaultInlineContentSpecs,

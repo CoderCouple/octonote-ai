@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "1.0",
+  "type": "session",
+  "id": "digestive-system",
+  "title": "The human digestive system",
+  "description": "Follow food from mouth to large intestine, then check what you remember.",
+  "activities": [
+    {
+      "schemaVersion": "1.0",
+      "type": "flashcards",
+      "id": "organs-cards",
+      "title": "Key terms",
+      "cards": [
+        { "id": "c1", "front": "Peristalsis", "back": "Waves of muscle contraction that push food along the digestive tract.", "hint": "It happens in the oesophagus and the intestines." },
+        { "id": "c2", "front": "Salivary amylase", "back": "An enzyme in saliva that starts breaking starch down into sugars." },
+        { "id": "c3", "front": "Bile", "back": "A liquid made by the liver and stored in the gallbladder that breaks fat into small droplets.", "hint": "It emulsifies fat; it is not an enzyme." },
+        { "id": "c4", "front": "Villi", "back": "Tiny finger-like folds lining the small intestine that increase the surface area for absorption." },
+        { "id": "c5", "front": "Chyme", "back": "The thick, partly digested mixture of food and gastric juice that leaves the stomach." },
+        { "id": "c6", "front": "Pepsin", "back": "A stomach enzyme that starts breaking proteins down into smaller peptides." }
+      ]
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "mindmap",
+      "id": "tract-map",
+      "title": "How the parts fit together",
+      "nodes": [
+        { "id": "root", "label": "Digestive system" },
+        { "id": "tract", "label": "Digestive tract", "parent": "root", "note": "The tube food travels through, about 9 metres long in an adult." },
+        { "id": "mouth", "label": "Mouth", "parent": "tract", "note": "Teeth chew food; saliva moistens it and starts starch digestion." },
+        { "id": "oesophagus", "label": "Oesophagus", "parent": "tract", "note": "Moves food to the stomach by peristalsis." },
+        { "id": "stomach", "label": "Stomach", "parent": "tract", "note": "Churns food with acid and pepsin to make chyme." },
+        { "id": "small", "label": "Small intestine", "parent": "tract", "note": "Where most digestion and absorption happen." },
+        { "id": "large", "label": "Large intestine", "parent": "tract", "note": "Absorbs water and forms faeces." },
+        { "id": "accessory", "label": "Accessory organs", "parent": "root", "note": "Help digestion without food passing through them." },
+        { "id": "liver", "label": "Liver", "parent": "accessory", "note": "Makes bile." },
+        { "id": "gallbladder", "label": "Gallbladder", "parent": "accessory", "note": "Stores bile and releases it into the small intestine." },
+        { "id": "pancreas", "label": "Pancreas", "parent": "accessory", "note": "Releases enzymes for carbohydrates, proteins and fats." },
+        { "id": "processes", "label": "Processes", "parent": "root" },
+        { "id": "mechanical", "label": "Mechanical digestion", "parent": "processes", "note": "Breaking food into smaller pieces: chewing and churning." },
+        { "id": "chemical", "label": "Chemical digestion", "parent": "processes", "note": "Enzymes break large molecules into small ones." },
+        { "id": "absorption", "label": "Absorption", "parent": "processes", "note": "Small molecules pass into the blood, mostly through the villi." }
+      ]
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "matching",
+      "id": "organ-jobs",
+      "title": "Organs and their jobs",
+      "prompt": "Match each organ to its main job.",
+      "pairs": [
+        { "id": "p1", "left": "Stomach", "right": "Mixes food with acid and enzymes" },
+        { "id": "p2", "left": "Small intestine", "right": "Absorbs most nutrients" },
+        { "id": "p3", "left": "Large intestine", "right": "Absorbs water" },
+        { "id": "p4", "left": "Liver", "right": "Makes bile" },
+        { "id": "p5", "left": "Pancreas", "right": "Releases digestive enzymes into the small intestine" }
+      ]
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "mcq",
+      "id": "practice",
+      "title": "Practice questions",
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "Where does chemical digestion of starch begin?",
+          "options": [
+            { "id": "a", "text": "Mouth", "rationale": "Salivary amylase starts on starch while you chew." },
+            { "id": "b", "text": "Stomach", "rationale": "The stomach starts protein digestion, not starch." },
+            { "id": "c", "text": "Small intestine", "rationale": "Starch digestion continues here, but it began earlier." }
+          ],
+          "correct": ["a"],
+          "hint": "Think about what saliva contains."
+        },
+        {
+          "id": "q2",
+          "prompt": "Which of these are accessory organs? Choose all that apply.",
+          "kind": "multiple",
+          "options": [
+            { "id": "a", "text": "Liver" },
+            { "id": "b", "text": "Pancreas" },
+            { "id": "c", "text": "Stomach" },
+            { "id": "d", "text": "Gallbladder" }
+          ],
+          "correct": ["a", "b", "d"],
+          "explanation": "Accessory organs help digestion, but food never passes through them. Food does pass through the stomach."
+        },
+        {
+          "id": "q3",
+          "prompt": "What do villi do?",
+          "options": [
+            { "id": "a", "text": "Make bile" },
+            { "id": "b", "text": "Increase the surface area for absorption" },
+            { "id": "c", "text": "Push food along the tract" }
+          ],
+          "correct": ["b"],
+          "explanation": "More surface area means nutrients pass into the blood faster."
+        }
+      ]
+    },
+    {
+      "schemaVersion": "1.0",
+      "type": "quiz",
+      "id": "check",
+      "title": "Final check",
+      "timeLimitSeconds": 300,
+      "passingPercent": 75,
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "Which enzyme starts protein digestion in the stomach?",
+          "options": [
+            { "id": "a", "text": "Amylase" },
+            { "id": "b", "text": "Pepsin" },
+            { "id": "c", "text": "Lipase" }
+          ],
+          "correct": ["b"],
+          "explanation": "Pepsin works in the acidic stomach and breaks proteins into peptides."
+        },
+        {
+          "id": "q2",
+          "prompt": "What does bile do?",
+          "options": [
+            { "id": "a", "text": "Digests starch" },
+            { "id": "b", "text": "Breaks fat into small droplets" },
+            { "id": "c", "text": "Kills all bacteria in food" }
+          ],
+          "correct": ["b"],
+          "explanation": "Bile emulsifies fat so lipase has more surface to work on."
+        },
+        {
+          "id": "q3",
+          "prompt": "Which organ's main job is to absorb water from the remaining waste?",
+          "options": [
+            { "id": "a", "text": "Stomach" },
+            { "id": "b", "text": "Large intestine" },
+            { "id": "c", "text": "Oesophagus" }
+          ],
+          "correct": ["b"],
+          "explanation": "The small intestine absorbs most of the water you drink; the large intestine takes back much of what is left."
+        },
+        {
+          "id": "q4",
+          "prompt": "Which are examples of mechanical digestion? Choose all that apply.",
+          "kind": "multiple",
+          "options": [
+            { "id": "a", "text": "Chewing" },
+            { "id": "b", "text": "The stomach churning" },
+            { "id": "c", "text": "Pepsin breaking down protein" }
+          ],
+          "correct": ["a", "b"],
+          "explanation": "Mechanical digestion breaks food into smaller pieces; enzymes are chemical digestion."
+        }
+      ]
+    }
+  ]
+}

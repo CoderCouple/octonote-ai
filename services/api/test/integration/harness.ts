@@ -53,6 +53,7 @@ import { NotebookPlacement } from "../../src/service/lib/notebook-placement";
 import { MeService } from "../../src/service/me.service";
 import { VotesService } from "../../src/service/votes.service";
 import { FeedbackService } from "../../src/service/feedback.service";
+import { ComposeAiService } from "../../src/service/compose-ai.service";
 import { FiguresService } from "../../src/service/figures.service";
 import { AccountService } from "../../src/service/account.service";
 import { PreferencesService } from "../../src/service/preferences.service";
@@ -291,7 +292,7 @@ export async function createHarness() {
     oauth: new OAuthService(new OAuthRepository(db), new UsersRepository(db), productAnalytics),
     permissions,
     workspaces,
-    pages: new PagesService(pagesRepo, permissions, placement, workspaces, changeEvents, planLimits, figures),
+    pages: new PagesService(pagesRepo, permissions, placement, workspaces, changeEvents, planLimits, figures, new ComposeAiService()),
     canvases: new CanvasesService(
       canvasesRepo,
       permissions,

@@ -11,9 +11,18 @@ import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/shadcn/style.css";
 import {
+  AppWindow,
+  Clapperboard,
+  ClipboardCheck,
   Group,
+  Layers,
   LayoutGrid,
+  ListChecks,
+  Network,
+  Shuffle,
   Sigma,
+  SlidersHorizontal,
+  Sparkles,
   SquareFunction,
   Workflow,
 } from "lucide-react";
@@ -23,6 +32,9 @@ import type { SaveState } from "@/components/save-indicator";
 import { updateNoteClientApi } from "../api/notes-client-api";
 import { appCanvasResolver } from "../blocks/app-canvas-resolver";
 import { CanvasPickerDialog } from "../blocks/canvas-picker-dialog";
+import { ComposeAiDialog } from "../blocks/compose-ai-dialog";
+import { INTERACTIVE_LABELS, starterSpec } from "../blocks/interactive-block";
+import { VideoDialog } from "../blocks/manim-video-block";
 import { FigurePickerDialog } from "../blocks/figure-picker-dialog";
 import { uploadNoteImage } from "../lib/upload-image";
 import { FIGURE_DROP_EVENT, getFigureClientApi } from "@/features/canvas";
@@ -132,6 +144,54 @@ function mathAndDiagramSlashItems(
   ];
 }
 
+const INTERACTIVE_ITEMS: { kind: string; subtext: string; aliases: string[]; icon: React.JSX.Element }[] = [
+  { kind: "widget", subtext: "Sliders that drive live numbers, charts and visuals", aliases: ["widget", "slider", "explorable", "calculator", "simulation", "chart"], icon: <SlidersHorizontal className="size-4" /> },
+  { kind: "flashcards", subtext: "Two-sided cards with spaced repetition", aliases: ["flashcards", "cards", "memorise", "memorize", "study"], icon: <Layers className="size-4" /> },
+  { kind: "mcq", subtext: "Questions checked one at a time, with hints", aliases: ["practice", "mcq", "multiple choice", "questions"], icon: <ListChecks className="size-4" /> },
+  { kind: "quiz", subtext: "A scored test with a review at the end", aliases: ["quiz", "test", "assessment", "exam"], icon: <ClipboardCheck className="size-4" /> },
+  { kind: "mindmap", subtext: "Explore how ideas connect", aliases: ["mind map", "mindmap", "tree", "concept map"], icon: <Network className="size-4" /> },
+  { kind: "matching", subtext: "Match items to their partners", aliases: ["matching", "match", "pairs"], icon: <Shuffle className="size-4" /> },
+  { kind: "scene", subtext: "A step-by-step animated explainer", aliases: ["animation", "scene", "explainer", "motion"], icon: <Clapperboard className="size-4" /> },
+  { kind: "custom", subtext: "A small app that runs in a sandbox", aliases: ["custom", "app", "html", "game", "sandbox"], icon: <AppWindow className="size-4" /> },
+];
+
+/** `/widget`, `/flashcards`, `/quiz`… insert a starter to edit; `/build with ai` writes a section. */
+function interactiveSlashItems(editor: OctoEditor, openAi: () => void, openVideo: () => void): DefaultReactSuggestionItem[] {
+  const place = (kind: string) => {
+    const block = { type: "interactive" as const, props: { kind, spec: starterSpec(kind) } };
+    const current = editor.getTextCursorPosition().block;
+    const empty = current.type === "paragraph" && Array.isArray(current.content) && current.content.length === 0;
+    if (empty) editor.replaceBlocks([current], [block]);
+    else editor.insertBlocks([block], current, "after");
+  };
+  return [
+    {
+      title: "Build with AI",
+      subtext: "Describe it; AI writes text plus widgets, quizzes or animations",
+      aliases: ["ai", "build", "generate", "explain", "teach", "lesson"],
+      group: "Interactive",
+      icon: <Sparkles className="size-4" />,
+      onItemClick: openAi,
+    },
+    {
+      title: "Explainer video",
+      subtext: "AI makes a 1–2 minute animated video (Manim) of a concept",
+      aliases: ["video", "manim", "explainer", "animation video", "movie"],
+      group: "Interactive",
+      icon: <Clapperboard className="size-4" />,
+      onItemClick: openVideo,
+    },
+    ...INTERACTIVE_ITEMS.map((item) => ({
+      title: INTERACTIVE_LABELS[item.kind]!,
+      subtext: item.subtext,
+      aliases: item.aliases,
+      group: "Interactive",
+      icon: item.icon,
+      onItemClick: () => place(item.kind),
+    })),
+  ];
+}
+
 export function blocksFrom(content: unknown) {
   return content &&
     typeof content === "object" &&
@@ -211,6 +271,26 @@ export function NotesEditor({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [figurePickerOpen, setFigurePickerOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
+
+  const insertVideo = (videoId: string) => {
+    const block = { type: "manimVideo" as const, props: { videoId } };
+    const current = editor.getTextCursorPosition().block;
+    const empty = current.type === "paragraph" && Array.isArray(current.content) && current.content.length === 0;
+    if (empty) editor.replaceBlocks([current], [block]);
+    else editor.insertBlocks([block], current, "after");
+  };
+
+  /** Puts AI-written markdown after the cursor's block (or in place of an empty one). */
+  const insertComposed = (markdown: string) => {
+    const blocks = markdownToBlocks(editor, markdown);
+    if (!blocks.length) return;
+    const current = editor.getTextCursorPosition().block;
+    const empty = current.type === "paragraph" && Array.isArray(current.content) && current.content.length === 0;
+    if (empty) editor.replaceBlocks([current], blocks as never);
+    else editor.insertBlocks(blocks as never, current, "after");
+  };
   const [rawMd, setRawMd] = useState("");
 
   useEffect(
@@ -359,6 +439,7 @@ export function NotesEditor({
                         canvasSlashItem(() => setPickerOpen(true)),
                         figureSlashItem(() => setFigurePickerOpen(true)),
                         ...mathAndDiagramSlashItems(editor),
+                        ...interactiveSlashItems(editor, () => setAiOpen(true), () => setVideoOpen(true)),
                       ],
                       query,
                     )
@@ -390,6 +471,8 @@ export function NotesEditor({
               workspaceId={workspaceId}
               onPick={insertFigure}
             />
+            <ComposeAiDialog open={aiOpen} onOpenChange={setAiOpen} onInsert={insertComposed} />
+            <VideoDialog open={videoOpen} onOpenChange={setVideoOpen} workspaceId={workspaceId} onCreated={insertVideo} />
           </>
         )}
       </div>

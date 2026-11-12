@@ -1,0 +1,461 @@
+[
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "compound-interest",
+    "title": "Compound interest",
+    "badge": "Finance",
+    "description": "Explore how interest rates affect a $1,000 investment over 15 years.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "rate",
+        "label": "Annual return",
+        "min": 0,
+        "max": 15,
+        "step": 0.5,
+        "value": 7,
+        "format": {
+          "suffix": "%"
+        }
+      }
+    ],
+    "values": [
+      {
+        "name": "balance",
+        "formula": "1000 * (1 + rate/100)^15"
+      },
+      {
+        "name": "gain",
+        "formula": "balance - 1000"
+      }
+    ],
+    "views": [
+      {
+        "type": "stats",
+        "items": [
+          {
+            "label": "Investment after 15 years",
+            "value": "balance",
+            "format": {
+              "style": "currency"
+            },
+            "note": "+{gain|currency} earned"
+          }
+        ]
+      }
+    ],
+    "note": "Assumes annual compounding with no additional deposits."
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "compound-simulator",
+    "title": "Compound interest simulator",
+    "badge": "Interactive",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "rate",
+        "label": "Annual return",
+        "min": 0,
+        "max": 15,
+        "step": 0.5,
+        "value": 3,
+        "format": {
+          "suffix": "%"
+        }
+      },
+      {
+        "kind": "slider",
+        "id": "years",
+        "label": "Years invested",
+        "min": 1,
+        "max": 30,
+        "value": 12
+      }
+    ],
+    "values": [
+      {
+        "name": "balance",
+        "formula": "1000 * (1 + rate/100)^years"
+      }
+    ],
+    "views": [
+      {
+        "type": "stats",
+        "items": [
+          {
+            "label": "Initial investment",
+            "value": "1000",
+            "format": {
+              "style": "currency"
+            }
+          },
+          {
+            "label": "Future value",
+            "value": "balance",
+            "format": {
+              "style": "currency"
+            },
+            "tone": "positive"
+          }
+        ]
+      },
+      {
+        "type": "chart",
+        "x": {
+          "from": 0,
+          "to": 30
+        },
+        "xTo": "years",
+        "series": [
+          {
+            "label": "Investment balance",
+            "y": "1000 * (1 + rate/100)^x",
+            "color": "blue"
+          },
+          {
+            "label": "Initial investment",
+            "y": "1000",
+            "color": "purple"
+          }
+        ],
+        "y": {
+          "format": {
+            "style": "currency"
+          }
+        },
+        "caption": "Illustrative annual compounding; excludes taxes and fees."
+      }
+    ],
+    "note": "Your original $1,000 grows by earning returns on both the initial amount and accumulated returns. Try changing the rate or years to see the effect."
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "circle-geometry",
+    "title": "Circle geometry",
+    "badge": "Mathematics",
+    "description": "Change the radius and watch how the circle's area grows.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "r",
+        "label": "Radius",
+        "min": 1,
+        "max": 10,
+        "step": 0.5,
+        "value": 5,
+        "format": {
+          "suffix": " units"
+        }
+      }
+    ],
+    "views": [
+      {
+        "type": "circle",
+        "radius": "r",
+        "max": 10,
+        "label": "Area (πr²)",
+        "value": "pi * r^2",
+        "format": {
+          "decimals": 1
+        },
+        "note": "square units"
+      }
+    ],
+    "note": "Doubling the radius quadruples the area."
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "fraction-explorer",
+    "title": "Fraction explorer",
+    "badge": "Mathematics",
+    "description": "Understand fractions by filling portions of a whole.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "n",
+        "label": "Filled sections",
+        "min": 0,
+        "max": 12,
+        "value": 7,
+        "format": {
+          "suffix": " of 12"
+        }
+      }
+    ],
+    "views": [
+      {
+        "type": "grid",
+        "total": "12",
+        "filled": "n"
+      },
+      {
+        "type": "stats",
+        "items": [
+          {
+            "label": "Fraction",
+            "value": "n / 12",
+            "display": "{n}/12"
+          },
+          {
+            "label": "Decimal",
+            "value": "n / 12",
+            "format": {
+              "decimals": 2
+            }
+          },
+          {
+            "label": "Percent",
+            "value": "n / 12",
+            "format": {
+              "style": "percent",
+              "decimals": 1
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "speed-distance",
+    "title": "Speed and distance",
+    "badge": "Physics",
+    "description": "See how far a vehicle travels in 2 hours at a constant speed.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "speed",
+        "label": "Speed",
+        "min": 0,
+        "max": 120,
+        "step": 5,
+        "value": 60,
+        "format": {
+          "suffix": " km/h"
+        }
+      }
+    ],
+    "values": [
+      {
+        "name": "distance",
+        "formula": "speed * 2"
+      }
+    ],
+    "views": [
+      {
+        "type": "meter",
+        "value": "distance",
+        "max": "240",
+        "icon": "car",
+        "label": "{distance} km",
+        "note": "Distance = speed × time"
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "probability",
+    "title": "Probability simulator",
+    "badge": "Statistics",
+    "description": "Adjust the probability of success in a hypothetical experiment.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "p",
+        "label": "Success probability",
+        "min": 0,
+        "max": 100,
+        "value": 35,
+        "format": {
+          "suffix": "%"
+        }
+      }
+    ],
+    "views": [
+      {
+        "type": "donut",
+        "value": "p / 100",
+        "label": "Expected successes",
+        "detail": "{p} / 100",
+        "note": "Across 100 trials on average"
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "linear-function",
+    "title": "Linear function explorer",
+    "badge": "Algebra",
+    "description": "Change the slope and see how a straight line responds.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "m",
+        "label": "Slope (m)",
+        "min": -5,
+        "max": 5,
+        "step": 0.5,
+        "value": 2
+      }
+    ],
+    "views": [
+      {
+        "type": "formula",
+        "text": "y = {m}x + 1"
+      },
+      {
+        "type": "chart",
+        "x": {
+          "from": -5,
+          "to": 5
+        },
+        "series": [
+          {
+            "label": "y value",
+            "y": "m * x + 1"
+          }
+        ],
+        "y": {
+          "min": -20,
+          "max": 20
+        },
+        "caption": "Graph of y = mx + 1"
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "budget",
+    "title": "Budget allocation",
+    "badge": "Personal finance",
+    "description": "Explore the effect of housing costs on a $3,000 monthly budget.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "housing",
+        "label": "Monthly housing cost",
+        "min": 0,
+        "max": 3000,
+        "step": 50,
+        "value": 1200,
+        "format": {
+          "style": "currency"
+        }
+      }
+    ],
+    "views": [
+      {
+        "type": "stacked",
+        "segments": [
+          {
+            "label": "Housing",
+            "value": "housing",
+            "color": "blue"
+          },
+          {
+            "label": "Remaining",
+            "value": "3000 - housing",
+            "color": "green"
+          }
+        ],
+        "format": {
+          "style": "currency"
+        }
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "type": "widget",
+    "id": "adaptive-questions",
+    "title": "Adaptive question explorer",
+    "badge": "Practice",
+    "description": "Adjust the difficulty to get a more challenging maths question from this sample question bank.",
+    "inputs": [
+      {
+        "kind": "slider",
+        "id": "level",
+        "label": "Difficulty level",
+        "min": 0,
+        "max": 2,
+        "value": 0,
+        "labels": [
+          "Easy",
+          "Medium",
+          "Hard"
+        ]
+      }
+    ],
+    "views": [
+      {
+        "type": "input",
+        "input": "level"
+      },
+      {
+        "type": "questions",
+        "level": "level",
+        "questions": [
+          {
+            "level": 0,
+            "prompt": "What is 7 + 5?",
+            "answer": "12"
+          },
+          {
+            "level": 0,
+            "prompt": "What is 12 × 8?",
+            "answer": "96"
+          },
+          {
+            "level": 0,
+            "prompt": "What is 45 − 18?",
+            "answer": "27"
+          },
+          {
+            "level": 0,
+            "prompt": "What is 81 ÷ 9?",
+            "answer": "9"
+          },
+          {
+            "level": 0,
+            "prompt": "What is 6 × 7?",
+            "answer": "42"
+          },
+          {
+            "level": 1,
+            "prompt": "What is 15% of 240?",
+            "answer": "36"
+          },
+          {
+            "level": 1,
+            "prompt": "Solve 3x + 7 = 31.",
+            "answer": "x = 8"
+          },
+          {
+            "level": 1,
+            "prompt": "What is 2³ × 5?",
+            "answer": "40"
+          },
+          {
+            "level": 2,
+            "prompt": "Solve x² − 5x + 6 = 0.",
+            "answer": "x = 2 or x = 3"
+          },
+          {
+            "level": 2,
+            "prompt": "What is the sum of the angles inside a hexagon?",
+            "answer": "720°"
+          }
+        ]
+      }
+    ]
+  }
+]

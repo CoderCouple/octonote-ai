@@ -1,0 +1,83 @@
+/* Styles for @octonote/manim's ManimVideo. Override the --mv-* variables to theme it. */
+
+.mv-root {
+  --mv-fg: inherit;
+  --mv-muted: color-mix(in srgb, currentColor 60%, transparent);
+  --mv-border: color-mix(in srgb, currentColor 14%, transparent);
+  --mv-accent: #2f6fde;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.mv-video {
+  display: block;
+  width: 100%;
+  background: #0f1115;
+  border-radius: 12px;
+}
+
+.mv-portrait .mv-video {
+  max-height: 80vh;
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto;
+  aspect-ratio: 9 / 16;
+}
+
+.mv-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.mv-chapters ol {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mv-chapters button {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.mv-chapters button:hover {
+  background: var(--mv-border);
+}
+
+.mv-chapters button[aria-current="true"] {
+  color: var(--mv-accent);
+  font-weight: 600;
+}
+
+.mv-time {
+  min-width: 3ch;
+  color: var(--mv-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mv-transcript {
+  margin-top: 8px;
+  font-size: 0.875rem;
+}
+
+.mv-transcript summary {
+  color: var(--mv-muted);
+  cursor: pointer;
+}
+
+.mv-transcript p {
+  margin: 6px 0 0;
+}

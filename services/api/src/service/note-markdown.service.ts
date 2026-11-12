@@ -67,6 +67,7 @@ export class NoteMarkdownService {
       pageId,
       { document, contentMd: markdown, ...(title ? { title } : {}) },
       actorUserId,
+      { interactive: "reject" },
     );
   }
 
@@ -82,6 +83,7 @@ export class NoteMarkdownService {
       pageId,
       { document: { blocks: [...current, ...added] }, contentMd },
       actorUserId,
+      { interactive: "reject" },
     );
   }
 }

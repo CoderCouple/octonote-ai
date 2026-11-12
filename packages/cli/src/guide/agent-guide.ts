@@ -40,6 +40,10 @@ The \`octonote\` CLI is how you read and write them on the user's behalf.
 Markdown → rich note: headings, lists, checklists, tables, code, quotes,
 images (by URL), \`$inline math$\`, \`$$display math$$\`, and \`\`\`mermaid blocks
 (rendered diagrams inside the note).
+Live interactive blocks: a fence named after the kind holding JSON, e.g.
+\`\`\`quiz {"questions":[…]} \`\`\`. Kinds: widget (sliders, formulas, charts),
+flashcards, mcq, quiz, mindmap, matching, scene (animation), custom (sandboxed
+HTML app). An invalid block is refused with the reason; fix it and retry.
 
 ## Read and edit a note
   octonote note show <id>                 # markdown to stdout

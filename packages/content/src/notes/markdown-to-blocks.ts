@@ -30,6 +30,30 @@ const LINK_WITH_CODE_RE = /(?<!!)\[([^\]\n]*`[^\]\n]*)\]\(/g;
 export const MATH_LANGS = new Set(["math", "latex", "tex", "katex"]);
 
 /**
+ * Interactive blocks (explorable widgets, activities, animations, sandboxed
+ * apps) are written in markdown as a fence named after the kind, holding the
+ * block's JSON: ```quiz\n{"questions":[…]}\n```. Only a fence whose body is
+ * a JSON object becomes a block; anything else stays a code block. The spec is
+ * validated where it renders and when the API saves it, not here.
+ */
+export const INTERACTIVE_KINDS = new Set(["widget", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]);
+
+/** Longest interactive spec kept, in characters (custom apps can be large). */
+export const INTERACTIVE_SPEC_LIMIT = 200_000;
+
+function interactiveSpec(code: string): string | null {
+  if (code.length > INTERACTIVE_SPEC_LIMIT) return null;
+  try {
+    const value = JSON.parse(code);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const { kind: _kind, ...spec } = value as Record<string, unknown>;
+    return JSON.stringify(spec);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * A canvas figure in markdown is an image whose URL fragment names it:
  * `![Title](<figure image url>#octonote-figure=fig_…&w=1200&h=800)` (size
  * optional). It reads back as a `figure` block, so notes written by the CLI
@@ -57,7 +81,7 @@ function readFigureUrl(url: string) {
 /** Cheap check: does this text use any of the extras? */
 export function hasMarkdownExtras(text: string): boolean {
   return (
-    /^[ \t]*(```|~~~)[ \t]*(mermaid|math|latex|tex|katex)\b/im.test(text) ||
+    /^[ \t]*(```|~~~)[ \t]*(mermaid|math|latex|tex|katex|widget|flashcards|mcq|quiz|mindmap|matching|scene|custom|video)\b/im.test(text) ||
     /\$\$[\s\S]*?\$\$/.test(text) ||
     new RegExp(INLINE_MATH_RE.source, "m").test(text)
   );
@@ -196,6 +220,16 @@ function restoreBlock(block: NoteBlock, display: string[], inline: string[]): No
     if (lang === "mermaid") return { id: block.id, type: "mermaid", props: { code }, children };
     if (MATH_LANGS.has(lang))
       return { id: block.id, type: "mathBlock", props: { latex: code.trim() }, children };
+    if (lang === "video") {
+      // A generated explainer video: ```video {"videoId": "vid_…"}```
+      const spec = interactiveSpec(code);
+      const videoId = spec ? (JSON.parse(spec) as { videoId?: unknown }).videoId : undefined;
+      if (typeof videoId === "string" && /^vid_[0-9a-f-]{36}$/.test(videoId)) return { id: block.id, type: "manimVideo", props: { videoId }, children };
+    }
+    if (INTERACTIVE_KINDS.has(lang)) {
+      const spec = interactiveSpec(code);
+      if (spec) return { id: block.id, type: "interactive", props: { kind: lang, spec }, children };
+    }
     return { ...block, children };
   }
 

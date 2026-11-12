@@ -4,7 +4,8 @@
  * first rewritten into standard ones that read back the same way:
  * mermaid / math → fenced code, inline math → `$…$` code (read back as math
  * by markdownToBlocks), figures → images tagged with the figure id (read back
- * as figures), canvas references → a line of text.
+ * as figures), canvas references → a line of text, interactive blocks → a
+ * fence named after their kind holding their JSON.
  */
 import { figureUrl } from "./markdown-to-blocks";
 import type { NoteBlock } from "./types";
@@ -29,6 +30,18 @@ function toStandard(block: NoteBlock): NoteBlock {
       return codeBlock("mermaid", String(block.props?.code ?? ""), children);
     case "mathBlock":
       return codeBlock("math", String(block.props?.latex ?? ""), children);
+    case "manimVideo":
+      return codeBlock("video", JSON.stringify({ videoId: String(block.props?.videoId ?? "") }), children);
+    case "interactive": {
+      let spec: unknown = {};
+      try {
+        spec = JSON.parse(String(block.props?.spec ?? "{}"));
+      } catch {
+        // Unreadable spec: still write the fence, so nothing is silently lost.
+        return codeBlock(String(block.props?.kind ?? "widget"), String(block.props?.spec ?? ""), children);
+      }
+      return codeBlock(String(block.props?.kind ?? "widget"), JSON.stringify(spec, null, 2), children);
+    }
     case "figure":
       return {
         type: "image",

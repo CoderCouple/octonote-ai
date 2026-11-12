@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["vite/client", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "@octonote/interactive": ["../../packages/interactive/src/index.ts"],
+      "@octonote/widgets": ["../../packages/widgets/src/index.ts"],
+      "@octonote/motion": ["../../packages/motion/src/index.ts"],
+      "@octonote/compose": ["../../packages/compose/src/index.ts"],
+      "@octonote/compose/react": ["../../packages/compose/src/react-entry.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts", "server"]
+}

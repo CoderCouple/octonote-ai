@@ -11,7 +11,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { McpController } from "../../src/api/v1/controller/mcp.controller";
 import { WorkspaceMembersRepository } from "../../src/db/repository/workspace-members.repository";
+import { ComposeAiService } from "../../src/service/compose-ai.service";
 import { McpToolsService } from "../../src/service/mcp-tools.service";
+
 import { mcpResource } from "../../src/service/oauth.service";
 import { createHarness, type Harness } from "./harness";
 
@@ -37,7 +39,7 @@ beforeEach(async () => {
     h.shares,
     h.figures,
   );
-  const controller = new McpController(h.oauth, tools, h.activity, h.noteComments);
+  const controller = new McpController(h.oauth, tools, h.activity, h.noteComments, new ComposeAiService(), {} as never);
   app = Fastify();
   app.all("/mcp", (req, reply) => controller.handle(req, reply));
   await app.listen({ port: 0, host: "127.0.0.1" });

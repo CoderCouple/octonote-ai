@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@octonote/interactive": ["../interactive/src/index.ts"],
+      "@octonote/widgets": ["../widgets/src/index.ts"],
+      "@octonote/motion": ["../motion/src/index.ts"]
+    }
+  },
+  "include": ["src", "test", "scripts"]
+}

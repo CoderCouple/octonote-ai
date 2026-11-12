@@ -1,0 +1,51 @@
+{
+  "name": "@octonote/motion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "React motion graphics for explaining ideas: animation primitives (fade, slide, stagger, count, draw, typewriter, highlight) and animated explainer scenes from validated JSON with a step-by-step player.",
+  "sideEffects": [
+    "*.css"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./styles.css",
+    "./examples/*.json": "./examples/*.json"
+  },
+  "files": [
+    "dist",
+    "examples",
+    "styles.css",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "echo \"lint pending\""
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "jsdom": "^25.0.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.9"
+  }
+}
