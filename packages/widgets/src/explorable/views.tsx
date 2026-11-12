@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { cx } from "../provider.js";
+import { cx, useWidgets } from "../provider.js";
 import { RichText } from "../rich-text.js";
 import { Chart } from "./chart.js";
 import type { Scope } from "./expr.js";
@@ -59,6 +59,12 @@ function PinnedNote({ now, then, format }: { now: number; then: number; format: 
       <span className={cx("wg-xstat__delta", diff > 0 ? "wg-tone-positive" : "wg-tone-negative")}> ({formatNumber(diff, { ...format, signed: true })})</span>
     </dd>
   );
+}
+
+/** A formula line: typeset when it's TeX and the app gives us a renderer, plain text otherwise. */
+function FormulaLine({ text, tex }: { text: string; tex?: boolean }) {
+  const { renderMath } = useWidgets();
+  return <p className={cx("wg-formula", tex && renderMath && "wg-formula--tex")}>{tex && renderMath ? renderMath(text) : text}</p>;
 }
 
 export function CircleView({ view, scope, currency }: ViewProps<"circle">) {
@@ -350,7 +356,7 @@ export function WidgetViewRenderer({ view, scope, currency }: { view: Exclude<Wi
     case "stacked":
       return <StackedView view={view} scope={scope} currency={currency} />;
     case "formula":
-      return <p className="wg-formula">{renderTemplate(view.text, scope, currency)}</p>;
+      return <FormulaLine text={renderTemplate(view.text, scope, currency, view.tex)} tex={view.tex} />;
     case "text":
       return (
         <p className={cx("wg-xtext", view.muted && "wg-muted")}>

@@ -25,6 +25,11 @@ Accessible React UI widgets in two layers.
     - Random functions (`coin()`, `dice()`, `dicesum(n)`, `binomial(n, p)`, `chance(p)`, `normal(m, sd)`) work only in a simulation's outcome. Everywhere else formulas stay repeatable.
     - A run plays out over a second and a half: the share or mean counts up, a running estimate settles onto `expected`, and there's an optional histogram.
   - `plane` is a coordinate plane (à la Mafs) with points, segments, vectors, polygons, circles, curves and text, all placed by formulas. Its handles take one or two inputs (dragging them moves freely), arrow keys move them, and sliders can be `hidden` when dragging is the control.
+- **Layout and polish.**
+  - `layout: "side"` puts controls, sentences and stats beside the pictures when the widget is at least 640px wide. It uses a container query, so narrow note columns still stack.
+  - `WidgetsProvider store` (e.g. `webWidgetStore(localStorage)`) keeps each reader's settings per widget id. Saved values are clamped, snapped and checked before use, and Reset forgets them.
+  - Formula lines can be `tex: true`, typeset by the app's `renderMath` (the notes app passes KaTeX with trust off). Live values use `{{double braces}}` there.
+  - Light and dark themes are checked.
 - **Input sweep checker.** `lintWidget` moves every input through its range, and all of them to their extremes together. It reports:
   - values that break (with the setting that breaks them);
   - `percent` formats fed percentages;

@@ -172,7 +172,10 @@ export const stackedView = view("stacked", {
   segments: z.array(z.object({ label: short, value: formula, color: color.optional() })).min(1).max(WIDGET_LIMITS.segments),
   format: numberFormatSchema,
 });
-export const formulaView = view("formula", { text: template.describe("A centred formula line, e.g. y = {m}x + {b}.") });
+export const formulaView = view("formula", {
+  text: template.describe("A centred formula line, e.g. y = {m}x + {b}."),
+  tex: z.boolean().optional().describe("The text is TeX. Live values then use double braces, since single ones are TeX's: \\frac{d}{dx}x^2 = 2 \\cdot {{a|1}}. Typeset when the app provides maths; shown as text otherwise."),
+});
 export const textView = view("text", { text: template, muted: z.boolean().optional() });
 export const sentenceView = view("sentence", {
   text: z
@@ -182,10 +185,11 @@ export const sentenceView = view("sentence", {
     .max(600)
     .describe("A sentence the reader changes by dragging its numbers: [id] is an input shown inline (drag or use arrow keys), {formula|format} a live value. E.g. If you invest [principal] at [rate] for [years] years you'll have {balance|currency}. Inputs used here don't also get a slider unless placed with an input view."),
 });
+/** Kept so existing widgets keep working; practice belongs in the interactive library (mcq, quiz, flashcards). */
 export const questionsView = view("questions", {
   level: formula.describe("Which level to ask from, usually a difficulty slider."),
   questions: z.array(z.object({ level: z.number().int().min(0).max(20), prompt: short, answer: text })).min(1).max(WIDGET_LIMITS.questions),
-});
+}).describe("A question bank filtered by a level. For practice prefer the interactive library's mcq, quiz or flashcards; use this only inside an explorable.");
 export const tableView = view("table", {
   data: name,
   columns: z.array(name).min(1).max(WIDGET_LIMITS.columns).optional().describe("Which columns to show, in order. Defaults to all."),
@@ -285,6 +289,7 @@ export const widgetShape = {
     .describe("Named numbers, worked out in order: a formula, a lookup in a table, or an aggregate of a column. Each may use inputs and earlier values."),
   views: z.array(widgetView).min(1).max(WIDGET_LIMITS.views),
   note: template.optional().describe("A footnote, e.g. assumptions."),
+  layout: z.enum(["stack", "side"]).optional().describe('"side" puts controls, sentences and stats beside the pictures when there is room (stacked on narrow screens). Defaults to "stack".'),
   compare: z.boolean().optional().describe("Show a Pin button: the reader pins the current settings, changes them, and compares. Charts keep the pinned lines dashed; stats show the pinned number and the difference."),
 };
 
@@ -297,12 +302,12 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
     if (known.has(n)) addIssue({ code: "custom", message: `"${n}" is defined twice`, path: [...base, ...path] });
     known.add(n);
   };
-  const check = (source: string, path: (string | number)[], extra: string[] = [], kind: "formula" | "template" = "formula") => {
+  const check = (source: string, path: (string | number)[], extra: string[] = [], kind: "formula" | "template" | "tex" = "formula") => {
     try {
       const randomAllowed = path.includes("outcome");
-      const trees = kind === "formula" ? [compile(source)] : parseTemplate(source).flatMap((part) => (typeof part === "string" ? [] : [compile(part.formula)]));
+      const trees = kind === "formula" ? [compile(source)] : parseTemplate(source, kind === "tex").flatMap((part) => (typeof part === "string" ? [] : [compile(part.formula)]));
       if (!randomAllowed && trees.some(usesRandom)) addIssue({ code: "custom", message: "Random numbers only work in a simulation's outcome; elsewhere a formula must give the same answer every time", path: [...base, ...path] });
-      const names = kind === "formula" ? namesIn(compile(source)) : templateNames(source);
+      const names = kind === "formula" ? namesIn(compile(source)) : templateNames(source, kind === "tex");
       for (const n of names) if (!known.has(n) && !extra.includes(n)) addIssue({ code: "custom", message: `Unknown name "${n}"`, path: [...base, ...path] });
     } catch (error) {
       if (!(error instanceof FormulaError)) throw error;
@@ -537,6 +542,8 @@ export function checkWidget(spec: z.infer<z.ZodObject<typeof widgetShape>>, addI
         v.segments.forEach((s, j) => f(s.value, ["segments", j, "value"]));
         break;
       case "formula":
+        check(v.text, [...path, "text"], [], v.tex ? "tex" : "template");
+        break;
       case "text":
         t(v.text, ["text"]);
         break;

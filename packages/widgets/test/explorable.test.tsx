@@ -17,8 +17,11 @@ import {
   compile,
   lintWidget,
   lookup,
+  restoreInputs,
   runSimulation,
   seededRandom,
+  webWidgetStore,
+  WidgetsProvider,
   solveInput,
   validateWidget,
   WidgetSpecRenderer,
@@ -518,5 +521,50 @@ describe("compare, simulations and the plane", () => {
       'views.0.shapes.0.at.1: Unknown name "m"',
       'views.0.handles.0.inputs.0: No input has id "zz"',
     ]);
+  });
+});
+
+describe("layout and polish", () => {
+  it("restores saved settings safely", () => {
+    const inputs = byId("compound-simulator").inputs;
+    expect(restoreInputs(inputs, { rate: 9, years: 20 })).toEqual({ rate: 9, years: 20 });
+    // Out of range, off-step, unknown, wrong type or broken: clamped, snapped or ignored.
+    expect(restoreInputs(inputs, { rate: 99, years: 7.4, evil: 1, constructor: 5 })).toEqual({ rate: 15, years: 7 });
+    expect(restoreInputs(inputs, { rate: "9", years: Number.NaN })).toEqual({ rate: 3, years: 12 });
+    expect(restoreInputs(inputs, "nonsense")).toEqual({ rate: 3, years: 12 });
+  });
+
+  it("keeps each reader's settings in the store, and forgets them on reset", () => {
+    localStorage.clear();
+    const store = webWidgetStore(localStorage, "t:");
+    const view = () =>
+      render(
+        <WidgetsProvider store={store}>
+          <WidgetSpecRenderer spec={byId("compound-interest")} />
+        </WidgetsProvider>,
+      );
+    view();
+    drag("Annual return", 11);
+    expect(JSON.parse(localStorage.getItem("t:compound-interest")!)).toEqual({ rate: 11 });
+    cleanup();
+    view();
+    expect(slider("Annual return").value).toBe("11");
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(localStorage.getItem("t:compound-interest")).toBeNull();
+  });
+
+  it("typesets TeX formula lines when the app gives a renderer, with live values in double braces", () => {
+    render(
+      <WidgetsProvider renderMath={(tex) => <code data-tex={tex} />}>
+        <WidgetSpecRenderer spec={byId("tangent-slope")} />
+      </WidgetsProvider>,
+    );
+    expect(document.querySelector("[data-tex]")!.getAttribute("data-tex")).toBe("\\left.\\frac{d}{dx}x^2\\right|_{x=1.0} = 2 \\cdot (1.0) = 2.0");
+  });
+
+  it("side layout puts controls and pictures in separate columns", () => {
+    render(<WidgetSpecRenderer spec={byId("unit-circle")} />);
+    expect(document.querySelector(".wg-widget__controls .wg-xstats")).toBeTruthy();
+    expect(document.querySelector(".wg-widget__visuals .wg-plane")).toBeTruthy();
   });
 });

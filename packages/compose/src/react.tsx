@@ -208,7 +208,7 @@ export function BlockView({ block, theme }: { block: RenderBlock; theme?: Theme 
     case "content":
       return <Blocks blocks={block.blocks} />;
     case "widget":
-      return <Widget spec={block.widget} />;
+      return <Widget spec={block.widget} persistKey={block.id} />;
     case "interactive":
       return <InteractiveRenderer spec={block.spec} />;
     case "motion":

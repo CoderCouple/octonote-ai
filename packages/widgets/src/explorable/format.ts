@@ -74,10 +74,13 @@ export const TEMPLATE_FORMATS: Record<string, NumberFormat> = {
 
 export type TemplatePart = string | { formula: string; format?: string };
 
-/** Splits "y = {m}x + {b|1}" into text and formula parts. Throws FormulaError on bad parts. */
-export function parseTemplate(template: string): TemplatePart[] {
+/**
+ * Splits "y = {m}x + {b|1}" into text and formula parts. Throws FormulaError on bad parts.
+ * In TeX, single braces belong to TeX, so live values use double ones: \frac{1}{2} = {{half|1}}.
+ */
+export function parseTemplate(template: string, tex = false): TemplatePart[] {
   const parts: TemplatePart[] = [];
-  const pattern = /\{([^{}]*)\}/g;
+  const pattern = tex ? /\{\{([^{}]*)\}\}/g : /\{([^{}]*)\}/g;
   let last = 0;
   for (let match = pattern.exec(template); match; match = pattern.exec(template)) {
     if (match.index > last) parts.push(template.slice(last, match.index));
@@ -92,15 +95,15 @@ export function parseTemplate(template: string): TemplatePart[] {
   return parts;
 }
 
-export function templateNames(template: string): Set<string> {
+export function templateNames(template: string, tex = false): Set<string> {
   const names = new Set<string>();
-  for (const part of parseTemplate(template)) if (typeof part !== "string") namesIn(compile(part.formula), names);
+  for (const part of parseTemplate(template, tex)) if (typeof part !== "string") namesIn(compile(part.formula), names);
   return names;
 }
 
 /** Fills a template from the current values. */
-export function renderTemplate(template: string, scope: Scope, currency?: string): string {
-  return parseTemplate(template)
+export function renderTemplate(template: string, scope: Scope, currency?: string, tex = false): string {
+  return parseTemplate(template, tex)
     .map((part) => {
       if (typeof part === "string") return part;
       const format = { ...TEMPLATE_FORMATS[part.format ?? "number"], ...(currency ? { currency } : {}) };

@@ -1672,3 +1672,27 @@
   stroke-width: 4px;
   stroke-linejoin: round;
 }
+
+/* Side layout: controls beside visuals when the widget is wide enough */
+
+.wg-widget--side {
+  container-type: inline-size;
+}
+.wg-widget__side,
+.wg-widget__controls,
+.wg-widget__visuals {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+@container (min-width: 640px) {
+  .wg-widget__side {
+    grid-template-columns: minmax(240px, 1fr) minmax(0, 1.6fr);
+    align-items: start;
+    gap: 24px;
+  }
+}
+.wg-formula--tex {
+  font-weight: 400;
+  overflow-x: auto;
+}

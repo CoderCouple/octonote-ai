@@ -1,5 +1,5 @@
-export { WidgetsProvider, useWidgets, cx } from "./provider.js";
-export type { Theme, WidgetsSettings } from "./provider.js";
+export { WidgetsProvider, useWidgets, cx, webWidgetStore } from "./provider.js";
+export type { Theme, WidgetStore, WidgetsSettings } from "./provider.js";
 export { Accordion, Badge, Button, Card, Dialog, IconButton, Progress, Switch, Tabs, ToastProvider, Tooltip, useAccordion, useTabs, useToast } from "./controls.js";
 export type { ButtonProps, Toast } from "./controls.js";
 export { Block, Blocks, Callout, CodeBlock, Comparison, Definition, Stats, Steps, Takeaway, Timeline } from "./blocks.js";
@@ -23,7 +23,7 @@ export type { WidgetIssue } from "./explorable/lint.js";
 export type { DataColumn, DataTable } from "./explorable/data.js";
 export type { WidgetRuntime } from "./explorable/interact.js";
 export type { IconName, PaletteColor, WidgetBlock, WidgetInput, WidgetSpec, WidgetView } from "./explorable/schema.js";
-export { computeScope, initialInputs, chartData, sampleChart, useWidget, valueOf } from "./explorable/runtime.js";
+export { computeScope, initialInputs, restoreInputs, chartData, sampleChart, useWidget, valueOf } from "./explorable/runtime.js";
 export { Chart, niceTicks } from "./explorable/chart.js";
 export { Slider, WidgetInputControl } from "./explorable/inputs.js";
 export { Widget, WidgetSpecRenderer, validateWidget } from "./explorable/widget.js";

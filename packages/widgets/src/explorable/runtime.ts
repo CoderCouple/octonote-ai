@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { WidgetStore } from "../provider.js";
 import { aggregate, lookup, rowScope, type DataTable } from "./data.js";
 import { compile, evaluate, type Scope } from "./expr.js";
 import type { WidgetBlock, WidgetInput, WidgetSpec } from "./schema.js";
@@ -7,6 +8,25 @@ export type InputValues = Record<string, number>;
 
 export function initialInputs(inputs: readonly WidgetInput[]): InputValues {
   return Object.fromEntries(inputs.map((input) => [input.id, input.kind === "toggle" ? Number(input.value) : input.value]));
+}
+
+/** Saved values made safe: known inputs only, snapped onto a slider's steps, real options, toggles 0 or 1. */
+export function restoreInputs(inputs: readonly WidgetInput[], saved: unknown): InputValues {
+  const values = initialInputs(inputs);
+  if (!saved || typeof saved !== "object") return values;
+  for (const input of inputs) {
+    const raw = (saved as Record<string, unknown>)[input.id];
+    if (typeof raw !== "number" || !Number.isFinite(raw)) continue;
+    if (input.kind === "toggle") values[input.id] = raw ? 1 : 0;
+    else if (input.kind === "select") {
+      if (input.options.some((o) => o.value === raw)) values[input.id] = raw;
+    } else {
+      const step = input.step ?? 1;
+      const snapped = input.min + Math.round((Math.min(input.max, Math.max(input.min, raw)) - input.min) / step) * step;
+      values[input.id] = Number(Math.min(input.max, snapped).toPrecision(12));
+    }
+  }
+  return values;
 }
 
 /** Inputs plus every named value (formula, lookup or aggregate), worked out in order. */
@@ -96,8 +116,8 @@ export function chartData(view: ChartView, scope: Scope, tables: readonly DataTa
 }
 
 /** Headless widget state: the inputs' values, setters and everything computed from them. */
-export function useWidget(spec: Pick<WidgetSpec, "inputs" | "values" | "data">) {
-  const [inputs, setInputs] = useState(() => initialInputs(spec.inputs));
+export function useWidget(spec: Pick<WidgetSpec, "inputs" | "values" | "data">, persist?: { store: WidgetStore; key: string }) {
+  const [inputs, setInputs] = useState(() => (persist ? restoreInputs(spec.inputs, persist.store.load(persist.key)) : initialInputs(spec.inputs)));
   const scope = useMemo(() => computeScope(spec, inputs), [spec, inputs]);
   const setInput = useCallback((id: string, value: number) => setInputs((current) => (current[id] === value ? current : { ...current, [id]: value })), []);
   const reset = useCallback(() => setInputs(initialInputs(spec.inputs)), [spec.inputs]);
@@ -105,5 +125,13 @@ export function useWidget(spec: Pick<WidgetSpec, "inputs" | "values" | "data">) 
     const start = initialInputs(spec.inputs);
     return Object.keys(start).some((id) => start[id] !== inputs[id]);
   }, [spec.inputs, inputs]);
+  // Keep the reader's settings; back at the start, forget them.
+  const store = persist?.store;
+  const key = persist?.key;
+  useEffect(() => {
+    if (!store || !key) return;
+    if (changed) store.save(key, inputs);
+    else store.remove(key);
+  }, [store, key, inputs, changed]);
   return { inputs, scope, setInput, reset, changed };
 }

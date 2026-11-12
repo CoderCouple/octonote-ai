@@ -9,9 +9,13 @@ import { WidgetViewRenderer } from "./views.js";
 
 type WidgetContent = Omit<WidgetBlock, "type" | "id">;
 
+/** Views that go with the controls in a side layout; everything else is a visual. */
+const CONTROL_VIEWS = new Set(["input", "sentence", "stats", "formula", "text"]);
+
 /** An explorable widget card: inputs, values computed from them, and views that update live. */
-export function Widget({ spec, className }: { spec: WidgetContent; className?: string }) {
-  const { inputs, scope, setInput, reset, changed } = useWidget(spec);
+export function Widget({ spec, className, persistKey }: { spec: WidgetContent; className?: string; /** Keeps the reader's settings under this key in the provider's store. */ persistKey?: string }) {
+  const { store } = useWidgets();
+  const { inputs, scope, setInput, reset, changed } = useWidget(spec, store && persistKey ? { store, key: persistKey } : undefined);
   const [pin, setPin] = useState<InputValues | null>(null);
   const pinned = useMemo(() => (pin ? computeScope(spec, pin) : undefined), [spec, pin]);
   const runtime = useMemo(() => ({ spec, inputs, scope, setInput, pinned }), [spec, inputs, scope, setInput, pinned]);
@@ -23,8 +27,11 @@ export function Widget({ spec, className }: { spec: WidgetContent; className?: s
     return <WidgetInputControl key={`input-${id}`} input={input} value={inputs[id]!} onChange={(v) => setInput(id, v)} currency={spec.currency} />;
   };
 
+  const render = (view: WidgetContent["views"][number], i: number) =>
+    view.type === "input" ? control(view.input) : <WidgetViewRenderer key={i} view={view} scope={scope} currency={spec.currency} />;
+
   return (
-    <section className={cx("wg-widget", className)} aria-label={spec.title}>
+    <section className={cx("wg-widget", spec.layout === "side" && "wg-widget--side", className)} aria-label={spec.title}>
       <header className="wg-widget__header">
         <h3 className="wg-widget__title">{spec.title}</h3>
         {spec.compare ? (
@@ -48,8 +55,21 @@ export function Widget({ spec, className }: { spec: WidgetContent; className?: s
       {spec.description ? <p className="wg-widget__description">{spec.description}</p> : null}
       <RuntimeProvider value={runtime}>
         <WidgetBoundary>
-          {spec.views.map((view, i) => (view.type === "input" ? control(view.input) : <WidgetViewRenderer key={i} view={view} scope={scope} currency={spec.currency} />))}
-          {loose.length ? <div className="wg-widget__inputs">{loose.map((input) => control(input.id))}</div> : null}
+          {spec.layout === "side" ? (
+            // Controls and words on one side, pictures on the other (stacked when the widget is narrow).
+            <div className="wg-widget__side">
+              <div className="wg-widget__controls">
+                {spec.views.map((view, i) => (CONTROL_VIEWS.has(view.type) ? render(view, i) : null))}
+                {loose.length ? <div className="wg-widget__inputs">{loose.map((input) => control(input.id))}</div> : null}
+              </div>
+              <div className="wg-widget__visuals">{spec.views.map((view, i) => (CONTROL_VIEWS.has(view.type) ? null : render(view, i)))}</div>
+            </div>
+          ) : (
+            <>
+              {spec.views.map((view, i) => render(view, i))}
+              {loose.length ? <div className="wg-widget__inputs">{loose.map((input) => control(input.id))}</div> : null}
+            </>
+          )}
         </WidgetBoundary>
       </RuntimeProvider>
       {spec.note ? <p className="wg-widget__note">{renderTemplate(spec.note, scope, spec.currency)}</p> : null}
@@ -64,7 +84,7 @@ export function WidgetSpecRenderer({ spec, theme, className, fallback }: { spec:
   return (
     <div className={cx("wg-root", className)} data-wg-theme={theme ?? settings.theme}>
       {result.ok ? (
-        <Widget spec={result.spec} />
+        <Widget spec={result.spec} persistKey={result.spec.id} />
       ) : fallback ? (
         fallback(result.issues)
       ) : (

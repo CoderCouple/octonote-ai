@@ -45,11 +45,11 @@ export function lintWidget(spec: Spec): WidgetIssue[] {
 
   // Inputs that nothing reads can't change anything.
   const read = new Set<string>();
-  const readAll = (source: string | undefined, kind: "formula" | "template" = "formula") => {
+  const readAll = (source: string | undefined, kind: "formula" | "template" | "tex" = "formula") => {
     if (!source) return;
     try {
       if (kind === "formula") namesIn(compile(source), read);
-      else for (const part of parseTemplate(source)) if (typeof part !== "string") namesIn(compile(part.formula), read);
+      else for (const part of parseTemplate(source, kind === "tex")) if (typeof part !== "string") namesIn(compile(part.formula), read);
     } catch {
       // Reported by validation.
     }
@@ -57,7 +57,7 @@ export function lintWidget(spec: Spec): WidgetIssue[] {
   for (const view of spec.views) {
     if (view.type === "input") continue;
     for (const [key, value] of Object.entries(view)) {
-      if (typeof value === "string" && key !== "type") (["text", "caption", "note", "label", "center", "detail"].includes(key) ? readAll(value, "template") : readAll(value));
+      if (typeof value === "string" && key !== "type") (view.type === "formula" && view.tex ? readAll(value, "tex") : ["text", "caption", "note", "label", "center", "detail"].includes(key) ? readAll(value, "template") : readAll(value));
     }
     if (view.type === "sentence") for (const part of splitSentence(view.text)) typeof part === "string" ? readAll(part, "template") : read.add(part.input);
     if (view.type === "stats") view.items.forEach((item) => (readAll(item.value), readAll(item.display, "template"), readAll(item.note, "template")));

@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import guide from "@octonote/widgets/examples/digestive-guide.json";
 import explorables from "@octonote/widgets/examples/explorables.json";
-import { Badge, Button, Card, Dialog, documentToolDefinition, IconButton, parseDocument, Switch, ToastProvider, Tooltip, useToast, WidgetRenderer, WidgetSpecRenderer, WidgetsProvider, type Theme } from "@octonote/widgets";
+import { Badge, Button, Card, Dialog, documentToolDefinition, IconButton, parseDocument, Switch, ToastProvider, Tooltip, useToast, webWidgetStore, WidgetRenderer, WidgetSpecRenderer, WidgetsProvider, type Theme } from "@octonote/widgets";
+import katex from "katex";
+import "katex/dist/katex.min.css";
+
+const store = webWidgetStore(window.localStorage, "playground-widget:");
+const renderMath = (tex: string) => <span dangerouslySetInnerHTML={{ __html: katex.renderToString(tex, { throwOnError: false, trust: false }) }} />;
 
 // Widgets Claude wrote in the last `pnpm --filter @octonote/widgets eval` run, if any.
 const GENERATED = Object.values(import.meta.glob<{ id: string }>("../../../packages/widgets/scripts/out/*.json", { eager: true, import: "default" }));
@@ -14,7 +19,7 @@ export function WidgetsDemo({ theme }: { theme: Theme }) {
   const parsed = useMemo(() => parseDocument(pasted), [pasted]);
 
   return (
-    <WidgetsProvider theme={theme}>
+    <WidgetsProvider theme={theme} store={store} renderMath={renderMath}>
       <ToastProvider>
         <div className="pg-bar">
           <p className="pg-hint">Content blocks rendered from validated JSON, plus the basic controls they're built from.</p>

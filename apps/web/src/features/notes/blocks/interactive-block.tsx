@@ -21,7 +21,9 @@ import { createReactBlockSpec } from "@blocknote/react";
 import { checkBlock, customEntry, defaultCatalog, type Issue } from "@octonote/compose";
 import { BlockView } from "@octonote/compose/react";
 import { defaultComponents, InteractiveProvider, webStorageStore } from "@octonote/interactive";
-import { WidgetsProvider } from "@octonote/widgets";
+import { webWidgetStore, WidgetsProvider } from "@octonote/widgets";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 import { Code2, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +51,13 @@ export function starterSpec(kind: string): string {
 
 // Progress (answers, known cards) stays in the reader's browser, per block.
 const store = typeof window === "undefined" ? undefined : webStorageStore(window.localStorage, "octonote-block:");
+// Each reader's widget settings (slider positions and the like), kept per block.
+const widgetStore = typeof window === "undefined" ? undefined : webWidgetStore(window.localStorage, "octonote-widget:");
+
+/** TeX in widget formula lines, typeset with KaTeX (trust off: no links, classes or styles from content). */
+function renderMath(tex: string) {
+  return <span dangerouslySetInnerHTML={{ __html: katex.renderToString(tex, { throwOnError: false, trust: false, displayMode: false }) }} />;
+}
 
 export const InteractiveBlock = createReactBlockSpec(
   {
@@ -143,7 +152,7 @@ function InteractiveView({
         <div className="p-3">
           {result.ok ? (
             <InteractiveProvider components={defaultComponents} theme={theme} store={store}>
-              <WidgetsProvider theme={theme}>
+              <WidgetsProvider theme={theme} store={widgetStore} renderMath={renderMath}>
                 <BlockView block={result.block} theme={theme} />
               </WidgetsProvider>
             </InteractiveProvider>

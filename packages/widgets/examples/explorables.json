@@ -576,7 +576,8 @@
         "type": "input",
         "input": "years"
       }
-    ]
+    ],
+    "layout": "side"
   },
   {
     "schemaVersion": "1.0",
@@ -635,6 +636,11 @@
             "color": "orange"
           }
         ]
+      },
+      {
+        "type": "formula",
+        "tex": true,
+        "text": "\\left.\\frac{d}{dx}x^2\\right|_{x={{a|1}}} = 2 \\cdot ({{a|1}}) = {{slope|1}}"
       },
       {
         "type": "sentence",
@@ -1258,6 +1264,7 @@
         "type": "input",
         "input": "t"
       }
-    ]
+    ],
+    "layout": "side"
   }
 ]

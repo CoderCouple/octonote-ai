@@ -18,6 +18,11 @@ Make it direct:
 - "What if" comparisons: compare: true lets the reader pin settings and see the difference.
 - Use real data when the question is about the real world: a data table, data series as points beside a formula line, reference marks that follow inputs, a table view with the current row highlighted. Only include numbers you are confident of, and say where they come from in the note.
 
+Layout and maths:
+- layout "side" puts the sentence, stats and sliders beside the chart or plane when there's room.
+- A formula line can be TeX (tex: true); live values then use double braces: \\frac{d}{dx}x^2 = 2 \\cdot {{a|1}}.
+- For practice questions use a quiz or flashcards, not a widget.
+
 Formats:
 - style "percent" expects a ratio (0.35 → 35%); for values already in percent use suffix "%".
 - Years: grouping false (2024, not 2,024), or {year|year} in text.
