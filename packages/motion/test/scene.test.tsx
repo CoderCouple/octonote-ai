@@ -155,6 +155,17 @@ describe("ScenePlayer", () => {
     expect(screen.getByRole("img").getAttribute("aria-label")).toContain(captions[3]);
   });
 
+  it("draws the scene in the app's light or dark theme", () => {
+    const fill = () => document.querySelector(".mo-svg > rect")!.getAttribute("fill");
+    const { rerender } = render(<ScenePlayer spec={pythagoras} theme="light" />);
+    expect(fill()).toBe("#fbfbfa");
+    rerender(<ScenePlayer spec={pythagoras} theme="dark" />);
+    expect(fill()).toBe("#0f1115");
+    // Even when the scene asks for the other one.
+    rerender(<ScenePlayer spec={{ ...pythagoras, background: "dark" }} theme="light" />);
+    expect(fill()).toBe("#fbfbfa");
+  });
+
   it("shows a safe message for bad scenes", () => {
     render(<ScenePlayer spec={{ type: "scene" }} />);
     expect(screen.getByRole("alert").textContent).toContain("couldn't be shown");

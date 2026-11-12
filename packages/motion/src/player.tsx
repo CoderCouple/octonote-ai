@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { DARK_THEME, LIGHT_THEME } from "./engine/color.js";
+import { sceneTheme, type SceneMode } from "./engine/color.js";
 import { computeLayout } from "./engine/layout.js";
 import { hasMath, loadMath, type MathTypesetter } from "./engine/math.js";
 import { canExportVideo, exportVideo } from "./export.js";
@@ -16,7 +16,7 @@ export interface ScenePlayerProps {
   /** Start playing when the player scrolls into view. */
   autoPlay?: boolean;
   loop?: boolean;
-  /** Theme of the player's controls; the scene's own background comes from the spec. */
+  /** Light, dark, or "system" (follows the OS, live). The scene and its exported video match it. */
   theme?: Theme;
   /** How formulas are typeset: "auto" loads MathJax when the scene has any (the default); "off" shows them as readable text. */
   math?: MathTypesetter | "auto" | "off";
@@ -30,10 +30,12 @@ export interface ScenePlayerProps {
 /** Validates a scene and plays it, or shows a safe message. */
 export function ScenePlayer({ spec, fallback, theme = "system", className, ...rest }: ScenePlayerProps) {
   const result = useMemo(() => validateScene(spec), [spec]);
+  const prefersDark = usePrefersDark();
+  const mode: SceneMode = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
   return (
     <div className={cx("mo-root", className)} data-mo-theme={theme}>
       {result.ok ? (
-        <Player key={result.spec.id} scene={result.spec} {...rest} />
+        <Player key={result.spec.id} scene={result.spec} mode={mode} {...rest} />
       ) : fallback ? (
         fallback(result.issues)
       ) : (
@@ -55,11 +57,11 @@ export function ScenePlayer({ spec, fallback, theme = "system", className, ...re
 const SPEEDS = [0.5, 1, 1.5, 2] as const;
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
-function Player({ scene, autoPlay = false, loop = false, math: mathOption = "auto", onStepChange, allowDownload = true }: Omit<ScenePlayerProps, "spec" | "fallback" | "theme" | "className"> & { scene: Scene }) {
+function Player({ scene, mode, autoPlay = false, loop = false, math: mathOption = "auto", onStepChange, allowDownload = true }: Omit<ScenePlayerProps, "spec" | "fallback" | "theme" | "className"> & { scene: Scene; mode: SceneMode }) {
   const math = useMath(scene, mathOption);
   const layout = useMemo(() => computeLayout(scene, { math }), [scene, math]);
   const compiled = useMemo(() => compileScene(scene, layout), [scene, layout]);
-  const sceneTheme = scene.background === "light" ? LIGHT_THEME : DARK_THEME;
+  const theme = sceneTheme(mode);
   const duration = compiled.duration;
   const W = layout.canvas.w * UNIT;
   const H = layout.canvas.h * UNIT;
@@ -166,7 +168,7 @@ function Player({ scene, autoPlay = false, loop = false, math: mathOption = "aut
     setPlaying(false);
     setRecording({ progress: 0 });
     try {
-      const { blob, extension } = await exportVideo(scene, { math, onProgress: (progress) => setRecording({ progress }) });
+      const { blob, extension } = await exportVideo(scene, { math, theme: mode, onProgress: (progress) => setRecording({ progress }) });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `${(scene.title ?? scene.id).replace(/[^\w-]+/g, "-").toLowerCase()}.${extension}`;
@@ -180,14 +182,14 @@ function Player({ scene, autoPlay = false, loop = false, math: mathOption = "aut
   };
 
   const caption = compiled.steps[stepIndex]?.caption ?? "";
-  const frame = renderFrame({ scene, layout, compiled, t, theme: sceneTheme, math, idPrefix: prefix });
+  const frame = renderFrame({ scene, layout, compiled, t, theme, math, idPrefix: prefix });
 
   return (
     <section ref={root} className={cx("mo-player", reduced && "mo-player--reduced")} aria-label={scene.title ?? "Animation"} tabIndex={0} onKeyDown={onKeyDown}>
       {scene.title ? <h3 className="mo-player__title">{scene.title}</h3> : null}
       <div className={cx("mo-stage", layout.canvas.h > layout.canvas.w && "mo-stage--portrait")}>
         <svg ref={svg} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${scene.title ?? "Animation"}: ${caption}`} className="mo-svg">
-          <rect width={W} height={H} fill={sceneTheme.background} />
+          <rect width={W} height={H} fill={theme.background} />
           {frame}
         </svg>
       </div>
@@ -286,4 +288,19 @@ function useMath(scene: Scene, option: MathTypesetter | "auto" | "off"): MathTyp
     };
   }, [wanted, loaded]);
   return typeof option === "object" ? option : wanted ? loaded : undefined;
+}
+
+/** Whether the OS is in dark mode, updated live. */
+function usePrefersDark(): boolean {
+  const query = "(prefers-color-scheme: dark)";
+  const [dark, setDark] = useState(() => typeof matchMedia === "function" && matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const list = matchMedia(query);
+    const update = () => setDark(list.matches);
+    update();
+    list.addEventListener?.("change", update);
+    return () => list.removeEventListener?.("change", update);
+  }, []);
+  return dark;
 }

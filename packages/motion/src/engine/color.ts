@@ -6,18 +6,26 @@ export type Rgb = [number, number, number];
 
 export interface SceneTheme {
   background: string;
+  /** What "flash" blends towards: brighter on dark, darker on light. */
+  flash: string;
   palette: Record<PaletteName, string>;
 }
 
 export const DARK_THEME: SceneTheme = {
   background: "#0f1115",
+  flash: "#ffffff",
   palette: { blue: "#5aa2ff", green: "#4fcf95", orange: "#f2a04e", purple: "#a98bff", red: "#ff7b73", teal: "#3fc9c9", yellow: "#f0c050", pink: "#ff7fbf", gray: "#8b8a86", ink: "#f2f2ef", muted: "#a09f9b" },
 };
 
 export const LIGHT_THEME: SceneTheme = {
   background: "#fbfbfa",
+  flash: "#191919",
   palette: { blue: "#1f6fe0", green: "#1f9d6b", orange: "#d9771e", purple: "#7a47d5", red: "#d1453b", teal: "#0f8a8a", yellow: "#c99a12", pink: "#c43f87", gray: "#8b8a86", ink: "#191919", muted: "#6b6a66" },
 };
+
+export type SceneMode = "light" | "dark";
+
+export const sceneTheme = (mode: SceneMode): SceneTheme => (mode === "light" ? LIGHT_THEME : DARK_THEME);
 
 export function hexToRgb(hex: string): Rgb {
   const h = hex.replace("#", "");

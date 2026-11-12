@@ -1,4 +1,4 @@
-import { DARK_THEME, LIGHT_THEME } from "./engine/color.js";
+import { sceneTheme, type SceneMode } from "./engine/color.js";
 import { computeLayout } from "./engine/layout.js";
 import type { MathTypesetter } from "./engine/math.js";
 import { renderFrame, UNIT } from "./engine/render.js";
@@ -11,6 +11,8 @@ export interface ExportOptions {
   /** Height of a landscape video, or width of a portrait one, in pixels. Defaults to 1080. */
   resolution?: 720 | 1080 | 1440;
   math?: MathTypesetter;
+  /** Light or dark, to match the app. Defaults to the scene's own background, else dark. */
+  theme?: SceneMode;
   onProgress?: (fraction: number) => void;
   signal?: AbortSignal;
 }
@@ -29,13 +31,13 @@ export const canExportVideo = () => typeof VideoEncoder !== "undefined" && typeo
  * browser with WebCodecs. Frames are drawn off-screen from the same pure
  * renderer the player uses, so the video matches what was on screen.
  */
-export async function exportVideo(scene: Scene, { fps = 30, resolution = 1080, math, onProgress, signal }: ExportOptions = {}): Promise<ExportedVideo> {
+export async function exportVideo(scene: Scene, { fps = 30, resolution = 1080, math, theme: mode, onProgress, signal }: ExportOptions = {}): Promise<ExportedVideo> {
   if (!canExportVideo()) throw new Error("This browser can't export video (it needs WebCodecs)");
   const [{ renderToStaticMarkup }, mb] = await Promise.all([import("react-dom/server"), import("mediabunny")]);
 
   const layout = computeLayout(scene, { math });
   const compiled = compileScene(scene, layout);
-  const theme = scene.background === "light" ? LIGHT_THEME : DARK_THEME;
+  const theme = sceneTheme(mode ?? (scene.background === "light" ? "light" : "dark"));
   const W = layout.canvas.w * UNIT;
   const H = layout.canvas.h * UNIT;
   // Even pixel sizes: H.264 needs them.

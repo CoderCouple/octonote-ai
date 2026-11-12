@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { MathTypesetter } from "./math.js";
 import type { Scene, SceneElement } from "../schema.js";
-import { mixRgb, PALETTE_NAMES, resolveColor, rgbCss, type Rgb, type SceneTheme } from "./color.js";
+import { hexToRgb, mixRgb, PALETTE_NAMES, resolveColor, rgbCss, type Rgb, type SceneTheme } from "./color.js";
 import { clamp01, EASINGS } from "./easing.js";
 import { morphPoints, pointAlong, rotatePoint, type Box, type Point } from "./geometry.js";
 import { TEXT_SIZE, type Layout } from "./layout.js";
@@ -131,7 +131,7 @@ export function renderFrame({ scene, layout, compiled, t, theme, math, captions 
     const pulse = EASINGS.there_and_back(v(el.id, "pulse", 0));
     if (pulse) c = mixRgb(c, resolveColor("yellow", theme), pulse * 0.7);
     const flash = EASINGS.there_and_back(v(el.id, "flash", 0));
-    if (flash) c = mixRgb(c, [255, 255, 255], flash * 0.8);
+    if (flash) c = mixRgb(c, hexToRgb(theme.flash), flash * 0.8);
     return c;
   };
 

@@ -6,8 +6,8 @@ export type { SceneOutline } from "./ai.js";
 export { actionSchema, COLORS, elementSchema, LIMITS, parseScene, placement, SCHEMA_VERSION, sceneSchema, stepSchema, validateScene } from "./schema.js";
 export type { ElementShape, Scene, SceneAction, SceneColor, SceneElement, SceneStep, SpecIssue, ValidationResult } from "./schema.js";
 // The engine, for custom players, tests and export tools.
-export { DARK_THEME, LIGHT_THEME, resolveColor } from "./engine/color.js";
-export type { SceneTheme } from "./engine/color.js";
+export { DARK_THEME, LIGHT_THEME, resolveColor, sceneTheme } from "./engine/color.js";
+export type { SceneMode, SceneTheme } from "./engine/color.js";
 export { EASINGS } from "./engine/easing.js";
 export type { Easing } from "./engine/easing.js";
 export { bounds, circlePoints, morphPoints, pointAlong, rectPoints, regularPolygon, resample, smoothCurve } from "./engine/geometry.js";

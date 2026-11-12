@@ -148,7 +148,7 @@ export const sceneSchema = z
     id,
     title: text.optional(),
     orientation: z.enum(["landscape", "portrait"]).optional(),
-    background: z.enum(["dark", "light"]).optional().describe("Defaults to dark."),
+    background: z.enum(["dark", "light"]).optional().describe("Only for exports made without a theme; the player follows the app's light or dark theme."),
     elements: z.array(elementSchema).min(1).max(LIMITS.elements),
     steps: z.array(stepSchema).min(1).max(LIMITS.steps),
   })
