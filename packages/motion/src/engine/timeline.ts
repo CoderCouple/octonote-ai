@@ -1,5 +1,6 @@
 import type { Scene, SceneAction, SceneElement } from "../schema.js";
 import { clamp01, EASINGS, lerp, type Easing } from "./easing.js";
+import { compile, evaluate } from "./formula.js";
 import type { Layout } from "./layout.js";
 import type { Point } from "./geometry.js";
 
@@ -299,7 +300,17 @@ function resolveTarget(to: NonNullable<Extract<SceneAction, { do: "move" }>["to"
   }
   const frame = layout.axes.get(to.axes);
   if (!frame) return [0, 0];
-  return frame.toCanvas(to.x, to.y ?? 0);
+  // On a plot: the plot's value at x, as when placing.
+  const plot = to.plot ? layout.byId.get(to.plot) : undefined;
+  let y = to.y ?? 0;
+  if (to.y === undefined && plot?.shape === "plot") {
+    try {
+      y = evaluate(compile(plot.y), { x: to.x });
+    } catch {
+      y = NaN;
+    }
+  }
+  return frame.toCanvas(to.x, Number.isFinite(y) ? y : 0);
 }
 
 /** A property's value at time t. */

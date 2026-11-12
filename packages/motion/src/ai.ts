@@ -35,7 +35,7 @@ export function outlineToolDefinition(name = "plan_explainer") {
 /** How to write a good scene: the rules the model gets with the schema. */
 export const SCENE_GUIDE = `Write one animated explainer scene in the style of 3Blue1Brown: show, don't tell; build the idea step by step; let motion reveal structure.
 
-Canvas: 16 × 9 units (landscape) or 9 × 16 (portrait), origin at the centre, y up. Keep content inside x ±7, y ±3.6 (landscape); the bottom strip shows captions.
+Canvas: 16 × 9 units (landscape) or 9 × 16 (portrait), origin at the centre, y up. The bottom strip shows the caption, so keep content inside x ±7.5 and y from -2.8 to 4.2 (landscape), or x ±4 and y from -5.5 to 7.5 (portrait). Captions over about 60 characters wrap to two lines and push that bottom limit up to y -2.3, so keep captions short. Portrait is only 9 units wide: keep formulas short or make them smaller. Leave room between text elements; nothing should overlap.
 
 Placing things (prefer relationships over coordinates):
 - at: [x, y], or { "of": "title", "side": "below", "gap": 0.4 }, or { "axes": "ax", "x": 2, "y": 4 } (axis coordinates), or { "axes": "ax", "x": 2, "plot": "f" } (on a curve).
@@ -47,7 +47,7 @@ Elements: rect, circle, ellipse, dot, polygon (points or sides + r), line, arrow
 Steps: each has a caption (one sentence the viewer reads) and actions that run together (or in order with "sequential": true), then holds about a second.
 Actions: draw (outline on, then fill), write (text/math left to right), fadeIn/fadeOut, grow, show/hide, move (to a placement or by [dx, dy]), scale, rotate, color, morph (into another outline shape, which stays hidden), trace (move a dot along a line/curve/arc/circle/plot), indicate, circumscribe, flash, count (a number to a new value), camera (focus on a point or element, zoom), wait. Several targets with "stagger" reveal one after another.
 
-Good scenes: start most elements hidden and bring them in; 4-8 steps; one new thing per step; use colour to link ideas (same colour for the same quantity everywhere); morph to show that two things are the same; trace to show change along a path; keep text short. Colours: blue, green, orange, purple, red, teal, yellow, pink, gray, ink, muted. Formulas in plots may only use x.`;
+Good scenes: start most elements hidden and bring them in; 4-8 steps; one new thing per step; use colour to link ideas (same colour for the same quantity everywhere); morph to show that two things are the same; trace to show change along a path; keep text short. Colours: blue, green, orange, purple, red, teal, yellow, pink, gray, ink, muted. Formulas in plots may only use x. Math elements take standard LaTeX maths (base and AMS commands); \\color{blue}{…} colours part of a formula with a palette colour, to tie it to a shape of the same colour.`;
 
 /** Pass 2: one scene, written from one item of the plan. */
 export function sceneToolDefinition(name = "create_scene") {

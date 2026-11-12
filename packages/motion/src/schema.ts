@@ -117,7 +117,7 @@ export const actionSchema = z.discriminatedUnion("do", [
   action("scale", { to: z.number().positive().max(20) }),
   action("rotate", { by: z.number().min(-3600).max(3600) }),
   action("color", { to: z.union([z.enum(COLORS), z.string().regex(/^#[0-9a-fA-F]{6}$/)]) }),
-  action("morph", { into: id }).describe("Turns the target's outline into another element's (which stays hidden)."),
+  action("morph", { into: id }).describe("Turns the target's outline (a shape, line or plot) into another element's (which stays hidden). Morph a plot into another plot to show a curve changing."),
   action("trace", { along: id }).describe("Moves the target (usually a dot) along a line, curve, arc, circle or plot."),
   action("indicate", {}),
   action("circumscribe", {}),
@@ -138,7 +138,7 @@ export const stepSchema = z.object({
 
 export type SceneStep = z.infer<typeof stepSchema>;
 
-const MORPHABLE = new Set(["rect", "circle", "ellipse", "dot", "polygon", "line", "curve", "arc", "brace", "arrow"]);
+const MORPHABLE = new Set(["rect", "circle", "ellipse", "dot", "polygon", "line", "curve", "arc", "brace", "arrow", "plot"]);
 const TRACEABLE = new Set(["line", "arrow", "curve", "arc", "circle", "ellipse", "plot", "polygon", "rect"]);
 
 export const sceneSchema = z

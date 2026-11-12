@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { DARK_THEME, LIGHT_THEME } from "./engine/color.js";
 import { computeLayout } from "./engine/layout.js";
+import { hasMath, loadMath, type MathTypesetter } from "./engine/math.js";
+import { canExportVideo, exportVideo } from "./export.js";
 import { renderFrame, UNIT } from "./engine/render.js";
 import { compileScene } from "./engine/timeline.js";
 import { cx, useInView, useReducedMotion } from "./primitives.js";
@@ -16,8 +18,8 @@ export interface ScenePlayerProps {
   loop?: boolean;
   /** Theme of the player's controls; the scene's own background comes from the spec. */
   theme?: Theme;
-  /** Renders TeX formulas (e.g. with KaTeX). Without it, formulas show as readable text. */
-  renderMath?: (tex: string) => ReactNode;
+  /** How formulas are typeset: "auto" loads MathJax when the scene has any (the default); "off" shows them as readable text. */
+  math?: MathTypesetter | "auto" | "off";
   className?: string;
   onStepChange?: (index: number) => void;
   fallback?: (issues: SpecIssue[]) => ReactNode;
@@ -53,8 +55,9 @@ export function ScenePlayer({ spec, fallback, theme = "system", className, ...re
 const SPEEDS = [0.5, 1, 1.5, 2] as const;
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
-function Player({ scene, autoPlay = false, loop = false, renderMath, onStepChange, allowDownload = true }: Omit<ScenePlayerProps, "spec" | "fallback" | "theme" | "className"> & { scene: Scene }) {
-  const layout = useMemo(() => computeLayout(scene), [scene]);
+function Player({ scene, autoPlay = false, loop = false, math: mathOption = "auto", onStepChange, allowDownload = true }: Omit<ScenePlayerProps, "spec" | "fallback" | "theme" | "className"> & { scene: Scene }) {
+  const math = useMath(scene, mathOption);
+  const layout = useMemo(() => computeLayout(scene, { math }), [scene, math]);
   const compiled = useMemo(() => compileScene(scene, layout), [scene, layout]);
   const sceneTheme = scene.background === "light" ? LIGHT_THEME : DARK_THEME;
   const duration = compiled.duration;
@@ -85,9 +88,9 @@ function Player({ scene, autoPlay = false, loop = false, renderMath, onStepChang
     let frame = 0;
     let last = performance.now();
     const tick = (now: number) => {
-      const dt = ((now - last) / 1000) * (recording ? 1 : speed);
+      const dt = ((now - last) / 1000) * speed;
       last = now;
-      if (reduced && !recording) {
+      if (reduced) {
         // Reduced motion: show each step's finished state, hold it as long as the step lasts, move on.
         if (now < holdUntil.current) {
           frame = requestAnimationFrame(tick);
@@ -106,7 +109,7 @@ function Player({ scene, autoPlay = false, loop = false, renderMath, onStepChang
       }
       let next = tRef.current + dt;
       if (next >= duration) {
-        if (loop && !recording) next = 0;
+        if (loop) next = 0;
         else {
           setT(duration);
           setPlaying(false);
@@ -118,7 +121,7 @@ function Player({ scene, autoPlay = false, loop = false, renderMath, onStepChang
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, speed, duration, loop, reduced, recording, compiled.steps]);
+  }, [playing, speed, duration, loop, reduced, compiled.steps]);
 
   useEffect(() => {
     if (autoPlay && inView) setPlaying(true);
@@ -157,52 +160,27 @@ function Player({ scene, autoPlay = false, loop = false, renderMath, onStepChang
     else await el.requestFullscreen?.().catch(() => {});
   };
 
-  /** Records the scene in real time from a canvas copy of each frame, then downloads it as WebM. */
+  /** Renders the scene off-screen, frame by frame, and downloads it as MP4 (or WebM where H.264 can't be encoded). */
   const download = async () => {
-    const el = svg.current;
-    if (!el || recording || typeof MediaRecorder === "undefined") return;
-    const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const stream = canvas.captureStream(30);
-    const type = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((m) => MediaRecorder.isTypeSupported(m)) ?? "video/webm";
-    const recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6_000_000 });
-    const chunks: Blob[] = [];
-    recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-    const stopped = new Promise<void>((resolve) => (recorder.onstop = () => resolve()));
+    if (recording) return;
+    setPlaying(false);
     setRecording({ progress: 0 });
-    setT(0);
-    setPlaying(true);
-    recorder.start(250);
-    const paint = async () => {
-      const markup = new XMLSerializer().serializeToString(el);
-      const url = URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" }));
-      const img = new Image();
-      img.src = url;
-      await img.decode().catch(() => {});
-      ctx.drawImage(img, 0, 0, W, H);
-      URL.revokeObjectURL(url);
-    };
-    while (tRef.current < duration - 1e-3) {
-      await paint();
-      setRecording({ progress: tRef.current / duration });
-      await new Promise((r) => requestAnimationFrame(r));
+    try {
+      const { blob, extension } = await exportVideo(scene, { math, onProgress: (progress) => setRecording({ progress }) });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${(scene.title ?? scene.id).replace(/[^\w-]+/g, "-").toLowerCase()}.${extension}`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+    } catch (error) {
+      console.error("Video export failed", error);
+    } finally {
+      setRecording(null);
     }
-    await paint();
-    recorder.stop();
-    await stopped;
-    setRecording(null);
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob(chunks, { type: "video/webm" }));
-    link.download = `${(scene.title ?? scene.id).replace(/[^\w-]+/g, "-").toLowerCase()}.webm`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
   };
 
   const caption = compiled.steps[stepIndex]?.caption ?? "";
-  const frame = renderFrame({ scene, layout, compiled, t, theme: sceneTheme, renderMath: recording ? undefined : renderMath, idPrefix: prefix });
+  const frame = renderFrame({ scene, layout, compiled, t, theme: sceneTheme, math, idPrefix: prefix });
 
   return (
     <section ref={root} className={cx("mo-player", reduced && "mo-player--reduced")} aria-label={scene.title ?? "Animation"} tabIndex={0} onKeyDown={onKeyDown}>
@@ -264,9 +242,9 @@ function Player({ scene, autoPlay = false, loop = false, renderMath, onStepChang
             ))}
           </select>
         </label>
-        {allowDownload ? (
+        {allowDownload && canExportVideo() ? (
           <button type="button" className="mo-button mo-button--wide" onClick={() => void download()} disabled={!!recording} aria-label="Download as video">
-            {recording ? `Recording ${Math.round(recording.progress * 100)}%` : "⤓ Video"}
+            {recording ? `Rendering ${Math.round(recording.progress * 100)}%` : "⤓ Video"}
           </button>
         ) : null}
         <button type="button" className="mo-button" onClick={() => void fullscreen()} aria-label="Fullscreen">
@@ -290,4 +268,22 @@ function Player({ scene, autoPlay = false, loop = false, renderMath, onStepChang
       </details>
     </section>
   );
+}
+
+/** The typesetter to use: given, off, or MathJax loaded on demand when the scene has formulas. */
+function useMath(scene: Scene, option: MathTypesetter | "auto" | "off"): MathTypesetter | undefined {
+  const wanted = option === "auto" && hasMath(scene);
+  const [loaded, setLoaded] = useState<MathTypesetter>();
+  useEffect(() => {
+    if (!wanted || loaded) return;
+    let live = true;
+    loadMath().then(
+      (m) => live && setLoaded(m),
+      () => {}, // Formulas stay as readable text.
+    );
+    return () => {
+      live = false;
+    };
+  }, [wanted, loaded]);
+  return typeof option === "object" ? option : wanted ? loaded : undefined;
 }

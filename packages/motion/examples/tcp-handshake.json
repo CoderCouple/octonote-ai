@@ -14,7 +14,7 @@
     { "id": "p1", "shape": "dot", "r": 0.13, "at": [-4.5, 1.5], "color": "yellow", "hidden": true },
     { "id": "p2", "shape": "dot", "r": 0.13, "at": [4.5, 0.1], "color": "yellow", "hidden": true },
     { "id": "p3", "shape": "dot", "r": 0.13, "at": [-4.5, -1.3], "color": "yellow", "hidden": true },
-    { "id": "open", "shape": "text", "text": "Connection open", "at": [0, -3.0], "size": 0.45, "color": "green", "weight": "bold", "hidden": true }
+    { "id": "open", "shape": "text", "text": "Connection open", "at": [0, -2.5], "size": 0.45, "color": "green", "weight": "bold", "hidden": true }
   ],
   "steps": [
     { "caption": "Before sending data, a client and server agree to talk.", "actions": [

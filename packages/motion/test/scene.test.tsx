@@ -8,6 +8,8 @@ import {
   compileScene,
   computeLayout,
   CountUp,
+  lintScene,
+  loadMath,
   DARK_THEME,
   FadeIn,
   outlineToolDefinition,
@@ -43,6 +45,33 @@ describe("examples", () => {
       const markup = renderToStaticMarkup(<svg>{renderFrame({ scene: result.spec, layout, compiled, t, theme: DARK_THEME })}</svg>);
       expect(markup).not.toContain("NaN");
     }
+  });
+});
+
+describe("layout lint", () => {
+  it.each(examples)("$file has no layout problems", async ({ spec }) => {
+    const result = validateScene(spec);
+    if (!result.ok) throw new Error("invalid");
+    expect(lintScene(result.spec, { math: await loadMath() }).map((i) => i.message)).toEqual([]);
+  });
+
+  const lint = (elements: object[], steps: object[]) => {
+    const r = validateScene({ schemaVersion: "2.0", type: "scene", id: "l", elements, steps });
+    if (!r.ok) throw new Error(JSON.stringify(r.issues));
+    return lintScene(r.spec).map((i) => i.message);
+  };
+
+  it("finds things off the canvas, under the caption, and text on text", () => {
+    expect(lint([{ id: "wide", shape: "rect", w: 4, h: 1, at: [7, 0] }], [{ actions: [] }])[0]).toMatch(/"wide" goes off the right edge/);
+    expect(lint([{ id: "low", shape: "circle", r: 0.5, at: [0, -3.5] }], [{ caption: "Hello", actions: [] }])[0]).toMatch(/"low" runs under the caption/);
+    expect(lint([{ id: "low", shape: "circle", r: 0.5, at: [0, -3.5] }], [{ actions: [] }])).toEqual([]);
+    expect(lint([{ id: "a", shape: "text", text: "Hello" }, { id: "b", shape: "text", text: "World" }], [{ actions: [] }])[0]).toMatch(/"a" and "b" overlap/);
+  });
+
+  it("follows elements as they move, and ignores hidden ones", () => {
+    const elements = [{ id: "c", shape: "circle", r: 0.5, at: [0, 0] }, { id: "ghost", shape: "rect", w: 30, h: 1, hidden: true }];
+    expect(lint(elements, [{ actions: [{ do: "move", target: "c", by: [0, 2] }] }])).toEqual([]);
+    expect(lint(elements, [{ actions: [] }, { actions: [{ do: "move", target: "c", by: [9, 0] }] }])[0]).toMatch(/^Step 2: "c" goes off the right edge/);
   });
 });
 

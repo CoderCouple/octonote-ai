@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
+import type { MathTypesetter } from "./math.js";
 import type { Scene, SceneElement } from "../schema.js";
-import { mixRgb, resolveColor, rgbCss, type Rgb, type SceneTheme } from "./color.js";
+import { mixRgb, PALETTE_NAMES, resolveColor, rgbCss, type Rgb, type SceneTheme } from "./color.js";
 import { clamp01, EASINGS } from "./easing.js";
 import { morphPoints, pointAlong, rotatePoint, type Box, type Point } from "./geometry.js";
 import { TEXT_SIZE, type Layout } from "./layout.js";
@@ -15,7 +16,8 @@ export interface FrameOptions {
   t: number;
   theme: SceneTheme;
   /** Renders TeX (e.g. KaTeX to HTML). Without it, formulas show as readable text. */
-  renderMath?: (tex: string) => ReactNode;
+  /** Typesets TeX as vector paths. Without it, formulas show as readable text. */
+  math?: MathTypesetter;
   /** Burn the current caption into the frame (used for export, and on by default). */
   captions?: boolean;
   /** Prefix for clip-path ids, so several players on one page don't collide. */
@@ -65,7 +67,7 @@ interface Transform {
 const OUTLINE_SHAPES = new Set(["rect", "circle", "ellipse", "dot", "polygon", "arc", "curve", "brace", "line", "arrow", "plot"]);
 
 /** One frame of the scene at time t, as SVG children in a 1600×900 (or 900×1600) viewBox. */
-export function renderFrame({ scene, layout, compiled, t, theme, renderMath, captions = true, idPrefix = "mo" }: FrameOptions): ReactNode {
+export function renderFrame({ scene, layout, compiled, t, theme, math, captions = true, idPrefix = "mo" }: FrameOptions): ReactNode {
   const W = layout.canvas.w * UNIT;
   const H = layout.canvas.h * UNIT;
   const cam = { x: valueAt(compiled, "camera", "camX", t, 0), y: valueAt(compiled, "camera", "camY", t, 0), zoom: valueAt(compiled, "camera", "camZoom", t, 1) };
@@ -235,13 +237,22 @@ export function renderFrame({ scene, layout, compiled, t, theme, renderMath, cap
         );
       }
       let content: ReactNode;
-      if (el.shape === "math" && renderMath) {
-        const w = box.w * k * scale * 1.6;
-        const h = box.h * k * scale * 1.6;
+      const typeset = el.shape === "math" ? math?.typeset(el.tex) : undefined;
+      if (typeset && !("error" in typeset)) {
+        // MathJax paths, scaled so one em is the font size, centred on the element.
+        const w = typeset.width * size;
+        const h = typeset.height * size;
         content = (
-          <foreignObject x={center[0] - w / 2} y={center[1] - h / 2} width={w} height={h}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", color: rgbCss(textColor), fontSize: size }}>{renderMath(el.tex)}</div>
-          </foreignObject>
+          <svg
+            x={center[0] - w / 2}
+            y={center[1] - h / 2}
+            width={w}
+            height={h}
+            viewBox={typeset.viewBox.join(" ")}
+            overflow="visible"
+            color={rgbCss(textColor)}
+            dangerouslySetInnerHTML={{ __html: paletteColors(typeset.body, theme) }}
+          />
         );
       } else {
         const shown =
@@ -269,8 +280,10 @@ export function renderFrame({ scene, layout, compiled, t, theme, renderMath, cap
       const cell = el.cell ?? 0.5;
       const x0 = box.x - box.w / 2;
       const y0 = box.y - box.h / 2;
-      for (let i = 0; i <= el.cols; i++) items.push(lineNode(`v${i}`, tx([x0 + i * cell, y0]), tx([x0 + i * cell, y0 + box.h]), color, sw * 0.6, clamp01(draw * 1.4 - i / (el.cols + el.rows))));
-      for (let j = 0; j <= el.rows; j++) items.push(lineNode(`h${j}`, tx([x0, y0 + j * cell]), tx([x0 + box.w, y0 + j * cell]), color, sw * 0.6, clamp01(draw * 1.4 - j / (el.cols + el.rows))));
+      // Lines start one after another across the first 40% of the draw, and all finish together.
+      const line = (i: number, n: number) => clamp01((draw - 0.4 * (i / n)) / 0.6);
+      for (let i = 0; i <= el.cols; i++) items.push(lineNode(`v${i}`, tx([x0 + i * cell, y0]), tx([x0 + i * cell, y0 + box.h]), color, sw * 0.6, line(i, el.cols)));
+      for (let j = 0; j <= el.rows; j++) items.push(lineNode(`h${j}`, tx([x0, y0 + j * cell]), tx([x0 + box.w, y0 + j * cell]), color, sw * 0.6, line(j, el.rows)));
     }
 
     const outline = v(el.id, "outline", 0);
@@ -362,7 +375,13 @@ function circumscribeNode(key: string, box: Box, value: number, tx: (p: Point) =
   );
 }
 
-function captionNode(caption: string, W: number, H: number, theme: SceneTheme, alpha: number): ReactNode {
+/** \\color{orange} in TeX means the scene's orange, so formulas match the shapes they talk about. */
+function paletteColors(body: string, theme: SceneTheme): string {
+  return body.replace(/(fill|stroke)="([a-z]+)"/g, (whole, attr: string, name: string) => ((PALETTE_NAMES as readonly string[]).includes(name) ? `${attr}="${rgbCss(resolveColor(name, theme))}"` : whole));
+}
+
+/** How a caption is wrapped and where its band starts, in pixels from the top. Shared with the layout linter. */
+export function captionLayout(caption: string, W: number, H: number) {
   const size = Math.max(W, H) * (W > H ? 0.026 : 0.022);
   const maxChars = Math.floor((W * 0.86) / (size * 0.52));
   const lines: string[] = [];
@@ -377,6 +396,12 @@ function captionNode(caption: string, W: number, H: number, theme: SceneTheme, a
   const shown = lines.slice(0, 3);
   const lineHeight = size * 1.3;
   const top = H - size * 1.2 - lineHeight * shown.length;
+  // The band, including its feathered edge, starts here.
+  return { size, lines: shown, lineHeight, top, bandTop: top - size * 1.4 };
+}
+
+function captionNode(caption: string, W: number, H: number, theme: SceneTheme, alpha: number): ReactNode {
+  const { size, lines: shown, lineHeight, top } = captionLayout(caption, W, H);
   return (
     <g key="caption" opacity={alpha}>
       {/* Near-solid behind the words, feathered above them, so drawings never show through the text. */}

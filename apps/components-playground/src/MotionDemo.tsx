@@ -9,12 +9,15 @@ import tcpHandshake from "@octonote/motion/examples/tcp-handshake.json";
 import { CountUp, DrawPath, FadeIn, Highlight, parseScene, ScaleIn, ScenePlayer, sceneToolDefinition, Stagger, Typewriter, type Theme } from "@octonote/motion";
 
 const EXAMPLES = [pythagoras, sineWave, circleArea, bubbleSort, binarySearch, tcpHandshake, compoundGrowth];
+// Scenes Claude wrote in the last `pnpm --filter @octonote/motion eval` run, if any.
+const GENERATED = Object.values(import.meta.glob<{ id: string; title?: string }>("../../../packages/motion/scripts/out/*.json", { eager: true, import: "default" }));
 
-type Source = "gallery" | "primitives" | "paste";
+type Source = "gallery" | "generated" | "primitives" | "paste";
 
 export function MotionDemo({ theme }: { theme: Theme }) {
   const [source, setSource] = useState<Source>("gallery");
   const [index, setIndex] = useState(0);
+  const [generated, setGenerated] = useState(0);
   const [pasted, setPasted] = useState(() => JSON.stringify(EXAMPLES[0], null, 2));
   const parsed = useMemo(() => parseScene(pasted), [pasted]);
 
@@ -26,6 +29,7 @@ export function MotionDemo({ theme }: { theme: Theme }) {
           {(
             [
               ["gallery", "Explainers"],
+              ...(GENERATED.length ? ([["generated", "Written by Claude"]] as const) : []),
               ["primitives", "Building blocks"],
               ["paste", "Paste JSON"],
             ] as const
@@ -47,6 +51,18 @@ export function MotionDemo({ theme }: { theme: Theme }) {
             ))}
           </div>
           <ScenePlayer key={EXAMPLES[index]!.id} spec={EXAMPLES[index]} theme={theme} />
+        </>
+      ) : null}
+      {source === "generated" && GENERATED.length ? (
+        <>
+          <div className="pg-row-wrap pg-examples">
+            {GENERATED.map((e, i) => (
+              <button key={e.id} type="button" className="pg-chip" aria-pressed={i === generated} onClick={() => setGenerated(i)}>
+                {e.title ?? e.id}
+              </button>
+            ))}
+          </div>
+          <ScenePlayer key={GENERATED[generated]!.id} spec={GENERATED[generated]} theme={theme} />
         </>
       ) : null}
       {source === "primitives" ? <Primitives /> : null}

@@ -1,5 +1,6 @@
 import type { Scene, SceneElement } from "../schema.js";
 import { compile, evaluate } from "./formula.js";
+import type { MathTypesetter } from "./math.js";
 import { bounds, boxEdge, bracePoints, circlePoints, rectPoints, regularPolygon, rotatePoint, smoothCurve, type Box, type Point } from "./geometry.js";
 
 export const CANVAS = { landscape: { w: 16, h: 9 }, portrait: { w: 9, h: 16 } } as const;
@@ -37,7 +38,7 @@ export function texWidth(tex: string, size: number): number {
   return Math.max(1, visible.length) * size * 0.55;
 }
 
-function intrinsicSize(el: SceneElement): { w: number; h: number } {
+function intrinsicSize(el: SceneElement, math?: MathTypesetter): { w: number; h: number } {
   switch (el.shape) {
     case "rect":
       return { w: el.w, h: el.h };
@@ -58,8 +59,12 @@ function intrinsicSize(el: SceneElement): { w: number; h: number } {
       return { w: el.r * 2, h: el.r * 2 };
     case "text":
       return { w: textWidth(el.text, el.size ?? TEXT_SIZE, el.weight === "bold"), h: (el.size ?? TEXT_SIZE) * 1.25 };
-    case "math":
-      return { w: texWidth(el.tex, el.size ?? 0.55), h: (el.size ?? 0.55) * 1.5 };
+    case "math": {
+      const size = el.size ?? 0.55;
+      const typeset = math?.typeset(el.tex);
+      if (typeset && !("error" in typeset)) return { w: typeset.width * size, h: Math.max(typeset.height * size, size * 1.2) };
+      return { w: texWidth(el.tex, size), h: size * 1.5 };
+    }
     case "number": {
       const size = el.size ?? 0.8;
       const shown = `${el.prefix ?? ""}${el.value.toFixed(el.decimals ?? 0)}${el.suffix ?? ""}`;
@@ -82,7 +87,8 @@ function intrinsicSize(el: SceneElement): { w: number; h: number } {
   }
 }
 
-export function computeLayout(scene: Scene): Layout {
+/** With a math typesetter, formulas are measured exactly; without, their size is estimated. */
+export function computeLayout(scene: Scene, options: { math?: MathTypesetter } = {}): Layout {
   const canvas = CANVAS[scene.orientation ?? "landscape"];
   const byId = new Map(scene.elements.map((el) => [el.id, el]));
   const parent = new Map<string, string>();
@@ -99,7 +105,7 @@ export function computeLayout(scene: Scene): Layout {
     if (!el || seen.has(id)) return { w: 0, h: 0 };
     seen.add(id);
     if (el.shape !== "group") {
-      const s = intrinsicSize(el);
+      const s = intrinsicSize(el, options.math);
       sizes.set(id, s);
       return s;
     }

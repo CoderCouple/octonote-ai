@@ -143,3 +143,88 @@ describe("timeline", () => {
     expect(valueAt(compiled, "n", "value", 0.1, 0)).toBe(0);
   });
 });
+
+describe("math typesetting", () => {
+  it("turns TeX into plain vector geometry", async () => {
+    const { loadMath } = await import("../src/engine/math.js");
+    const math = await loadMath();
+    const result = math.typeset("a^2 + b^2 = c^2");
+    if ("error" in result) throw new Error(result.error);
+    expect(result.body).toContain("<path");
+    expect(result.body).not.toMatch(/<(?!\/?(svg|g|path|rect|line)[\s>/])/);
+    expect(result.width).toBeGreaterThan(3);
+    expect(result.height).toBeGreaterThan(0.5);
+  });
+
+  it("refuses links, styles and anything outside base and AMS maths", async () => {
+    const { loadMath } = await import("../src/engine/math.js");
+    const math = await loadMath();
+    for (const tex of ["\\href{javascript:alert(1)}{x}", "\\style{color:red}{x}", "\\unicode{65}", "\\require{html}", "\\frac{1}{"]) {
+      expect(math.typeset(tex)).toHaveProperty("error");
+    }
+  });
+
+  it("measures formulas exactly and draws them as paths", async () => {
+    const { loadMath, mathIssues } = await import("../src/engine/math.js");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { renderFrame } = await import("../src/engine/render.js");
+    const { DARK_THEME } = await import("../src/engine/color.js");
+    const math = await loadMath();
+    const s = scene({ elements: [{ id: "m", shape: "math", tex: "\\frac{1}{2} r \\cdot 2\\pi r" }, { id: "bad", shape: "math", tex: "\\oops" }], steps: [{ actions: [] }] });
+    const estimated = computeLayout(s).boxes.get("m")!;
+    const layout = computeLayout(s, { math });
+    const measured = layout.boxes.get("m")!;
+    expect(measured.w).not.toBeCloseTo(estimated.w, 2);
+    const markup = renderToStaticMarkup(renderFrame({ scene: s, layout, compiled: compileScene(s, layout), t: 0, theme: DARK_THEME, math }) as never);
+    expect(markup).toContain("<path");
+    // The formula MathJax can't typeset falls back to readable text, and is reported.
+    expect(markup).toContain("oops");
+    expect(mathIssues(s, math)).toEqual([{ path: "elements.1.tex", message: expect.stringContaining("Undefined control sequence \\oops") }]);
+  });
+});
+
+describe("math colours", () => {
+  it("allows palette and hex colours but no other paint values", async () => {
+    const { loadMath } = await import("../src/engine/math.js");
+    const math = await loadMath();
+    expect(math.typeset("\\color{orange}{a^2} + \\textcolor{#58c4dd}{b}")).not.toHaveProperty("error");
+    expect(math.typeset("\\color{url(javascript:alert(1))}{x}")).toHaveProperty("error");
+    const quoted = math.typeset('\\color{red" onload="alert(1)}{x}');
+    expect("error" in quoted || !/ onload=/.test(quoted.body)).toBe(true);
+  });
+});
+
+describe("plot morph", () => {
+  it("turns one curve into another", () => {
+    const s = scene({
+      elements: [
+        { id: "ax", shape: "axes", x: [-3, 3, 1], y: [-1, 9, 1] },
+        { id: "f", shape: "plot", axes: "ax", y: "x^2" },
+        { id: "g", shape: "plot", axes: "ax", y: "2*x + 1", hidden: true },
+      ],
+      steps: [{ actions: [{ do: "morph", target: "f", into: "g", duration: 1 }], hold: 0 }],
+    });
+    const layout = computeLayout(s);
+    const compiled = compileScene(s, layout);
+    expect(valueAt(compiled, "f", "morph", 1, 0)).toBe(1);
+  });
+});
+
+describe("moving onto a plot", () => {
+  it("lands on the curve, not the axis", () => {
+    const s = scene({
+      elements: [
+        { id: "ax", shape: "axes", x: [0, 4, 1], y: [0, 16, 4] },
+        { id: "f", shape: "plot", axes: "ax", y: "x^2" },
+        { id: "p", shape: "dot", at: { axes: "ax", x: 1, plot: "f" } },
+      ],
+      steps: [{ actions: [{ do: "move", target: "p", to: { axes: "ax", x: 3, plot: "f" }, duration: 1 }], hold: 0 }],
+    });
+    const layout = computeLayout(s);
+    const compiled = compileScene(s, layout);
+    const start = layout.boxes.get("p")!;
+    const [ex, ey] = layout.axes.get("ax")!.toCanvas(3, 9);
+    close(start.x + valueAt(compiled, "p", "dx", 1, 0), ex);
+    close(start.y + valueAt(compiled, "p", "dy", 1, 0), ey);
+  });
+});
