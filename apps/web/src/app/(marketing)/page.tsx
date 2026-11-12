@@ -7,6 +7,7 @@ import { CopyField } from "./_components/copy-field";
 import { DemoVideo } from "./_components/demo-video";
 import { AgentsDemo } from "./_components/demos/agents-demo";
 import { CanvasDemo } from "./_components/demos/canvas-demo";
+import { InteractiveNotesDemo } from "./_components/demos/interactive-notes-demo";
 import { MobileDemo } from "./_components/demos/mobile-demo";
 import { ExamplesSection } from "./_components/examples-section";
 import { FAQSection } from "./_components/faq-section";
@@ -200,6 +201,30 @@ export default function LandingPage() {
           },
         ]}
         footer={<AssistantSetup />}
+      />
+
+      <FeatureSection
+        id="interactive"
+        aura
+        className="border-t"
+        eyebrow="Interactive notes"
+        title="Notes you can play with."
+        body="Put widgets, quizzes, flashcards, mind maps and animations in any note: type /, or ask the AI to build one from what you've written. Readers drag, answer and explore right on the page."
+        demo={<InteractiveNotesDemo />}
+        points={[
+          {
+            title: "Built for you",
+            body: "Type /build with AI, or ask Claude, ChatGPT or the CLI. Every block is checked before it's saved, and you can edit it as JSON or ask AI to change it.",
+          },
+          {
+            title: "Learn by doing",
+            body: "Drag numbers and points, answer eight kinds of question, flip flashcards with spaced repetition, and test yourself on a mind map.",
+          },
+          {
+            title: "Shared and published",
+            body: "Blocks work on published pages and phones, in light and dark. Each reader's answers and settings stay in their own browser.",
+          },
+        ]}
       />
 
       <FeatureSection

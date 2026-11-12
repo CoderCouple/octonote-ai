@@ -25,6 +25,10 @@ export const FAQS: { q: string; a: string }[] = [
     a: "Yes. Add Octonote as a connector in Claude.ai or as a custom MCP server in ChatGPT (https://api.octonote.ai/mcp), sign in once, and ask the assistant to write notes, draw diagrams, file them in notebooks or find what you saved. Setup steps are on octonote.ai/claude and octonote.ai/chatgpt.",
   },
   {
+    q: "What can I put in a note besides text?",
+    a: "Math, Mermaid diagrams, code, embedded canvases, and interactive blocks: widgets readers explore by dragging numbers and points, practice questions and quizzes (multiple choice, fill in the blank, numbers, ordering, sorting and short answers), flashcards with spaced repetition, matching, mind maps you can test yourself on, and step-by-step animations. Type / in a note, or ask the AI to build one.",
+  },
+  {
     q: "Will an agent publish or delete things on its own?",
     a: "No. The guide agents follow tells them to publish, share or delete only when you ask, and deleting from the CLI needs an explicit --yes.",
   },

@@ -30,6 +30,7 @@ const PRO_FEATURES = [
 
 const EVERY_PLAN = [
   "Notes with math, Mermaid and code",
+  "Interactive widgets, quizzes, flashcards and animations in notes",
   "Infinite canvases and projects",
   "Sharing and publishing to the web",
   "View analytics for published pages",
