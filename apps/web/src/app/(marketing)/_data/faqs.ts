@@ -38,7 +38,7 @@ export const FAQS: { q: string; a: string }[] = [
 export const PRICING_FAQS: { q: string; a: string }[] = [
   {
     q: "Is Octonote AI free?",
-    a: "Yes. The free plan has every feature, with up to 10 notes, 10 canvases, 10 projects and 10 notebooks in one workspace. No credit card needed.",
+    a: "Yes. The free plan has every feature, with up to 10 notes, 5 canvases, 10 projects and 10 notebooks in one workspace. No credit card needed.",
   },
   {
     q: "How much is Pro?",

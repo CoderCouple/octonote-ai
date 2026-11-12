@@ -1,5 +1,5 @@
 /**
- * Free plan: 10 notes, 10 canvases, 10 projects and 10 notebooks per
+ * Free plan: 10 notes, 5 canvases, 10 projects and 10 notebooks per
  * workspace, and one workspace you own. Pro (from Stripe, via the webhook)
  * lifts both. Limits only apply once payments are set up.
  */
@@ -50,6 +50,11 @@ describe("free plan limits", () => {
     expect((err as { getStatus: () => number }).getStatus()).toBe(402);
   });
 
+  it("allows 5 canvases, then refuses the 6th", async () => {
+    for (let i = 0; i < 5; i++) expect(await statusOf(h.canvases.create(alice.workspaceId, { title: `C${i}` }, alice.id))).toBe(200);
+    expect(await statusOf(h.canvases.create(alice.workspaceId, { title: "One too many" }, alice.id))).toBe(402);
+  });
+
   it("counts each kind separately, and a project's own note and canvas don't count", async () => {
     for (let i = 0; i < 10; i++) await h.projects.create(alice.workspaceId, { name: `P${i}` }, alice.id);
     expect(await statusOf(h.projects.create(alice.workspaceId, { name: "P10" }, alice.id))).toBe(402);
@@ -98,7 +103,7 @@ describe("Pro", () => {
     expect(free).toMatchObject({
       plan: "free",
       usage: { page: 3, canvas: 0, project: 1, notebook: 0 },
-      limits: { page: 10, canvas: 10, project: 10, notebook: 10 },
+      limits: { page: 10, canvas: 5, project: 10, notebook: 10 },
       canManage: true,
     });
     await becomePro();

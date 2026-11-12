@@ -8,6 +8,7 @@
  */
 import {
   discountedCents,
+  FREE_CANVAS_LIMIT,
   FREE_LIMIT,
   PRO_PRICE,
   type BillingInvoice,
@@ -435,5 +436,5 @@ function planLine(s: BillingSummary | null): string | undefined {
       ? `Ends on ${until}.`
       : `Renews on ${until} (${s.interval === "year" ? "yearly" : "monthly"}).`;
   }
-  return `Free includes ${FREE_LIMIT} of each and one workspace.`;
+  return `Free includes ${FREE_LIMIT} notes, ${FREE_CANVAS_LIMIT} canvases, ${FREE_LIMIT} projects, ${FREE_LIMIT} notebooks and one workspace.`;
 }

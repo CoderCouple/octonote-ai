@@ -6,7 +6,7 @@
  * Monthly/yearly toggle → Stripe Checkout.
  */
 import {
-  FREE_LIMIT,
+  FREE_LIMITS,
   PRO_PRICE,
   type BillingInterval,
   type BillingSummary,
@@ -39,7 +39,7 @@ const NOUN: Record<LimitedKind, string> = {
 
 function headline(reason: UpgradeReason) {
   if (reason === "workspace") return "The Free plan includes one workspace";
-  if (reason) return `You've used your ${FREE_LIMIT} free ${NOUN[reason]}`;
+  if (reason) return `You've used your ${FREE_LIMITS[reason]} free ${NOUN[reason]}`;
   return "Upgrade to Pro";
 }
 

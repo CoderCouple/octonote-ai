@@ -125,7 +125,7 @@ export const ASSISTANT_PROMPTS = [
 export const assistantFaqs = (name: string) => [
   {
     q: `Is Octonote free to use with ${name}?`,
-    a: "Yes. The free plan includes 10 notes, 10 canvases, 10 projects and 10 notebooks. Pro is $20 a month for unlimited, and students get Pro free for a year.",
+    a: "Yes. The free plan includes 10 notes, 5 canvases, 10 projects and 10 notebooks. Pro is $20 a month for unlimited, and students get Pro free for a year.",
   },
   {
     q: `What can ${name} do in my Octonote?`,

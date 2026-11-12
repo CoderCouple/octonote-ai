@@ -3,17 +3,19 @@
  * creators upgrade their personal workspace; organisations (later: a per-member
  * Team plan) upgrade a shared one.
  *
- * Free: up to 10 notes, 10 canvases, 10 projects and 10 notebooks per
- * workspace, and one workspace you own. Pro: no limits.
+ * Free: up to 10 notes, 5 canvases (lowered from 10 on 2026-11-12), 10 projects
+ * and 10 notebooks per workspace, and one workspace you own. Pro: no limits.
  */
 export type Plan = "free" | "pro";
 export type BillingInterval = "month" | "year";
 export type LimitedKind = "page" | "canvas" | "project" | "notebook";
 
+/** The free limit for notes, projects and notebooks; canvases have their own. */
 export const FREE_LIMIT = 10;
+export const FREE_CANVAS_LIMIT = 5;
 export const FREE_LIMITS: Record<LimitedKind, number> = {
   page: FREE_LIMIT,
-  canvas: FREE_LIMIT,
+  canvas: FREE_CANVAS_LIMIT,
   project: FREE_LIMIT,
   notebook: FREE_LIMIT,
 };

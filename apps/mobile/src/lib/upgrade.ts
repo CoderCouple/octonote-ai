@@ -8,7 +8,7 @@
  */
 import { ApiError } from "@octonote/api-client";
 import {
-  FREE_LIMIT,
+  FREE_LIMITS,
   kindsAtLimit,
   PLAN_LIMIT_CODE,
   type BillingSummary,
@@ -35,7 +35,7 @@ export function promptUpgrade(kind: LimitedKind | "workspace" | null) {
     kind === "workspace"
       ? "The Free plan includes one workspace"
       : kind
-        ? `You've used your ${FREE_LIMIT} free ${NOUN[kind]}`
+        ? `You've used your ${FREE_LIMITS[kind]} free ${NOUN[kind]}`
         : "Upgrade to Pro";
   Alert.alert(
     title,

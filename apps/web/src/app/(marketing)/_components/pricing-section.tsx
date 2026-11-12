@@ -6,6 +6,7 @@
  * from what the API enforces.
  */
 import {
+  FREE_CANVAS_LIMIT,
   FREE_LIMIT,
   PRO_PRICE,
   STUDENT_PRO_MONTHS,
@@ -19,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 /** The cards list only what differs between plans; the rest is shared. */
 const FREE_FEATURES = [
-  `${FREE_LIMIT} notes, ${FREE_LIMIT} canvases, ${FREE_LIMIT} projects and ${FREE_LIMIT} notebooks`,
+  `${FREE_LIMIT} notes, ${FREE_CANVAS_LIMIT} canvases, ${FREE_LIMIT} projects and ${FREE_LIMIT} notebooks`,
   "One workspace",
 ];
 

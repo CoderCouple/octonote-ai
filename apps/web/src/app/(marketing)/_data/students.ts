@@ -73,7 +73,7 @@ export const STUDENT_FAQS = [
   },
   {
     q: "Can I sign up with my personal email?",
-    a: "Yes, but the free student Pro is matched on your school email. With a personal address you get the free plan: every feature, up to 10 notes, canvases, projects and notebooks.",
+    a: "Yes, but the free student Pro is matched on your school email. With a personal address you get the free plan: every feature, up to 10 notes, 5 canvases, 10 projects and 10 notebooks.",
   },
   {
     q: "Is there a phone app?",

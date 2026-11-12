@@ -79,7 +79,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         feature: "Free plan",
-        us: "10 notes, 10 canvases, 10 projects, 10 notebooks",
+        us: "10 notes, 5 canvases, 10 projects, 10 notebooks",
         them: "Unlimited blocks for one person; limited with 2+ members",
       },
       {
@@ -174,7 +174,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         feature: "Free plan",
-        us: "10 notes, 10 canvases, 10 projects, 10 notebooks",
+        us: "10 notes, 5 canvases, 10 projects, 10 notebooks",
         them: "5 files, 10 AI diagrams",
       },
       {
@@ -218,7 +218,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         q: "How do the free plans compare?",
-        a: "Eraser's free plan has 5 files and 10 AI diagrams. Octonote AI's free plan has 10 notes, 10 canvases, 10 projects and 10 notebooks, with every feature.",
+        a: "Eraser's free plan has 5 files and 10 AI diagrams. Octonote AI's free plan has 10 notes, 5 canvases, 10 projects and 10 notebooks, with every feature.",
       },
     ],
     sources: [
@@ -372,7 +372,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         feature: "Free plan",
-        us: "10 notes, 10 canvases, 10 projects, 10 notebooks",
+        us: "10 notes, 5 canvases, 10 projects, 10 notebooks",
         them: "Free forever: one scene, unlimited collaborators",
       },
       {
@@ -472,7 +472,7 @@ export const COMPARISONS: Comparison[] = [
       },
       {
         feature: "Free plan",
-        us: "10 notes, 10 canvases, 10 projects, 10 notebooks",
+        us: "10 notes, 5 canvases, 10 projects, 10 notebooks",
         them: "3 editable boards",
       },
       {

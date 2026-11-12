@@ -31,7 +31,7 @@ import {
   type WorkspaceRole,
 } from "@/features/resources";
 import { openPlans } from "@/lib/upgrade";
-import { FREE_LIMIT, PRO_PRICE, type LimitedKind, type SupportAccessStatus } from "@octonote/shared";
+import { FREE_CANVAS_LIMIT, FREE_LIMIT, PRO_PRICE, type LimitedKind, type SupportAccessStatus } from "@octonote/shared";
 import { setActiveWorkspaceId } from "@/lib/active-workspace";
 import { api } from "@/lib/api";
 import { env } from "@/lib/env";
@@ -703,7 +703,7 @@ function PlanSection({ c }: { c: Palette }) {
               ? billing?.currentPeriodEnd
                 ? `${billing.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${new Date(billing.currentPeriodEnd).toLocaleDateString()}.`
                 : undefined
-              : `Free includes ${FREE_LIMIT} of each and one workspace.`
+              : `Free includes ${FREE_LIMIT} notes, ${FREE_CANVAS_LIMIT} canvases, ${FREE_LIMIT} projects, ${FREE_LIMIT} notebooks and one workspace.`
         }
       >
         <View style={[styles.badge, { backgroundColor: c.tint }]}>
