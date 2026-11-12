@@ -18,7 +18,8 @@
     "api-url:sync": "node scripts/api-url-sync.mjs",
     "deploy:api": "node scripts/deploy-api.mjs",
     "reviewer:account": "node scripts/reviewer-account.mjs",
-    "openai:plugin": "node scripts/openai-plugin.mjs"
+    "openai:plugin": "node scripts/openai-plugin.mjs",
+    "build:vercel": "pnpm --filter @octonote/shared --filter @octonote/api-client --filter @octonote/content build && pnpm --filter @octonote/widgets --filter @octonote/interactive --filter @octonote/motion --filter @octonote/manim build && pnpm --filter @octonote/compose build && pnpm --filter @octonote/web build"
   },
   "devDependencies": {
     "prettier": "^3.4.2",
