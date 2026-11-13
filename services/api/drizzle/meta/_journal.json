@@ -253,6 +253,13 @@
       "when": 1794514641087,
       "tag": "0035_user_ai_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794524879979,
+      "tag": "0036_collections",
+      "breakpoints": true
     }
   ]
 }

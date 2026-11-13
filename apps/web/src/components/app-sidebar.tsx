@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   Settings,
   Users,
+  Library,
 } from "lucide-react";
 import * as React from "react";
 
@@ -47,6 +48,7 @@ export function AppSidebar({
     { title: "Canvases", url: "/workspace/canvases", icon: LayoutGrid },
     { title: "Projects", url: "/workspace/projects", icon: FolderKanban },
     { title: "Notebooks", url: "/workspace/notebooks", icon: BookOpen },
+    { title: "Collections", url: "/workspace/collections", icon: Library },
     { title: "Shared", url: "/workspace/shared", icon: Users },
   ];
 

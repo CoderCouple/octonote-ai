@@ -676,3 +676,4 @@ export const CrmEmailSchema = z.object({
   body: z.string().trim().min(1, "Write the message.").max(20_000),
 });
 export type CrmEmailInput = z.infer<typeof CrmEmailSchema>;
+export * from "./clip-drafts";

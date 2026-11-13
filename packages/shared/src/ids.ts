@@ -39,6 +39,8 @@ export const ID_PREFIXES = {
   video: "vid",
   chatThread: "cht",
   chatMessage: "chm",
+  collection: "clc",
+  clip: "clp",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];
