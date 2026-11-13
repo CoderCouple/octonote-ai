@@ -12,11 +12,15 @@ import { AiController } from "../api/v1/controller/ai.controller";
 import { AiKeyController } from "../api/v1/controller/ai-key.controller";
 import { ChatController } from "../api/v1/controller/chat.controller";
 import { CollectionsController } from "../api/v1/controller/collections.controller";
+import { ExtensionConnectController } from "../api/v1/controller/extension-connect.controller";
+import { ExtensionItemsController } from "../api/v1/controller/extension-items.controller";
 import { AiVideosController, VideosController } from "../api/v1/controller/videos.controller";
 import { VideosService } from "../service/videos.service";
 import { AiKeysService } from "../service/ai-keys.service";
 import { ChatService } from "../service/chat.service";
 import { CollectionsService } from "../service/collections.service";
+import { ExtensionConnectService } from "../service/extension-connect.service";
+import { ExtensionItemsService } from "../service/extension-items.service";
 import { ComposeAiService } from "../service/compose-ai.service";
 import { FiguresService } from "../service/figures.service";
 import { VotesService } from "../service/votes.service";
@@ -77,6 +81,8 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     AiKeyController,
     ChatController,
     CollectionsController,
+    ExtensionConnectController,
+    ExtensionItemsController,
     AiVideosController,
     VideosController,
     AdminFeedbackController,
@@ -114,6 +120,8 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     ComposeAiService,
     ChatService,
     CollectionsService,
+    ExtensionConnectService,
+    ExtensionItemsService,
     VideosService,
     CanvasesService,
     SharesService,

@@ -3,6 +3,7 @@ import { CanActivate, ExecutionContext, Inject, Injectable } from "@nestjs/commo
 import { ModuleRef } from "@nestjs/core";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { buildIdFromUuid } from "@octonote/shared";
+import { assertCliTokenScope } from "./cli-token-scope";
 import { isCliToken, userForCliToken } from "./cli-token-user";
 import { isSupportToken, userForSupportToken } from "./support-session-user";
 import { recordActivity } from "./record-activity";
@@ -37,13 +38,16 @@ export class OptionalSupabaseAuthGuard implements CanActivate {
       request.user = (await userForSupportToken(this.moduleRef, token, request)) ?? undefined;
       return true;
     }
+    if (isCliToken(token)) {
+      const user = await userForCliToken(this.moduleRef, token).catch(() => null);
+      if (!user) return true;
+      // Outside the try too: a clipper token is refused here, not treated as anonymous.
+      assertCliTokenScope(user.cliTokenScope, request.method, request.url);
+      request.user = user;
+      recordActivity(this.moduleRef, user, request.headers);
+      return true;
+    }
     try {
-      if (isCliToken(token)) {
-        const user = await userForCliToken(this.moduleRef, token);
-        request.user = user ?? undefined;
-        if (user) recordActivity(this.moduleRef, user, request.headers);
-        return true;
-      }
       const user = await supabaseUserFromToken(this.supabase, token);
       if (user) {
         request.user = { ...user, id: buildIdFromUuid("usr", user.id) };

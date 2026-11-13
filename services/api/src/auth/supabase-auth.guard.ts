@@ -9,6 +9,7 @@ import {
 import { ModuleRef } from "@nestjs/core";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { buildIdFromUuid } from "@octonote/shared";
+import { assertCliTokenScope, type CliTokenScope } from "./cli-token-scope";
 import { isCliToken, userForCliToken } from "./cli-token-user";
 import { isSupportToken, userForSupportToken } from "./support-session-user";
 import { recordActivity } from "./record-activity";
@@ -17,9 +18,17 @@ import { SUPABASE_CLIENT } from "./supabase.tokens";
 export interface AuthenticatedRequest {
   /**
    * `cliTokenId` is set when the caller used an `ont_…` CLI token;
+   * `cliTokenScope` what that token may do ("clipper": collections only,
+   * "clipper_read": also reading items for the extension);
    * `supportSessionId` when staff are viewing the account (read-only).
    */
-  user: User & { id: string; cliTokenId?: string; supportSessionId?: string; supportAdminId?: string };
+  user: User & {
+    id: string;
+    cliTokenId?: string;
+    cliTokenScope?: CliTokenScope;
+    supportSessionId?: string;
+    supportAdminId?: string;
+  };
   headers: Record<string, string | undefined>;
   method?: string;
   url?: string;
@@ -51,6 +60,7 @@ export class SupabaseAuthGuard implements CanActivate {
     if (isCliToken(token)) {
       const user = await userForCliToken(this.moduleRef, token);
       if (!user) throw new UnauthorizedException("Invalid or revoked CLI token.");
+      assertCliTokenScope(user.cliTokenScope, request.method, request.url);
       request.user = user;
       recordActivity(this.moduleRef, user, request.headers);
       return true;

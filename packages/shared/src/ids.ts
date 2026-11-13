@@ -41,6 +41,7 @@ export const ID_PREFIXES = {
   chatMessage: "chm",
   collection: "clc",
   clip: "clp",
+  extensionConnectCode: "xcc",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

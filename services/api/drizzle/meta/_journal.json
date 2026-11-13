@@ -260,6 +260,20 @@
       "when": 1794524879979,
       "tag": "0036_collections",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794589252410,
+      "tag": "0037_extension_connect",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794591053648,
+      "tag": "0038_extension_read",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,7 @@ import { NotFound } from "../common/error/error-factory";
 import { ProductAnalytics } from "../common/product-analytics.service";
 import { CliTokensRepository } from "../db/repository/cli-tokens.repository";
 import { UsersRepository } from "../db/repository/users.repository";
+import type { CliTokenScope } from "../db/schemas/cli-tokens";
 
 export const CLI_TOKEN_PREFIX = "ont_";
 /** What `octonote login` names its token, followed by the computer's name. */
@@ -58,7 +59,7 @@ export class CliTokensService {
 
   async create(
     userId: string,
-    input: { name: string; expiresInDays?: number },
+    input: { name: string; expiresInDays?: number; scope?: CliTokenScope },
   ): Promise<{ token: CliTokenDto; plaintext: string }> {
     const plaintext = `${CLI_TOKEN_PREFIX}${randomBytes(32).toString("base64url")}`;
     const row = await this.repo.insert({
@@ -66,6 +67,7 @@ export class CliTokensService {
       name: input.name.trim().slice(0, 80) || "CLI",
       tokenHash: hashCliToken(plaintext),
       tokenPreview: plaintext.slice(-4),
+      scope: input.scope ?? "full",
       expiresAt: input.expiresInDays
         ? new Date(Date.now() + input.expiresInDays * 86_400_000)
         : null,
@@ -104,6 +106,6 @@ export class CliTokensService {
     const user = await this.usersRepo.findById(row.userId);
     if (!user) return null;
     void this.repo.recordUse(row.id).catch(() => undefined);
-    return { user, tokenId: row.id };
+    return { user, tokenId: row.id, scope: row.scope };
   }
 }

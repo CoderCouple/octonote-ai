@@ -1,0 +1,1 @@
+ALTER TABLE "extension_connect_codes" ADD COLUMN "scope" text DEFAULT 'clipper' NOT NULL;
