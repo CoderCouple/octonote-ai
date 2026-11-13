@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Octonote Clipper</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- Not connected -->
+      <section id="view-connect" class="view connect" hidden>
+        <div class="connect-body">
+          <img class="mark" src="icons/icon-128.png" alt="" />
+          <h1>Clip the best parts of your AI chats</h1>
+          <p class="lead">Keep just the answers you want from ChatGPT, Claude and Gemini in an Octonote collection, then write a cited note from only those.</p>
+          <ol class="steps">
+            <li><span class="num">1</span><span><strong>Connect</strong> your Octonote workspace.</span></li>
+            <li><span class="num">2</span><span><strong>Clip</strong> as you chat: select text and click Clip, or hover an answer and click Clip answer.</span></li>
+            <li><span class="num">3</span><span><strong>Write</strong> a summary, report, comparison or flashcards from your clips, with every claim cited.</span></li>
+          </ol>
+          <div id="ended" class="alert" role="alert" hidden><span data-icon="alert"></span><span class="alert-text" id="ended-text"></span></div>
+          <div class="connect-actions">
+            <div id="env-field" class="field" hidden>
+              <label class="label" for="env">Connect to</label>
+              <select id="env" class="input"></select>
+            </div>
+            <button id="connect" class="btn btn-default btn-block" type="button">Connect to Octonote</button>
+            <p class="fine"><span data-icon="shield"></span><span>The extension only works with your collections. It can't read or change your notes.</span></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Waiting for the connect tab -->
+      <section id="view-pending" class="view" hidden>
+        <div class="pending-body">
+          <span class="loader spin" data-icon="loader"></span>
+          <h2>Finish connecting in Octonote</h2>
+          <p>Sign in if asked, then click <strong>Connect extension</strong> in the tab that just opened.</p>
+          <div class="row">
+            <button id="pending-open" class="btn btn-outline btn-sm" type="button"><span data-icon="externalLink"></span>Open the tab again</button>
+            <button id="pending-cancel" class="btn btn-ghost btn-sm" type="button">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Connected -->
+      <section id="view-main" class="view" hidden>
+        <header class="topbar">
+          <button id="switcher" class="switcher" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="collection-popover">
+            <img src="icons/icon-48.png" alt="" />
+            <span class="sw-text">
+              <span class="sw-label">Clipping to</span>
+              <span class="sw-name" id="current-name">Choose a collection</span>
+            </span>
+            <span class="chev" data-icon="chevronDown"></span>
+          </button>
+          <button id="more" class="btn btn-ghost btn-icon" type="button" aria-label="More" aria-haspopup="menu" aria-expanded="false" aria-controls="more-menu"><span data-icon="ellipsis"></span></button>
+
+          <div id="collection-popover" class="popover" hidden>
+            <div class="popover-search">
+              <span data-icon="search"></span>
+              <input id="find" type="text" placeholder="Find or create a collection…" autocomplete="off" spellcheck="false" maxlength="120"
+                role="combobox" aria-expanded="true" aria-controls="options" aria-autocomplete="list" aria-label="Find or create a collection" />
+            </div>
+            <ul id="options" class="options" role="listbox" aria-label="Collections"></ul>
+          </div>
+
+          <div id="more-menu" class="menu" role="menu" hidden>
+            <div class="menu-label"><strong id="m-workspace"></strong><span id="m-env"></span></div>
+            <a id="m-open" class="menu-item" role="menuitem" href="#" target="_blank" rel="noreferrer"><span data-icon="arrowUpRight"></span>Open collection in Octonote</a>
+            <button id="m-rename" class="menu-item" role="menuitem" type="button"><span data-icon="pencil"></span>Rename collection</button>
+            <button id="m-read" class="menu-item" role="menuitem" type="button"><span data-icon="shield"></span><span id="m-read-label">Turn off note access</span></button>
+            <div class="menu-sep" role="separator"></div>
+            <button id="m-disconnect" class="menu-item" role="menuitem" type="button"><span data-icon="logOut"></span>Disconnect</button>
+          </div>
+        </header>
+
+        <form id="rename" class="rename" hidden>
+          <input id="rename-name" class="input" aria-label="Collection name" maxlength="120" required />
+          <button class="btn btn-default btn-sm" type="submit">Save</button>
+          <button id="rename-cancel" class="btn btn-ghost btn-sm" type="button">Cancel</button>
+        </form>
+
+        <div id="banner" class="banner" hidden>
+          <div class="alert" role="alert">
+            <span data-icon="alert"></span>
+            <span class="alert-text" id="banner-text"></span>
+            <button id="banner-retry" class="btn btn-ghost btn-sm" type="button"><span data-icon="refresh"></span>Retry</button>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Show">
+          <button id="tab-clips" class="tab" role="tab" type="button" aria-selected="true" aria-controls="pane-clips">Clips</button>
+          <button id="tab-notes" class="tab" role="tab" type="button" aria-selected="false" aria-controls="pane-notes">Notes</button>
+        </div>
+
+        <div id="pane-clips" class="pane" role="tabpanel" aria-labelledby="tab-clips">
+        <div class="list-head" id="list-head">
+          <span id="count" aria-live="polite"></span>
+          <span id="reorder-hint">Drag <span class="inline-icon" data-icon="grip"></span> to reorder</span>
+        </div>
+
+        <div class="scroller" id="scroller">
+          <div id="skeleton" class="skeleton" aria-hidden="true"><div></div><div></div><div></div></div>
+          <ol id="clips" class="clips" aria-label="Clips"></ol>
+          <div id="empty" class="empty" hidden>
+            <span class="empty-icon" data-icon="scissors"></span>
+            <strong>No clips yet</strong>
+            <p>Clips appear here the moment you make them.</p>
+            <div class="tips">
+              <span>On ChatGPT, Claude or Gemini: select text and click <kbd>Clip</kbd>, or hover an answer for <kbd>Clip answer</kbd>.</span>
+              <span>Anywhere: select text and press <kbd id="shortcut">Alt+Shift+C</kbd>, or right-click → <em>Clip to Octonote</em>.</span>
+            </div>
+          </div>
+          <div id="no-collection" class="empty" hidden>
+            <span class="empty-icon" data-icon="library"></span>
+            <strong>Make your first collection</strong>
+            <p>Name it after what you're researching, like “Solid-state batteries”.</p>
+            <button id="first-collection" class="btn btn-outline btn-sm" type="button"><span data-icon="plus"></span>New collection</button>
+          </div>
+        </div>
+
+        <footer>
+          <div class="footer-row">
+            <button id="insert-clips" class="btn btn-outline" type="button" aria-disabled="true" title="Add these clips to the chat in this tab"><span data-icon="cornerDownLeft"></span>Insert in chat</button>
+            <a id="write" class="btn btn-default" href="#" target="_blank" rel="noreferrer" aria-disabled="true">Write a note</a>
+          </div>
+          <p class="fine">Write a summary, report, comparison or flashcards in Octonote, citing your clips</p>
+        </footer>
+        </div>
+
+        <div id="pane-notes" class="pane" role="tabpanel" aria-labelledby="tab-notes" hidden>
+          <div id="notes-off" class="scroller">
+            <div class="empty">
+              <span class="empty-icon" data-icon="fileText"></span>
+              <strong>Insert notes into chats</strong>
+              <p>Add your Octonote notes, canvases and projects to ChatGPT, Claude and Gemini messages. Canvases go in as a picture plus their diagram as text.</p>
+              <button id="read-on" class="btn btn-default btn-sm" type="button">Turn on</button>
+              <p class="fine"><span data-icon="shield"></span><span>Octonote Clipper reads only the items you pick, when you pick them. You'll confirm in Octonote, and can turn it off any time.</span></p>
+            </div>
+          </div>
+          <div id="notes-on" class="pane" hidden>
+            <div class="notes-search">
+              <span data-icon="search"></span>
+              <input id="notes-find" type="search" placeholder="Search notes, canvases and projects" autocomplete="off" spellcheck="false" aria-label="Search Octonote" />
+            </div>
+            <div class="scroller">
+              <div id="notes-skeleton" class="skeleton" aria-hidden="true"><div></div><div></div><div></div></div>
+              <ul id="notes" class="note-list" aria-label="Notes, canvases and projects"></ul>
+              <div id="notes-empty" class="empty" hidden><span class="empty-icon" data-icon="search"></span><p id="notes-empty-text"></p></div>
+            </div>
+            <footer>
+              <p class="fine">In a chat, you can also type <kbd>#octonote</kbd> in the message box.</p>
+            </footer>
+          </div>
+        </div>
+      </section>
+
+      <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    </div>
+    <script src="panel.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "name": "@octonote/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Octonote Clipper: keep the parts of ChatGPT, Claude and Gemini answers you want, in an Octonote collection.",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:local": "node build.mjs --local",
+    "dev": "node build.mjs --local --watch",
+    "package": "node build.mjs && cd dist && zip -qr ../octonote-clipper.zip . && echo octonote-clipper.zip",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "echo \"lint pending\""
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "@types/chrome": "0.0.287",
+    "esbuild": "0.24.0",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.9"
+  }
+}
