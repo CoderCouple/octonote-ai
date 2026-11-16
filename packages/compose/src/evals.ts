@@ -14,7 +14,7 @@ export interface EvalCase {
   maxRich?: number;
 }
 
-const RICH = ["widget", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene"];
+const RICH = ["widget", "infographic", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene"];
 
 export const EVAL_CASES: EvalCase[] = [
   { question: "What is the capital of France?", strategy: ["text"], exclude: RICH },
@@ -22,6 +22,7 @@ export const EVAL_CASES: EvalCase[] = [
   { question: "Thanks, that helped!", strategy: ["text"], exclude: RICH },
   { question: "How do I reverse a list in Python?", include: [["code"]], exclude: RICH },
   { question: "Explain how compound interest works.", include: [["widget"]] },
+  { question: "Give me a one-glance visual summary of where Earth's water is.", include: [["infographic"]], exclude: ["widget"] },
   { question: "How does the area of a circle change as the radius grows?", include: [["widget"]], exclude: ["quiz"] },
   { question: "Teach me probability interactively.", include: [["widget"], ["mcq", "quiz"]] },
   { question: "How does stopping distance depend on speed?", include: [["widget"]] },

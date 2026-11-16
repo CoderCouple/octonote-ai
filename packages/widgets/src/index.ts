@@ -27,3 +27,6 @@ export { computeScope, initialInputs, restoreInputs, chartData, sampleChart, use
 export { Chart, niceTicks } from "./explorable/chart.js";
 export { Slider, WidgetInputControl } from "./explorable/inputs.js";
 export { Widget, WidgetSpecRenderer, validateWidget } from "./explorable/widget.js";
+export { Infographic, InfographicSpecRenderer } from "./infographic/infographic.js";
+export { INFOGRAPHIC_LAYOUTS, INFOGRAPHIC_LIMITS, infographicGroupSchema, infographicItemSchema, infographicSpecSchema, validateInfographic } from "./infographic/schema.js";
+export type { InfographicItem, InfographicLayout, InfographicResult, InfographicSpec } from "./infographic/schema.js";

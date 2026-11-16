@@ -142,6 +142,13 @@ describe("interactive blocks", () => {
     expect(JSON.parse(again.blocks[1]!.props.spec)).toEqual(quiz);
   });
 
+  it("reads an infographic fence and writes it back", async () => {
+    const spec = { title: "Facts", layout: "stats", items: [{ label: "Users", value: "3M" }, { label: "Countries", value: "40" }] };
+    const doc = await markdownToNoteDocument(`\`\`\`infographic\n${JSON.stringify(spec)}\n\`\`\``);
+    expect(doc.blocks[0]!.props.kind).toBe("infographic");
+    expect(await noteDocumentToMarkdown(doc)).toContain("```infographic");
+  });
+
   it("drops a stray kind field and refuses oversized specs", async () => {
     const { blocks } = await markdownToNoteDocument(`\`\`\`widget\n{"kind":"widget","title":"T"}\n\`\`\``);
     expect(JSON.parse(blocks[0]!.props.spec)).toEqual({ title: "T" });

@@ -20,7 +20,11 @@ export const WIDGET_LIMITS = {
 } as const;
 
 export const PALETTE = ["blue", "green", "orange", "purple", "red", "teal", "pink", "gray"] as const;
-export const ICONS = ["car", "bike", "walk", "plane", "rocket", "coin", "drop", "bolt", "heart", "leaf", "clock", "home", "book", "star"] as const;
+export const ICONS = [
+  "car", "bike", "walk", "plane", "rocket", "coin", "drop", "bolt", "heart", "leaf", "clock", "home", "book", "star",
+  "user", "users", "target", "shield", "lock", "globe", "cloud", "database", "chart", "idea", "check", "search",
+  "flag", "chat", "calendar", "trophy", "code", "link", "warning", "cart",
+] as const;
 
 const short = z.string().trim().min(1).max(120);
 const text = z.string().trim().min(1).max(600);

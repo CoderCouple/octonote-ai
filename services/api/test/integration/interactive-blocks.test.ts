@@ -68,10 +68,10 @@ describe("the connector's format tool", () => {
     const { ComposeAiService } = await import("../../src/service/compose-ai.service");
     const ai = new ComposeAiService();
     const listing = (await ai.format()) as { kinds: { kind: string }[] };
-    expect(listing.kinds.map((k) => k.kind)).toEqual(["widget", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]);
+    expect(listing.kinds.map((k) => k.kind)).toEqual(["widget", "infographic", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]);
     const fences = await Promise.all(listing.kinds.map(async (k) => ((await ai.format(k.kind)) as { fence: string }).fence));
     const page = await h.noteMarkdown.create(alice.workspaceId, { title: "All kinds", markdown: fences.join("\n\n") }, alice.id);
     const types = (page.document as { blocks: { type: string }[] }).blocks.filter((b) => b.type === "interactive");
-    expect(types).toHaveLength(8);
+    expect(types).toHaveLength(9);
   });
 });

@@ -1,7 +1,7 @@
 import { Component, useCallback, useRef, useState, type ReactNode } from "react";
 import { defaultComponents, InteractiveProvider, InteractiveRenderer, type ActivityEvent, type ActivityEventHandler, type ProgressStore, type QuizGrader } from "@octonote/interactive";
 import { ScenePlayer } from "@octonote/motion";
-import { Blocks, Widget, WidgetsProvider } from "@octonote/widgets";
+import { Blocks, Infographic, Widget, WidgetsProvider } from "@octonote/widgets";
 import type { ComposeEvent } from "./agent.js";
 import type { Issue, RenderBlock } from "./catalog.js";
 import { markdownToBlocks } from "./markdown.js";
@@ -14,6 +14,7 @@ export type Theme = "light" | "dark" | "system";
 
 const KIND_LABELS: Record<string, string> = {
   widget: "an interactive widget",
+  infographic: "an infographic",
   flashcards: "flashcards",
   mcq: "practice questions",
   quiz: "a quiz",
@@ -209,6 +210,8 @@ export function BlockView({ block, theme }: { block: RenderBlock; theme?: Theme 
       return <Blocks blocks={block.blocks} />;
     case "widget":
       return <Widget spec={block.widget} persistKey={block.id} />;
+    case "infographic":
+      return <Infographic spec={block.infographic} />;
     case "interactive":
       return <InteractiveRenderer spec={block.spec} />;
     case "motion":

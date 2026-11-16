@@ -2,7 +2,7 @@ import type { RenderBlock } from "./catalog.js";
 import type { ComposedResponse } from "./response.js";
 
 /** Kinds that notes embed as live blocks (a fence named after the kind, holding the JSON). */
-export const EMBEDDABLE_KINDS = new Set(["widget", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]);
+export const EMBEDDABLE_KINDS = new Set(["widget", "infographic", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]);
 
 const cell = (text: string) => text.replace(/\|/g, "\\|").replace(/\n/g, " ");
 

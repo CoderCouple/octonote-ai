@@ -12,6 +12,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/shadcn/style.css";
 import {
   AppWindow,
+  ChartColumnBig,
   Clapperboard,
   ClipboardCheck,
   Group,
@@ -146,6 +147,7 @@ function mathAndDiagramSlashItems(
 
 const INTERACTIVE_ITEMS: { kind: string; subtext: string; aliases: string[]; icon: React.JSX.Element }[] = [
   { kind: "widget", subtext: "Sliders that drive live numbers, charts and visuals", aliases: ["widget", "slider", "explorable", "calculator", "simulation", "chart"], icon: <SlidersHorizontal className="size-4" /> },
+  { kind: "infographic", subtext: "Key facts as cards, steps, stats, bars or a timeline", aliases: ["infographic", "visual", "summary", "stats", "timeline", "compare", "process"], icon: <ChartColumnBig className="size-4" /> },
   { kind: "flashcards", subtext: "Two-sided cards with spaced repetition", aliases: ["flashcards", "cards", "memorise", "memorize", "study"], icon: <Layers className="size-4" /> },
   { kind: "mcq", subtext: "Questions checked one at a time, with hints", aliases: ["practice", "mcq", "multiple choice", "questions"], icon: <ListChecks className="size-4" /> },
   { kind: "quiz", subtext: "A scored test with a review at the end", aliases: ["quiz", "test", "assessment", "exam"], icon: <ClipboardCheck className="size-4" /> },

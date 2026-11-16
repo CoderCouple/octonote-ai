@@ -44,6 +44,7 @@ const InsertSchema = z.object({
   noteId: id,
   kind: z.enum([
     "widget",
+    "infographic",
     "flashcards",
     "mcq",
     "quiz",

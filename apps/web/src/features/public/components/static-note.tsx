@@ -307,6 +307,7 @@ export function StaticNote({ document }: { document: unknown }) {
 
 const INTERACTIVE_NAMES: Record<string, string> = {
   widget: "Interactive widget",
+  infographic: "Infographic",
   flashcards: "Flashcards",
   mcq: "Practice questions",
   quiz: "Quiz",
@@ -330,6 +331,6 @@ function interactiveSummary(kind: string, spec: string): string {
     return ` · ${n} ${n === 1 ? noun.replace(/s$/, "") : noun}`;
   };
   const title = typeof value.title === "string" ? `: ${value.title.slice(0, 120)}` : "";
-  const detail = count("cards", "cards") || count("questions", "questions") || count("pairs", "pairs") || count("nodes", "topics") || count("steps", "steps");
+  const detail = count("cards", "cards") || count("questions", "questions") || count("pairs", "pairs") || count("nodes", "topics") || count("steps", "steps") || count("items", "parts") || count("groups", "groups");
   return `${INTERACTIVE_NAMES[kind] ?? "Interactive block"}${title}${detail}`;
 }

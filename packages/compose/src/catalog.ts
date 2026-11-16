@@ -1,6 +1,6 @@
 import { defaultRegistry, normalizeSpec, type ActivitySpecBase } from "@octonote/interactive";
 import { SCENE_GUIDE, SCHEMA_VERSION, sceneSchema, validateScene, type Scene } from "@octonote/motion";
-import { contentBlock, documentSchema, widgetBlockSchema, type ContentBlock, type WidgetBlock } from "@octonote/widgets";
+import { contentBlock, documentSchema, infographicSpecSchema, validateInfographic, widgetBlockSchema, type ContentBlock, type InfographicSpec, type WidgetBlock } from "@octonote/widgets";
 import { z } from "zod/v4";
 import type { CustomBlock } from "./custom.js";
 import { markdownToBlocks } from "./markdown.js";
@@ -17,6 +17,7 @@ export interface Issue {
 export type RenderBlock = { source?: Record<string, unknown> } & (
   | { kind: string; id: string; renderer: "content"; blocks: ContentBlock[] }
   | { kind: "widget"; id: string; renderer: "widget"; widget: WidgetBlock }
+  | { kind: "infographic"; id: string; renderer: "infographic"; infographic: InfographicSpec }
   | { kind: string; id: string; renderer: "interactive"; spec: ActivitySpecBase }
   | { kind: "scene"; id: string; renderer: "motion"; scene: Scene }
   | { kind: "custom"; id: string; renderer: "custom"; custom: CustomBlock }
@@ -199,6 +200,38 @@ const widgetEntry: CatalogEntry = {
   },
 };
 
+/* widgets: infographics */
+
+const infographicEntry: CatalogEntry = {
+  kind: "infographic",
+  library: "widgets",
+  summary:
+    "A handful of facts drawn as a picture, in one of six layouts: cards (ideas with icons), process (ordered steps with arrows), stats (big numbers), compare (2–3 groups side by side), timeline (dated events) or bars (amounts to scale). Every part can carry a one- or two-sentence detail that opens when the reader clicks it. Text is capped short so nothing overflows: labels are a few words, values a short figure.",
+  useWhen: [
+    "Summarising a topic visually: key numbers, the stages of a process, pros and cons, a history, or how amounts compare.",
+    "The reader should take in the shape of the information at a glance, with details on demand.",
+  ],
+  avoidWhen: ["Numbers the reader should vary: use a widget.", "More than eight items, or ideas that need paragraphs: use text.", "A tree of related topics: use mindmap."],
+  weight: "rich",
+  jsonSchema: memo(() => blockSchema("infographic", toJson(infographicSpecSchema), ["schemaVersion", "type", "id"])),
+  example: {
+    kind: "infographic",
+    title: "How a vaccine trains your body",
+    layout: "process",
+    items: [
+      { label: "Harmless piece arrives", icon: "shield", detail: "The vaccine carries a weakened germ or a piece of one that can't make you sick." },
+      { label: "Immune system notices", icon: "search", detail: "White blood cells spot the unfamiliar piece and raise the alarm." },
+      { label: "Antibodies are made", icon: "target", detail: "B cells build antibodies shaped to lock onto that exact piece." },
+      { label: "Memory stays", icon: "idea", detail: "Memory cells remember it for years, so a real infection is stopped fast." },
+    ],
+  },
+  validate(block, id) {
+    const { kind: _kind, ...rest } = block;
+    const result = validateInfographic({ ...rest, schemaVersion: "1.0", type: "infographic", id });
+    return result.ok ? { ok: true, block: { kind: "infographic", id, renderer: "infographic", infographic: result.spec } } : { ok: false, issues: result.issues };
+  },
+};
+
 /* interactive: activities */
 
 const activityGuidance: Record<string, Pick<CatalogEntry, "summary" | "useWhen" | "avoidWhen" | "example">> = {
@@ -312,6 +345,7 @@ export function createCatalog(entries: CatalogEntry[]): Catalog {
 export const defaultCatalog = createCatalog([
   textEntry,
   widgetEntry,
+  infographicEntry,
   ...["flashcards", "mcq", "quiz", "mindmap", "matching"].map(activityEntry),
   sceneEntry,
   ...contentKinds.map(contentEntry),

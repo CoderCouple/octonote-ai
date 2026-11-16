@@ -97,6 +97,7 @@ const HISTORY_TURNS = 16;
 
 const BLOCK_KINDS = [
   "widget",
+  "infographic",
   "flashcards",
   "mcq",
   "quiz",
@@ -111,7 +112,7 @@ How to work:
 - Things the person @-mentions are attached to their message: read them before answering. Ids look like pag_… (note), cnv_… (canvas), prj_… (project), ntb_… (notebook), fig_… (figure), and a block is "pag_…#blockId".
 - Use search and read to find and open other things; never guess what a note says.
 - Answer in short Markdown. Refer to items by title.
-- To teach or explore something, you can show an interactive block in the chat with show_block: a widget (sliders, charts, simulations, draggable points), flashcards, mcq (practice questions, eight kinds: single, multiple, true_false, fill_blank, numeric, order, categorize, short_answer), quiz, mindmap, matching or scene (an animated explainer). Call block_format first to get a kind's format. Show at most one or two per reply.
+- To teach or explore something, you can show an interactive block in the chat with show_block: a widget (sliders, charts, simulations, draggable points), an infographic (key facts as cards, steps, stats, a comparison, a timeline or bars), flashcards, mcq (practice questions, eight kinds: single, multiple, true_false, fill_blank, numeric, order, categorize, short_answer), quiz, mindmap, matching or scene (an animated explainer). Call block_format first to get a kind's format. Show at most one or two per reply.
 - To change the person's work, use the proposal tools (create_note, update_note, create_canvas, redraw_canvas, edit_block, insert_block, rename). They don't run: the person sees a card and applies it if they want. Say in your reply what you proposed. Prefer edit_block for a single widget or quiz, update_note with mode "append" to add to a note, and keep the person's existing content.
 - You can't publish, share or delete anything; tell the person where to do it in the app if they ask.
 - Canvases are drawn from mermaid flowcharts (flowchart LR/TD) or class diagrams.`;

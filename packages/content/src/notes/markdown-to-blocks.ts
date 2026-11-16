@@ -36,7 +36,7 @@ export const MATH_LANGS = new Set(["math", "latex", "tex", "katex"]);
  * a JSON object becomes a block; anything else stays a code block. The spec is
  * validated where it renders and when the API saves it, not here.
  */
-export const INTERACTIVE_KINDS = new Set(["widget", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]);
+export const INTERACTIVE_KINDS = new Set(["widget", "infographic", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]);
 
 /** Longest interactive spec kept, in characters (custom apps can be large). */
 export const INTERACTIVE_SPEC_LIMIT = 200_000;
@@ -81,7 +81,7 @@ function readFigureUrl(url: string) {
 /** Cheap check: does this text use any of the extras? */
 export function hasMarkdownExtras(text: string): boolean {
   return (
-    /^[ \t]*(```|~~~)[ \t]*(mermaid|math|latex|tex|katex|widget|flashcards|mcq|quiz|mindmap|matching|scene|custom|video)\b/im.test(text) ||
+    /^[ \t]*(```|~~~)[ \t]*(mermaid|math|latex|tex|katex|widget|infographic|flashcards|mcq|quiz|mindmap|matching|scene|custom|video)\b/im.test(text) ||
     /\$\$[\s\S]*?\$\$/.test(text) ||
     new RegExp(INLINE_MATH_RE.source, "m").test(text)
   );

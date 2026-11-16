@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * `interactive` block: an explorable widget, flashcards, practice questions, a
+ * `interactive` block: an explorable widget, an infographic, flashcards, practice questions, a
  * quiz, a mind map, matching, an animated scene or a sandboxed custom app,
  * drawn from a JSON spec by the @octonote/widgets, /interactive and /motion
  * libraries. In markdown it's a fence named after its kind (```quiz) holding
@@ -54,6 +54,7 @@ export const notesCatalog = defaultCatalog.with(customEntry);
 
 export const INTERACTIVE_LABELS: Record<string, string> = {
   widget: "Interactive widget",
+  infographic: "Infographic",
   flashcards: "Flashcards",
   mcq: "Practice questions",
   quiz: "Quiz",

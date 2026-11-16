@@ -16,7 +16,7 @@ import { VERSION_INFO } from "./mcp-version";
 
 const INSTRUCTIONS = `Octonote holds the user's notes (markdown documents), canvases (diagrams), projects (one note + one canvas side by side) and notebooks (folders).
 - Write notes in markdown: headings, lists, checklists, tables, code, quotes, images by URL, $inline math$, $$display math$$ and \`\`\`mermaid blocks.
-- Notes can embed live interactive blocks: explorable widgets with sliders and charts, flashcards, practice questions, quizzes, mind maps, matching, animated explainers and sandboxed mini-apps, each as a fence named after its kind holding JSON (\`\`\`quiz, \`\`\`widget…). Call interactive_block_format for the exact format before writing one; use them when doing teaches more than reading.
+- Notes can embed live interactive blocks: explorable widgets with sliders and charts, infographics, flashcards, practice questions, quizzes, mind maps, matching, animated explainers and sandboxed mini-apps, each as a fence named after its kind holding JSON (\`\`\`quiz, \`\`\`widget…). Call interactive_block_format for the exact format before writing one; use them when doing teaches more than reading.
 - Draw canvases from a mermaid flowchart or class diagram; they become real, editable shapes. Add \`click Node href "https://…"\` lines to make boxes link somewhere (e.g. code on GitHub).
 - Ids carry their kind: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook. Notebooks can be named by exact name.
 - Always give the user the link (url, and publicUrl once published).
@@ -255,8 +255,8 @@ export class McpController {
       {
         title: "Interactive block format",
         description:
-          "How to write an interactive block (widget, flashcards, mcq, quiz, mindmap, matching, scene, custom) into a note: when to use it, an example fence and its JSON Schema. Without a kind, lists the kinds.",
-        inputSchema: { kind: z.enum(["widget", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]).optional() },
+          "How to write an interactive block (widget, infographic, flashcards, mcq, quiz, mindmap, matching, scene, custom) into a note: when to use it, an example fence and its JSON Schema. Without a kind, lists the kinds.",
+        inputSchema: { kind: z.enum(["widget", "infographic", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"]).optional() },
         annotations: READ,
       },
       async (args) => run(() => this.interactive.format(args.kind))(),
