@@ -15,7 +15,7 @@ export function gettingStarted(opts: {
     : `  1. Sign in            octonote login
                         (no browser? set OCTONOTE_TOKEN from Settings → CLI & agents)`;
   return `
-  octonote ${opts.version} — Octonote from your terminal, Claude Code and Codex
+  octonote ${opts.version} — Octonote from your terminal, Claude Code, Codex and Gemini CLI
 
 GET STARTED
 ${signIn}
@@ -23,6 +23,7 @@ ${signIn}
                         octonote setup claude --global --skill   # every project + skill
                         octonote setup codex       # this project's AGENTS.md
                         octonote setup codex --global
+                        octonote setup gemini      # this project's GEMINI.md
      Then just ask: “write this up in Octonote”, “draw this as an Octonote canvas”.
 
   Claude Code: allow it without prompts — add to ~/.claude/settings.json:

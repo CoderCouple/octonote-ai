@@ -641,18 +641,18 @@
     {
       "name": "guide",
       "aliases": [],
-      "description": "Print the usage guide for AI agents (Claude Code, Codex, …)",
+      "description": "Print the usage guide for AI agents (Claude Code, Codex, Gemini CLI, …)",
       "arguments": [],
       "options": []
     },
     {
       "name": "setup",
       "aliases": [],
-      "description": "Teach an agent to use Octonote: writes a section into CLAUDE.md (claude) or AGENTS.md (codex)",
+      "description": "Teach an agent to use Octonote: writes a section into CLAUDE.md (claude), AGENTS.md (codex) or GEMINI.md (gemini)",
       "arguments": [
         {
           "name": "agent",
-          "description": "claude | codex",
+          "description": "claude | codex | gemini",
           "required": true,
           "variadic": false
         }
@@ -666,7 +666,7 @@
         },
         {
           "flags": "--global",
-          "description": "for every project: ~/.claude/CLAUDE.md or ~/.codex/AGENTS.md",
+          "description": "for every project: ~/.claude/CLAUDE.md, ~/.codex/AGENTS.md or ~/.gemini/GEMINI.md",
           "required": false
         },
         {

@@ -65,7 +65,7 @@ export function buildProgram() {
   registerAgents(program);
   program.addHelpText(
     "after",
-    `\nGetting started (sign-in, Claude Code & Codex setup): run \`octonote\` on its own.\nAgents: \`octonote guide\`. Docs: ${DOCS_URL}`,
+    `\nGetting started (sign-in, Claude Code, Codex & Gemini CLI setup): run \`octonote\` on its own.\nAgents: \`octonote guide\`. Docs: ${DOCS_URL}`,
   );
   return program;
 }

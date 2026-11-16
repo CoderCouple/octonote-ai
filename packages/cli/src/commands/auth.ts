@@ -77,7 +77,7 @@ export function registerAuth(program: Command) {
             () => `✓ Signed in as ${me.user.email}`,
           );
           info(
-            "\nNext: teach your agent to use Octonote —\n  octonote setup claude          (or: octonote setup claude --global --skill)\n  octonote setup codex\nRun `octonote` for the full getting-started screen.",
+            "\nNext: teach your agent to use Octonote —\n  octonote setup claude          (or: octonote setup claude --global --skill)\n  octonote setup codex\n  octonote setup gemini\nRun `octonote` for the full getting-started screen.",
           );
           if (ctx.config.tokenSource === "env")
             info(

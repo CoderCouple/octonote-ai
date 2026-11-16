@@ -1,8 +1,8 @@
 /**
  * Teaching agents the CLI: `octonote guide` prints the guide; `octonote
- * setup claude|codex` writes a short section into the project's CLAUDE.md
- * or AGENTS.md (between markers, so re-running updates it in place) and,
- * for Claude, can install a skill.
+ * setup claude|codex|gemini` writes a short section into the project's
+ * CLAUDE.md, AGENTS.md or GEMINI.md (between markers, so re-running updates
+ * it in place) and, for Claude, can install a skill.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -16,6 +16,15 @@ import {
   CLAUDE_SKILL,
   PROJECT_SECTION,
 } from "../guide/agent-guide.js";
+
+/** Where each agent reads its instructions: the project file, and the folder for --global. */
+const AGENTS = {
+  claude: { name: "Claude Code", file: "CLAUDE.md", home: ".claude" },
+  codex: { name: "Codex", file: "AGENTS.md", home: ".codex" },
+  gemini: { name: "Gemini CLI", file: "GEMINI.md", home: ".gemini" },
+} as const;
+
+type Agent = keyof typeof AGENTS;
 
 const START = "<!-- octonote:start -->";
 const END = "<!-- octonote:end -->";
@@ -45,7 +54,7 @@ async function write(path: string, text: string) {
 export function registerAgents(program: Command) {
   program
     .command("guide")
-    .description("Print the usage guide for AI agents (Claude Code, Codex, …)")
+    .description("Print the usage guide for AI agents (Claude Code, Codex, Gemini CLI, …)")
     .action(
       action(
         async () => {
@@ -59,13 +68,13 @@ export function registerAgents(program: Command) {
   program
     .command("setup")
     .description(
-      "Teach an agent to use Octonote: writes a section into CLAUDE.md (claude) or AGENTS.md (codex)",
+      "Teach an agent to use Octonote: writes a section into CLAUDE.md (claude), AGENTS.md (codex) or GEMINI.md (gemini)",
     )
-    .argument("<agent>", "claude | codex")
+    .argument("<agent>", "claude | codex | gemini")
     .option("--dir <path>", "project folder", ".")
     .option(
       "--global",
-      "for every project: ~/.claude/CLAUDE.md or ~/.codex/AGENTS.md",
+      "for every project: ~/.claude/CLAUDE.md, ~/.codex/AGENTS.md or ~/.gemini/GEMINI.md",
     )
     .option(
       "--skill",
@@ -79,17 +88,15 @@ export function registerAgents(program: Command) {
           opts: { dir: string; global?: boolean; skill?: boolean },
         ) => {
           const which = agent.toLowerCase();
-          if (which !== "claude" && which !== "codex")
-            throw usage(`Unknown agent "${agent}".`, "Use claude or codex.");
+          if (!(which in AGENTS))
+            throw usage(`Unknown agent "${agent}".`, "Use claude, codex or gemini.");
+          const target = AGENTS[which as Agent];
           if (opts.skill && which !== "claude")
             throw usage("--skill is for Claude Code only.");
           const base = opts.global
-            ? join(homedir(), which === "claude" ? ".claude" : ".codex")
+            ? join(homedir(), target.home)
             : resolve(opts.dir);
-          const file = join(
-            base,
-            which === "claude" ? "CLAUDE.md" : "AGENTS.md",
-          );
+          const file = join(base, target.file);
           await write(file, upsertSection(await readOr(file), PROJECT_SECTION));
           const written = [file];
           if (opts.skill) {
@@ -103,7 +110,7 @@ export function registerAgents(program: Command) {
           emit(
             { agent: which, files: written },
             (d) =>
-              `Updated:\n${d.files.map((f) => `  ${f}`).join("\n")}\n${which === "claude" ? "Claude Code" : "Codex"} will now use Octonote when you ask.`,
+              `Updated:\n${d.files.map((f) => `  ${f}`).join("\n")}\n${target.name} will now use Octonote when you ask.`,
           );
         },
         { auth: false },

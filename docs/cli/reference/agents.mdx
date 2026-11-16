@@ -13,7 +13,7 @@ octonote guide
 
 ## guide
 
-Print the usage guide for AI agents (Claude Code, Codex, …)
+Print the usage guide for AI agents (Claude Code, Codex, Gemini CLI, …)
 
 ```bash
 octonote guide
@@ -21,7 +21,7 @@ octonote guide
 
 ## setup
 
-Teach an agent to use Octonote: writes a section into CLAUDE.md (claude) or AGENTS.md (codex)
+Teach an agent to use Octonote: writes a section into CLAUDE.md (claude), AGENTS.md (codex) or GEMINI.md (gemini)
 
 ```bash
 octonote setup <agent> [options]
@@ -29,7 +29,7 @@ octonote setup <agent> [options]
 
 | Argument or option | What it does |
 | --- | --- |
-| <code>&lt;agent&gt;</code> | claude \| codex (required) |
+| <code>&lt;agent&gt;</code> | claude \| codex \| gemini (required) |
 | <code>--dir &lt;path&gt;</code> | project folder (default: .) |
-| <code>--global</code> | for every project: ~/.claude/CLAUDE.md or ~/.codex/AGENTS.md |
+| <code>--global</code> | for every project: ~/.claude/CLAUDE.md, ~/.codex/AGENTS.md or ~/.gemini/GEMINI.md |
 | <code>--skill</code> | claude only: also install the Octonote skill (.claude/skills/octonote) |
