@@ -459,6 +459,7 @@ export * from "./text-preview";
 export * from "./library";
 export * from "./support";
 export * from "./feedback";
+export * from "./studio";
 export * from "./support-access";
 export * from "./billing";
 

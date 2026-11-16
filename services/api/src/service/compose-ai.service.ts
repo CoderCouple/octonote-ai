@@ -54,7 +54,7 @@ export class ComposeAiService {
     return { compose, catalog: compose.defaultCatalog.with(compose.customEntry) };
   }
 
-  private async model(userId: string) {
+  protected async model(userId: string) {
     const { apiKey } = await this.keyFor(userId);
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const compose = await loadCompose();
@@ -69,6 +69,11 @@ export class ComposeAiService {
   async useAiCall(userId: string) {
     if ((await this.keys?.keyFor(userId)) ?? null) return;
     this.limit(userId);
+  }
+
+  /** Throws the "AI isn't set up" error now, before work that would only fail later. */
+  async assertReady(userId: string) {
+    await this.keyFor(userId);
   }
 
   /** The Anthropic client and model for this person, for features that talk to Claude directly (the in-app chat). */
@@ -110,6 +115,64 @@ export class ComposeAiService {
     }
   }
 
+  /**
+   * Makes exactly one block of `kind` from a source (Studio): the model sees
+   * only that kind's guidance and JSON Schema, the result is validated, and a
+   * block that fails gets one repair round. Returns the block's JSON without
+   * `kind`, and a title for it.
+   */
+  async generate(userId: string, input: { kind: string; title: string; source: string }, opts: { counted?: boolean } = {}): Promise<{ spec: Record<string, unknown>; title: string }> {
+    if (!opts.counted) await this.useAiCall(userId);
+    const [{ compose, catalog }, model] = await Promise.all([this.catalog(), this.model(userId)]);
+    const focused = catalog.only([input.kind]);
+    if (!focused.get(input.kind)) throw new AppError(ErrorCode.INVALID_REQUEST, `Unknown kind "${input.kind}"`, HttpStatus.BAD_REQUEST);
+    const what = input.kind === "text" ? "a clear summary in markdown: a one-line gist, then the main points as a short list, then why it matters" : `one ${input.kind} block`;
+    let raw: Record<string, unknown>;
+    try {
+      raw = (await model.callTool({
+        system: `${compose.composerSystem(focused)}\n\nYou are working in Octonote Studio: turn the source the person gives you into ${what}. Use only what the source says; don't add outside facts. Cover its most important ideas, in the source's language. Give the block a short, specific title.`,
+        messages: [
+          {
+            role: "user",
+            content: `Make ${what} from this source.\n\n<source title=${JSON.stringify(input.title)}>\n${input.source}\n</source>`,
+          },
+        ],
+        tool: { ...compose.repairTool(focused, input.kind), name: "make_block", description: `Return the ${input.kind} block.` },
+        maxTokens: 16000,
+      })) as Record<string, unknown>;
+    } catch (error) {
+      throw new AppError(ErrorCode.SERVER_ERROR, `The AI couldn't make this: ${(error as Error).message}`, HttpStatus.BAD_GATEWAY);
+    }
+    let result = compose.checkBlock(focused, { ...raw, kind: input.kind }, "b1");
+    if (!result.ok) {
+      // One repair round: the model sees its block and the exact problems. The kind is
+      // put back on whatever it returns, so a reply without it isn't refused for that.
+      try {
+        const fixed = (await model.callTool({
+          system: compose.composerSystem(focused),
+          messages: [
+            {
+              role: "user",
+              content: `This ${input.kind} block failed validation. Fix every problem and keep its content otherwise.\n\nBlock:\n${JSON.stringify(raw)}\n\nProblems:\n${result.issues.map((i) => `- ${i.path || "(block)"}: ${i.message}`).join("\n")}`,
+            },
+          ],
+          tool: compose.repairTool(focused, input.kind),
+          maxTokens: 16000,
+        })) as Record<string, unknown>;
+        result = compose.checkBlock(focused, { ...fixed, kind: input.kind }, "b1");
+      } catch {
+        // Keep the first problems; they explain the failure best.
+      }
+    }
+    if (!result.ok) {
+      const first = result.issues[0];
+      throw new AppError(ErrorCode.SERVER_ERROR, `The AI's ${input.kind} didn't check out${first ? ` (${first.path ? `${first.path}: ` : ""}${first.message})` : ""}. Try again.`, HttpStatus.BAD_GATEWAY);
+    }
+    const { kind: _kind, ...spec } = (result.block.source ?? {}) as Record<string, unknown>;
+    const title = typeof spec.title === "string" && spec.title.trim() ? spec.title.trim() : input.title;
+    return { spec, title };
+  }
+
   /** Changes one interactive block as asked ("make it harder", "add two cards"). */
   async editBlock(userId: string, input: { kind: string; spec: Record<string, unknown>; instruction: string }): Promise<{ kind: string; spec: Record<string, unknown> }> {
     await this.useAiCall(userId);
@@ -134,7 +197,7 @@ export class ComposeAiService {
   /** What an agent needs to write one kind of interactive block: guidance, an example and the JSON Schema. */
   async format(kind?: string) {
     const { catalog } = await this.catalog();
-    const kinds = ["widget", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"];
+    const kinds = ["widget", "infographic", "flashcards", "mcq", "quiz", "mindmap", "matching", "scene", "custom"];
     if (!kind) {
       return {
         how: "Put a fence named after the kind in the note's markdown, holding the block's JSON (without a kind field), e.g. ```quiz\n{\"questions\":[…]}\n```. Invalid blocks are refused with the reason; fix and retry.",

@@ -22,6 +22,8 @@ const ROUTE_LABELS: Record<string, string> = {
   canvases: "Canvases",
   projects: "Projects",
   notebooks: "Notebooks",
+  studio: "Studio",
+  collections: "Collections",
   shared: "Shared",
   settings: "Settings",
   admin: "Admin",
@@ -92,6 +94,10 @@ function leafLabel(tab: string | undefined): string {
       return "Note";
     case "canvas":
       return "Canvas";
+    case "studio":
+      return "Item";
+    case "collections":
+      return "Collection";
     case "admin":
       return "Promo codes";
     default:

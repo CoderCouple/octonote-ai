@@ -58,7 +58,7 @@ export function isCimdClientId(clientId: string): boolean {
   }
 }
 
-function safeLookup(
+export function safeLookup(
   hostname: string,
   options: object,
   callback: (err: NodeJS.ErrnoException | null, address: string | LookupAddress[], family?: number) => void,

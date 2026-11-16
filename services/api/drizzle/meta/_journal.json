@@ -274,6 +274,13 @@
       "when": 1794591053648,
       "tag": "0038_extension_read",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794761186870,
+      "tag": "0039_studio",
+      "breakpoints": true
     }
   ]
 }

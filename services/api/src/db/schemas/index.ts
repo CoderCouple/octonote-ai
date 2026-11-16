@@ -25,4 +25,5 @@ export * from "./videos";
 export * from "./chat";
 export * from "./ai-keys";
 export * from "./collections";
+export * from "./studio";
 export * from "./extension-connect";

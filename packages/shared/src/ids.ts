@@ -42,6 +42,7 @@ export const ID_PREFIXES = {
   collection: "clc",
   clip: "clp",
   extensionConnectCode: "xcc",
+  studioItem: "stu",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];
