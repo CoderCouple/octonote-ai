@@ -7,9 +7,9 @@ import { Logo } from "./logo";
 
 /** `from`: the breakpoint a link appears at, so the row never wraps on narrower screens. */
 const NAV_LINKS: { href: string; label: string; from?: "lg" | "xl" }[] = [
-  { href: "/#canvases", label: "Features" },
+  { href: "/#interactive", label: "Features" },
   { href: "/#agents", label: "Agents", from: "lg" },
-  { href: "/#assistants", label: "Claude & ChatGPT" },
+  { href: "/#assistants", label: "Assistants" },
   { href: "/#examples", label: "Examples", from: "xl" },
   { href: "/cli", label: "CLI", from: "lg" },
   { href: DOCS_URL, label: "Docs", from: "lg" },

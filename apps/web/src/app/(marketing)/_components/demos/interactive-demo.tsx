@@ -3,66 +3,37 @@
 import "@octonote/widgets/styles.css";
 import "@octonote/interactive/styles.css";
 import "@octonote/motion/styles.css";
-import { InteractiveProvider, InteractiveRenderer, Mcq, defaultComponents, type Question } from "@octonote/interactive";
+import { InteractiveProvider, InteractiveRenderer, defaultComponents } from "@octonote/interactive";
 import digestive from "@octonote/interactive/examples/digestive-system.json";
-import practice from "@octonote/interactive/examples/water-cycle-practice.json";
 import { ScenePlayer } from "@octonote/motion";
 import circleArea from "@octonote/motion/examples/circle-area.json";
-import { WidgetSpecRenderer, WidgetsProvider } from "@octonote/widgets";
+import { Infographic, WidgetSpecRenderer, WidgetsProvider, type InfographicSpec } from "@octonote/widgets";
+import infographics from "@octonote/widgets/examples/infographics.json";
 import explorables from "@octonote/widgets/examples/explorables.json";
+import { ArrowLeftRight, ChartColumnBig, CircleHelp, Clapperboard, Dices, Layers, Network, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useInView } from "@/hooks/use-in-view";
 import { cn } from "@/lib/utils";
 
 /** One tab per kind of block a note can hold. */
 const TABS = [
-  { id: "widget", label: "Widget", note: "Drag the blue numbers." },
-  { id: "practice", label: "Practice", note: "Fill the blanks, order, sort, then check." },
-  { id: "quiz", label: "Quiz", note: "Answer all, submit, review." },
-  { id: "flashcards", label: "Flashcards", note: "Flip, then mark what you knew." },
-  { id: "matching", label: "Matching", note: "Pair each organ with its job." },
-  { id: "mindmap", label: "Mind map", note: "Try Test yourself, or Step through." },
-  { id: "animation", label: "Animation", note: "Scrub, step or play." },
-  { id: "simulation", label: "Simulation", note: "Run the experiment." },
-] as const;
+  { id: "widget", label: "Widget", icon: SlidersHorizontal, note: "Drag the point around the circle." },
+  { id: "animation", label: "Animation", icon: Clapperboard, note: "Scrub, step or play." },
+  { id: "simulation", label: "Simulation", icon: Dices, note: "Run the experiment." },
+  { id: "mindmap", label: "Mind map", icon: Network, note: "Try Test yourself, or Step through." },
+  { id: "flashcards", label: "Flashcards", icon: Layers, note: "Flip, then mark what you knew." },
+  { id: "quiz", label: "Quiz", icon: CircleHelp, note: "Answer all, submit, review." },
+  { id: "matching", label: "Matching", icon: ArrowLeftRight, note: "Pair each organ with its job." },
+  { id: "infographic", label: "Infographic", icon: ChartColumnBig, note: "Click any step to open it." },
+] as const satisfies readonly { id: string; label: string; icon: LucideIcon; note: string }[];
 
 type Tab = (typeof TABS)[number]["id"];
 
-/** A widget written the way the AI writes them: a sentence with numbers to drag, and a chart that follows. */
-const WIDGET = {
-  schemaVersion: "1.0",
-  type: "widget",
-  id: "marketing-investing",
-  title: "Compound interest",
-  badge: "Finance",
-  inputs: [
-    { kind: "slider", id: "principal", label: "Amount invested", min: 100, max: 20000, step: 100, value: 1000, format: { style: "currency" } },
-    { kind: "slider", id: "rate", label: "Annual return", min: 0, max: 15, step: 0.5, value: 7, format: { suffix: "%" } },
-    { kind: "slider", id: "years", label: "Years", min: 1, max: 40, value: 20 },
-  ],
-  values: [
-    { name: "balance", formula: "principal * (1 + rate/100)^years" },
-    { name: "gain", formula: "balance - principal" },
-  ],
-  views: [
-    { type: "sentence", text: "If you invest [principal] at [rate] a year for [years] years, you'll have **{balance|currency}**, and {gain|currency} of it is interest." },
-    {
-      type: "chart",
-      chart: "area",
-      x: { from: 0, to: 40, label: "Years" },
-      xTo: "years",
-      series: [
-        { label: "Balance", y: "principal * (1 + rate/100)^x", color: "green" },
-        { label: "Money you put in", y: "principal", color: "gray" },
-      ],
-      y: { format: { style: "currency" } },
-    },
-  ],
-};
-
-const QUESTIONS = (practice.questions as unknown as Question[]).filter((q) => q.id === "q-blank" || q.id === "q-order" || q.id === "q-groups");
 const activity = (type: string) => (digestive.activities as unknown as { type: string }[]).find((a) => a.type === type);
+const VACCINE = infographics.find((g) => g.id === "how-vaccines-work") as unknown as InfographicSpec;
 const DICE = explorables.find((w) => w.id === "dice-six");
+/** A point to drag around the unit circle, with sine and cosine following it. */
+const CIRCLE = explorables.find((w) => w.id === "unit-circle");
 
 /**
  * The real interactive blocks from Octonote notes, live: the same libraries
@@ -101,13 +72,17 @@ export function InteractiveDemo() {
           </span>
           <span className="text-muted-foreground ml-3 truncate text-sm">Study notes · Octonote</span>
         </div>
-        <div className="mx-auto max-w-3xl px-4 py-6 md:px-8 md:py-8">
+        <div className="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-8">
           <p className="text-foreground-strong text-2xl font-bold md:text-3xl">Study notes</p>
           <p className="text-muted-foreground mt-2 text-base md:text-lg">
             Every block below sits in a note like any paragraph.{" "}
             <span className="text-foreground">Try them.</span>
           </p>
-          <div className="mt-5 flex flex-wrap items-center gap-2" role="tablist" aria-label="Kinds of interactive block">
+          <div
+            className="-mx-4 mt-5 flex items-center gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden"
+            role="tablist"
+            aria-label="Kinds of interactive block"
+          >
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -115,7 +90,7 @@ export function InteractiveDemo() {
                 role="tab"
                 aria-selected={tab === t.id}
                 className={cn(
-                  "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                   tab === t.id ? "bg-foreground text-background border-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
                 onClick={() => {
@@ -123,21 +98,17 @@ export function InteractiveDemo() {
                   setTab(t.id);
                 }}
               >
+                <t.icon className="size-3.5" />
                 {t.label}
               </button>
             ))}
-            <span className="text-muted-foreground ml-auto hidden text-sm sm:inline">{TABS.find((t) => t.id === tab)!.note}</span>
           </div>
+          <p className="text-muted-foreground mt-3 text-sm">{TABS.find((t) => t.id === tab)!.note}</p>
           <div className="mt-4 min-h-[520px]" role="tabpanel" aria-label={TABS.find((t) => t.id === tab)!.label}>
             {tab === "widget" ? (
               <WidgetsProvider theme={theme}>
-                <WidgetSpecRenderer spec={WIDGET} />
+                <WidgetSpecRenderer spec={CIRCLE} />
               </WidgetsProvider>
-            ) : null}
-            {tab === "practice" ? (
-              <InteractiveProvider components={defaultComponents} theme={theme}>
-                <Mcq questions={QUESTIONS} title="The water cycle" description="Eight ways to answer a question; here are three." theme={theme} />
-              </InteractiveProvider>
             ) : null}
             {tab === "quiz" || tab === "flashcards" || tab === "matching" || tab === "mindmap" ? (
               <InteractiveProvider components={defaultComponents} theme={theme}>
@@ -145,6 +116,11 @@ export function InteractiveDemo() {
               </InteractiveProvider>
             ) : null}
             {tab === "animation" ? <ScenePlayer spec={circleArea} theme={theme} autoPlay={inView} loop allowDownload={false} /> : null}
+            {tab === "infographic" ? (
+              <WidgetsProvider theme={theme}>
+                <Infographic spec={VACCINE} />
+              </WidgetsProvider>
+            ) : null}
             {tab === "simulation" ? (
               <WidgetsProvider theme={theme}>
                 <WidgetSpecRenderer spec={DICE} />

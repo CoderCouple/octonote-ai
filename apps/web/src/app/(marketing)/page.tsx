@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Aura } from "./_components/aura";
 import { BookDemoButton } from "./_components/book-demo";
 import { CopyField } from "./_components/copy-field";
-import { DemoVideo } from "./_components/demo-video";
-import { AgentsDemo } from "./_components/demos/agents-demo";
-import { CanvasDemo } from "./_components/demos/canvas-demo";
+import { CodingAgentsDemo } from "./_components/demos/coding-agents-demo";
+import { AssistantsDemo } from "./_components/demos/assistants-demo";
 import { InteractiveNotesDemo } from "./_components/demos/interactive-notes-demo";
 import { MobileDemo } from "./_components/demos/mobile-demo";
 import { ExamplesSection } from "./_components/examples-section";
@@ -32,11 +31,13 @@ ${INSTALL}
 # 2. Sign in (opens your browser once)
 octonote login
 
-# 3. Teach Claude Code (Codex: octonote setup codex)
-octonote setup claude --skill`}
+# 3. Teach your agent (pick yours)
+octonote setup claude --skill
+octonote setup codex
+octonote setup gemini`}
       />
       <p className="text-muted-foreground mt-6 text-center text-lg">
-        Then just ask Claude.{" "}
+        Then just ask.{" "}
         <Link
           href="/cli"
           className="text-foreground-strong inline-flex items-center gap-1 underline underline-offset-4"
@@ -146,70 +147,12 @@ export default function LandingPage() {
       </section>
 
       <FeatureSection
-        id="agents"
-        aura
-        className="border-y"
-        eyebrow="Claude Code & Codex"
-        title={
-          <>
-            Just ask{" "}
-            <RotatingWord words={["Claude", "Codex"]} />. It's
-            all kept here.
-          </>
-        }
-        body="Set up once, and your agent saves the notes, decisions and diagrams from every conversation to Octonote — then finds them again whenever you ask."
-        demo={<AgentsDemo />}
-        points={[
-          {
-            title: "Set up in a minute",
-            body: "Install the CLI, sign in, and one command teaches Claude Code (or Codex) to use Octonote.",
-          },
-          {
-            title: "Save as you work",
-            body: "Ask Claude to write it up: notes from markdown and real, editable diagrams, filed in your notebooks.",
-          },
-          {
-            title: "Recall it later",
-            body: "In any new session, Claude searches and reads your notes, with your permissions, so context is never lost.",
-          },
-        ]}
-        footer={<AgentSetup />}
-      />
-
-      <FeatureSection
-        id="assistants"
-        eyebrow="Claude & ChatGPT"
-        title={
-          <>
-            Now inside <RotatingWord words={["Claude", "ChatGPT"]} />.
-          </>
-        }
-        body="Connect Octonote once and ask in the chat: answers become real notes, diagrams become editable canvases, and everything is filed in your notebooks, ready to share or publish."
-        demo={<DemoVideo label="Claude writing a note and drawing a diagram in Octonote" />}
-        points={[
-          {
-            title: "One connector",
-            body: "Paste the connector URL in Claude.ai or ChatGPT, sign in, and choose Allow. No install.",
-          },
-          {
-            title: "Notes and diagrams that last",
-            body: "Good answers stop disappearing into chat history: they're kept, searchable and editable in Octonote.",
-          },
-          {
-            title: "Only what you ask",
-            body: "Nothing is published, shared or deleted unless you say so in the chat.",
-          },
-        ]}
-        footer={<AssistantSetup />}
-      />
-
-      <FeatureSection
         id="interactive"
         aura
         className="border-t"
         eyebrow="Interactive notes"
         title="Notes you can play with."
-        body="Put widgets, quizzes, flashcards, mind maps and animations in any note: type /, or ask the AI to build one from what you've written. Readers drag, answer and explore right on the page."
+        body="Put widgets, infographics, quizzes, flashcards, mind maps and animations in any note: type /, or ask the AI to build one from what you've written. Readers drag, answer and explore right on the page."
         demo={<InteractiveNotesDemo />}
         points={[
           {
@@ -228,26 +171,62 @@ export default function LandingPage() {
       />
 
       <FeatureSection
-        id="canvases"
+        id="assistants"
         className="border-t"
-        eyebrow="Canvases"
-        title="Sketch rough. Get it clean."
-        body="An infinite canvas for flows, maps and architecture diagrams. Draw by hand and auto-shape snaps strokes into tidy shapes and connected arrows."
-        demo={<CanvasDemo />}
+        eyebrow="Claude, ChatGPT & Gemini"
+        title={
+          <>
+            Now inside <RotatingWord words={["Claude", "ChatGPT", "Gemini"]} />.
+          </>
+        }
+        body="Connect Octonote to Claude or ChatGPT once and ask in the chat: answers become real notes, diagrams become editable canvases, and everything is filed in your notebooks. Coming soon: a Chrome extension for Claude, ChatGPT and Gemini to clip answers as you go and bring your notes back into any chat."
+        demo={<AssistantsDemo />}
         points={[
           {
-            title: "Room to think",
-            body: "An infinite, zoomable board for anything you'd put on a whiteboard.",
+            title: "One connector",
+            body: "Paste the connector URL in Claude.ai or ChatGPT, sign in, and choose Allow. No install.",
           },
           {
-            title: "Auto-shape",
-            body: "Wobbly pencil strokes become clean rectangles, circles and arrows.",
+            title: "Clip as you chat (coming soon)",
+            body: "The Octonote Clipper extension adds a Clip button to ChatGPT, Claude and Gemini. Clips collect in a side panel, ready to turn into a note.",
           },
           {
-            title: "Figures",
-            body: "Name parts of a canvas, jump between them, and embed them in notes.",
+            title: "Bring your notes in (coming soon)",
+            body: "Type #octonote in the chat box to insert a note, canvas or project. Note access is off until you turn it on.",
           },
         ]}
+        footer={<AssistantSetup />}
+      />
+
+      <FeatureSection
+        id="agents"
+        aura
+        className="border-y"
+        eyebrow="Claude Code, Codex & Gemini CLI"
+        title={
+          <>
+            Just ask{" "}
+            <RotatingWord words={["Claude", "Codex", "Gemini"]} />. It's
+            all kept here.
+          </>
+        }
+        body="Set up once, and your agent saves the notes, decisions and diagrams from every conversation to Octonote — then finds them again whenever you ask."
+        demo={<CodingAgentsDemo />}
+        points={[
+          {
+            title: "Set up in a minute",
+            body: "Install the CLI, sign in, and one command teaches Claude Code, Codex or Gemini CLI to use Octonote.",
+          },
+          {
+            title: "Save as you work",
+            body: "Ask your agent to write it up: notes from markdown and real, editable diagrams, filed in your notebooks.",
+          },
+          {
+            title: "Recall it later",
+            body: "In any new session, your agent searches and reads your notes, with your permissions, so context is never lost.",
+          },
+        ]}
+        footer={<AgentSetup />}
       />
 
       <FeatureSection

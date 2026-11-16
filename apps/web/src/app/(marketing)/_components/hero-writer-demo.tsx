@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * Hero animation: one project (a note beside its canvas) written three ways.
+ * Hero animation: one project (a note beside its canvas) written four ways.
  *   You         — a cursor types the note, ticks requirements, sketches a box
  *                 that snaps clean, then builds the diagram box by box.
  *   Claude Code — one prompt in a terminal; the note and diagram appear and the
  *                 project is published.
  *   Codex       — edits the same project: a Caching section in the note and a
  *                 Redis box on the canvas.
+ *   Gemini CLI  — adds a step-by-step redirect section to the note.
  * Tabs pick a scene; until someone does, they play in turn. Starts on the
  * finished Claude frame (server render, reduced motion), pauses off screen.
  * Note / Split / Canvas works like the app's switcher (the scene keeps going).
@@ -15,11 +16,13 @@
  */
 import { Check, Globe } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { OctopusMark } from "@/components/octopus-mark";
 import { useInView } from "@/hooks/use-in-view";
 import { cn } from "@/lib/utils";
+import { ChatGPTMark, ClaudeMark, GeminiMark } from "./brand-marks";
 
-type Who = "you" | "claude" | "codex";
-type Block = "title" | "intro" | "reqH" | "r1" | "r2" | "r3" | "math" | "code" | "cacheH" | "cache";
+type Who = "you" | "claude" | "codex" | "gemini";
+type Block = "title" | "intro" | "reqH" | "r1" | "r2" | "r3" | "math" | "code" | "cacheH" | "cache" | "flowH" | "flow";
 type NodeId = "client" | "lb" | "api" | "db" | "redis";
 type EdgeId = "e1" | "e2" | "e3" | "e4";
 type Line = { kind: "prompt"; text: string } | { kind: "cmd"; text: string } | { kind: "ok"; strong: string; rest: string };
@@ -62,8 +65,17 @@ const TABS: { id: Who; label: string; kind: string; caption: string }[] = [
   { id: "you", label: "You", kind: "editor", caption: "You type the note and draw the diagram. Octonote saves as you go." },
   { id: "claude", label: "Claude Code", kind: "CLI", caption: "Claude Code writes the note, draws the diagram and publishes it, from one prompt." },
   { id: "codex", label: "Codex", kind: "CLI", caption: "Codex edits the same project: a new section in the note, a new box on the canvas." },
+  { id: "gemini", label: "Gemini CLI", kind: "CLI", caption: "Gemini CLI adds a step-by-step section, and the published page updates." },
 ];
-const ORDER: Who[] = ["you", "claude", "codex"];
+const ORDER: Who[] = ["you", "claude", "codex", "gemini"];
+
+/** Each agent's mark, on its tab and in the terminal. */
+function AgentMark({ who, className }: { who: Who | string; className?: string }) {
+  if (who === "claude") return <ClaudeMark className={className} />;
+  if (who === "codex") return <ChatGPTMark className={className} />;
+  if (who === "gemini") return <GeminiMark className={className} />;
+  return null;
+}
 
 const EMPTY: Frame = { typed: {}, shown: [], ticked: [], nodes: [], edges: [], flash: [], term: null, termOpen: false, status: "saved", badge: null, cursor: null, sketch: null };
 const DRAFTED: Frame = { ...EMPTY, typed: { title: TITLE, intro: INTRO }, shown: DRAFT, ticked: ["r1", "r2"], nodes: ["client", "lb", "api", "db"], edges: ["e1", "e2", "e3"], status: "published" };
@@ -73,6 +85,7 @@ const END: Record<Who, Frame> = {
   you: { ...DRAFTED, status: "saved" },
   claude: { ...DRAFTED, badge: "Written by Claude Code" },
   codex: { ...FULL, badge: "Edited by Codex" },
+  gemini: { ...FULL, shown: [...FULL.shown, "flowH", "flow"], badge: "Edited by Gemini CLI" },
 };
 
 class Stale extends Error {}
@@ -244,6 +257,22 @@ export function HeroWriterDemo() {
           await sleep(1800);
           set({ termOpen: false });
           await sleep(2600);
+        } else if (scene === "gemini") {
+          setFrame({ ...FULL });
+          await prompt("gemini", "Add a step-by-step walkthrough of a redirect to the note.");
+          await line({ kind: "cmd", text: "octonote note append pag_4k2… --file redirect.md" }, 400);
+          for (const b of ["flowH", "flow"] as const) {
+            show(b);
+            add("flash", b);
+            await sleep(220);
+          }
+          add("flash", "api");
+          await sleep(700);
+          await line({ kind: "ok", strong: "✓ Updated.", rest: "The published page shows it now." }, 200);
+          set({ badge: "Edited by Gemini CLI" });
+          await sleep(1200);
+          set({ flash: [], termOpen: false });
+          await sleep(2600);
         } else {
           setFrame({ ...DRAFTED });
           await prompt("codex", "Add a Redis cache to the diagram and a caching section to the note.");
@@ -284,11 +313,12 @@ export function HeroWriterDemo() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView, reduced]);
 
-  // Like the editor: keep Codex's new section in view, above the terminal.
+  // Like the editor: keep the agent's new section in view, above the terminal.
   useEffect(() => {
-    const el = blocks.current.cache;
+    const last = frame.shown.includes("flow") ? "flow" : "cache";
+    const el = blocks.current[last];
     const n = note.current;
-    if (!el || !n || !frame.shown.includes("cache")) return;
+    if (!el || !n || !frame.shown.includes(last)) return;
     const nr = n.getBoundingClientRect(), er = el.getBoundingClientRect(), t = term.current?.getBoundingClientRect();
     const covers = frame.termOpen && t && t.top > nr.top + 80 && t.top < nr.bottom;
     const limit = (covers ? t.top : nr.bottom) - 14;
@@ -337,12 +367,17 @@ export function HeroWriterDemo() {
               (e.currentTarget.parentElement?.children[TABS.indexOf(next)] as HTMLElement | undefined)?.focus();
             }}
             className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors md:px-4 md:py-2.5",
+              "inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors sm:gap-2 sm:px-3 sm:text-sm md:px-4 md:py-2.5",
               who === t.id ? "bg-card text-foreground-strong shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >
+            {t.id === "you" ? (
+              <OctopusMark className="size-4 shrink-0" paper={who === t.id ? "var(--card)" : "var(--muted)"} />
+            ) : (
+              <AgentMark who={t.id} className="size-4 shrink-0" />
+            )}
             {t.label}
-            <span className="hidden rounded border px-1.5 font-mono text-[11px] font-medium sm:inline">{t.kind}</span>
+            <span className="hidden rounded border px-1.5 font-mono text-[11px] font-medium lg:inline">{t.kind}</span>
           </button>
         ))}
       </div>
@@ -452,6 +487,12 @@ export function HeroWriterDemo() {
             <p {...blk("cache", "text-foreground mt-1.5 leading-relaxed")}>
               Hot codes live in Redis, so 9 in 10 redirects never touch the database.
             </p>
+            <h4 {...blk("flowH", "text-foreground-strong mt-4 text-[15px] font-bold")}>Redirect, step by step</h4>
+            <ol {...blk("flow", "text-foreground mt-1.5 list-decimal space-y-0.5 pl-5 leading-relaxed")}>
+              <li>The browser opens /x7Kp2Qa.</li>
+              <li>The API looks the code up in Redis, then Postgres.</li>
+              <li>It answers 301 with the long URL.</li>
+            </ol>
             </div>
           </div>
 
@@ -557,7 +598,10 @@ export function HeroWriterDemo() {
           )}
         >
           <div className="text-terminal-muted mb-1.5 flex justify-between text-[11px]">
-            <span>{frame.term?.name ?? "claude"}</span>
+            <span className="text-terminal-foreground flex items-center gap-1.5">
+              <AgentMark who={frame.term?.name ?? "claude"} className={cn("size-3.5", frame.term?.name === "codex" && "text-terminal-command")} />
+              {frame.term?.name ?? "claude"}
+            </span>
             <span>~/notes</span>
           </div>
           {frame.term?.lines.map((l, i) => (

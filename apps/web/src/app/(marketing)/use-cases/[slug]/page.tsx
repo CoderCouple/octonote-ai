@@ -10,7 +10,7 @@ import {
   Faqs,
   Points,
 } from "../../_components/content-page";
-import { AgentsDemo } from "../../_components/demos/agents-demo";
+import { CodingAgentsDemo } from "../../_components/demos/coding-agents-demo";
 import { CanvasDemo } from "../../_components/demos/canvas-demo";
 import { NotesDemo } from "../../_components/demos/notes-demo";
 import { ProjectDemo } from "../../_components/demos/project-demo";
@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 const DEMOS: Record<UseCaseDemo, () => React.ReactNode> = {
   notes: () => <NotesDemo />,
   project: () => <ProjectDemo />,
-  agents: () => <AgentsDemo />,
+  agents: () => <CodingAgentsDemo />,
   canvas: () => <CanvasDemo />,
 };
 

@@ -1,14 +1,13 @@
 /**
  * Shared layout of /claude and /chatgpt: Octonote used from a chat assistant
- * through the MCP server. The demo video is a built animation with a neutral
- * chat window — it doesn't imitate either app's interface.
+ * through the MCP server, with the same live demo as the home page.
  */
 import { ArrowUpRight, ExternalLink, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ASSISTANT_POINTS, ASSISTANT_PROMPTS, MCP_URL, PROOF, type Assistant } from "../_data/assistants";
 import { ClosingCta, Faqs, Points } from "./content-page";
 import { CopyField } from "./copy-field";
-import { DemoVideo } from "./demo-video";
+import { AssistantsDemo } from "./demos/assistants-demo";
 
 export function AssistantLanding({ assistant, faqs }: { assistant: Assistant; faqs: { q: string; a: string }[] }) {
   return (
@@ -29,7 +28,7 @@ export function AssistantLanding({ assistant, faqs }: { assistant: Assistant; fa
       </header>
 
       <div className="mx-auto mt-20 max-w-5xl">
-        <DemoVideo label={`Demo: asking ${assistant.name} to write a note, draw a canvas and publish it with Octonote`} />
+        <AssistantsDemo />
       </div>
 
       <Points title={`What ${assistant.name} can do in Octonote`} points={ASSISTANT_POINTS} />
