@@ -69,15 +69,15 @@ window.host=Object.freeze({
   event:function(name,data){try{send({type:"event",name:String(name),data:JSON.parse(JSON.stringify(data===undefined?null:data))});}catch(e){}},
   resize:function(h){send({type:"resize",height:Number(h)});}
 });
-var last=0,report=function(){var h=Math.ceil(document.documentElement.scrollHeight);if(Math.abs(h-last)>2){last=h;send({type:"resize",height:h});}};
-addEventListener("load",report);
-if(window.ResizeObserver){new ResizeObserver(report).observe(document.documentElement);}
+// Measure the body, not the page: the page is at least as tall as the frame, so it could only ever grow.
+var last=0,report=function(){var b=document.body;if(!b)return;var h=Math.ceil(b.getBoundingClientRect().height);if(Math.abs(h-last)>2){last=h;send({type:"resize",height:h});}};
+addEventListener("load",function(){report();if(window.ResizeObserver){new ResizeObserver(report).observe(document.body);}});
 })();</script>`;
 }
 
 /** The document the sandboxed frame loads: CSP and bridge first, then the generated HTML. */
 export function customSrcDoc(html: string, nonce: string, theme: "light" | "dark" = "light"): string {
-  const head = `<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${CUSTOM_CSP}"><meta name="color-scheme" content="${theme}">${bridge(nonce)}<style>html{color-scheme:${theme}}body{margin:0;padding:16px;font-family:system-ui,sans-serif}</style>`;
+  const head = `<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${CUSTOM_CSP}"><meta name="color-scheme" content="${theme}">${bridge(nonce)}<style>html{color-scheme:${theme}}html,body{margin:0}body{display:flow-root;font-family:system-ui,sans-serif;overflow-x:hidden}</style>`;
   return `<!doctype html><html><head>${head}</head><body>${html}</body></html>`;
 }
 

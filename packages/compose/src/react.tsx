@@ -205,7 +205,7 @@ export function ResponseView({ state, theme = "system", onActivityEvent, store, 
   );
 }
 
-export function BlockView({ block, theme }: { block: RenderBlock; theme?: Theme }) {
+export function BlockView({ block, theme, editable }: { block: RenderBlock; theme?: Theme; editable?: boolean }) {
   switch (block.renderer) {
     case "content":
       return <Blocks blocks={block.blocks} />;
@@ -218,7 +218,7 @@ export function BlockView({ block, theme }: { block: RenderBlock; theme?: Theme 
     case "motion":
       return <ScenePlayer spec={block.scene} theme={theme} />;
     case "custom":
-      return <CustomExperience block={block.custom} theme={theme === "dark" ? "dark" : "light"} />;
+      return <CustomExperience block={block.custom} theme={theme === "dark" ? "dark" : "light"} editable={editable} />;
   }
 }
 

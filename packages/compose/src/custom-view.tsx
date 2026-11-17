@@ -7,6 +7,8 @@ export interface CustomExperienceProps {
   theme?: "light" | "dark";
   onComplete?: (score: number) => void;
   onEvent?: (name: string, data: unknown) => void;
+  /** Show the author's controls (view code, stop). Readers only get the app. */
+  editable?: boolean;
 }
 
 function randomNonce(): string {
@@ -21,7 +23,7 @@ function randomNonce(): string {
  * this page, its cookies or storage, no forms, popups or navigation, and its
  * CSP blocks all network requests. It can only send the three bridge messages.
  */
-export function CustomExperience({ block, theme = "light", onComplete, onEvent }: CustomExperienceProps) {
+export function CustomExperience({ block, theme = "light", onComplete, onEvent, editable = true }: CustomExperienceProps) {
   const [running, setRunning] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [height, setHeight] = useState(block.height ?? 360);
@@ -48,15 +50,7 @@ export function CustomExperience({ block, theme = "light", onComplete, onEvent }
 
   return (
     <section className="cx-custom" aria-label={block.title}>
-      <header className="cx-custom__header">
-        <div>
-          <h3 className="cx-custom__title">{block.title}</h3>
-          <p className="cx-custom__description">{block.description}</p>
-        </div>
-        <span className="wg-badge" title="Generated for this answer and run in an isolated sandbox without network access">
-          Custom · sandboxed
-        </span>
-      </header>
+      <h3 className="cx-custom__title">{block.title}</h3>
       {running ? (
         <iframe
           ref={frame}
@@ -71,13 +65,14 @@ export function CustomExperience({ block, theme = "light", onComplete, onEvent }
         />
       ) : (
         <div className="cx-custom__gate">
-          <p>This experience was written for your question. It runs isolated from the page, with no internet access.</p>
-          <Button variant="primary" onClick={() => setRunning(true)}>
+          <p>Runs isolated from the page, with no internet access.</p>
+          <Button size="sm" variant="primary" onClick={() => setRunning(true)}>
             Run it
           </Button>
         </div>
       )}
-      <div className="cx-custom__footer">
+      {editable ? (
+        <div className="cx-custom__footer">
         <Button size="sm" variant="ghost" onClick={() => setShowCode((v) => !v)} aria-expanded={showCode}>
           {showCode ? "Hide code" : "View code"}
         </Button>
@@ -86,8 +81,9 @@ export function CustomExperience({ block, theme = "light", onComplete, onEvent }
             Stop
           </Button>
         ) : null}
-      </div>
-      {showCode ? (
+        </div>
+      ) : null}
+      {editable && showCode ? (
         <pre className="cx-custom__code" tabIndex={0}>
           <code>{block.html}</code>
         </pre>

@@ -185,7 +185,7 @@ function InteractiveView({
         {editable ? (
           <header className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
             <span className="text-muted-foreground text-xs font-medium">
-              {label}
+              {kind === "custom" ? null : label}
             </span>
             <div className="flex items-center gap-1">
               {kind === "mindmap" && result.ok ? (
@@ -245,7 +245,11 @@ function InteractiveView({
                 store={widgetStore}
                 renderMath={renderMath}
               >
-                <BlockView block={result.block} theme={theme} />
+                <BlockView
+                  block={result.block}
+                  theme={theme}
+                  editable={editable}
+                />
               </WidgetsProvider>
             </InteractiveProvider>
           ) : !editable ? (
