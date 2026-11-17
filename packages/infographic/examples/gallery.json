@@ -1,0 +1,1159 @@
+[
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "grid-badge",
+  "title": "Why teams switch to async work",
+  "layout": "grid",
+  "items": [
+   {
+    "label": "Fewer meetings",
+    "desc": "Decisions happen in writing, so calendars open up.",
+    "icon": "clock",
+    "display": "−40%",
+    "detail": "Teams that move status updates to written posts cut recurring meeting time by about 40% in the first quarter."
+   },
+   {
+    "label": "Better decisions",
+    "desc": "Written proposals get more thoughtful replies.",
+    "icon": "idea"
+   },
+   {
+    "label": "Global hiring",
+    "desc": "Time zones stop limiting who you can hire.",
+    "icon": "globe"
+   },
+   {
+    "label": "Searchable history",
+    "desc": "Every decision has a link and a reason.",
+    "icon": "search"
+   },
+   {
+    "label": "Deep focus",
+    "desc": "Long blocks of uninterrupted time.",
+    "icon": "target"
+   },
+   {
+    "label": "Calmer pace",
+    "desc": "Fewer pings, less context switching.",
+    "icon": "heart"
+   }
+  ],
+  "subtitle": "Six benefits reported by remote-first companies",
+  "style": "badge"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "grid-ribbon",
+  "title": "Core cloud services",
+  "layout": "grid",
+  "items": [
+   {
+    "label": "Compute",
+    "desc": "Virtual machines and containers that scale with load.",
+    "icon": "cpu"
+   },
+   {
+    "label": "Storage",
+    "desc": "Durable object storage for files, backups and media.",
+    "icon": "database"
+   },
+   {
+    "label": "Networking",
+    "desc": "Private networks, load balancers and a global CDN.",
+    "icon": "globe"
+   },
+   {
+    "label": "Security",
+    "desc": "Identity, keys and audit logs for every request.",
+    "icon": "shield"
+   }
+  ],
+  "style": "ribbon",
+  "palette": "ocean"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "arrows",
+  "title": "How a bill becomes law",
+  "layout": "arrows",
+  "items": [
+   {
+    "label": "Drafted",
+    "desc": "A member of Congress writes the bill.",
+    "icon": "book"
+   },
+   {
+    "label": "Committee",
+    "desc": "Experts review, amend and vote on it.",
+    "icon": "users"
+   },
+   {
+    "label": "Floor vote",
+    "desc": "Both chambers debate and pass it.",
+    "icon": "check"
+   },
+   {
+    "label": "Signed",
+    "desc": "The President signs it into law.",
+    "icon": "flag"
+   }
+  ],
+  "style": "badge"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "checklist",
+  "title": "Launch checklist",
+  "layout": "checklist",
+  "items": [
+   {
+    "label": "Pricing page live",
+    "done": true
+   },
+   {
+    "label": "Onboarding emails",
+    "done": true,
+    "desc": "Three-step welcome sequence"
+   },
+   {
+    "label": "Status page",
+    "done": true
+   },
+   {
+    "label": "Press kit",
+    "done": false,
+    "desc": "Logos, screenshots, founder bios"
+   },
+   {
+    "label": "Support macros",
+    "done": false
+   },
+   {
+    "label": "Analytics dashboard",
+    "done": true
+   }
+  ]
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "tiers",
+  "title": "Maslow's hierarchy of needs",
+  "layout": "tiers",
+  "items": [
+   {
+    "label": "Physiological",
+    "desc": "Food, water, warmth and rest."
+   },
+   {
+    "label": "Safety",
+    "desc": "Security, stability and freedom from fear."
+   },
+   {
+    "label": "Belonging",
+    "desc": "Friendship, intimacy and family."
+   },
+   {
+    "label": "Esteem",
+    "desc": "Respect, status and recognition."
+   },
+   {
+    "label": "Self-actualization",
+    "desc": "Achieving one's full potential."
+   }
+  ],
+  "palette": "sunset"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "sector",
+  "title": "The six thinking hats",
+  "layout": "sector",
+  "items": [
+   {
+    "label": "Facts",
+    "desc": "What do we know, and what's missing?",
+    "icon": "info"
+   },
+   {
+    "label": "Feelings",
+    "desc": "Gut reactions and intuition.",
+    "icon": "heart"
+   },
+   {
+    "label": "Caution",
+    "desc": "Risks, weaknesses and what could fail.",
+    "icon": "warning"
+   },
+   {
+    "label": "Benefits",
+    "desc": "Why it could work.",
+    "icon": "sun"
+   },
+   {
+    "label": "Creativity",
+    "desc": "New ideas and alternatives.",
+    "icon": "idea"
+   },
+   {
+    "label": "Process",
+    "desc": "Managing the thinking itself.",
+    "icon": "gear"
+   }
+  ]
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "steps",
+  "title": "How a vaccine trains your body",
+  "layout": "steps",
+  "items": [
+   {
+    "label": "Harmless piece arrives",
+    "desc": "A weakened germ or a piece of one that can't make you sick.",
+    "icon": "shield",
+    "detail": "Vaccines carry an antigen: an inactivated germ, a protein subunit, or mRNA instructions for one protein."
+   },
+   {
+    "label": "Immune system notices",
+    "desc": "White blood cells spot the unfamiliar piece.",
+    "icon": "search"
+   },
+   {
+    "label": "Antibodies are made",
+    "desc": "B cells build antibodies shaped to that exact piece.",
+    "icon": "target"
+   },
+   {
+    "label": "Memory stays",
+    "desc": "Memory cells remember it for years.",
+    "icon": "idea"
+   }
+  ]
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "timeline",
+  "title": "The race to the Moon",
+  "layout": "timeline",
+  "items": [
+   {
+    "label": "Sputnik",
+    "display": "1957",
+    "desc": "First artificial satellite."
+   },
+   {
+    "label": "Gagarin",
+    "display": "1961",
+    "desc": "First human in orbit."
+   },
+   {
+    "label": "Gemini",
+    "display": "1965",
+    "desc": "First US spacewalk."
+   },
+   {
+    "label": "Apollo 8",
+    "display": "1968",
+    "desc": "First crew to orbit the Moon."
+   },
+   {
+    "label": "Apollo 11",
+    "display": "1969",
+    "desc": "First Moon landing.",
+    "detail": "Neil Armstrong and Buzz Aldrin landed on July 20, 1969, while Michael Collins orbited above."
+   }
+  ],
+  "palette": "berry"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "roadmap",
+  "title": "Product roadmap 2027",
+  "layout": "roadmap",
+  "items": [
+   {
+    "label": "Foundations",
+    "display": "Q1",
+    "desc": "New editor core and offline sync."
+   },
+   {
+    "label": "Collaboration",
+    "display": "Q2",
+    "desc": "Live cursors, comments and mentions."
+   },
+   {
+    "label": "Automation",
+    "display": "Q3",
+    "desc": "Rules, templates and scheduled reports."
+   },
+   {
+    "label": "Enterprise",
+    "display": "Q4",
+    "desc": "SSO, audit logs and data residency."
+   }
+  ],
+  "style": "card"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "snake",
+  "title": "Making sourdough",
+  "layout": "snake",
+  "items": [
+   {
+    "label": "Feed starter",
+    "desc": "Equal flour and water, 8 h before."
+   },
+   {
+    "label": "Mix dough",
+    "desc": "Flour, water, starter; rest 1 h."
+   },
+   {
+    "label": "Add salt",
+    "desc": "Pinch it in with a little water."
+   },
+   {
+    "label": "Stretch & fold",
+    "desc": "Four sets, 30 min apart."
+   },
+   {
+    "label": "Bulk rise",
+    "desc": "Until 50% bigger, 4–6 h."
+   },
+   {
+    "label": "Shape",
+    "desc": "Tight boule, into a banneton."
+   },
+   {
+    "label": "Cold proof",
+    "desc": "Overnight in the fridge."
+   },
+   {
+    "label": "Bake",
+    "desc": "250 °C lid on, then lid off."
+   }
+  ],
+  "style": "card",
+  "palette": "sunset"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "zigzag",
+  "title": "The scientific method",
+  "layout": "zigzag",
+  "items": [
+   {
+    "label": "Observe",
+    "desc": "Notice something worth explaining.",
+    "icon": "eye"
+   },
+   {
+    "label": "Question",
+    "desc": "Ask what causes it.",
+    "icon": "question"
+   },
+   {
+    "label": "Hypothesis",
+    "desc": "Propose a testable answer.",
+    "icon": "idea"
+   },
+   {
+    "label": "Experiment",
+    "desc": "Test it under control.",
+    "icon": "flask"
+   },
+   {
+    "label": "Analyze",
+    "desc": "Look at what the data says.",
+    "icon": "chart"
+   },
+   {
+    "label": "Conclude",
+    "desc": "Accept, revise or reject.",
+    "icon": "check"
+   }
+  ]
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "stairs",
+  "title": "Levels of data maturity",
+  "layout": "stairs",
+  "items": [
+   {
+    "label": "Spreadsheets",
+    "desc": "Manual reports, one source per team."
+   },
+   {
+    "label": "Warehouse",
+    "desc": "Central data, shared definitions."
+   },
+   {
+    "label": "Dashboards",
+    "desc": "Self-serve metrics for everyone."
+   },
+   {
+    "label": "Predictive",
+    "desc": "Forecasts and models in decisions."
+   },
+   {
+    "label": "Automated",
+    "desc": "Systems act on data on their own."
+   }
+  ],
+  "style": "indexed",
+  "palette": "ocean"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "funnel",
+  "title": "Sign-up funnel, last 30 days",
+  "layout": "funnel",
+  "items": [
+   {
+    "label": "Visited site",
+    "value": 48200
+   },
+   {
+    "label": "Started sign-up",
+    "value": 12650,
+    "desc": "Clicked Get started"
+   },
+   {
+    "label": "Verified email",
+    "value": 8410
+   },
+   {
+    "label": "Created first note",
+    "value": 5120
+   },
+   {
+    "label": "Upgraded to Pro",
+    "value": 930,
+    "desc": "Within 14 days"
+   }
+  ]
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "pyramid",
+  "title": "The food pyramid",
+  "layout": "pyramid",
+  "items": [
+   {
+    "label": "Sweets & oils",
+    "desc": "Sparingly."
+   },
+   {
+    "label": "Meat & dairy",
+    "desc": "2–3 servings a day."
+   },
+   {
+    "label": "Fruit & vegetables",
+    "desc": "5+ servings a day."
+   },
+   {
+    "label": "Grains",
+    "desc": "6–11 servings: the base."
+   }
+  ],
+  "palette": "forest"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "cycle",
+  "title": "The water cycle",
+  "layout": "cycle",
+  "items": [
+   {
+    "label": "Evaporation",
+    "desc": "Sun heats water into vapour.",
+    "icon": "sun"
+   },
+   {
+    "label": "Condensation",
+    "desc": "Vapour cools into clouds.",
+    "icon": "cloud"
+   },
+   {
+    "label": "Precipitation",
+    "desc": "Water falls as rain or snow.",
+    "icon": "drop"
+   },
+   {
+    "label": "Collection",
+    "desc": "It gathers in oceans and lakes.",
+    "icon": "globe"
+   }
+  ],
+  "palette": "ocean"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "versus",
+  "title": "Renting vs buying a home",
+  "layout": "versus",
+  "items": [
+   {
+    "label": "Renting",
+    "icon": "key",
+    "children": [
+     {
+      "label": "Flexible",
+      "desc": "Move with a month's notice."
+     },
+     {
+      "label": "Low upfront cost",
+      "desc": "Deposit, not a down payment."
+     },
+     {
+      "label": "No repairs",
+      "desc": "The landlord fixes things."
+     }
+    ]
+   },
+   {
+    "label": "Buying",
+    "icon": "home",
+    "children": [
+     {
+      "label": "Builds equity",
+      "desc": "Payments become ownership."
+     },
+     {
+      "label": "Stable costs",
+      "desc": "Fixed-rate mortgage."
+     },
+     {
+      "label": "Freedom to change",
+      "desc": "Renovate as you like."
+     }
+    ]
+   }
+  ],
+  "style": "card"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "pros-cons",
+  "title": "Remote work",
+  "layout": "pros-cons",
+  "items": [
+   {
+    "label": "Pros",
+    "children": [
+     {
+      "label": "No commute",
+      "desc": "An hour a day back."
+     },
+     {
+      "label": "Focus time"
+     },
+     {
+      "label": "Hire anywhere"
+     }
+    ]
+   },
+   {
+    "label": "Cons",
+    "children": [
+     {
+      "label": "Isolation",
+      "desc": "Fewer casual chats."
+     },
+     {
+      "label": "Time zones"
+     },
+     {
+      "label": "Blurred boundaries"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "swot",
+  "title": "SWOT: a neighbourhood coffee shop",
+  "layout": "swot",
+  "items": [
+   {
+    "label": "Strengths",
+    "children": [
+     {
+      "label": "Loyal regulars"
+     },
+     {
+      "label": "Award-winning roast"
+     },
+     {
+      "label": "Prime corner location"
+     }
+    ]
+   },
+   {
+    "label": "Weaknesses",
+    "children": [
+     {
+      "label": "Small seating area"
+     },
+     {
+      "label": "No online ordering"
+     }
+    ]
+   },
+   {
+    "label": "Opportunities",
+    "children": [
+     {
+      "label": "Office catering"
+     },
+     {
+      "label": "Bean subscriptions"
+     },
+     {
+      "label": "Evening events"
+     }
+    ]
+   },
+   {
+    "label": "Threats",
+    "children": [
+     {
+      "label": "Chain opening nearby"
+     },
+     {
+      "label": "Rising bean prices"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "quadrant",
+  "title": "Prioritising the backlog",
+  "layout": "quadrant",
+  "items": [
+   {
+    "label": "Quick wins",
+    "desc": "High value, low effort: do these first.",
+    "icon": "bolt"
+   },
+   {
+    "label": "Big bets",
+    "desc": "High value, high effort: plan them.",
+    "icon": "rocket"
+   },
+   {
+    "label": "Fill-ins",
+    "desc": "Low value, low effort: when there's time.",
+    "icon": "clipboard"
+   },
+   {
+    "label": "Money pits",
+    "desc": "Low value, high effort: avoid.",
+    "icon": "warning"
+   }
+  ],
+  "axes": {
+   "x": [
+    "Low effort",
+    "High effort"
+   ],
+   "y": [
+    "Low value",
+    "High value"
+   ]
+  }
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "columns",
+  "title": "Three types of rock",
+  "layout": "columns",
+  "items": [
+   {
+    "label": "Igneous",
+    "desc": "Cooled from magma or lava.",
+    "children": [
+     {
+      "label": "Granite"
+     },
+     {
+      "label": "Basalt"
+     },
+     {
+      "label": "Obsidian"
+     }
+    ]
+   },
+   {
+    "label": "Sedimentary",
+    "desc": "Layers pressed together.",
+    "children": [
+     {
+      "label": "Sandstone"
+     },
+     {
+      "label": "Limestone"
+     },
+     {
+      "label": "Shale"
+     }
+    ]
+   },
+   {
+    "label": "Metamorphic",
+    "desc": "Changed by heat and pressure.",
+    "children": [
+     {
+      "label": "Marble"
+     },
+     {
+      "label": "Slate"
+     },
+     {
+      "label": "Quartzite"
+     }
+    ]
+   }
+  ],
+  "style": "pill",
+  "palette": "sunset"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "tree",
+  "title": "How a startup is organised",
+  "layout": "tree",
+  "items": [
+   {
+    "label": "CEO",
+    "icon": "user",
+    "desc": "Sets direction",
+    "children": [
+     {
+      "label": "Engineering",
+      "icon": "code",
+      "children": [
+       {
+        "label": "Platform"
+       },
+       {
+        "label": "Mobile"
+       },
+       {
+        "label": "Infra"
+       }
+      ]
+     },
+     {
+      "label": "Product",
+      "icon": "target",
+      "children": [
+       {
+        "label": "Design"
+       },
+       {
+        "label": "Research"
+       }
+      ]
+     },
+     {
+      "label": "Go-to-market",
+      "icon": "growth",
+      "children": [
+       {
+        "label": "Sales"
+       },
+       {
+        "label": "Marketing"
+       },
+       {
+        "label": "Support"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "style": "card"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "layers",
+  "title": "A modern web app stack",
+  "layout": "layers",
+  "items": [
+   {
+    "label": "Frontend",
+    "icon": "eye",
+    "children": [
+     {
+      "label": "Next.js"
+     },
+     {
+      "label": "React"
+     },
+     {
+      "label": "Tailwind"
+     },
+     {
+      "label": "TypeScript"
+     }
+    ]
+   },
+   {
+    "label": "API",
+    "icon": "link",
+    "children": [
+     {
+      "label": "NestJS"
+     },
+     {
+      "label": "REST"
+     },
+     {
+      "label": "WebSockets"
+     }
+    ]
+   },
+   {
+    "label": "Data",
+    "icon": "database",
+    "children": [
+     {
+      "label": "Postgres"
+     },
+     {
+      "label": "Redis"
+     },
+     {
+      "label": "Object storage"
+     }
+    ]
+   },
+   {
+    "label": "Infrastructure",
+    "icon": "cloud",
+    "children": [
+     {
+      "label": "Railway"
+     },
+     {
+      "label": "Vercel"
+     },
+     {
+      "label": "CDN"
+     },
+     {
+      "label": "Monitoring"
+     }
+    ]
+   }
+  ],
+  "palette": "ocean"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "hub",
+  "title": "What drives a healthy habit",
+  "layout": "hub",
+  "items": [
+   {
+    "label": "Habit",
+    "icon": "heart",
+    "children": [
+     {
+      "label": "Cue",
+      "desc": "A clear trigger",
+      "icon": "bolt"
+     },
+     {
+      "label": "Craving",
+      "desc": "A reason to want it",
+      "icon": "fire"
+     },
+     {
+      "label": "Response",
+      "desc": "The action itself",
+      "icon": "check"
+     },
+     {
+      "label": "Reward",
+      "desc": "A payoff that sticks",
+      "icon": "trophy"
+     },
+     {
+      "label": "Environment",
+      "desc": "Make it easy",
+      "icon": "home"
+     },
+     {
+      "label": "Identity",
+      "desc": "Who you become",
+      "icon": "user"
+     }
+    ]
+   }
+  ],
+  "style": "card"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "bars",
+  "title": "Where Earth's water is",
+  "layout": "bars",
+  "items": [
+   {
+    "label": "Oceans",
+    "value": 96.5,
+    "icon": "drop"
+   },
+   {
+    "label": "Ice caps & glaciers",
+    "value": 1.74
+   },
+   {
+    "label": "Groundwater",
+    "value": 1.69
+   },
+   {
+    "label": "Lakes & rivers",
+    "value": 0.013,
+    "display": "0.013%"
+   }
+  ],
+  "unit": "%",
+  "source": "USGS Water Science School",
+  "subtitle": "Almost all of it is salty, and most fresh water is frozen."
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "columns-chart",
+  "title": "Monthly active users",
+  "layout": "columns-chart",
+  "items": [
+   {
+    "label": "Jan",
+    "value": 1200
+   },
+   {
+    "label": "Feb",
+    "value": 1650
+   },
+   {
+    "label": "Mar",
+    "value": 2100
+   },
+   {
+    "label": "Apr",
+    "value": 2050
+   },
+   {
+    "label": "May",
+    "value": 2890
+   },
+   {
+    "label": "Jun",
+    "value": 3540
+   }
+  ],
+  "unit": "users"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "pie",
+  "title": "How a household budget splits",
+  "layout": "pie",
+  "items": [
+   {
+    "label": "Housing",
+    "value": 35
+   },
+   {
+    "label": "Food",
+    "value": 15
+   },
+   {
+    "label": "Transport",
+    "value": 12
+   },
+   {
+    "label": "Savings",
+    "value": 20
+   },
+   {
+    "label": "Everything else",
+    "value": 18
+   }
+  ],
+  "unit": "%"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "donut",
+  "title": "Energy mix, 2025",
+  "layout": "donut",
+  "items": [
+   {
+    "label": "Solar",
+    "value": 18,
+    "desc": "Fastest growing"
+   },
+   {
+    "label": "Wind",
+    "value": 22
+   },
+   {
+    "label": "Hydro",
+    "value": 14
+   },
+   {
+    "label": "Nuclear",
+    "value": 16
+   },
+   {
+    "label": "Gas",
+    "value": 30
+   }
+  ],
+  "unit": "%",
+  "palette": "forest"
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "stats",
+  "title": "2026 at a glance",
+  "layout": "stats",
+  "items": [
+   {
+    "label": "Active users",
+    "display": "3.2M",
+    "icon": "users",
+    "desc": "Up 48% year over year"
+   },
+   {
+    "label": "Notes written",
+    "display": "41M",
+    "icon": "book",
+    "desc": "That's 13 per person"
+   },
+   {
+    "label": "Countries",
+    "display": "140",
+    "icon": "globe",
+    "desc": "Across every continent"
+   },
+   {
+    "label": "Uptime",
+    "display": "99.98%",
+    "icon": "shield",
+    "desc": "Under 2 h of downtime"
+   }
+  ]
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "rings",
+  "title": "Course progress",
+  "layout": "rings",
+  "items": [
+   {
+    "label": "Algebra",
+    "value": 86,
+    "desc": "12 of 14 units"
+   },
+   {
+    "label": "Geometry",
+    "value": 62
+   },
+   {
+    "label": "Statistics",
+    "value": 41
+   },
+   {
+    "label": "Calculus",
+    "value": 18
+   }
+  ]
+ },
+ {
+  "schemaVersion": "1.0",
+  "type": "infographic",
+  "id": "line",
+  "title": "Global average temperature",
+  "layout": "line",
+  "items": [
+   {
+    "label": "1880",
+    "value": -0.17
+   },
+   {
+    "label": "1900",
+    "value": -0.08
+   },
+   {
+    "label": "1920",
+    "value": -0.27
+   },
+   {
+    "label": "1940",
+    "value": 0.12
+   },
+   {
+    "label": "1960",
+    "value": -0.03
+   },
+   {
+    "label": "1980",
+    "value": 0.26
+   },
+   {
+    "label": "2000",
+    "value": 0.39
+   },
+   {
+    "label": "2010",
+    "value": 0.72
+   },
+   {
+    "label": "2020",
+    "value": 1.01
+   }
+  ],
+  "unit": "°C",
+  "subtitle": "Difference from the 1951–1980 average",
+  "source": "NASA GISS"
+ }
+]
