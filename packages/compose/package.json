@@ -35,6 +35,7 @@
     "lint": "echo \"lint pending\""
   },
   "dependencies": {
+    "@octonote/infographic": "workspace:*",
     "@octonote/interactive": "workspace:*",
     "@octonote/motion": "workspace:*",
     "@octonote/widgets": "workspace:*",

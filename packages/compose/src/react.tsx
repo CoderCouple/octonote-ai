@@ -1,7 +1,8 @@
 import { Component, useCallback, useRef, useState, type ReactNode } from "react";
 import { defaultComponents, InteractiveProvider, InteractiveRenderer, type ActivityEvent, type ActivityEventHandler, type ProgressStore, type QuizGrader } from "@octonote/interactive";
 import { ScenePlayer } from "@octonote/motion";
-import { Blocks, Infographic, Widget, WidgetsProvider } from "@octonote/widgets";
+import { Infographic } from "@octonote/infographic";
+import { Blocks, Widget, WidgetsProvider } from "@octonote/widgets";
 import type { ComposeEvent } from "./agent.js";
 import type { Issue, RenderBlock } from "./catalog.js";
 import { markdownToBlocks } from "./markdown.js";
@@ -211,7 +212,7 @@ export function BlockView({ block, theme }: { block: RenderBlock; theme?: Theme 
     case "widget":
       return <Widget spec={block.widget} persistKey={block.id} />;
     case "infographic":
-      return <Infographic spec={block.infographic} />;
+      return <Infographic spec={block.infographic} theme={theme} />;
     case "interactive":
       return <InteractiveRenderer spec={block.spec} />;
     case "motion":

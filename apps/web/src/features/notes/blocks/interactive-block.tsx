@@ -14,6 +14,7 @@
  * JSON is saved) or ask the AI to change the block; readers just use it.
  */
 import "@octonote/widgets/styles.css";
+import "@octonote/infographic/styles.css";
 import "@octonote/interactive/styles.css";
 import "@octonote/motion/styles.css";
 import "@octonote/compose/styles.css";

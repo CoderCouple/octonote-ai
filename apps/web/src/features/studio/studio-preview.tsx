@@ -6,6 +6,7 @@
  * checked again before it renders.
  */
 import "@octonote/widgets/styles.css";
+import "@octonote/infographic/styles.css";
 import "@octonote/interactive/styles.css";
 import "@octonote/motion/styles.css";
 import "@octonote/compose/styles.css";

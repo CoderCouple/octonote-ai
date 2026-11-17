@@ -13,6 +13,13 @@ watchPatterns = [
   "services/api/**",
   "packages/shared/**",
   "packages/content/**",
+  # The AI libraries the API validates blocks with.
+  "packages/compose/**",
+  "packages/widgets/**",
+  "packages/infographic/**",
+  "packages/interactive/**",
+  "packages/motion/**",
+  "packages/manim/**",
   "Dockerfile",
   "railway.toml",
   "pnpm-lock.yaml",

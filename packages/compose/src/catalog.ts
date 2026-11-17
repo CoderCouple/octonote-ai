@@ -1,6 +1,7 @@
 import { defaultRegistry, normalizeSpec, type ActivitySpecBase } from "@octonote/interactive";
 import { SCENE_GUIDE, SCHEMA_VERSION, sceneSchema, validateScene, type Scene } from "@octonote/motion";
-import { contentBlock, documentSchema, infographicSpecSchema, validateInfographic, widgetBlockSchema, type ContentBlock, type InfographicSpec, type WidgetBlock } from "@octonote/widgets";
+import { INFOGRAPHIC_GUIDE, infographicJsonSchema, validateInfographic, type InfographicSpec } from "@octonote/infographic";
+import { contentBlock, documentSchema, widgetBlockSchema, type ContentBlock, type WidgetBlock } from "@octonote/widgets";
 import { z } from "zod/v4";
 import type { CustomBlock } from "./custom.js";
 import { markdownToBlocks } from "./markdown.js";
@@ -200,29 +201,33 @@ const widgetEntry: CatalogEntry = {
   },
 };
 
-/* widgets: infographics */
+/* infographic: the in-house infographic library */
 
 const infographicEntry: CatalogEntry = {
   kind: "infographic",
-  library: "widgets",
+  library: "infographic",
   summary:
-    "A handful of facts drawn as a picture, in one of six layouts: cards (ideas with icons), process (ordered steps with arrows), stats (big numbers), compare (2–3 groups side by side), timeline (dated events) or bars (amounts to scale). Every part can carry a one- or two-sentence detail that opens when the reader clicks it. Text is capped short so nothing overflows: labels are a few words, values a short figure.",
+    "A polished infographic in one of 29 layouts. Lists: grid, arrows, checklist, tiers, sector. Sequences: steps, timeline, roadmap, snake, zigzag, stairs, funnel, pyramid, cycle. Comparisons: versus, pros-cons, swot, quadrant, columns. Hierarchies: tree, layers. Charts: bars, columns-chart, line, pie, donut, stats, rings. Relations: hub. Items share one shape (label, desc, value or display, icon, a detail that opens on click, children where layouts nest), with a choice of item style and palette.\n" +
+    INFOGRAPHIC_GUIDE,
   useWhen: [
-    "Summarising a topic visually: key numbers, the stages of a process, pros and cons, a history, or how amounts compare.",
+    "Summarising a topic visually: key numbers, the stages of a process, a comparison, a history, a hierarchy or how amounts compare.",
     "The reader should take in the shape of the information at a glance, with details on demand.",
   ],
-  avoidWhen: ["Numbers the reader should vary: use a widget.", "More than eight items, or ideas that need paragraphs: use text.", "A tree of related topics: use mindmap."],
+  avoidWhen: ["Numbers the reader should vary: use a widget.", "Ideas that need paragraphs: use text.", "Something to explore and test yourself on: use mindmap."],
   weight: "rich",
-  jsonSchema: memo(() => blockSchema("infographic", toJson(infographicSpecSchema), ["schemaVersion", "type", "id"])),
+  jsonSchema: memo(() => {
+    const schema = infographicJsonSchema();
+    return { ...schema, required: ["kind", ...(schema.required as string[])], properties: { kind: { type: "string", const: "infographic" }, ...(schema.properties as object) } };
+  }),
   example: {
     kind: "infographic",
     title: "How a vaccine trains your body",
-    layout: "process",
+    layout: "steps",
     items: [
-      { label: "Harmless piece arrives", icon: "shield", detail: "The vaccine carries a weakened germ or a piece of one that can't make you sick." },
-      { label: "Immune system notices", icon: "search", detail: "White blood cells spot the unfamiliar piece and raise the alarm." },
-      { label: "Antibodies are made", icon: "target", detail: "B cells build antibodies shaped to lock onto that exact piece." },
-      { label: "Memory stays", icon: "idea", detail: "Memory cells remember it for years, so a real infection is stopped fast." },
+      { label: "Harmless piece arrives", desc: "A weakened germ or a piece of one that can't make you sick.", icon: "shield", detail: "Vaccines carry an antigen: an inactivated germ, a protein subunit, or mRNA instructions for one protein." },
+      { label: "Immune system notices", desc: "White blood cells spot the unfamiliar piece.", icon: "search" },
+      { label: "Antibodies are made", desc: "B cells build antibodies shaped to that exact piece.", icon: "target" },
+      { label: "Memory stays", desc: "Memory cells remember it for years.", icon: "idea" },
     ],
   },
   validate(block, id) {

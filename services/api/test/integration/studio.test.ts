@@ -274,7 +274,7 @@ describe("the AI making one block", () => {
   it("gives up with the reason when the repair fails too", async () => {
     const broken = { ...INFOGRAPHIC, layout: "bars" };
     const model = new ScriptedModel([broken, broken]);
-    await expect(model.generate(alice.id, { kind: "infographic", title: "Leaves", source: SOURCE })).rejects.toThrow(/didn't check out \(items\.0\.amount/);
+    await expect(model.generate(alice.id, { kind: "infographic", title: "Leaves", source: SOURCE })).rejects.toThrow(/didn't check out \(items\.0\.value/);
   });
 });
 

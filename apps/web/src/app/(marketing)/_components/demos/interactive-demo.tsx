@@ -3,12 +3,14 @@
 import "@octonote/widgets/styles.css";
 import "@octonote/interactive/styles.css";
 import "@octonote/motion/styles.css";
+import "@octonote/infographic/styles.css";
+import { Infographic, type InfographicSpec } from "@octonote/infographic";
+import gallery from "@octonote/infographic/examples/gallery.json";
 import { InteractiveProvider, InteractiveRenderer, defaultComponents } from "@octonote/interactive";
 import digestive from "@octonote/interactive/examples/digestive-system.json";
 import { ScenePlayer } from "@octonote/motion";
 import circleArea from "@octonote/motion/examples/circle-area.json";
-import { Infographic, WidgetSpecRenderer, WidgetsProvider, type InfographicSpec } from "@octonote/widgets";
-import infographics from "@octonote/widgets/examples/infographics.json";
+import { WidgetSpecRenderer, WidgetsProvider } from "@octonote/widgets";
 import explorables from "@octonote/widgets/examples/explorables.json";
 import { ArrowLeftRight, ChartColumnBig, CircleHelp, Clapperboard, Dices, Layers, Network, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -30,7 +32,7 @@ const TABS = [
 type Tab = (typeof TABS)[number]["id"];
 
 const activity = (type: string) => (digestive.activities as unknown as { type: string }[]).find((a) => a.type === type);
-const VACCINE = infographics.find((g) => g.id === "how-vaccines-work") as unknown as InfographicSpec;
+const VACCINE = (gallery as unknown as InfographicSpec[]).find((g) => g.id === "steps")!;
 const DICE = explorables.find((w) => w.id === "dice-six");
 /** A point to drag around the unit circle, with sine and cosine following it. */
 const CIRCLE = explorables.find((w) => w.id === "unit-circle");
@@ -117,9 +119,7 @@ export function InteractiveDemo() {
             ) : null}
             {tab === "animation" ? <ScenePlayer spec={circleArea} theme={theme} autoPlay={inView} loop allowDownload={false} /> : null}
             {tab === "infographic" ? (
-              <WidgetsProvider theme={theme}>
-                <Infographic spec={VACCINE} />
-              </WidgetsProvider>
+              <Infographic spec={VACCINE} theme={theme} />
             ) : null}
             {tab === "simulation" ? (
               <WidgetsProvider theme={theme}>

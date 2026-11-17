@@ -26,6 +26,7 @@
     "@octonote/compose": "workspace:*",
     "@octonote/content": "workspace:*",
     "@octonote/design-tokens": "workspace:*",
+    "@octonote/infographic": "workspace:*",
     "@octonote/interactive": "workspace:*",
     "@octonote/manim": "workspace:*",
     "@octonote/motion": "workspace:*",

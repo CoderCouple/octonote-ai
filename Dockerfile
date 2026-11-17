@@ -1,7 +1,7 @@
 # NestJS API image for Railway. Installs from the pnpm workspace root and
 # builds only what the API runs (the web app deploys to Vercel): @octonote/shared,
 # @octonote/content, the AI libraries (@octonote/compose with widgets,
-# interactive and motion it validates against; @octonote/manim for videos)
+# infographic, interactive and motion it validates against; @octonote/manim for videos)
 # and @octonote/api.
 
 # Official Node image via AWS ECR Public: same image as Docker Hub, without its pull rate limits.
@@ -18,6 +18,7 @@ COPY packages/shared/package.json packages/shared/
 COPY packages/content/package.json packages/content/
 COPY packages/compose/package.json packages/compose/
 COPY packages/widgets/package.json packages/widgets/
+COPY packages/infographic/package.json packages/infographic/
 COPY packages/interactive/package.json packages/interactive/
 COPY packages/motion/package.json packages/motion/
 COPY packages/manim/package.json packages/manim/
@@ -33,12 +34,13 @@ COPY packages/shared packages/shared
 COPY packages/content packages/content
 COPY packages/compose packages/compose
 COPY packages/widgets packages/widgets
+COPY packages/infographic packages/infographic
 COPY packages/interactive packages/interactive
 COPY packages/motion packages/motion
 COPY packages/manim packages/manim
 COPY services/api services/api
 RUN pnpm --filter @octonote/shared build && pnpm --filter @octonote/content build \
- && pnpm --filter @octonote/widgets build && pnpm --filter @octonote/interactive build && pnpm --filter @octonote/motion build \
+ && pnpm --filter @octonote/widgets build && pnpm --filter @octonote/infographic build && pnpm --filter @octonote/interactive build && pnpm --filter @octonote/motion build \
  && pnpm --filter @octonote/compose build && pnpm --filter @octonote/manim build \
  && pnpm --filter @octonote/api build
 
