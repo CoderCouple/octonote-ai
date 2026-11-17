@@ -55,6 +55,15 @@ export function RightTocRail({
   );
   const [hovered, setHovered] = useState(false);
   const rafRef = useRef<number>(0);
+  const menuRef = useRef<HTMLUListElement>(null);
+
+  // On open, bring the section you're reading into view in the menu.
+  useEffect(() => {
+    if (!hovered) return;
+    menuRef.current
+      ?.querySelector<HTMLElement>("[data-active]")
+      ?.scrollIntoView({ block: "nearest" });
+  }, [hovered]);
 
   const ids = useMemo(() => sections.map((s) => s.id), [sections]);
 
@@ -131,12 +140,17 @@ export function RightTocRail({
       {/* Collapsed: vertical bar stack.
           Expanded (hover): text-labelled menu with the active row bolded. */}
       {hovered ? (
-        <ul className="border-border/60 bg-background/95 flex flex-col gap-1.5 rounded border px-3 py-2 shadow-sm backdrop-blur">
+        // Long notes outgrow the window: the menu scrolls on its own, without scrolling the page.
+        <ul
+          ref={menuRef}
+          className="border-border/60 bg-background/95 flex max-h-[calc(100vh-8rem)] max-w-[20rem] flex-col gap-1.5 overflow-y-auto overscroll-contain rounded border px-3 py-2 shadow-sm backdrop-blur"
+        >
           {sections.map((s) => (
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
                 onClick={scrollTo(s.id)}
+                data-active={s.id === activeId || undefined}
                 className={cn(
                   "hover:text-foreground block leading-snug transition-colors",
                   LEVEL_INDENT[s.level],
@@ -157,7 +171,7 @@ export function RightTocRail({
           ) : null}
         </ul>
       ) : (
-        <ul className="flex flex-col items-end gap-2 py-2 pr-1">
+        <ul className="flex max-h-[calc(100vh-8rem)] flex-col items-end gap-2 overflow-hidden py-2 pr-1">
           {sections.map((s) => (
             <li key={s.id}>
               <a
