@@ -60,6 +60,9 @@ COPY --from=build /app/packages/compose/dist packages/compose/dist
 COPY --from=build /app/packages/widgets/package.json packages/widgets/
 COPY --from=build /app/packages/widgets/dist packages/widgets/dist
 COPY --from=build /app/packages/widgets/examples packages/widgets/examples
+COPY --from=build /app/packages/infographic/package.json packages/infographic/
+COPY --from=build /app/packages/infographic/dist packages/infographic/dist
+COPY --from=build /app/packages/infographic/examples packages/infographic/examples
 COPY --from=build /app/packages/interactive/package.json packages/interactive/
 COPY --from=build /app/packages/interactive/dist packages/interactive/dist
 COPY --from=build /app/packages/interactive/examples packages/interactive/examples
@@ -75,5 +78,8 @@ COPY --from=build /app/services/api/drizzle services/api/drizzle
 # see the API's copy, so hoist it to the root node_modules where Node finds it.
 RUN printf 'public-hoist-pattern[]=react\npublic-hoist-pattern[]=react-dom\npublic-hoist-pattern[]=scheduler\n' >> .npmrc \
  && pnpm install --frozen-lockfile --prod --filter @octonote/api...
+# The API loads the AI libraries lazily, on the first interactive block. Load them now
+# so a package missing from this image fails the build, not a user's save.
+RUN cd services/api && node --input-type=module -e "await import('@octonote/compose'); await import('@octonote/content/server'); console.log('AI libraries load')"
 EXPOSE 4000
 CMD ["pnpm", "--filter", "@octonote/api", "start"]
