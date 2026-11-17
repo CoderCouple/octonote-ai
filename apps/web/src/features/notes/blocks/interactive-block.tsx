@@ -9,8 +9,8 @@
  *
  * The spec is untrusted (pasted, or written by an agent): it's validated
  * before anything renders, and a broken one shows its problems instead of
- * white-screening the note. Custom apps only run after a click, in a
- * sandboxed iframe with no network. Editors can edit the JSON (only valid
+ * white-screening the note. Custom apps run in a sandboxed iframe with
+ * no network. Editors can edit the JSON (only valid
  * JSON is saved) or ask the AI to change the block; readers just use it.
  */
 import "@octonote/widgets/styles.css";

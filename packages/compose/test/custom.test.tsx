@@ -37,10 +37,8 @@ describe("custom blocks", () => {
 });
 
 describe("CustomExperience", () => {
-  it("doesn't run until the learner asks, then runs in a locked-down frame", () => {
+  it("runs straight away in a locked-down frame", () => {
     const { container } = render(<CustomExperience block={block} />);
-    expect(container.querySelector("iframe")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Run it" }));
     const frame = container.querySelector("iframe")!;
     expect(frame.getAttribute("sandbox")).toBe("allow-scripts");
     expect(frame.getAttribute("srcdoc")).toContain("Content-Security-Policy");
@@ -48,10 +46,15 @@ describe("CustomExperience", () => {
     expect(screen.getByText(/host.complete\(100\)/)).toBeTruthy();
   });
 
+  it("shows readers only the app, no code or stop controls", () => {
+    render(<CustomExperience block={block} editable={false} />);
+    expect(screen.queryByRole("button", { name: "View code" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+  });
+
   it("ignores messages that don't come from its own frame", () => {
     const onComplete = vi.fn();
     const { container } = render(<CustomExperience block={block} onComplete={onComplete} />);
-    fireEvent.click(screen.getByRole("button", { name: "Run it" }));
     const srcdoc = container.querySelector("iframe")!.getAttribute("srcdoc")!;
     const nonce = /nonce=("[0-9a-f]+")/.exec(srcdoc)![1]!.replace(/"/g, "");
     // Right secret, but sent by the page itself rather than the frame.

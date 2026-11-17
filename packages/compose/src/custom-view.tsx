@@ -18,13 +18,14 @@ function randomNonce(): string {
 }
 
 /**
- * Runs generated code in an isolated frame, only after the learner presses
- * Run. The frame gets `sandbox="allow-scripts"` and nothing else: no access to
- * this page, its cookies or storage, no forms, popups or navigation, and its
- * CSP blocks all network requests. It can only send the three bridge messages.
+ * Runs generated code in an isolated frame, straight away (it loads lazily,
+ * so blocks further down start as they scroll near). The frame gets
+ * `sandbox="allow-scripts"` and nothing else: no access to this page, its
+ * cookies or storage, no forms, popups or navigation, and its CSP blocks all
+ * network requests. It can only send the three bridge messages.
  */
 export function CustomExperience({ block, theme = "light", onComplete, onEvent, editable = true }: CustomExperienceProps) {
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState(true);
   const [showCode, setShowCode] = useState(false);
   const [height, setHeight] = useState(block.height ?? 360);
   const frame = useRef<HTMLIFrameElement>(null);
