@@ -52,6 +52,29 @@ describe("CustomExperience", () => {
     expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
   });
 
+  it("lets authors download videos embedded in the code, and only them", () => {
+    const html = '<video src="data:video/mp4;base64,AAEC/w=="></video><img src="data:image/png;base64,AAAA">';
+    const video = { ...block, title: "Order blindness!", html };
+    const createObjectURL = vi.fn((_blob: Blob) => "blob:x");
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+    render(<CustomExperience block={video} />);
+    fireEvent.click(screen.getByRole("button", { name: "Download video" }));
+    const blob = createObjectURL.mock.calls[0]![0];
+    expect(blob.type).toBe("video/mp4");
+    expect(blob.size).toBe(4);
+    expect((click.mock.instances[0] as unknown as HTMLAnchorElement).download).toBe("order-blindness.mp4");
+    click.mockRestore();
+    vi.unstubAllGlobals();
+    cleanup();
+
+    render(<CustomExperience block={video} editable={false} />);
+    expect(screen.queryByRole("button", { name: /Download video/ })).toBeNull();
+    cleanup();
+    render(<CustomExperience block={block} />);
+    expect(screen.queryByRole("button", { name: /Download video/ })).toBeNull();
+  });
+
   it("ignores messages that don't come from its own frame", () => {
     const onComplete = vi.fn();
     const { container } = render(<CustomExperience block={block} onComplete={onComplete} />);

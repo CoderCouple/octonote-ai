@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@octonote/widgets";
-import { CUSTOM_LIMITS, customSrcDoc, readCustomMessage, type CustomBlock } from "./custom.js";
+import { CUSTOM_LIMITS, customSrcDoc, customVideos, readCustomMessage, type CustomBlock, type CustomVideo } from "./custom.js";
 
 export interface CustomExperienceProps {
   block: CustomBlock;
@@ -17,6 +17,18 @@ function randomNonce(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("") || String(Math.random()).slice(2);
 }
 
+/** Saves one embedded video as a file named after the block. */
+function downloadVideo(video: CustomVideo, title: string, index: number, count: number): void {
+  const bytes = Uint8Array.from(atob(video.base64), (c) => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: video.mime }));
+  const name = title.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").toLowerCase() || "video";
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${name}${count > 1 ? `-${index + 1}` : ""}.${video.mime === "video/webm" ? "webm" : "mp4"}`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /**
  * Runs generated code in an isolated frame, straight away (it loads lazily,
  * so blocks further down start as they scroll near). The frame gets
@@ -31,6 +43,7 @@ export function CustomExperience({ block, theme = "light", onComplete, onEvent, 
   const frame = useRef<HTMLIFrameElement>(null);
   const nonce = useMemo(randomNonce, [block.html]);
   const srcDoc = useMemo(() => customSrcDoc(block.html, nonce, theme), [block.html, nonce, theme]);
+  const videos = useMemo(() => (editable ? customVideos(block.html) : []), [block.html, editable]);
   const handlers = useRef({ onComplete, onEvent });
   handlers.current = { onComplete, onEvent };
 
@@ -82,6 +95,11 @@ export function CustomExperience({ block, theme = "light", onComplete, onEvent, 
             Stop
           </Button>
         ) : null}
+        {videos.map((video, i) => (
+          <Button key={i} size="sm" variant="ghost" onClick={() => downloadVideo(video, block.title, i, videos.length)}>
+            {videos.length > 1 ? `Download video ${i + 1}` : "Download video"}
+          </Button>
+        ))}
         </div>
       ) : null}
       {editable && showCode ? (

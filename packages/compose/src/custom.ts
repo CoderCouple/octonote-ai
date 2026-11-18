@@ -81,6 +81,22 @@ export function customSrcDoc(html: string, nonce: string, theme: "light" | "dark
   return `<!doctype html><html><head>${head}</head><body>${html}</body></html>`;
 }
 
+export interface CustomVideo {
+  mime: "video/mp4" | "video/webm";
+  base64: string;
+}
+
+/**
+ * Videos embedded in the block's own code as data URIs, so the author can save
+ * them. Read from the HTML on the host side: the frame never asks for a download.
+ */
+export function customVideos(html: string): CustomVideo[] {
+  return Array.from(html.matchAll(/data:(video\/(?:mp4|webm));base64,([A-Za-z0-9+/]+={0,2})/g), (m) => ({
+    mime: m[1] as CustomVideo["mime"],
+    base64: m[2]!,
+  }));
+}
+
 export const customMessageSchema = z.discriminatedUnion("type", [
   z.object({ source: z.literal("octonote-custom"), nonce: z.string(), type: z.literal("resize"), height: z.number().finite() }),
   z.object({ source: z.literal("octonote-custom"), nonce: z.string(), type: z.literal("complete"), score: z.number().finite() }),

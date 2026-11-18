@@ -12,8 +12,8 @@ export { checkBlock, checkResponse, planSchema, planTool, repairTool, responseTo
 export type { BlockCheck, ComposedResponse, Plan, PlanBlock } from "./response.js";
 export { readEventStream, toEventStream } from "./sse.js";
 export { readPartialResponse } from "./stream.js";
-export { CUSTOM_CSP, CUSTOM_LIMITS, customEntry, customSrcDoc, readCustomMessage } from "./custom.js";
-export type { CustomBlock, CustomMessage } from "./custom.js";
+export { CUSTOM_CSP, CUSTOM_LIMITS, customEntry, customSrcDoc, customVideos, readCustomMessage } from "./custom.js";
+export type { CustomBlock, CustomMessage, CustomVideo } from "./custom.js";
 export type { PartialResponse } from "./stream.js";
 export { describeActivity, describeResponse, editResponse, respond } from "./edit.js";
 export type { EditOp, EditOptions, RespondOptions } from "./edit.js";
