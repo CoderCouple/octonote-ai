@@ -950,6 +950,107 @@
 
 /* Mind map */
 
+.ix-root {
+  --ix-branch-0: #3b6fe0;
+  --ix-branch-1: #1f9d6b;
+  --ix-branch-2: #e07a1f;
+  --ix-branch-3: #8b5cf6;
+  --ix-branch-4: #d6457f;
+  --ix-branch-5: #0f9b9b;
+  --ix-branch-6: #c28f00;
+  --ix-branch-7: #d9483b;
+  --ix-mindmap-root-bg: var(--ix-fg-strong);
+  --ix-mindmap-root-fg: var(--ix-bg);
+}
+
+.ix-root[data-ix-theme="dark"],
+[data-ix-theme="dark"] .ix-root:not([data-ix-theme="light"]) {
+  --ix-branch-0: #7aa2ff;
+  --ix-branch-1: #4cd6a0;
+  --ix-branch-2: #ffa25c;
+  --ix-branch-3: #b39bff;
+  --ix-branch-4: #ff7fb0;
+  --ix-branch-5: #4fd1d1;
+  --ix-branch-6: #f2c94c;
+  --ix-branch-7: #ff8a7a;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ix-root:not([data-ix-theme="light"]):not([data-ix-theme="dark"]) {
+    --ix-branch-0: #7aa2ff;
+    --ix-branch-1: #4cd6a0;
+    --ix-branch-2: #ffa25c;
+    --ix-branch-3: #b39bff;
+    --ix-branch-4: #ff7fb0;
+    --ix-branch-5: #4fd1d1;
+    --ix-branch-6: #f2c94c;
+    --ix-branch-7: #ff8a7a;
+  }
+}
+
+.ix-mindmap [data-branch="0"] { --ix-branch: var(--ix-branch-0); }
+.ix-mindmap [data-branch="1"] { --ix-branch: var(--ix-branch-1); }
+.ix-mindmap [data-branch="2"] { --ix-branch: var(--ix-branch-2); }
+.ix-mindmap [data-branch="3"] { --ix-branch: var(--ix-branch-3); }
+.ix-mindmap [data-branch="4"] { --ix-branch: var(--ix-branch-4); }
+.ix-mindmap [data-branch="5"] { --ix-branch: var(--ix-branch-5); }
+.ix-mindmap [data-branch="6"] { --ix-branch: var(--ix-branch-6); }
+.ix-mindmap [data-branch="7"] { --ix-branch: var(--ix-branch-7); }
+
+.ix-mindmap__shell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  container-type: inline-size;
+}
+
+/* Short of room, the text buttons keep only their icons (and their names, for screen readers). */
+@container (max-width: 640px) {
+  .ix-mindmap__action {
+    padding: 0 8px;
+  }
+
+  .ix-mindmap__action-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .ix-mindmap__progress + .ix-mindmap__action .ix-mindmap__action-text,
+  .ix-mindmap__action--primary .ix-mindmap__action-text {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
+  }
+}
+
+.ix-mindmap__shell--full {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  background: var(--ix-bg);
+}
+
+.ix-mindmap__shell--window {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  height: 100dvh;
+}
+
+.ix-mindmap__shell--full .ix-mindmap__viewport {
+  flex: 1;
+  min-height: 0;
+  height: auto !important;
+}
+
+/* Toolbar */
+
 .ix-mindmap__toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -957,28 +1058,156 @@
   gap: 4px;
 }
 
-.ix-mindmap__toolbar .ix-button {
-  min-height: 34px;
-  padding: 4px 10px;
+.ix-mindmap__group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-border);
+  border-radius: 9px;
+}
+
+.ix-mindmap__tool {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--ix-muted);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-border);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.ix-mindmap__group .ix-mindmap__tool {
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 0;
+}
+
+.ix-mindmap__tool:hover,
+.ix-mindmap__tool[aria-pressed="true"],
+.ix-mindmap__tool[aria-expanded="true"] {
+  color: var(--ix-fg-strong);
+  background: var(--ix-surface-muted);
 }
 
 .ix-mindmap__zoom {
-  min-width: 44px;
-  text-align: center;
+  min-width: 40px;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--ix-muted);
 }
+
+.ix-mindmap__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ix-fg);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.ix-mindmap__action:hover {
+  color: var(--ix-fg-strong);
+  background: var(--ix-surface-muted);
+}
+
+.ix-mindmap__action .ix-mindmap__icon {
+  color: var(--ix-muted);
+}
+
+.ix-mindmap__action--primary,
+.ix-mindmap__action--primary:hover {
+  color: var(--ix-accent-fg);
+  background: var(--ix-accent);
+}
+
+.ix-mindmap__action--primary .ix-mindmap__icon {
+  color: inherit;
+}
+
+.ix-mindmap__tool:focus-visible,
+.ix-mindmap__action:focus-visible,
+.ix-mindmap__menu-item:focus-visible {
+  outline: 2px solid var(--ix-focus);
+  outline-offset: 1px;
+}
+
+.ix-mindmap__icon {
+  flex: none;
+}
+
+.ix-mindmap__menu-wrap {
+  position: relative;
+}
+
+.ix-mindmap__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  display: grid;
+  min-width: 168px;
+  padding: 4px;
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-border);
+  border-radius: 10px;
+  box-shadow: var(--ix-shadow);
+}
+
+.ix-mindmap__menu-item {
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  color: var(--ix-fg);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ix-mindmap__menu-item:hover {
+  background: var(--ix-surface-muted);
+}
+
+.ix-mindmap__progress {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ix-accent);
+}
+
+.ix-mindmap__error {
+  margin: 0;
+  color: var(--ix-danger);
+}
+
+/* Canvas */
 
 .ix-mindmap__viewport {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--ix-border);
-  border-radius: var(--ix-radius-sm);
   background-color: var(--ix-surface-muted);
-  background-image: radial-gradient(color-mix(in srgb, var(--ix-fg) 12%, transparent) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-image: radial-gradient(color-mix(in srgb, var(--ix-fg) 11%, transparent) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  border: 1px solid var(--ix-border);
+  border-radius: 12px;
   cursor: grab;
   touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .ix-mindmap__viewport--panning {
@@ -990,6 +1219,11 @@
   top: 0;
   left: 0;
   transform-origin: 0 0;
+  transition: opacity 160ms ease;
+}
+
+.ix-mindmap__stage--smooth {
+  transition: transform 320ms var(--ix-ease), opacity 160ms ease;
 }
 
 .ix-mindmap__edges {
@@ -1008,84 +1242,185 @@
   stroke-linecap: round;
 }
 
+.ix-mindmap__edges .ix-mindmap__edge--main {
+  stroke-width: 3;
+}
+
+/* Nodes. Sizes and padding match NODE_STYLES in mindmap-layout.ts, which wraps the text. */
+
 .ix-mindmap__node {
   --ix-branch: var(--ix-accent);
   position: absolute;
   top: 0;
   left: 0;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px 6px 12px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.25;
   color: var(--ix-fg-strong);
-  background: var(--ix-surface);
-  border: 1px solid var(--ix-border-strong);
-  border-left: 4px solid var(--ix-branch);
-  border-radius: var(--ix-radius-sm);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
   cursor: pointer;
-  transition: box-shadow var(--ix-duration) var(--ix-ease);
+  outline: none;
+  transition: box-shadow 160ms ease, background-color 160ms ease;
 }
 
-.ix-mindmap__node--root {
-  color: var(--ix-accent-fg);
-  background: var(--ix-fg-strong);
-  border-color: var(--ix-fg-strong);
+.ix-mindmap__label {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.ix-mindmap__line {
+  display: block;
+  white-space: nowrap;
+}
+
+.ix-mindmap__node--d0 {
+  padding: 12px 20px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+  color: var(--ix-mindmap-root-fg);
+  background: var(--ix-mindmap-root-bg);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.12);
+}
+
+.ix-mindmap__node--d1 {
+  padding: 6.5px 12.5px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 19px;
+  text-align: center;
+  background: var(--ix-surface);
+  border: 1.5px solid var(--ix-branch);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
 }
 
-.ix-mindmap__node--selected {
-  box-shadow: 0 0 0 2px var(--ix-focus), 0 4px 16px rgb(0 0 0 / 0.12);
+.ix-mindmap__node--d1:hover {
+  background: color-mix(in srgb, var(--ix-branch) 8%, var(--ix-surface));
 }
 
-.ix-mindmap__node--dragging {
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
-  cursor: grabbing;
-  z-index: 1;
+.ix-mindmap__node--d2 {
+  padding: 4px 6px 2px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--ix-fg);
+  border-bottom: 2px solid var(--ix-branch);
+  border-radius: 5px 5px 0 0;
+}
+
+.ix-mindmap__node--d2[data-side="left"] {
+  text-align: right;
+}
+
+.ix-mindmap__node--d2:hover,
+.ix-mindmap__node--d2.ix-mindmap__node--selected {
+  background: color-mix(in srgb, var(--ix-branch) 12%, transparent);
+}
+
+.ix-mindmap__node--d0.ix-mindmap__node--selected,
+.ix-mindmap__node--d1.ix-mindmap__node--selected {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ix-focus) 35%, transparent), 0 4px 16px rgb(0 0 0 / 0.1);
 }
 
 .ix-mindmap__node:focus-visible {
-  outline: none;
+  outline: 2px solid var(--ix-focus);
+  outline-offset: 3px;
 }
 
-[data-branch="0"] { --ix-branch: #2f6fde; }
-[data-branch="1"] { --ix-branch: #1f9d6b; }
-[data-branch="2"] { --ix-branch: #c7731b; }
-[data-branch="3"] { --ix-branch: #9a4fd0; }
-[data-branch="4"] { --ix-branch: #c43f7a; }
-[data-branch="5"] { --ix-branch: #0f8a8a; }
-
-.ix-mindmap__label {
-  display: -webkit-box;
-  flex: 1;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+.ix-mindmap__node--dragging {
+  z-index: 2;
+  cursor: grabbing;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.2);
 }
 
+/* The round handle that opens and closes a branch, where its line leaves the node. */
 .ix-mindmap__toggle {
+  position: absolute;
+  top: calc(50% - 9px);
+  left: calc(100% - 9px);
+  z-index: 1;
   display: grid;
-  flex: none;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  font-size: 0.875rem;
+  box-sizing: border-box;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 10px;
   font-weight: 700;
   line-height: 1;
-  color: var(--ix-muted);
-  border: 1px solid var(--ix-border-strong);
-  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ix-branch);
   background: var(--ix-surface);
+  border: 1.5px solid var(--ix-branch);
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
 }
 
-.ix-mindmap__node--root .ix-mindmap__toggle {
-  color: var(--ix-fg-strong);
+.ix-mindmap__toggle::before {
+  position: absolute;
+  inset: -6px;
+  content: "";
+}
+
+.ix-mindmap__node[data-side="left"] .ix-mindmap__toggle {
+  right: calc(100% - 9px);
+  left: auto;
+}
+
+.ix-mindmap__node--d2 .ix-mindmap__toggle {
+  top: calc(100% - 10px);
+}
+
+.ix-mindmap__node:hover .ix-mindmap__toggle,
+.ix-mindmap__node--selected .ix-mindmap__toggle,
+.ix-mindmap__node:focus-visible .ix-mindmap__toggle,
+.ix-mindmap__toggle--closed {
+  opacity: 1;
+}
+
+.ix-mindmap__toggle--closed {
+  color: var(--ix-surface);
+  background: var(--ix-branch);
+}
+
+@media (hover: none) {
+  .ix-mindmap__toggle {
+    opacity: 1;
+  }
+}
+
+.ix-mindmap__has-note {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  background: var(--ix-branch);
+  border: 1.5px solid var(--ix-surface);
+  border-radius: 999px;
+}
+
+.ix-mindmap__node--d0 .ix-mindmap__has-note {
+  background: var(--ix-accent);
+}
+
+.ix-mindmap__node--d2 .ix-mindmap__has-note {
+  top: 2px;
+  right: -8px;
+}
+
+.ix-mindmap__node--d2[data-side="left"] .ix-mindmap__has-note {
+  right: auto;
+  left: -8px;
 }
 
 .ix-mindmap__input {
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
   padding: 2px 4px;
@@ -1094,12 +1429,41 @@
   background: var(--ix-surface);
   border: 1px solid var(--ix-accent);
   border-radius: 4px;
+  outline: none;
 }
 
-.ix-mindmap__detail {
-  padding: 12px 14px;
-  border-radius: var(--ix-radius-sm);
+/* Test yourself: a hidden topic keeps its size, so revealing it doesn't move the map. */
+.ix-mindmap__node--hidden {
+  color: var(--ix-muted);
   background: var(--ix-surface-muted);
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.ix-mindmap__node--hidden .ix-mindmap__label {
+  font-weight: 700;
+  text-align: center;
+}
+
+/* The selected topic's note, over the corner of the map. */
+.ix-mindmap__detail {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 3;
+  box-sizing: border-box;
+  max-width: min(380px, calc(100% - 24px));
+  padding: 10px 12px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--ix-surface) 94%, transparent);
+  border: 1px solid var(--ix-border);
+  border-radius: 10px;
+  box-shadow: var(--ix-shadow);
+  backdrop-filter: blur(8px);
+  cursor: auto;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .ix-mindmap__detail p {
@@ -1109,6 +1473,17 @@
 .ix-mindmap__detail-title {
   font-weight: 600;
   color: var(--ix-fg-strong);
+}
+
+.ix-mindmap__detail-text {
+  margin-top: 2px !important;
+  color: var(--ix-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ix-mindmap__stage--smooth {
+    transition: opacity 160ms ease;
+  }
 }
 
 /* Motion */
@@ -1410,22 +1785,4 @@
   font-size: 0.875rem;
   color: var(--ix-accent);
   background: var(--ix-accent-soft);
-}
-
-/* Mind map: test yourself and step through */
-
-.ix-mindmap__node--hidden {
-  border-style: dashed;
-  background: var(--ix-surface-muted);
-  cursor: pointer;
-}
-.ix-mindmap__node--hidden .ix-mindmap__label {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--ix-muted);
-}
-.ix-mindmap__progress {
-  font-weight: 600;
-  color: var(--ix-accent);
-  font-variant-numeric: tabular-nums;
 }

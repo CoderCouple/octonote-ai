@@ -256,6 +256,23 @@ describe("mind maps that teach", () => {
     expect(screen.queryAllByRole("treeitem", { name: /Hidden topic/ })).toHaveLength(0);
   });
 
+  it("test yourself: reveals in quick succession all count", () => {
+    render(<Mindmap nodes={nodes} />);
+    fireEvent.click(screen.getByRole("button", { name: "Test yourself" }));
+    const [a, b] = screen.getAllByRole("treeitem", { name: /Hidden topic/ });
+    fireEvent.keyDown(a!, { key: "Enter" });
+    fireEvent.keyDown(b!, { key: "Enter" });
+    expect(screen.getByText("Revealed 2 of 4")).toBeTruthy();
+  });
+
+  it("collapse all shows the overview, expand all brings everything back", () => {
+    render(<Mindmap nodes={nodes} />);
+    fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
+    expect(screen.getAllByRole("treeitem")).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    expect(screen.getAllByRole("treeitem")).toHaveLength(5);
+  });
+
   it("step through: back to the centre, then one branch at a time", () => {
     render(<Mindmap nodes={nodes} />);
     fireEvent.click(screen.getByRole("button", { name: "Step through" }));

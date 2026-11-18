@@ -23,6 +23,8 @@ import "@octonote/interactive/styles.css";
   - Practice asks "How sure are you?" (Guessing / Fairly sure / Certain). When certainty and the result disagree, the feedback says so, and events carry the confidence.
   - At the end, a review round asks again only what was missed on the first try or guessed. The first-round score is kept.
 - **Mind maps that teach.**
+  - Branches spread either side of the central topic (to the right only on narrow screens), each in its own colour. Topics size to their text, which the layout wraps itself, so server and browser agree and nothing is measured from the page.
+  - Zoom, pan, pinch, fit, full screen and PNG/SVG download. The view refits when the block resizes, and a branch opening or closing keeps its topic still on screen.
   - "Test yourself" hides every topic but the centre until the learner reveals it, with a count.
   - "Step through" starts at the centre and opens one branch at a time.
   - `mindmapToOutline` and `mindmapToMermaid` export a map. The mermaid is safe against hostile labels, and the notes app uses it for "Open as canvas" (an editable Octonote canvas).
