@@ -203,6 +203,19 @@ function InteractiveView({
     result.ok && result.block.renderer === "custom"
       ? result.block.custom
       : undefined;
+  // Flashcards and mind maps, like custom apps, show their title in the toolbar and nothing above themselves.
+  const activity =
+    result.ok &&
+    result.block.renderer === "interactive" &&
+    (kind === "flashcards" || kind === "mindmap")
+      ? (result.block.spec as { title?: string; description?: string })
+      : undefined;
+  const bare = useMemo(() => {
+    if (!result.ok || !activity) return result.ok ? result.block : undefined;
+    const { title: _title, description: _description, ...spec } = activity;
+    return { ...result.block, spec } as typeof result.block;
+  }, [result, activity]);
+  const heading = custom?.title ?? activity?.title;
   const [running, setRunning] = useState(true);
   const [showCode, setShowCode] = useState(false);
   const videos = useMemo(
@@ -223,9 +236,9 @@ function InteractiveView({
           <header className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
             <span
               className="text-muted-foreground min-w-0 truncate text-xs font-medium"
-              title={custom?.title}
+              title={heading}
             >
-              {custom ? custom.title : kind === "custom" ? null : label}
+              {heading ?? (kind === "custom" ? null : label)}
             </span>
             <div className="flex shrink-0 items-center gap-1">
               {custom ? (
@@ -340,7 +353,7 @@ function InteractiveView({
                   />
                 ) : (
                   <BlockView
-                    block={result.block}
+                    block={bare ?? result.block}
                     theme={theme}
                     editable={editable}
                   />

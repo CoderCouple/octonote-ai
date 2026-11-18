@@ -482,7 +482,7 @@ export function Flashcards(props: FlashcardsProps) {
                 {props.spacedRepetition && review && now ? (review.box === 0 ? ". It's due again today." : `. Next review ${dueLabel(review.due, now)}.`) : "."}
               </p>
             ) : null}
-            <p className="ix-small ix-muted ix-shortcuts">Swipe or use the keys: ← → move, F flips, K know it, L still learning, U undo.</p>
+            <p className="ix-visually-hidden">Swipe or use the keys: ← → move, F flips, K know it, L still learning, U undo.</p>
           </>
         )}
       </div>

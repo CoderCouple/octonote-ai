@@ -786,7 +786,7 @@ export function Mindmap(props: MindmapProps) {
           </p>
         ) : null}
       </div>
-      <p className="ix-small ix-muted ix-shortcuts">
+      <p className="ix-visually-hidden">
         Drag to move · Ctrl/⌘ + scroll to zoom · Arrows move between topics, Enter opens or closes{props.editable ? ", F2 renames" : ""} · 0 fits · F full screen
       </p>
       <LiveRegion message={announcement} />
