@@ -45,6 +45,10 @@ Live interactive blocks: a fence named after the kind holding JSON, e.g.
 infographic (key facts as cards, steps, stats, compare, timeline or bars),
 flashcards, mcq, quiz, mindmap, matching, scene (animation), custom (sandboxed
 HTML app). An invalid block is refused with the reason; fix it and retry.
+Use the built-in kind whenever one fits, never custom: a mind map is a
+\`\`\`mindmap block ({"nodes":[{"id","label","parent"?,"note"?}]}), a quiz a
+\`\`\`quiz. Built-in blocks get every design and feature update; a custom app
+stays exactly as written. Custom is only for a bespoke game or tool no kind covers.
 
 ## Read and edit a note
   octonote note show <id>                 # markdown to stdout
