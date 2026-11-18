@@ -9,6 +9,14 @@ export interface CustomExperienceProps {
   onEvent?: (name: string, data: unknown) => void;
   /** Show the author's controls (view code, stop). Readers only get the app. */
   editable?: boolean;
+  /**
+   * The host draws the title and controls itself (a note block puts them in
+   * its toolbar) and drives `running` and `showCode`.
+   */
+  bare?: boolean;
+  running?: boolean;
+  onRunningChange?: (running: boolean) => void;
+  showCode?: boolean;
 }
 
 function randomNonce(): string {
@@ -18,7 +26,7 @@ function randomNonce(): string {
 }
 
 /** Saves one embedded video as a file named after the block. */
-function downloadVideo(video: CustomVideo, title: string, index: number, count: number): void {
+export function downloadVideo(video: CustomVideo, title: string, index: number, count: number): void {
   const bytes = Uint8Array.from(atob(video.base64), (c) => c.charCodeAt(0));
   const url = URL.createObjectURL(new Blob([bytes], { type: video.mime }));
   const name = title.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").toLowerCase() || "video";
@@ -36,9 +44,22 @@ function downloadVideo(video: CustomVideo, title: string, index: number, count: 
  * cookies or storage, no forms, popups or navigation, and its CSP blocks all
  * network requests. It can only send the three bridge messages.
  */
-export function CustomExperience({ block, theme = "light", onComplete, onEvent, editable = true }: CustomExperienceProps) {
-  const [running, setRunning] = useState(true);
-  const [showCode, setShowCode] = useState(false);
+export function CustomExperience({
+  block,
+  theme = "light",
+  onComplete,
+  onEvent,
+  editable = true,
+  bare = false,
+  running: runningProp,
+  onRunningChange,
+  showCode: showCodeProp,
+}: CustomExperienceProps) {
+  const [runningState, setRunningState] = useState(true);
+  const [showCodeState, setShowCode] = useState(false);
+  const running = runningProp ?? runningState;
+  const showCode = showCodeProp ?? showCodeState;
+  const setRunning = (next: boolean) => (onRunningChange ? onRunningChange(next) : setRunningState(next));
   const [height, setHeight] = useState(block.height ?? 360);
   const frame = useRef<HTMLIFrameElement>(null);
   const nonce = useMemo(randomNonce, [block.html]);
@@ -64,7 +85,7 @@ export function CustomExperience({ block, theme = "light", onComplete, onEvent, 
 
   return (
     <section className="cx-custom" aria-label={block.title}>
-      <h3 className="cx-custom__title">{block.title}</h3>
+      {bare ? null : <h3 className="cx-custom__title">{block.title}</h3>}
       {running ? (
         <iframe
           ref={frame}
@@ -85,7 +106,7 @@ export function CustomExperience({ block, theme = "light", onComplete, onEvent, 
           </Button>
         </div>
       )}
-      {editable ? (
+      {editable && !bare ? (
         <div className="cx-custom__footer">
         <Button size="sm" variant="ghost" onClick={() => setShowCode((v) => !v)} aria-expanded={showCode}>
           {showCode ? "Hide code" : "View code"}

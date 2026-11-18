@@ -22,10 +22,16 @@ import { createReactBlockSpec } from "@blocknote/react";
 import {
   checkBlock,
   customEntry,
+  customVideos,
   defaultCatalog,
+  type CustomBlock,
   type Issue,
 } from "@octonote/compose";
-import { BlockView } from "@octonote/compose/react";
+import {
+  BlockView,
+  CustomExperience,
+  downloadVideo,
+} from "@octonote/compose/react";
 import {
   defaultComponents,
   InteractiveProvider,
@@ -36,7 +42,16 @@ import {
 import { webWidgetStore, WidgetsProvider } from "@octonote/widgets";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import { Code2, Loader2, Network, Sparkles } from "lucide-react";
+import {
+  Code2,
+  Download,
+  FileCode2,
+  Loader2,
+  Network,
+  Play,
+  Sparkles,
+  Square,
+} from "lucide-react";
 import {
   createContext,
   useContext,
@@ -172,6 +187,17 @@ function InteractiveView({
   const result = useMemo(() => check(kind, spec, id), [kind, spec, id]);
   const [mode, setMode] = useState<"view" | "json" | "ai">("view");
   const label = INTERACTIVE_LABELS[kind] ?? kind;
+  // A custom app's title and controls live in the toolbar, not around the app.
+  const custom: CustomBlock | undefined =
+    result.ok && result.block.renderer === "custom"
+      ? result.block.custom
+      : undefined;
+  const [running, setRunning] = useState(true);
+  const [showCode, setShowCode] = useState(false);
+  const videos = useMemo(
+    () => (custom && editable ? customVideos(custom.html) : []),
+    [custom, editable],
+  );
 
   return (
     <div
@@ -184,10 +210,55 @@ function InteractiveView({
       <div className="group bg-card relative overflow-hidden rounded-xl border">
         {editable ? (
           <header className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
-            <span className="text-muted-foreground text-xs font-medium">
-              {kind === "custom" ? null : label}
+            <span
+              className="text-muted-foreground min-w-0 truncate text-xs font-medium"
+              title={custom?.title}
+            >
+              {custom ? custom.title : kind === "custom" ? null : label}
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
+              {custom ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={() => setShowCode((v) => !v)}
+                    aria-pressed={showCode}
+                  >
+                    <FileCode2 className="size-3.5" />
+                    Code
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={() => setRunning((r) => !r)}
+                  >
+                    {running ? (
+                      <Square className="size-3.5" />
+                    ) : (
+                      <Play className="size-3.5" />
+                    )}
+                    {running ? "Stop" : "Run"}
+                  </Button>
+                  {videos.map((video, i) => (
+                    <Button
+                      key={i}
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs"
+                      onClick={() =>
+                        downloadVideo(video, custom.title, i, videos.length)
+                      }
+                      title="Download video"
+                    >
+                      <Download className="size-3.5" />
+                      {videos.length > 1 ? `Download ${i + 1}` : "Download"}
+                    </Button>
+                  ))}
+                </>
+              ) : null}
               {kind === "mindmap" && result.ok ? (
                 <OpenAsCanvas spec={result.block} />
               ) : null}
@@ -245,11 +316,23 @@ function InteractiveView({
                 store={widgetStore}
                 renderMath={renderMath}
               >
-                <BlockView
-                  block={result.block}
-                  theme={theme}
-                  editable={editable}
-                />
+                {custom ? (
+                  <CustomExperience
+                    block={custom}
+                    theme={theme}
+                    editable={editable}
+                    bare
+                    running={running}
+                    onRunningChange={setRunning}
+                    showCode={editable && showCode}
+                  />
+                ) : (
+                  <BlockView
+                    block={result.block}
+                    theme={theme}
+                    editable={editable}
+                  />
+                )}
               </WidgetsProvider>
             </InteractiveProvider>
           ) : !editable ? (
