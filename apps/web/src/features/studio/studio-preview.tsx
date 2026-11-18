@@ -15,7 +15,7 @@ import { BlockView } from "@octonote/compose/react";
 import { defaultComponents, InteractiveProvider, webStorageStore } from "@octonote/interactive";
 import { webWidgetStore, WidgetsProvider } from "@octonote/widgets";
 import { useEffect, useMemo, useState } from "react";
-import { notesCatalog } from "@/features/notes/blocks/interactive-block";
+import { notesCatalog, renderRichText } from "@/features/notes/blocks/interactive-block";
 
 const store = typeof window === "undefined" ? undefined : webStorageStore(window.localStorage, "octonote-studio:");
 const widgetStore = typeof window === "undefined" ? undefined : webWidgetStore(window.localStorage, "octonote-studio-widget:");
@@ -31,7 +31,7 @@ export function StudioPreview({ id, kind, spec }: { id: string; kind: string; sp
       </div>
     );
   return (
-    <InteractiveProvider components={defaultComponents} theme={theme} store={store}>
+    <InteractiveProvider components={defaultComponents} theme={theme} store={store} renderText={renderRichText}>
       <WidgetsProvider theme={theme} store={widgetStore}>
         <BlockView block={result.block} theme={theme} />
       </WidgetsProvider>

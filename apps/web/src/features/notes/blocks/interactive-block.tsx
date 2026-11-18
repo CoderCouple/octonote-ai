@@ -115,6 +115,17 @@ function renderMath(tex: string) {
   );
 }
 
+// $…$ in card text, with no space just inside the dollars, so "$5 and $10" stays text.
+const MATH = /(\$\$[^$]+\$\$|\$(?!\s)[^$\n]+?(?<!\s)\$)/g;
+
+/** Card and activity text with its $…$ maths typeset; the rest stays plain text. */
+export function renderRichText(text: string) {
+  if (!text.includes("$")) return text;
+  return text.split(MATH).map((part, i) =>
+    i % 2 ? <span key={i}>{renderMath(part.replace(/^\$\$?|\$\$?$/g, ""))}</span> : part,
+  );
+}
+
 export const InteractiveBlock = createReactBlockSpec(
   {
     type: "interactive" as const,
@@ -310,6 +321,7 @@ function InteractiveView({
               components={defaultComponents}
               theme={theme}
               store={store}
+              renderText={renderRichText}
             >
               <WidgetsProvider
                 theme={theme}

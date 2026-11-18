@@ -42,7 +42,8 @@ export function downloadVideo(video: CustomVideo, title: string, index: number, 
  * so blocks further down start as they scroll near). The frame gets
  * `sandbox="allow-scripts"` and nothing else: no access to this page, its
  * cookies or storage, no forms, popups or navigation, and its CSP blocks all
- * network requests. It can only send the three bridge messages.
+ * network requests. It can only send the three bridge messages. The one
+ * permission it gets is fullscreen, so its videos can fill the screen.
  */
 export function CustomExperience({
   block,
@@ -94,7 +95,8 @@ export function CustomExperience({
           sandbox="allow-scripts"
           srcDoc={srcDoc}
           referrerPolicy="no-referrer"
-          allow=""
+          allow="fullscreen"
+          allowFullScreen
           loading="lazy"
           style={{ height }}
         />

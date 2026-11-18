@@ -35,6 +35,8 @@ export interface InteractiveContextValue {
   grader?: QuizGrader;
   theme: Theme;
   emit: ActivityEventHandler;
+  /** Draws card text richly (maths, say). Leave out for plain text. */
+  renderText?: (text: string) => ReactNode;
 }
 
 const noop = () => {};
@@ -49,15 +51,17 @@ export interface InteractiveProviderProps {
   theme?: Theme;
   /** Receives every event from every activity inside. */
   onEvent?: ActivityEventHandler;
+  /** Draws card text richly, e.g. `$x^2$` as maths. The library itself only shows plain text. */
+  renderText?: (text: string) => ReactNode;
   children: ReactNode;
 }
 
-export function InteractiveProvider({ components = {}, registry = defaultRegistry, store, grader, theme = "system", onEvent, children }: InteractiveProviderProps) {
+export function InteractiveProvider({ components = {}, registry = defaultRegistry, store, grader, theme = "system", onEvent, renderText, children }: InteractiveProviderProps) {
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
   const value = useMemo<InteractiveContextValue>(
-    () => ({ registry, components, store, grader, theme, emit: (event) => onEventRef.current?.(event) }),
-    [registry, components, store, grader, theme],
+    () => ({ registry, components, store, grader, theme, renderText, emit: (event) => onEventRef.current?.(event) }),
+    [registry, components, store, grader, theme, renderText],
   );
   return <InteractiveContext.Provider value={value}>{children}</InteractiveContext.Provider>;
 }

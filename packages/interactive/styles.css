@@ -490,10 +490,168 @@
 
 /* Flashcards */
 
+.ix-root {
+  --ix-fc-known: var(--ix-success);
+  --ix-fc-known-soft: var(--ix-success-soft);
+  --ix-fc-learning: #c2570c;
+  --ix-fc-learning-soft: #fff1e6;
+  --ix-fc-back: var(--ix-fg-strong);
+  --ix-fc-back-fg: var(--ix-bg);
+}
+
+.ix-root[data-ix-theme="dark"],
+[data-ix-theme="dark"] .ix-root:not([data-ix-theme="light"]) {
+  --ix-fc-learning: #ffab5e;
+  --ix-fc-learning-soft: #3a2410;
+  --ix-fc-back: #f1f1ee;
+  --ix-fc-back-fg: #111113;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ix-root:not([data-ix-theme="light"]):not([data-ix-theme="dark"]) {
+    --ix-fc-learning: #ffab5e;
+    --ix-fc-learning-soft: #3a2410;
+    --ix-fc-back: #f1f1ee;
+    --ix-fc-back-fg: #111113;
+  }
+}
+
+.ix-fc {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.ix-fc__icon {
+  flex: none;
+}
+
+.ix-fc__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ix-fc__count {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ix-fg-strong);
+}
+
+.ix-fc__tally {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ix-fc__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border-radius: 999px;
+}
+
+.ix-fc__pill .ix-fc__icon {
+  width: 13px;
+  height: 13px;
+}
+
+.ix-fc__pill--known {
+  color: var(--ix-fc-known);
+  background: var(--ix-fc-known-soft);
+}
+
+.ix-fc__pill--learning {
+  color: var(--ix-fc-learning);
+  background: var(--ix-fc-learning-soft);
+}
+
+/* One segment per card: green known, orange still learning, the current one darker. */
+.ix-fc__progress {
+  display: flex;
+  gap: 3px;
+  height: 6px;
+}
+
+.ix-fc__segment {
+  flex: 1;
+  min-width: 0;
+  background: var(--ix-border);
+  border-radius: 999px;
+  transition: background-color 200ms ease;
+}
+
+.ix-fc__segment--known {
+  background: var(--ix-fc-known);
+}
+
+.ix-fc__segment--learning {
+  background: var(--ix-fc-learning);
+}
+
+.ix-fc__segment--current {
+  background: color-mix(in srgb, var(--ix-fg) 45%, transparent);
+}
+
+/* The card, with two more peeking out behind it like a deck. */
+.ix-fc__stage {
+  position: relative;
+  padding-bottom: 0;
+}
+
+.ix-fc__stage--stack {
+  padding-bottom: 10px;
+}
+
+.ix-fc__stage--stack2 {
+  padding-bottom: 18px;
+}
+
+.ix-fc__stage--stack::before,
+.ix-fc__stage--stack2::after {
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(100% - 18px);
+  content: "";
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-border);
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+.ix-fc__stage--stack::before {
+  transform: translateY(10px) scale(0.96);
+  opacity: 0.9;
+}
+
+.ix-fc__stage--stack:not(.ix-fc__stage--stack2)::before {
+  height: calc(100% - 10px);
+}
+
+.ix-fc__stage--stack2::after {
+  transform: translateY(18px) scale(0.92);
+  opacity: 0.6;
+}
+
+.ix-fc--preparing .ix-fc__stage {
+  opacity: 0;
+}
+
 .ix-card {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
-  min-height: 220px;
+  height: clamp(240px, 34vw, 340px);
   padding: 0;
   font: inherit;
   color: inherit;
@@ -501,15 +659,32 @@
   background: transparent;
   border: 0;
   cursor: pointer;
-  perspective: 1200px;
+  perspective: 1400px;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 240ms var(--ix-ease);
+  animation: ix-card-in 260ms var(--ix-ease);
+}
+
+.ix-card--dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+@keyframes ix-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
 }
 
 .ix-card__inner {
-  position: relative;
-  display: grid;
-  min-height: 220px;
+  position: absolute;
+  inset: 0;
   transform-style: preserve-3d;
-  transition: transform 520ms var(--ix-ease);
+  transition: transform 560ms var(--ix-ease);
 }
 
 .ix-card[data-flipped="true"] .ix-card__inner {
@@ -517,75 +692,384 @@
 }
 
 .ix-card__face {
-  grid-area: 1 / 1;
-  display: grid;
-  align-content: center;
-  gap: 10px;
-  padding: 28px 24px;
-  border: 1px solid var(--ix-border);
-  border-radius: var(--ix-radius);
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 32px 36px;
+  overflow: auto;
+  overscroll-behavior: contain;
   background: var(--ix-surface);
-  box-shadow: var(--ix-shadow);
+  border: 1px solid var(--ix-border);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 14px 36px -10px rgb(0 0 0 / 0.16);
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+/* Centred with auto margins, not justify-content, so a long answer scrolls from its top instead of being cut off. */
+.ix-card__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: auto 0;
 }
 
 .ix-card__face--back {
+  color: var(--ix-fc-back-fg);
+  background: var(--ix-fc-back);
+  border-color: var(--ix-fc-back);
   transform: rotateY(180deg);
-  background: var(--ix-surface-muted);
 }
 
-.ix-card:hover .ix-card__face {
+.ix-card:hover .ix-card__face--front {
   border-color: var(--ix-border-strong);
 }
 
+.ix-card:focus-visible {
+  outline: none;
+}
+
+.ix-card:focus-visible .ix-card__face {
+  outline: 2px solid var(--ix-focus);
+  outline-offset: 3px;
+}
+
 .ix-card__side {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--ix-muted);
 }
 
+.ix-card__face--back .ix-card__side {
+  color: color-mix(in srgb, var(--ix-fc-back-fg) 55%, transparent);
+}
+
 .ix-card__text {
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1.4;
+  max-width: 38rem;
   color: var(--ix-fg-strong);
-  overflow-wrap: anywhere;
+  white-space: pre-line;
+  overflow-wrap: break-word;
+  text-wrap: balance;
 }
 
 .ix-card__face--back .ix-card__text {
-  font-size: 1.0625rem;
-  font-weight: 400;
+  color: var(--ix-fc-back-fg);
 }
 
-.ix-flashcards__mark {
-  margin: -6px 0 0;
+.ix-card__text--xl {
+  font-size: 1.875rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.ix-card__text--l {
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ix-card__text--m {
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.ix-card__text--s {
+  align-self: stretch;
+  max-width: none;
+  font-size: 0.975rem;
+  font-weight: 450;
+  line-height: 1.55;
+  text-align: left;
+  text-wrap: pretty;
+}
+
+.ix-card__hint {
+  max-width: 32rem;
+  padding: 6px 12px;
+  font-size: 0.875rem;
+  color: var(--ix-accent);
+  background: var(--ix-accent-soft);
+  border-radius: 10px;
+  animation: ix-rise 200ms var(--ix-ease);
+}
+
+.ix-card__cue {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  font-size: 0.6875rem;
+  color: var(--ix-muted);
+  opacity: 0.75;
+}
+
+/* Swiping: the card tints towards the side it will land on. */
+.ix-card--lean-known .ix-card__face {
+  box-shadow: 0 0 0 3px var(--ix-fc-known), 0 14px 36px -10px rgb(0 0 0 / 0.2);
+}
+
+.ix-card--lean-learning .ix-card__face {
+  box-shadow: 0 0 0 3px var(--ix-fc-learning), 0 14px 36px -10px rgb(0 0 0 / 0.2);
+}
+
+.ix-card__stamp {
+  position: absolute;
+  top: 16px;
+  z-index: 2;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--ix-surface);
+  border: 2px solid currentColor;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.ix-card__stamp--known {
+  left: 16px;
+  color: var(--ix-fc-known);
+  transform: rotate(-8deg);
+}
+
+.ix-card__stamp--learning {
+  right: 16px;
+  color: var(--ix-fc-learning);
+  transform: rotate(8deg);
+}
+
+/* Rating, shown once the answer is up. It sits below the card, so appearing moves nothing above it. */
+.ix-fc__marks {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ix-fc__marks--on {
+  display: grid;
+  animation: ix-rise 200ms var(--ix-ease);
+}
+
+.ix-fc__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: filter 120ms ease, transform 120ms ease;
+}
+
+.ix-fc__mark:active {
+  transform: scale(0.98);
+}
+
+.ix-fc__mark:hover {
+  filter: brightness(0.97);
+}
+
+.ix-fc__mark--learning {
+  color: var(--ix-fc-learning);
+  background: var(--ix-fc-learning-soft);
+  border-color: color-mix(in srgb, var(--ix-fc-learning) 35%, transparent);
+}
+
+.ix-fc__mark--known {
+  color: var(--ix-fc-known);
+  background: var(--ix-fc-known-soft);
+  border-color: color-mix(in srgb, var(--ix-fc-known) 35%, transparent);
+}
+
+.ix-fc__mark kbd,
+.ix-fc__flip kbd {
+  padding: 1px 5px;
+  font: 600 0.6875rem/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  border: 0;
+  border-radius: 5px;
+  opacity: 0.8;
+}
+
+.ix-fc__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ix-fc__nav,
+.ix-fc__extras {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ix-fc__tool,
+.ix-fc__flip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ix-fg);
+  background: var(--ix-surface);
+  border: 1px solid var(--ix-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.ix-fc__tool {
+  width: 40px;
+  padding: 0;
+  color: var(--ix-muted);
+}
+
+.ix-fc__flip {
+  padding: 0 16px;
+}
+
+.ix-fc__tool:hover:not(:disabled),
+.ix-fc__flip:hover {
+  color: var(--ix-fg-strong);
+  background: var(--ix-surface-muted);
+  border-color: var(--ix-border-strong);
+}
+
+.ix-fc__tool:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.ix-fc__tool[aria-pressed="true"] {
+  color: var(--ix-accent);
+  background: var(--ix-accent-soft);
+  border-color: color-mix(in srgb, var(--ix-accent) 35%, transparent);
+}
+
+.ix-fc__tool:focus-visible,
+.ix-fc__flip:focus-visible,
+.ix-fc__mark:focus-visible {
+  outline: 2px solid var(--ix-focus);
+  outline-offset: 2px;
+}
+
+.ix-fc__note {
+  margin: -4px 0 0;
   text-align: center;
 }
 
-.ix-flashcards__marks {
+.ix-fc__caught {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  animation: ix-rise 240ms var(--ix-ease);
+  justify-items: center;
+  gap: 6px;
+  padding: 36px 24px;
+  text-align: center;
+  background: var(--ix-surface-muted);
+  border-radius: 18px;
 }
 
-.ix-button--known {
-  color: var(--ix-success);
-  border-color: color-mix(in srgb, var(--ix-success) 45%, transparent);
-  background: var(--ix-success-soft);
+.ix-fc__caught p {
+  margin: 0;
 }
 
-.ix-button--learning {
-  color: var(--ix-danger);
-  border-color: color-mix(in srgb, var(--ix-danger) 40%, transparent);
-  background: var(--ix-danger-soft);
+.ix-fc__caught .ix-button {
+  margin-top: 8px;
 }
 
-.ix-button--known:hover:not(:disabled),
-.ix-button--learning:hover:not(:disabled) {
-  filter: brightness(0.97);
+.ix-fc__caught-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ix-fg-strong);
+}
+
+@media (max-width: 520px) {
+  .ix-card {
+    height: 260px;
+  }
+
+  .ix-card__face {
+    padding: 24px 20px 32px;
+  }
+
+  .ix-card__text--xl {
+    font-size: 1.5rem;
+  }
+
+  .ix-card__text--l {
+    font-size: 1.1875rem;
+  }
+
+}
+
+/* Narrow decks: previous / flip / next span the width, the other tools sit centred in one row below. */
+@container (max-width: 520px) {
+  .ix-fc .ix-fc__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ix-fc .ix-fc__nav {
+    width: 100%;
+  }
+
+  .ix-fc .ix-fc__nav .ix-fc__tool {
+    width: 48px;
+  }
+
+  .ix-fc .ix-fc__flip {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ix-fc .ix-fc__extras {
+    justify-content: center;
+  }
+
+  .ix-fc .ix-fc__extras:empty {
+    display: none;
+  }
+}
+
+/* Without motion the card swaps faces instead of turning. */
+@media (prefers-reduced-motion: reduce) {
+  .ix-card {
+    animation: none;
+  }
+
+  .ix-card[data-flipped="true"] .ix-card__inner,
+  .ix-card__face--back {
+    transform: none;
+  }
+
+  .ix-card__face--back,
+  .ix-card[data-flipped="true"] .ix-card__face--front {
+    visibility: hidden;
+  }
+
+  .ix-card[data-flipped="true"] .ix-card__face--back {
+    visibility: visible;
+  }
 }
 
 /* Question dots */
@@ -1006,11 +1490,66 @@
 
 /* Short of room, the text buttons keep only their icons (and their names, for screen readers). */
 @container (max-width: 640px) {
-  .ix-mindmap__action {
+  /* One row on a phone, with tighter buttons. (No scrolling here: it would clip the download menu.) */
+  .ix-mindmap__shell .ix-mindmap__toolbar {
+    flex-wrap: nowrap;
+    gap: 3px;
+  }
+
+  .ix-mindmap__shell .ix-mindmap__toolbar > * {
+    flex: none;
+  }
+
+  .ix-mindmap__shell .ix-mindmap__tool {
+    width: 30px;
+    height: 30px;
+  }
+
+  .ix-mindmap__shell .ix-mindmap__group .ix-mindmap__tool {
+    width: 28px;
+    height: 28px;
+  }
+
+  .ix-mindmap__shell .ix-mindmap__zoom {
+    min-width: 34px;
+  }
+
+  .ix-mindmap__shell .ix-mindmap__action {
+    height: 30px;
+    padding: 0 7px;
+  }
+
+  .ix-mindmap__shell .ix-toolbar__spacer {
+    min-width: 0;
+  }
+}
+
+/* Phones: the zoom level gives way so every button fits on the one row. */
+@container (max-width: 400px) {
+  .ix-mindmap__shell .ix-mindmap__zoom {
+    display: none;
+  }
+
+  .ix-mindmap__shell .ix-mindmap__tool,
+  .ix-mindmap__shell .ix-mindmap__action {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .ix-mindmap__shell .ix-mindmap__group .ix-mindmap__tool {
+    width: 26px;
+    height: 26px;
+  }
+
+  .ix-mindmap__shell .ix-mindmap__action--primary,
+  .ix-mindmap__shell .ix-mindmap__progress + .ix-mindmap__action {
+    width: auto;
     padding: 0 8px;
   }
 
-  .ix-mindmap__action-text {
+  .ix-mindmap__shell .ix-mindmap__action-text {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1019,8 +1558,8 @@
     white-space: nowrap;
   }
 
-  .ix-mindmap__progress + .ix-mindmap__action .ix-mindmap__action-text,
-  .ix-mindmap__action--primary .ix-mindmap__action-text {
+  .ix-mindmap__shell .ix-mindmap__progress + .ix-mindmap__action .ix-mindmap__action-text,
+  .ix-mindmap__shell .ix-mindmap__action--primary .ix-mindmap__action-text {
     position: static;
     width: auto;
     height: auto;
@@ -1503,15 +2042,6 @@
 @media (max-width: 520px) {
   .ix-activity {
     padding: 16px;
-  }
-
-  .ix-card,
-  .ix-card__inner {
-    min-height: 190px;
-  }
-
-  .ix-card__text {
-    font-size: 1.125rem;
   }
 
   .ix-matching__columns {

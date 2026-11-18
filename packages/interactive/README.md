@@ -22,6 +22,11 @@ import "@octonote/interactive/styles.css";
 - **Learning loop.**
   - Practice asks "How sure are you?" (Guessing / Fairly sure / Certain). When certainty and the result disagree, the feedback says so, and events carry the confidence.
   - At the end, a review round asks again only what was missed on the first try or guessed. The first-round score is kept.
+- **Flashcards that study properly.**
+  - A deck you can tap, swipe or drive from the keyboard: right "I know this", left "still learning", K/L, U to undo, and an answer-first mode.
+  - With `spacedRepetition`, a round holds only the cards that are due; with none due it says when the next one is. Knowing a card early doesn't promote it, and changing a mark doesn't count twice.
+  - Saved progress follows the deck as it's edited: removed cards leave the round, new ones join it.
+  - Card text is plain by default; pass `renderText` to `InteractiveProvider` to typeset maths (the notes app does).
 - **Mind maps that teach.**
   - Branches spread either side of the central topic (to the right only on narrow screens), each in its own colour. Topics size to their text, which the layout wraps itself, so server and browser agree and nothing is measured from the page.
   - Zoom, pan, pinch, fit, full screen and PNG/SVG download. The view refits when the block resizes, and a branch opening or closing keeps its topic still on screen.

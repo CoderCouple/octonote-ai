@@ -24,7 +24,7 @@ export { gradeQuestions, gradeQuiz, isAnswerCorrect, makeScore, redactQuiz, scra
 export { checkResponse, expectedResponse, isAnswered, isChoice, kindOf, parseNumber, placements } from "./answers.js";
 export type { Check, Response } from "./answers.js";
 export type { GradeResult, QuestionResult, Responses, Score } from "./grading.js";
-export { REVIEW_INTERVALS_DAYS, orderByDue, scheduleReview } from "./review.js";
+export { REVIEW_INTERVALS_DAYS, dueLabel, isDue, nextDue, orderByDue, reviewCard, scheduleReview } from "./review.js";
 export type { ReviewState } from "./review.js";
 export type { ActivityEvent, ActivityEventHandler, ActivityEventInput, ActivityEventType } from "./events.js";
 export { memoryStore, webStorageStore } from "./progress.js";

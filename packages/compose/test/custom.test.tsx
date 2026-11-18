@@ -41,6 +41,8 @@ describe("CustomExperience", () => {
     const { container } = render(<CustomExperience block={block} />);
     const frame = container.querySelector("iframe")!;
     expect(frame.getAttribute("sandbox")).toBe("allow-scripts");
+    // Fullscreen is the only permission, so videos inside can fill the screen.
+    expect(frame.getAttribute("allow")).toBe("fullscreen");
     expect(frame.getAttribute("srcdoc")).toContain("Content-Security-Policy");
     fireEvent.click(screen.getByRole("button", { name: "View code" }));
     expect(screen.getByText(/host.complete\(100\)/)).toBeTruthy();

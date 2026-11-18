@@ -79,6 +79,66 @@ describe("Flashcards", () => {
   });
 });
 
+describe("Flashcards, robustness", () => {
+  const cards = deck.cards.slice(0, 3);
+
+  it("doesn't crash when cards are removed or added under saved progress", () => {
+    const saved = { order: ["c1", "c2", "c3"], index: 2, flipped: true, marks: { c1: true }, reviews: {} };
+    const { rerender } = render(<Flashcards cards={cards} defaultState={saved} />);
+    expect(screen.getByText("Card 3 of 3")).toBeTruthy();
+    rerender(<Flashcards cards={cards.slice(0, 1)} defaultState={saved} />);
+    expect(screen.getByText("Card 1 of 1")).toBeTruthy();
+    rerender(<Flashcards cards={[...cards.slice(0, 1), { id: "new", front: "New card", back: "Fresh" }]} defaultState={saved} />);
+    expect(screen.getByText("Card 1 of 2")).toBeTruthy();
+  });
+
+  it("marking a card again changes the mark without promoting it twice", async () => {
+    const onStateChange = vi.fn();
+    render(<Flashcards cards={cards} spacedRepetition onStateChange={onStateChange} />);
+    await userEvent.click(screen.getByRole("button", { name: /Show answer/ }));
+    await userEvent.click(screen.getByRole("button", { name: /I know this/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Previous card" }));
+    await userEvent.click(screen.getByRole("button", { name: /Show answer/ }));
+    await userEvent.click(screen.getByRole("button", { name: /I know this/ }));
+    expect(onStateChange.mock.calls.at(-1)![0].reviews.c1).toMatchObject({ box: 1 });
+  });
+
+  it("with spaced repetition, studies only what's due, and says when nothing is", async () => {
+    const later = Date.now() + 3 * 86_400_000;
+    const reviews = { c1: { box: 2, due: later, reviews: 2 }, c2: { box: 2, due: later, reviews: 2 }, c3: { box: 2, due: later, reviews: 2 } };
+    render(<Flashcards cards={cards} spacedRepetition defaultState={{ order: ["c1", "c2", "c3"], index: 0, flipped: false, marks: {}, reviews, prepared: false }} />);
+    expect(screen.getByText("All caught up")).toBeTruthy();
+    expect(screen.getByText(/comes up in 3 days/)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Study all 3 anyway" }));
+    expect(screen.getByText("Card 1 of 3")).toBeTruthy();
+  });
+
+  it("only due cards make up the round", () => {
+    const later = Date.now() + 86_400_000;
+    render(<Flashcards cards={cards} spacedRepetition defaultState={{ order: ["c1", "c2", "c3"], index: 0, flipped: false, marks: {}, reviews: { c2: { box: 1, due: later, reviews: 1 } }, prepared: false }} />);
+    expect(screen.getByText("Card 1 of 2")).toBeTruthy();
+  });
+
+  it("undoes the last mark and keeps the keyboard on the card", async () => {
+    render(<Flashcards cards={cards} />);
+    const card = screen.getByRole("button", { name: /Press to see the answer/ });
+    card.focus();
+    fireEvent.keyDown(card, { key: "f" });
+    fireEvent.keyDown(document.activeElement!, { key: "k" });
+    expect(screen.getByText("Card 2 of 3")).toBeTruthy();
+    expect((document.activeElement as HTMLElement).className).toContain("ix-card");
+    fireEvent.keyDown(document.activeElement!, { key: "u" });
+    expect(screen.getByText("Card 1 of 3")).toBeTruthy();
+    expect(screen.getByText(/0 known/)).toBeTruthy();
+  });
+
+  it("can show the answer side first", async () => {
+    render(<Flashcards cards={cards} />);
+    await userEvent.click(screen.getByRole("button", { name: "Answer first" }));
+    expect(screen.getByRole("button", { name: new RegExp(`^${cards[0]!.back.slice(0, 20).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) })).toBeTruthy();
+  });
+});
+
 describe("Mcq", () => {
   it("checks answers, explains wrong ones and allows a retry", async () => {
     const onComplete = vi.fn();

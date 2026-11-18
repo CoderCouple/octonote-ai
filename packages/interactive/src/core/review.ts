@@ -21,9 +21,36 @@ export function scheduleReview(previous: ReviewState | undefined, known: boolean
   return { box, due: now + REVIEW_INTERVALS_DAYS[box]! * DAY_MS, reviews: (previous?.reviews ?? 0) + 1 };
 }
 
+/**
+ * One review of a card. Like `scheduleReview`, except that knowing a card
+ * before it's due doesn't promote it: cramming early proves nothing about
+ * remembering it later, so it keeps its box and its date.
+ */
+export function reviewCard(previous: ReviewState | undefined, known: boolean, now = Date.now()): ReviewState {
+  if (known && previous && previous.due > now) return { ...previous, reviews: previous.reviews + 1 };
+  return scheduleReview(previous, known, now);
+}
+
+/** New cards count as due. */
+export const isDue = (state: ReviewState | undefined, now = Date.now()) => (state?.due ?? 0) <= now;
+
 /** Ids in their original order, due cards first (new cards count as due). */
 export function orderByDue(ids: readonly string[], states: Readonly<Record<string, ReviewState>>, now = Date.now()): string[] {
-  const due = ids.filter((id) => (states[id]?.due ?? 0) <= now);
-  const later = ids.filter((id) => (states[id]?.due ?? 0) > now).sort((a, b) => states[a]!.due - states[b]!.due);
+  const due = ids.filter((id) => isDue(states[id], now));
+  const later = ids.filter((id) => !isDue(states[id], now)).sort((a, b) => states[a]!.due - states[b]!.due);
   return [...due, ...later];
+}
+
+/** When the soonest of these cards comes due, or undefined if any already is. */
+export function nextDue(ids: readonly string[], states: Readonly<Record<string, ReviewState>>, now = Date.now()): number | undefined {
+  if (ids.some((id) => isDue(states[id], now))) return undefined;
+  return Math.min(...ids.map((id) => states[id]!.due));
+}
+
+/** "today", "tomorrow", "in 3 days": whole days from now, rounded up so "1 day" never means "in an hour". */
+export function dueLabel(due: number, now = Date.now()): string {
+  const days = Math.ceil((due - now) / DAY_MS);
+  if (days <= 0) return "today";
+  if (days === 1) return "tomorrow";
+  return `in ${days} days`;
 }

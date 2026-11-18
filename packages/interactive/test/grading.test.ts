@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultRegistry, gradeQuiz, isAnswerCorrect, orderByDue, redactQuiz, scheduleReview, seededRandom, shuffle, type QuizSpec } from "../src/index.js";
+import { defaultRegistry, dueLabel, gradeQuiz, isAnswerCorrect, orderByDue, redactQuiz, reviewCard, scheduleReview, seededRandom, shuffle, type QuizSpec } from "../src/index.js";
 import example from "../examples/digestive-system.json" with { type: "json" };
 
 const digestive: any = example;
@@ -56,6 +56,19 @@ describe("spaced repetition", () => {
     const second = scheduleReview(first, true, now);
     expect(second.due).toBe(now + 3 * day);
     expect(scheduleReview(second, false, now)).toEqual({ box: 0, due: now, reviews: 3 });
+  });
+
+  it("doesn't promote a card known before it was due", () => {
+    const first = scheduleReview(undefined, true, now);
+    expect(reviewCard(first, true, now)).toEqual({ ...first, reviews: 2 });
+    expect(reviewCard(first, true, first.due).box).toBe(2);
+    expect(reviewCard(first, false, now).box).toBe(0);
+  });
+
+  it("labels due dates in whole days, rounded up", () => {
+    expect(dueLabel(now, now)).toBe("today");
+    expect(dueLabel(now + 3_600_000, now)).toBe("tomorrow");
+    expect(dueLabel(now + 2.2 * day, now)).toBe("in 3 days");
   });
 
   it("orders due cards first", () => {
