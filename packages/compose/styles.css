@@ -130,7 +130,6 @@
   border: 0;
   border-radius: 10px;
   background: transparent;
-  transition: height 180ms var(--wg-ease);
 }
 
 .cx-custom__gate {

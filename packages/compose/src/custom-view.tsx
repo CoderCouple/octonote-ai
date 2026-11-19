@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@octonote/widgets";
-import { CUSTOM_LIMITS, customSrcDoc, customVideos, readCustomMessage, type CustomBlock, type CustomVideo } from "./custom.js";
+import { customSrcDoc, customVideos, initialFrameSizing, readCustomMessage, sizeFrame, type CustomBlock, type CustomVideo } from "./custom.js";
 
 export interface CustomExperienceProps {
   block: CustomBlock;
@@ -63,6 +63,9 @@ export function CustomExperience({
   const setRunning = (next: boolean) => (onRunningChange ? onRunningChange(next) : setRunningState(next));
   const [height, setHeight] = useState(block.height ?? 360);
   const frame = useRef<HTMLIFrameElement>(null);
+  const sizing = useRef(initialFrameSizing());
+  const heightRef = useRef(height);
+  heightRef.current = height;
   const nonce = useMemo(randomNonce, [block.html]);
   const srcDoc = useMemo(() => customSrcDoc(block.html, nonce, theme), [block.html, nonce, theme]);
   const videos = useMemo(() => (editable ? customVideos(block.html) : []), [block.html, editable]);
@@ -71,13 +74,18 @@ export function CustomExperience({
 
   useEffect(() => {
     if (!running) return;
+    // A fresh frame gets a fresh chance to size itself.
+    sizing.current = initialFrameSizing();
     const onMessage = (event: MessageEvent) => {
       // Only this frame, only its secret, only known messages.
       if (event.source !== frame.current?.contentWindow) return;
       const message = readCustomMessage(event.data, nonce);
       if (!message) return;
-      if (message.type === "resize") setHeight(Math.min(CUSTOM_LIMITS.maxHeight, Math.max(CUSTOM_LIMITS.minHeight, Math.round(message.height))));
-      else if (message.type === "complete") handlers.current.onComplete?.(Math.min(100, Math.max(0, message.score)));
+      if (message.type === "resize") {
+        const next = sizeFrame(sizing.current, message.height, heightRef.current, performance.now());
+        sizing.current = next.sizing;
+        setHeight(next.height);
+      } else if (message.type === "complete") handlers.current.onComplete?.(Math.min(100, Math.max(0, message.score)));
       else handlers.current.onEvent?.(message.name, message.data);
     };
     window.addEventListener("message", onMessage);

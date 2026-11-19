@@ -77,7 +77,7 @@ addEventListener("load",function(){report();if(window.ResizeObserver){new Resize
 
 /** The document the sandboxed frame loads: CSP and bridge first, then the generated HTML. */
 export function customSrcDoc(html: string, nonce: string, theme: "light" | "dark" = "light"): string {
-  const head = `<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${CUSTOM_CSP}"><meta name="color-scheme" content="${theme}">${bridge(nonce)}<style>html{color-scheme:${theme}}html,body{margin:0}body{display:flow-root;font-family:system-ui,sans-serif;overflow-x:hidden}</style>`;
+  const head = `<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${CUSTOM_CSP}"><meta name="color-scheme" content="${theme}">${bridge(nonce)}<style>html{color-scheme:${theme};-webkit-text-size-adjust:100%;text-size-adjust:100%}html,body{margin:0}body{display:flow-root;font-family:system-ui,sans-serif;overflow-x:hidden}</style>`;
   return `<!doctype html><html><head>${head}</head><body>${html}</body></html>`;
 }
 
@@ -111,4 +111,29 @@ export function readCustomMessage(data: unknown, nonce: string): CustomMessage |
   if (!parsed.success || parsed.data.nonce !== nonce) return null;
   if (parsed.data.type === "event" && JSON.stringify(parsed.data.data ?? null).length > 4000) return null;
   return parsed.data;
+}
+
+/** Recent heights a frame asked for, and whether it has been caught bouncing. */
+export interface FrameSizing {
+  recent: { height: number; at: number }[];
+  settled: boolean;
+}
+
+export const initialFrameSizing = (): FrameSizing => ({ recent: [], settled: false });
+
+/**
+ * The height to give a frame that asked for `requested`. A frame whose content
+ * depends on its own height (iOS can resize video controls and text with the
+ * frame) can bounce between two heights for ever, flickering. Once it asks for
+ * A, B, A within a second, it keeps the taller one and only grows from then on.
+ */
+export function sizeFrame(sizing: FrameSizing, requested: number, current: number, now: number): { height: number; sizing: FrameSizing } {
+  const height = Math.min(CUSTOM_LIMITS.maxHeight, Math.max(CUSTOM_LIMITS.minHeight, Math.round(requested)));
+  if (sizing.settled) return { height: Math.max(height, current), sizing };
+  const recent = [...sizing.recent.filter((r) => now - r.at < 1000), { height, at: now }].slice(-3);
+  const [a, b, c] = recent;
+  if (a && b && c && Math.abs(a.height - c.height) <= 2 && Math.abs(a.height - b.height) > 2) {
+    return { height: Math.max(a.height, b.height, c.height, current), sizing: { recent, settled: true } };
+  }
+  return { height, sizing: { recent, settled: false } };
 }

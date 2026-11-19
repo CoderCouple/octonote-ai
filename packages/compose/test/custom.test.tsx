@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkBlock, compose, CUSTOM_CSP, customEntry, customSrcDoc, defaultCatalog, readCustomMessage, type ModelClient } from "../src/index.js";
+import { checkBlock, compose, CUSTOM_CSP, customEntry, customSrcDoc, defaultCatalog, initialFrameSizing, readCustomMessage, sizeFrame, type ModelClient } from "../src/index.js";
 import { CustomExperience } from "../src/react-entry.js";
 
 afterEach(cleanup);
@@ -87,6 +87,43 @@ describe("CustomExperience", () => {
       window.dispatchEvent(new MessageEvent("message", { data: { source: "octonote-custom", nonce, type: "complete", score: 100 }, source: window }));
     });
     expect(onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe("sizing a custom frame", () => {
+  it("follows the frame's content, within the limits", () => {
+    let sizing = initialFrameSizing();
+    let step = sizeFrame(sizing, 272.4, 500, 0);
+    expect(step.height).toBe(272);
+    sizing = step.sizing;
+    step = sizeFrame(sizing, 600, 272, 100);
+    expect(step.height).toBe(600);
+    step = sizeFrame(step.sizing, 10, 600, 200);
+    expect(step.height).toBe(120);
+    expect(sizeFrame(initialFrameSizing(), 99_999, 500, 0).height).toBe(1400);
+  });
+
+  it("stops a frame that bounces between two heights, at the taller one", () => {
+    let sizing = initialFrameSizing();
+    let current = 500;
+    for (const [i, h] of [230, 260, 230].entries()) ({ height: current, sizing } = sizeFrame(sizing, h, current, i * 200));
+    expect(current).toBe(260);
+    expect(sizing.settled).toBe(true);
+    // Settled: it no longer shrinks, but still grows.
+    expect(sizeFrame(sizing, 230, current, 800).height).toBe(260);
+    expect(sizeFrame(sizing, 400, current, 900).height).toBe(400);
+  });
+
+  it("doesn't mistake slow, real changes for bouncing", () => {
+    let sizing = initialFrameSizing();
+    let current = 500;
+    for (const [i, h] of [230, 400, 230].entries()) ({ height: current, sizing } = sizeFrame(sizing, h, current, i * 2000));
+    expect(current).toBe(230);
+    expect(sizing.settled).toBe(false);
+  });
+
+  it("turns off iOS text autosizing inside the frame", () => {
+    expect(customSrcDoc("<p>x</p>", "n")).toContain("-webkit-text-size-adjust:100%");
   });
 });
 

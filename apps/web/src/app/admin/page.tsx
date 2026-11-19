@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Admin → Overview: website traffic, growth, revenue, codes & offers and
+ * Admin → Overview: growth, website traffic, revenue, codes & offers and
  * product usage over the last 7, 30 or 90 days. Traffic comes from PostHog
  * (read by the API, GET /admin/traffic); everything else from Octonote's own
  * database (GET /admin/metrics). "Exclude staff" (on by default) leaves out
@@ -152,8 +152,7 @@ export default function AdminOverviewPage() {
         </div>
       ) : (
         <>
-          <TrafficSection t={traffic} days={days} />
-          <Dashboard m={data} />
+          <Dashboard m={data} traffic={traffic} />
         </>
       )}
     </PageBody>
@@ -174,7 +173,7 @@ function signupSourceLabel(ref: string): string {
   return from ? `${kind}: ${from}` : kind;
 }
 
-function Dashboard({ m }: { m: AdminMetrics }) {
+function Dashboard({ m, traffic }: { m: AdminMetrics; traffic: AdminTraffic | null }) {
   const { growth: g, revenue: r, codes: c, usage: u } = m;
   const sourcesTotal = g.bySource.web + g.bySource.mobile + g.bySource.cli;
   return (
@@ -251,6 +250,8 @@ function Dashboard({ m }: { m: AdminMetrics }) {
           </Panel>
         </div>
       </Section>
+
+      <TrafficSection t={traffic} days={m.days} />
 
       <Section
         title="Revenue"
