@@ -15,11 +15,11 @@ const link = "text-foreground underline-offset-4 hover:underline";
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Notice" lastUpdated="November 3, 2026">
+    <LegalLayout title="Privacy Notice" lastUpdated="November 20, 2026">
       <p>
         This notice explains what information Octonote AI (&quot;we&quot;,
         &quot;us&quot;) collects when you use our website, web app and mobile
-        apps (together, the &quot;Service&quot;), why we collect it, where
+        apps and browser extension (together, the &quot;Service&quot;), why we collect it, where
         it&apos;s stored and the choices you have. Octonote AI is in private
         beta; we&apos;ll update this notice as the product changes, and the date
         above always shows the latest version.
@@ -225,6 +225,44 @@ export default function PrivacyPage() {
           <strong>Disconnecting.</strong> See and disconnect apps any time in
           Settings → Connected apps, and revoke CLI tokens in Settings → CLI
           &amp; agents. Access ends immediately.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="The Octonote Clipper browser extension">
+        <p>
+          Octonote Clipper is our extension for Chrome. It works on ChatGPT
+          (chatgpt.com and chat.openai.com), Claude (claude.ai) and Gemini
+          (gemini.google.com), and on Octonote&apos;s own page for connecting
+          it. It does nothing on any other site.
+        </p>
+        <p>
+          <strong>What it reads.</strong> Only what you choose to clip: the text
+          you select, or an answer you clip with its button, plus where it came
+          from (which chat site, the chat&apos;s web address and its title). It
+          reads the chat page only when you clip, and never reads your browsing
+          history or other tabs.
+        </p>
+        <p>
+          <strong>What it sends, and where.</strong> Clips go to your Octonote
+          collections through api.octonote.ai, and nowhere else. If you turn on
+          note access in the extension, it also searches and opens the notes,
+          canvases and projects in your workspace so you can add one to a chat;
+          what you add goes into the chat&apos;s message box, and reaches the
+          chat&apos;s provider (for example OpenAI, Anthropic or Google) only if
+          you send the message, under that provider&apos;s privacy policy.
+        </p>
+        <p>
+          <strong>What it keeps on your device.</strong> A sign-in token for
+          your Octonote workspace, the workspace&apos;s name and the collection
+          you picked, in the extension&apos;s own storage. The token is limited
+          to clipping (and, if you turn it on, reading your notes); it can&apos;t
+          change or delete your notes or your account. The extension has no
+          analytics or tracking of any kind.
+        </p>
+        <p>
+          <strong>Disconnecting.</strong> Disconnect in the extension, or remove
+          it from Chrome. Disconnecting revokes the token straight away; you can
+          also revoke it in Settings → CLI &amp; agents.
         </p>
       </LegalSection>
 
