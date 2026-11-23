@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { HttpStatus, Inject, Injectable, Logger, Optional, type OnModuleInit } from "@nestjs/common";
 import { AiKeysService } from "./ai-keys.service";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -163,6 +163,20 @@ export class VideosService implements OnModuleInit {
       this.logger.warn(`Video ${id} failed: ${(error as Error).message}`);
       await this.update(id, { status: "failed", error: (error as Error).message.slice(0, 500) }).catch(() => {});
     }
+  }
+
+  /**
+   * A video a custom app carries in its code (a data: URI), as a public file:
+   * hosts like ChatGPT block data: media in their cards. Named by its content,
+   * so each video is uploaded once however often it's played.
+   */
+  async hostEmbedded(base64: string, mime: "video/mp4" | "video/webm"): Promise<string> {
+    const hash = createHash("sha256").update(base64).digest("hex").slice(0, 32);
+    const path = `embedded/${hash}.${mime === "video/webm" ? "webm" : "mp4"}`;
+    const { error } = await this.supabase.storage.from(VIDEOS_BUCKET).upload(path, Buffer.from(base64, "base64"), { contentType: mime, upsert: false });
+    // Already there from an earlier play: the same bytes, so fine.
+    if (error && !/exists|duplicate/i.test(error.message)) throw new Error(`Upload failed: ${error.message}`);
+    return this.publicUrl(path)!;
   }
 
   private publicUrl(path: string | null): string | null {

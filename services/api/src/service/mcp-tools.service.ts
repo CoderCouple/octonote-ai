@@ -338,9 +338,22 @@ export class McpToolsService {
     const compose = await loadCompose();
     const nonce = randomBytes(12).toString("base64url");
     const height = Number(spec.height);
+    // Hosts' cards block data: media, so the app's own videos play from storage instead.
+    let html = spec.html;
+    const origins = new Set<string>();
+    if (this.videos) {
+      for (const v of compose.customVideos(html)) {
+        const url = await this.videos.hostEmbedded(v.base64, v.mime).catch(() => null);
+        if (!url) continue;
+        html = html.split(`data:${v.mime};base64,${v.base64}`).join(url);
+        origins.add(new URL(url).origin);
+      }
+    }
+    let srcdoc = compose.customSrcDoc(html, nonce, THEME_TOKEN as "light");
+    if (origins.size) srcdoc = srcdoc.replace("media-src data: blob:", `media-src data: blob: ${[...origins].join(" ")}`);
     return {
       title: typeof spec.title === "string" ? spec.title : "App",
-      srcdoc: compose.customSrcDoc(spec.html, nonce, THEME_TOKEN as "light"),
+      srcdoc,
       nonce,
       height: Number.isFinite(height) ? Math.min(Math.max(height, 120), 1400) : 360,
     };
