@@ -74,7 +74,13 @@ export function blockAnchor(block: NoteBlock, index: number): string {
  * `<div data-b="<anchor>">` (see blockAnchor) so a preview can tell which
  * blocks a reader selected. Numbered lists keep counting across blocks.
  */
-export async function noteDocumentToAnchoredHtml(document: unknown): Promise<string> {
+export async function noteDocumentToAnchoredHtml(
+  document: unknown,
+  opts: {
+    /** HTML to use instead of a top-level block's own (null keeps it), e.g. a placeholder for an interactive block. */
+    replace?: (block: NoteBlock, anchor: string) => Promise<string | null> | string | null;
+  } = {},
+): Promise<string> {
   const blocks =
     document && typeof document === "object" && Array.isArray((document as NoteDocument).blocks)
       ? (document as NoteDocument).blocks
@@ -85,9 +91,10 @@ export async function noteDocumentToAnchoredHtml(document: unknown): Promise<str
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i]!;
     run = block.type === "numberedListItem" ? run + 1 : 0;
-    let html = await editor.blocksToHTMLLossy(toStandardBlocks([block]) as never);
+    const anchor = blockAnchor(block, i).replace(/"/g, "");
+    let html = (await opts.replace?.(block, anchor)) ?? (await editor.blocksToHTMLLossy(toStandardBlocks([block]) as never));
     if (run > 1) html = html.replace(/^<ol>/, `<ol start="${run}">`);
-    out.push(`<div data-b="${blockAnchor(block, i).replace(/"/g, "")}">${html}</div>`);
+    out.push(`<div data-b="${anchor}">${html}</div>`);
   }
   return out.join("");
 }

@@ -118,6 +118,17 @@ export function previewHtml(): string {
   .chint { color: var(--muted); font-size: 12.5px; }
   #cpanel .crow:last-child { border-bottom: 1px solid var(--line); }
   .cwarn { color: var(--bad); font-size: 12.5px; display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+  .ox-embed { margin: .6em 0; }
+  .ox-video video { display: block; width: 100%; max-height: 70vh; border-radius: 10px; background: #000; }
+  .ox-cap { color: var(--muted); font-size: 12.5px; margin-top: 4px; display: flex; gap: 8px; align-items: center; }
+  .ox-cap a, .ox-cap button { margin-left: auto; }
+  .ox-app { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .ox-app iframe { display: block; width: 100%; border: 0; background: var(--bg); }
+  .ox-app .ox-cap { padding: 6px 10px; margin: 0; border-top: 1px solid var(--line); }
+  .ox-tile { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--tint); }
+  .ox-tile .t { font-weight: 600; color: var(--strong); }
+  .ox-tile .k { color: var(--muted); font-size: 12.5px; }
+  .ox-tile .btn { margin-left: auto; flex: none; }
 </style>
 </head>
 <body>
@@ -467,7 +478,7 @@ export function previewHtml(): string {
           if (it) { it.status = c.status; it.reason = c.reason; it.blockIds = c.blockIds; }
         });
         if (r.version) last.version = r.version;
-        if (typeof r.html === "string") { last.html = r.html; refreshNote(); }
+        if (typeof r.html === "string") { last.html = r.html; last.embeds = r.embeds || []; refreshNote(); }
         markBlocks(); renderPanel();
       }).catch(function () {}).then(function () {
         if (!items.some(isOpen)) { pollStart = 0; return; }
@@ -490,7 +501,7 @@ export function previewHtml(): string {
         items.push({ key: keySeq++, id: c.id, status: c.status, quote: c.quote, body: c.body, anchors: c.blockIds, blockIds: c.blockIds, reason: c.reason });
       });
       if (r.version) last.version = r.version;
-      if (typeof r.html === "string") { last.html = r.html; refreshNote(); }
+      if (typeof r.html === "string") { last.html = r.html; last.embeds = r.embeds || []; refreshNote(); }
       markBlocks(); renderPanel(); resize();
       if (items.some(isOpen)) poll(true);
     }).catch(function (e) {
@@ -606,8 +617,85 @@ export function previewHtml(): string {
     resize();
   }
 
+  // ---------- Videos, custom apps and other interactive blocks ----------
+  var frames = {};
+  /** Fill each placeholder the server left with its block (see PreviewEmbed). */
+  function drawEmbeds() {
+    frames = {};
+    var embeds = (last && last.embeds) || [];
+    document.querySelectorAll(".note .ox-embed[data-e]").forEach(function (box) {
+      var e = embeds[Number(box.getAttribute("data-e"))];
+      if (!e) return;
+      var openBtn = '<button class="btn sm" data-open="' + esc(last.url) + '">Open in Octonote</button>';
+      if (e.kind === "video" && e.url && safeUrl(e.url)) {
+        box.className = "ox-embed ox-video";
+        var v = document.createElement("video");
+        v.controls = true; v.playsInline = true; v.preload = "metadata"; v.src = safeUrl(e.url);
+        if (e.posterUrl && safeUrl(e.posterUrl)) v.poster = safeUrl(e.posterUrl);
+        v.addEventListener("loadedmetadata", resize);
+        box.appendChild(v);
+        box.insertAdjacentHTML("beforeend", '<div class="ox-cap">' + esc(e.title) + "</div>");
+        return;
+      }
+      if (e.kind === "custom") {
+        box.className = "ox-embed ox-tile";
+        box.innerHTML = '<div style="min-width:0"><div class="t">' + esc(e.title) + '</div><div class="k">' + esc(e.description || "An interactive app") +
+          '</div></div><button class="btn sm primary" data-act="run-embed" data-e="' + box.getAttribute("data-e") + '">Run</button>';
+        return;
+      }
+      var label = e.kind === "video" ? (e.status === "failed" || e.status === "missing" ? "Video" : "Video · still being made") : e.type;
+      box.className = "ox-embed ox-tile";
+      box.innerHTML = '<div style="min-width:0"><div class="t">' + esc(e.title) + '</div><div class="k">' + esc(label) +
+        ' · open it in Octonote to use it</div></div>' + openBtn;
+    });
+  }
+
+  /** Run a custom app: fetch its sandbox document (note_embed) and put it in a sandboxed frame. */
+  function runEmbed(btn) {
+    var box = btn.closest(".ox-embed"), e = last && last.embeds && last.embeds[Number(btn.getAttribute("data-e"))];
+    if (!box || !e) return;
+    if (!(tools.mcp || (window.openai && window.openai.callTool)) || tools.state === "no") { open(last.url); return; }
+    btn.disabled = true; btn.textContent = "Loading…";
+    callTool("note_embed", { noteId: last.noteId, blockId: e.blockId }).then(function (r) {
+      if (!r || typeof r.srcdoc !== "string") throw new Error("empty");
+      var f = document.createElement("iframe");
+      f.setAttribute("sandbox", "allow-scripts");
+      f.setAttribute("title", e.title);
+      f.style.height = (r.height || e.height) + "px";
+      f.srcdoc = r.srcdoc.split("__OX_THEME__").join(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+      frames[r.nonce] = { frame: f, sizes: [], settled: false };
+      box.className = "ox-embed ox-app";
+      box.innerHTML = "";
+      box.appendChild(f);
+      box.insertAdjacentHTML("beforeend", '<div class="ox-cap"><span>' + esc(e.title) + '</span><button class="btn sm" data-open="' + esc(last.url) + '">Open in Octonote</button></div>');
+      resize();
+    }).catch(function () {
+      btn.disabled = false; btn.textContent = "Open in Octonote";
+      btn.removeAttribute("data-act"); btn.setAttribute("data-open", last.url);
+    });
+  }
+
+  // A custom app reports its height; a size that bounces A, B, A settles on the taller and then only grows.
+  window.addEventListener("message", function (ev) {
+    var m = ev.data;
+    if (!m || m.source !== "octonote-custom" || m.type !== "resize" || typeof m.nonce !== "string") return;
+    var fr = frames[m.nonce];
+    if (!fr || ev.source !== fr.frame.contentWindow) return;
+    var h = Math.min(1400, Math.max(120, Math.round(Number(m.height) || 0)));
+    var cur = parseFloat(fr.frame.style.height) || 0;
+    if (fr.settled) h = Math.max(h, cur);
+    else {
+      var now = Date.now();
+      fr.sizes = fr.sizes.filter(function (x) { return now - x.at < 1000; }).concat([{ h: h, at: now }]).slice(-3);
+      var a = fr.sizes[0], b = fr.sizes[1], c = fr.sizes[2];
+      if (a && b && c && Math.abs(a.h - c.h) <= 2 && Math.abs(a.h - b.h) > 2) { fr.settled = true; h = Math.max(a.h, b.h, c.h, cur); }
+    }
+    if (Math.abs(h - cur) > 1) { fr.frame.style.height = h + "px"; resize(); }
+  });
+
   /** Mermaid diagrams and math, loaded only when the note has them. */
   function enhance() {
+    drawEmbeds();
     var codes = Array.prototype.slice.call(document.querySelectorAll('pre code.language-mermaid, pre[data-language="mermaid"] > code'));
     if (codes.length) {
       import(MERMAID).then(function (m) {
@@ -672,6 +760,7 @@ export function previewHtml(): string {
       else if (a === "cancel" && it) cancel(it);
       else if (a === "retry" && it) retry(it);
       else if (a === "ask-again") askAgain();
+      else if (a === "run-embed") runEmbed(act);
       else if (a === "clear") { items = items.filter(function (x) { return isOpen(x) || x.status === "draft"; }); markBlocks(); renderPanel(); resize(); }
       return;
     }

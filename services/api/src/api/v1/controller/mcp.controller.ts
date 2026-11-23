@@ -460,7 +460,23 @@ export class McpController {
         annotations: READ,
         _meta: APP_ONLY,
       },
-      async ({ noteId, ids, since }) => runData(async () => ({ ...(await c.status(actor.id, noteId, { ids, since })) }))(),
+      async ({ noteId, ids, since }) =>
+        runData(async () => {
+          const out = await c.status(actor.id, noteId, { ids, since });
+          // A changed note comes back drawn like the card draws it: videos and apps as embeds.
+          return out.html === undefined ? { ...out } : { ...out, ...(await t.noteHtml(actor.id, noteId)) };
+        })(),
+    );
+    tool(
+      "note_embed",
+      {
+        title: "Run an app in a note (card)",
+        description: "Used by the Octonote card: one custom app from a note, to run in its sandbox when the reader presses Run.",
+        inputSchema: { noteId: z.string(), blockId: z.string().max(80) },
+        annotations: READ,
+        _meta: APP_ONLY,
+      },
+      async ({ noteId, blockId }) => runData(async () => ({ ...(await t.embed(actor.id, noteId, blockId)) }))(),
     );
     tool(
       "note_comment_retry",

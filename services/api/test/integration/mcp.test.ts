@@ -195,6 +195,39 @@ describe("mcp server", () => {
     await client.close();
   });
 
+  it("draws a note's custom apps and interactive blocks as embeds, outside the HTML budget", async () => {
+    const client = await connect(await tokenFor(alice.id));
+    const app = { title: "Three steps", description: "Watch the formula split.", html: `<!doctype html><html><body><p>${"x".repeat(80_000)}</p></body></html>` };
+    const map = { nodes: [{ id: "r", label: "Attention" }, { id: "a", label: "Dot", parent: "r" }] };
+    const markdown = [
+      "Intro.",
+      "```custom\n" + JSON.stringify(app) + "\n```",
+      "```mindmap\n" + JSON.stringify(map) + "\n```",
+      "The last line, after a big app.",
+    ].join("\n\n");
+    const r = (await client.callTool({ name: "create_note", arguments: { title: "Embeds", markdown } })) as {
+      structuredContent?: { preview?: { noteId: string; html: string; embeds: Record<string, unknown>[] } };
+    };
+    const { noteId, html, embeds } = r.structuredContent!.preview!;
+    expect(html).toContain("The last line, after a big app.");
+    expect(html.match(/class="ox-embed" data-e="\d"/g)).toHaveLength(2);
+    // The app's code stays out of the result; the card fetches it on Run.
+    expect(JSON.stringify(r.structuredContent).length).toBeLessThan(20_000);
+    expect(embeds[0]).toMatchObject({ kind: "custom", title: "Three steps", description: "Watch the formula split." });
+    expect(embeds[1]).toEqual({ kind: "block", type: "Mind map", title: "Mind map" });
+
+    const run = (await client.callTool({ name: "note_embed", arguments: { noteId, blockId: embeds[0]!.blockId } })) as {
+      structuredContent: { srcdoc: string; nonce: string };
+    };
+    expect(run.structuredContent.srcdoc).toContain("Content-Security-Policy");
+    expect(run.structuredContent.srcdoc).toContain("__OX_THEME__");
+    expect(run.structuredContent.srcdoc).toContain(run.structuredContent.nonce);
+    expect(run.structuredContent.srcdoc).toContain("xxxxxxxx");
+    const missing = (await client.callTool({ name: "note_embed", arguments: { noteId, blockId: "nope" } })) as { isError?: boolean };
+    expect(missing.isError).toBe(true);
+    await client.close();
+  });
+
   it("runs the card's comment loop: the card saves, the assistant reads and applies", async () => {
     const client = await connect(await tokenFor(alice.id));
     const { tools } = await client.listTools();

@@ -5,7 +5,8 @@
  * apply exactly as in the app. Kept free of MCP types so it can be tested
  * with the integration harness.
  */
-import { Injectable } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
+import { Injectable, Optional } from "@nestjs/common";
 import { noteDocumentToAnchoredHtml } from "@octonote/content/server";
 import { BadRequest, NotFound } from "../common/error/error-factory";
 import { WorkspaceMembersRepository } from "../db/repository/workspace-members.repository";
@@ -22,6 +23,11 @@ import { PagesService } from "./pages.service";
 import { ProjectsService } from "./projects.service";
 import { SharesService } from "./shares.service";
 import { SharingSettingsService } from "./sharing-settings.service";
+import { VideosService } from "./videos.service";
+
+type Compose = typeof import("@octonote/compose");
+// An ES module, loaded with Node's require(esm) once TypeScript turns import() into require().
+const loadCompose = (): Promise<Compose> => import("@octonote/compose");
 
 export interface Actor {
   id: string;
@@ -42,6 +48,19 @@ const KIND_BY_PREFIX: Record<string, ResourceKind> = { pag: "page", cnv: "canvas
 const KIND_NAME: Record<ResourceKind, ItemRef["kind"]> = { page: "note", canvas: "canvas", project: "project", notebook: "notebook" };
 const VIEWS = { notes: "notes", canvas: "canvas", split: "split" } as const;
 
+/** An interactive block in the card: a video, a custom app in its sandbox, or a tile that opens it in Octonote. */
+export type PreviewEmbed =
+  | { kind: "video"; title: string; url: string | null; posterUrl: string | null; status: string }
+  | {
+      kind: "custom";
+      title: string;
+      description: string;
+      /** The note block it lives in: the card loads the app with note_embed when the reader presses Run. */
+      blockId: string;
+      height: number;
+    }
+  | { kind: "block"; type: string; title: string };
+
 /** What the inline card (MCP Apps view) shows for an item. Never sent to the model. */
 export interface ItemPreview {
   kind: ItemRef["kind"];
@@ -56,6 +75,12 @@ export interface ItemPreview {
   html?: string;
   /** The note comments go to (a project's own note for projects). */
   noteId?: string | null;
+  /**
+   * Blocks the card draws itself, in note order: the HTML has an empty
+   * `<div class="ox-embed" data-e="<index>">` where each goes. Kept out of
+   * the HTML so a big custom app doesn't use up the note's size budget.
+   */
+  embeds?: PreviewEmbed[];
   /** The note's updatedAt: the card's comment poll sends it back to get fresh HTML only on change. */
   version?: string | null;
   /** Whether this person may edit the note, so the card offers comments. */
@@ -69,7 +94,20 @@ export interface ItemPreview {
 }
 
 /** Notes past this size are cut in the card; the link opens the whole note. */
-const PREVIEW_HTML_MAX = 60_000;
+const PREVIEW_HTML_MAX = 400_000;
+const THEME_TOKEN = "__OX_THEME__";
+
+/** Names people know for each interactive kind, for tiles. */
+const BLOCK_NAME: Record<string, string> = {
+  quiz: "Quiz",
+  mcq: "Practice questions",
+  flashcards: "Flashcards",
+  mindmap: "Mind map",
+  matching: "Matching",
+  widget: "Interactive widget",
+  infographic: "Infographic",
+  scene: "Animation",
+};
 
 export function kindOf(id: string): ResourceKind {
   const kind = KIND_BY_PREFIX[id.slice(0, 3)];
@@ -100,7 +138,58 @@ export class McpToolsService {
     private readonly settings: SharingSettingsService,
     private readonly shares: SharesService,
     private readonly figures: FiguresService,
+    @Optional() private readonly videos?: VideosService,
   ) {}
+
+  /**
+   * A note's HTML for the card, with each interactive block (video, custom
+   * app, quiz…) replaced by a placeholder and described in `embeds`. A
+   * custom app's code isn't included (one can be 150 KB); see `embed`.
+   */
+  private async previewHtml(document: unknown): Promise<{ html: string; embeds: PreviewEmbed[] }> {
+    const embeds: PreviewEmbed[] = [];
+    const place = (embed: PreviewEmbed) => {
+      embeds.push(embed);
+      return `<div class="ox-embed" data-e="${embeds.length - 1}"></div>`;
+    };
+    // The card has no sign-in, so its pictures use short-lived links.
+    const html = await noteDocumentToAnchoredHtml(await this.figures.withSignedImages(document), {
+      replace: async (block, anchor) => {
+        const props = (block.props ?? {}) as Record<string, unknown>;
+        if (block.type === "manimVideo") {
+          const video = this.videos ? await this.videos.get(String(props.videoId ?? "")).catch(() => null) : null;
+          return place({
+            kind: "video",
+            title: video?.title ?? "Video",
+            url: video?.status === "done" ? video.url : null,
+            posterUrl: video?.posterUrl ?? null,
+            status: video?.status ?? "missing",
+          });
+        }
+        if (block.type !== "interactive") return null;
+        const type = String(props.kind ?? "widget");
+        let spec: Record<string, unknown> = {};
+        try {
+          spec = JSON.parse(String(props.spec ?? "{}")) as Record<string, unknown>;
+        } catch {
+          // Unreadable: still a tile, so the reader knows something is there.
+        }
+        const title = typeof spec.title === "string" && spec.title.trim() ? spec.title.trim() : (BLOCK_NAME[type] ?? "Interactive block");
+        if (type === "custom" && typeof spec.html === "string") {
+          const height = Number(spec.height);
+          return place({
+            kind: "custom",
+            title,
+            description: typeof spec.description === "string" ? spec.description : "",
+            blockId: anchor,
+            height: Number.isFinite(height) ? Math.min(Math.max(height, 120), 1400) : 360,
+          });
+        }
+        return place({ kind: "block", type: BLOCK_NAME[type] ?? type, title });
+      },
+    });
+    return { html: html.length > PREVIEW_HTML_MAX ? `${html.slice(0, PREVIEW_HTML_MAX)}<p>…</p>` : html, embeds };
+  }
 
   /** A canvas as the card draws it, figures as their stored pictures. */
   private async outline(canvas: { id: string; document: unknown }, userId: string) {
@@ -229,6 +318,40 @@ export class McpToolsService {
     };
   }
 
+  /**
+   * One custom app in a note, ready for the card's sandbox: the document with
+   * its CSP and bridge ("__OX_THEME__" stands for light or dark) and the
+   * secret its messages carry.
+   */
+  async embed(userId: string, noteId: string, blockId: string): Promise<{ title: string; srcdoc: string; nonce: string; height: number }> {
+    const { page } = await this.pages.getOne(noteId, userId);
+    const blocks = ((page.document as { blocks?: { id?: string; type?: string; props?: Record<string, unknown> }[] } | null)?.blocks ?? []);
+    const block = blocks.find((b, i) => (b.id || `i:${i}`) === blockId);
+    if (!block || block.type !== "interactive" || block.props?.kind !== "custom") throw NotFound("That app isn't in this note any more.");
+    let spec: { title?: unknown; html?: unknown; height?: unknown } = {};
+    try {
+      spec = JSON.parse(String(block.props.spec ?? "{}"));
+    } catch {
+      throw NotFound("That app can't be read.");
+    }
+    if (typeof spec.html !== "string") throw NotFound("That app can't be read.");
+    const compose = await loadCompose();
+    const nonce = randomBytes(12).toString("base64url");
+    const height = Number(spec.height);
+    return {
+      title: typeof spec.title === "string" ? spec.title : "App",
+      srcdoc: compose.customSrcDoc(spec.html, nonce, THEME_TOKEN as "light"),
+      nonce,
+      height: Number.isFinite(height) ? Math.min(Math.max(height, 120), 1400) : 360,
+    };
+  }
+
+  /** A note's card HTML and embeds, for the card's refresh after a comment is applied. */
+  async noteHtml(userId: string, noteId: string): Promise<{ html: string; embeds: PreviewEmbed[] }> {
+    const { page } = await this.pages.getOne(noteId, userId);
+    return this.previewHtml(page.document);
+  }
+
   /** Everything the inline card needs for one item, read with the person's own access. */
   async preview(userId: string, id: string): Promise<ItemPreview> {
     const kind = kindOf(id);
@@ -236,18 +359,13 @@ export class McpToolsService {
       .getPublishState(kind, id, userId)
       .then((s) => (s.published ? s.publicUrl : null))
       .catch(() => null);
-    const html = async (document: unknown) => {
-      // The card has no sign-in, so its pictures use short-lived links.
-      const out = await noteDocumentToAnchoredHtml(await this.figures.withSignedImages(document));
-      return out.length > PREVIEW_HTML_MAX ? `${out.slice(0, PREVIEW_HTML_MAX)}<p>…</p>` : out;
-    };
     const editable = (role: string) => role === "editor" || role === "owner";
     if (kind === "page") {
       const { page, access } = await this.pages.getOne(id, userId);
       return {
         ...ref(kind, id, page.title),
         publicUrl,
-        html: await html(page.document),
+        ...(await this.previewHtml(page.document)),
         noteId: page.id,
         version: page.updatedAt.toISOString(),
         canComment: editable(access.role),
@@ -265,7 +383,7 @@ export class McpToolsService {
       return {
         ...ref(kind, id, p.project.name),
         publicUrl,
-        html: note ? await html(note.document) : "",
+        ...(note ? await this.previewHtml(note.document) : { html: "", embeds: [] }),
         noteId: note?.id ?? null,
         version: note?.updatedAt.toISOString() ?? null,
         canComment: loaded ? editable(loaded.access.role) : false,
