@@ -9,12 +9,16 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { registerAgents } from "./commands/agents.js";
+import { registerAi } from "./commands/ai.js";
 import { registerAuth } from "./commands/auth.js";
 import { registerCanvas } from "./commands/canvas.js";
+import { registerCollection } from "./commands/collection.js";
+import { registerFigure } from "./commands/figure.js";
 import { registerItems } from "./commands/items.js";
 import { registerNote } from "./commands/note.js";
 import { registerNotebook } from "./commands/notebook.js";
 import { registerProject } from "./commands/project.js";
+import { registerSharing } from "./commands/sharing.js";
 import { resolveConfig } from "./core/config.js";
 import { DOCS_URL, gettingStarted } from "./guide/getting-started.js";
 import { VERSION } from "./version.js";
@@ -62,6 +66,10 @@ export function buildProgram() {
   registerProject(program);
   registerNotebook(program);
   registerItems(program);
+  registerSharing(program);
+  registerCollection(program);
+  registerAi(program);
+  registerFigure(program);
   registerAgents(program);
   program.addHelpText(
     "after",

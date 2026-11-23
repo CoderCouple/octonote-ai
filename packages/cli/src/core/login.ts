@@ -47,6 +47,8 @@ export async function browserLogin(opts: {
   webUrl: string;
   onUrl: (url: string) => void;
   timeoutMs?: number;
+  /** Opens the sign-in page; tests pass a stand-in so no browser opens. */
+  open?: (url: string) => unknown;
 }): Promise<LoginResult> {
   const state = randomBytes(24).toString("base64url");
   const origin = new URL(opts.webUrl).origin;
@@ -111,7 +113,7 @@ export async function browserLogin(opts: {
     name: hostname().split(".")[0] ?? "",
   }).toString()}`;
   opts.onUrl(url);
-  openBrowser(url);
+  (opts.open ?? openBrowser)(url);
 
   // Paste fallback: a person can paste the token the page shows.
   let rl: ReturnType<typeof createInterface> | null = null;

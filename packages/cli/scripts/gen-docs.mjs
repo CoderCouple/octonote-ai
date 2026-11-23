@@ -66,9 +66,11 @@ octonote list --notebook "Architecture"`,
     title: "Find & organise",
     blurb:
       "Works on any item. The id says what it is: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook.",
-    match: (n) => ["list", "search", "open", "rename", "move", "delete"].includes(n),
+    match: (n) => ["list", "search", "open", "rename", "move", "delete", "recent", "activity"].includes(n),
     example: `octonote list --kind canvas
 octonote search onboarding
+octonote recent                        # what you edited lately
+octonote activity --item pag_…         # its change history
 octonote rename cnv_… "Login flow v2"
 octonote move pag_… --notebook "Archive"
 octonote delete cnv_… --yes`,
@@ -77,10 +79,39 @@ octonote delete cnv_… --yes`,
     slug: "sharing",
     title: "Publish & share",
     blurb: "Publish to a public page, or share with people. The same rules as the app.",
-    match: (n) => ["publish", "unpublish", "share"].includes(n),
+    match: (n) => ["publish", "unpublish", "share", "access", "unshare", "shared"].includes(n),
     example: `octonote publish pag_…                       # prints publicUrl
 octonote share pag_… --email sam@example.com --role editor
-octonote share pag_… --link view               # anyone with the link`,
+octonote share pag_… --link view               # anyone with the link
+octonote access pag_…                          # who can open it
+octonote unshare pag_… --email sam@example.com`,
+  },
+  {
+    slug: "collections",
+    title: "Collections",
+    blurb: "Clips from AI chats, the web or anywhere, kept in order, then composed into one note with every sentence cited.",
+    match: (n) => n.startsWith("collection ") || n.startsWith("clip "),
+    example: `octonote collection create "Solid-state batteries"
+octonote clip add clc_… --text "…" --source-url https://…
+octonote collection compose clc_… --mode report --save --notebook "Research"`,
+  },
+  {
+    slug: "ai",
+    title: "Make with AI",
+    blurb: "Whole notes, Studio items (mind maps, flashcards, quizzes…) and explainer videos, made by Octonote's AI.",
+    match: (n) => n === "generate" || n.startsWith("studio ") || n.startsWith("video "),
+    example: `octonote generate "explain backpropagation, with a quiz" --notebook "ML"
+octonote studio create --kind flashcards --url https://… --wait
+octonote video create "how attention works" --note pag_… --wait`,
+  },
+  {
+    slug: "figures",
+    title: "Pictures",
+    blurb: "Download a canvas or one of its figures as a PNG.",
+    match: (n) => n.startsWith("figure "),
+    example: `octonote canvas image cnv_… -o diagram.png
+octonote figure list --canvas cnv_…
+octonote figure download fig_… -o figure.png`,
   },
   {
     slug: "agents",

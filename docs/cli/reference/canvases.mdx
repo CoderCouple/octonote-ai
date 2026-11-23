@@ -77,3 +77,16 @@ octonote canvas push <file> [options]
 | --- | --- |
 | <code>&lt;file&gt;</code> | canvas JSON ("-" for stdin) (required) |
 | <code>--id &lt;canvas&gt;</code> | canvas to update (required) |
+
+## canvas image
+
+Save a canvas (or a project's canvas) as a PNG
+
+```bash
+octonote canvas image <canvas> [options]
+```
+
+| Argument or option | What it does |
+| --- | --- |
+| <code>&lt;canvas&gt;</code> | canvas or project id (cnv_… / prj_…) (required) |
+| <code>-o, --out &lt;path&gt;</code> | file to write (default: &lt;id&gt;.png) |

@@ -9,6 +9,8 @@ description: "Publish to a public page, or share with people. The same rules as 
 octonote publish pag_…                       # prints publicUrl
 octonote share pag_… --email sam@example.com --role editor
 octonote share pag_… --link view               # anyone with the link
+octonote access pag_…                          # who can open it
+octonote unshare pag_… --email sam@example.com
 ```
 
 ## publish
@@ -49,3 +51,36 @@ octonote share <id> [options]
 | <code>-e, --email &lt;email&gt;</code> | invite this person (they get an email; non-users join on sign-up) |
 | <code>-r, --role &lt;role&gt;</code> | viewer \| editor (default: viewer) |
 | <code>--link &lt;access&gt;</code> | anyone with the link: off \| view \| edit |
+
+## access
+
+Who can open an item: the people it's shared with, the link setting, and whether it's published
+
+```bash
+octonote access <id>
+```
+
+| Argument or option | What it does |
+| --- | --- |
+| <code>&lt;id&gt;</code> | any Octonote id (required) |
+
+## unshare
+
+Take a person's access to an item away (change a role with `share --email … --role …`)
+
+```bash
+octonote unshare <id> [options]
+```
+
+| Argument or option | What it does |
+| --- | --- |
+| <code>&lt;id&gt;</code> | any Octonote id (required) |
+| <code>-e, --email &lt;email&gt;</code> | the person to remove (required) |
+
+## shared
+
+What other people have shared with you
+
+```bash
+octonote shared
+```

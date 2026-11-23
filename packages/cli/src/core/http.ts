@@ -16,31 +16,46 @@ export interface HttpOptions {
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
+/** Per request: AI calls (compose, generate) take far longer than the default. */
+export interface RequestOptions {
+  timeoutMs?: number;
+}
+
 export class ApiClient {
   constructor(private readonly opts: HttpOptions) {}
 
   get<T>(path: string) {
     return this.request<T>("GET", path);
   }
-  post<T>(path: string, body?: unknown) {
-    return this.request<T>("POST", path, body);
+  post<T>(path: string, body?: unknown, opts?: RequestOptions) {
+    return this.request<T>("POST", path, body, opts);
   }
-  put<T>(path: string, body?: unknown) {
-    return this.request<T>("PUT", path, body);
+  put<T>(path: string, body?: unknown, opts?: RequestOptions) {
+    return this.request<T>("PUT", path, body, opts);
   }
-  patch<T>(path: string, body?: unknown) {
-    return this.request<T>("PATCH", path, body);
+  patch<T>(path: string, body?: unknown, opts?: RequestOptions) {
+    return this.request<T>("PATCH", path, body, opts);
   }
-  delete<T>(path: string, body?: unknown) {
-    return this.request<T>("DELETE", path, body);
+  delete<T>(path: string, body?: unknown, opts?: RequestOptions) {
+    return this.request<T>("DELETE", path, body, opts);
   }
 
-  async request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+  /** A binary download (an image), retried like any read. */
+  async bytes(path: string): Promise<Buffer> {
+    return this.request<Buffer>("GET", path, undefined, { binary: true });
+  }
+
+  async request<T>(
+    method: Method,
+    path: string,
+    body?: unknown,
+    opts: RequestOptions & { binary?: boolean } = {},
+  ): Promise<T> {
     const attempts = method === "GET" ? 3 : 1;
     let last: unknown;
     for (let i = 0; i < attempts; i++) {
       try {
-        return await this.once<T>(method, path, body);
+        return await this.once<T>(method, path, body, opts);
       } catch (err) {
         last = err;
         const retryable =
@@ -58,13 +73,14 @@ export class ApiClient {
     method: Method,
     path: string,
     body?: unknown,
+    opts: RequestOptions & { binary?: boolean } = {},
   ): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${this.opts.apiUrl}${path}`, {
         method,
         headers: {
-          accept: "application/json",
+          accept: opts.binary ? "image/png, application/json" : "application/json",
           "user-agent": this.opts.userAgent ?? "octonote-cli",
           ...(body !== undefined ? { "content-type": "application/json" } : {}),
           ...(this.opts.token
@@ -72,7 +88,9 @@ export class ApiClient {
             : {}),
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(this.opts.timeoutMs ?? 30_000),
+        signal: AbortSignal.timeout(
+          opts.timeoutMs ?? this.opts.timeoutMs ?? 30_000,
+        ),
       });
     } catch (err) {
       const timedOut = err instanceof Error && err.name === "TimeoutError";
@@ -85,6 +103,8 @@ export class ApiClient {
       );
     }
     if (res.status === 204) return undefined as T;
+    if (opts.binary && res.ok)
+      return Buffer.from(await res.arrayBuffer()) as T;
     const text = await res.text();
     let json: unknown = null;
     try {

@@ -9,6 +9,7 @@ import { describeItem, item, setPublished } from "../core/resources.js";
 import { action } from "../core/run.js";
 import { canvasOutline, renderCanvas } from "../core/terminal-items.js";
 import { dimUrl } from "../core/terminal-markdown.js";
+import { registerCanvasImage } from "./figure.js";
 
 interface Canvas {
   id: string;
@@ -180,4 +181,6 @@ export function registerCanvas(program: Command) {
         emit(item(ctx, "canvas", row), (i) => `Updated ${describeItem(i)}`);
       }),
     );
+
+  registerCanvasImage(canvas);
 }

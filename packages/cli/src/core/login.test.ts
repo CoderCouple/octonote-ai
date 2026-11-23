@@ -5,12 +5,12 @@ afterEach(() => vi.restoreAllMocks());
 
 /** Start a login, capture the URL it would open, and talk to its listener. */
 async function startLogin() {
-  vi.spyOn(login, "openBrowser").mockReturnValue(true);
   let url = "";
   const pending = login.browserLogin({
     webUrl: "https://octonote.ai",
     onUrl: (u) => (url = u),
     timeoutMs: 5000,
+    open: () => true, // never a real browser
   });
   await vi.waitFor(() => expect(url).not.toBe(""));
   const params = new URL(url).searchParams;

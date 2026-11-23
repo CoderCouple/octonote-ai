@@ -43,7 +43,7 @@ const KIND_ALIASES: Record<string, Kind> = {
   notebooks: "notebook",
 };
 
-async function listAll(
+export async function listAll(
   ctx: Ctx,
   kinds: Kind[],
 ): Promise<(Item & { published: boolean })[]> {
@@ -75,7 +75,7 @@ const listTable = (items: (Item & { published: boolean })[]) =>
     ["kind", "id", "title", "updated", "public"],
   );
 
-const ROUTE: Record<Kind, string> = {
+export const ROUTE: Record<Kind, string> = {
   page: "pages",
   canvas: "canvases",
   project: "projects",

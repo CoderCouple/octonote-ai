@@ -107,9 +107,47 @@ frame, code, image, icon, pen and figure, each with x, y, w, h.
   octonote publish <id>        # → publicUrl (a public, read-only page)
   octonote unpublish <id>
   octonote publish fig_…       # one canvas figure by itself; its canvas stays private
-  octonote share <id> --email person@example.com --role viewer|editor
+  octonote share <id> --email person@example.com --role viewer|editor   # again to change a role
   octonote share <id> --link view|edit|off   # anyone with the app link
+  octonote access <id>         # who can open it, the link setting, published or not
+  octonote unshare <id> --email person@example.com
+  octonote shared              # what others shared with the user
 Publishing a notebook publishes everything inside it.
+
+## Collections (clips → a cited note)
+A collection (clc_…) holds clips (clp_…): passages from AI chats, the web or
+anywhere, in order. Composing writes one note from only those clips, with
+every sentence cited to its clip.
+  octonote collection list | show <id> | create "Name" | rename <id> "Name"
+  octonote clip add <collection> --text "…" [--source-url <url> --source-title "…"]   # or --file / --stdin
+  octonote clip edit <clip> --text "…"  |  octonote clip rm <clip>
+  octonote collection order <collection> <clip> <clip>…
+  octonote collection compose <collection> --mode summary|report|comparison|study_notes|outline|faq|article|brief|flashcards|custom \
+    [--instructions "…"] [--title "…"] [--save [--notebook "Name"]]
+compose prints the draft (and any sentence the clips don't fully support);
+--save makes it a note and returns its link.
+
+## Make things with AI
+These use the user's AI allowance: run them when the user asks for
+AI-made content. Writing a note yourself (note create) costs nothing.
+  octonote generate "explain backpropagation, with a quiz" [--notebook "Name"]   # → a new note
+  octonote studio create --kind mindmap|flashcards|quiz|mcq|matching|infographic|text \
+    (--text "…" | --file f.txt | --url <url> | --from <note id> | --pdf f.pdf) --wait
+  octonote studio list | show <id> | retry <id> --wait | add-to-note <id> [--note <id>]
+  octonote studio publish <id>        # → publicUrl
+  octonote video create "how attention works" [--portrait] [--note <id>] [--wait]
+  octonote video show <id> [--wait]   # progress, then its link and chapters
+A video takes several minutes. With --note it goes into the note at once and
+shows its progress there; or add it yourself as ```video {"videoId":"vid_…"} ```.
+
+## Pictures and files
+  octonote canvas image <canvas|project> -o diagram.png
+  octonote figure list [--canvas <id>] | show <fig> | download <fig> -o fig.png
+  octonote note export <id> -o note.md    # same as note pull
+
+## What changed
+  octonote recent                         # what the user edited lately
+  octonote activity [--item <id>] [--limit 50]
 
 ## Account
   octonote whoami | workspace list | workspace use <name|id> | logout

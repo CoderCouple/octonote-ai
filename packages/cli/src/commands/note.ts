@@ -106,6 +106,7 @@ export function registerNote(program: Command) {
 
   note
     .command("pull")
+    .alias("export")
     .description(
       "Save a note to a markdown file (with front matter, so `note push` knows which note it is)",
     )

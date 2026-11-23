@@ -115,6 +115,9 @@
               "cli/reference/notebooks",
               "cli/reference/organise",
               "cli/reference/sharing",
+              "cli/reference/collections",
+              "cli/reference/ai",
+              "cli/reference/figures",
               "cli/reference/agents"
             ]
           }

@@ -8,6 +8,8 @@ description: "Works on any item. The id says what it is: pag_ note, cnv_ canvas,
 ```bash
 octonote list --kind canvas
 octonote search onboarding
+octonote recent                        # what you edited lately
+octonote activity --item pag_…         # its change history
 octonote rename cnv_… "Login flow v2"
 octonote move pag_… --notebook "Archive"
 octonote delete cnv_… --yes
@@ -89,3 +91,24 @@ octonote delete <id> [options]
 | --- | --- |
 | <code>&lt;id&gt;</code> | any Octonote id (required) |
 | <code>-y, --yes</code> | required: confirms the delete (agents: only when the user asked) |
+
+## recent
+
+What you edited lately, most recent first
+
+```bash
+octonote recent
+```
+
+## activity
+
+The workspace's change history, newest first (or one item's)
+
+```bash
+octonote activity [options]
+```
+
+| Argument or option | What it does |
+| --- | --- |
+| <code>-i, --item &lt;id&gt;</code> | only changes to this item |
+| <code>-l, --limit &lt;n&gt;</code> | how many, up to 200 (default: 50) |
