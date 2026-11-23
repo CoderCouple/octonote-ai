@@ -641,8 +641,8 @@ $("m-disconnect").addEventListener("click", async () => {
 
 document.addEventListener("click", (e) => {
   const target = e.target as Node;
-  if (!$("collection-popover").hidden && !$("collection-popover").contains(target) && !$("switcher").contains(target))
-    openSwitcher(false);
+  const opener = $("switcher").contains(target) || $("first-collection").contains(target);
+  if (!$("collection-popover").hidden && !$("collection-popover").contains(target) && !opener) openSwitcher(false);
   if (!$("more-menu").hidden && !$("more-menu").contains(target) && !$("more").contains(target)) openMenu(false);
 });
 
