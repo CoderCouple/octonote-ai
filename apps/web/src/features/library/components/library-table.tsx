@@ -116,7 +116,11 @@ const KIND_TABS: [KindFilter, string][] = [
   ["canvas", "Canvases"],
   ["project", "Projects"],
 ];
-type SortKey = "updated-desc" | "updated-asc" | "name-asc" | "name-desc";
+export type SortKey = "updated-desc" | "updated-asc" | "name-asc" | "name-desc";
+
+/** By name the way people number things: "ch2" before "ch10", case ignored. */
+export const byName = (a: string, b: string) =>
+  (a || "Untitled").localeCompare(b || "Untitled", undefined, { numeric: true, sensitivity: "base" });
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: "updated-desc", label: "Updated (newest)" },
@@ -182,6 +186,8 @@ interface LibraryTableProps {
   rowActions?: boolean;
   /** Rendered above the tabs (e.g. the notebook's title block). */
   header?: ReactNode;
+  /** The sort shown first; notebooks open sorted by name. */
+  defaultSort?: SortKey;
 }
 
 export function LibraryTable({
@@ -196,10 +202,11 @@ export function LibraryTable({
   mixedKinds = false,
   rowActions = !readOnly,
   header,
+  defaultSort = "updated-desc",
 }: LibraryTableProps) {
   const tabs = mixedKinds ? KIND_TABS : ACCESS_TABS;
   const [filter, setFilter] = useState<Filter>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("updated-desc");
+  const [sortKey, setSortKey] = useState<SortKey>(defaultSort);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const [view, setView] = useListView(noun);
@@ -221,10 +228,8 @@ export function LibraryTable({
         b.updatedAt.localeCompare(a.updatedAt),
       "updated-asc": (a: LibraryRow, b: LibraryRow) =>
         a.updatedAt.localeCompare(b.updatedAt),
-      "name-asc": (a: LibraryRow, b: LibraryRow) =>
-        (a.title || "Untitled").localeCompare(b.title || "Untitled"),
-      "name-desc": (a: LibraryRow, b: LibraryRow) =>
-        (b.title || "Untitled").localeCompare(a.title || "Untitled"),
+      "name-asc": (a: LibraryRow, b: LibraryRow) => byName(a.title, b.title),
+      "name-desc": (a: LibraryRow, b: LibraryRow) => byName(b.title, a.title),
     }[sortKey];
     return [...list].sort(by);
   }, [rows, filter, sortKey]);

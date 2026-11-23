@@ -50,14 +50,6 @@ const FILTERS: [KindFilter, string][] = [
   ["canvas", "Canvases"],
   ["project", "Projects"],
 ];
-// Reading order on the page: projects (note + canvas) first, then notes, then canvases.
-const ORDER: Record<PublicKind, number> = {
-  project: 0,
-  page: 1,
-  canvas: 2,
-  notebook: 3,
-};
-
 const VIEW_KEY = "octonote:pub-notebook-view";
 
 function useReaderView(): [View, (v: View) => void] {
@@ -98,10 +90,8 @@ export function PublishedNotebook({
   const [filter, setFilter] = useState<KindFilter>("all");
   const items = useMemo(
     () =>
-      [...notebook.items].sort(
-        (a, b) =>
-          ORDER[a.kind] - ORDER[b.kind] ||
-          b.updatedAt.localeCompare(a.updatedAt),
+      [...notebook.items].sort((a, b) =>
+        a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: "base" }),
       ),
     [notebook.items],
   );

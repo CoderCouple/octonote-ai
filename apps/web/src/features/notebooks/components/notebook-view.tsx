@@ -130,6 +130,7 @@ export function NotebookView({
           rows={rows}
           noun="items"
           mixedKinds
+          defaultSort="name-asc"
           hideNotebookColumn
           rowActions={editable}
           emptyKind="notebook"
