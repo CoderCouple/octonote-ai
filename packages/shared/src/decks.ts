@@ -28,8 +28,24 @@ export const DeckCreateSchema = z.object({
   document: z.unknown().optional(),
   /** What it was made from, for "Update from source". The caller must be able to view it. */
   source: DeckSourceSchema.optional(),
+  /** Slide markdown instead of a document: --- between slides, ??? before a slide's presenter notes. */
+  markdown: z.string().min(1).max(2_000_000).optional(),
 });
 export type DeckCreate = z.infer<typeof DeckCreateSchema>;
+
+/** POST /workspaces/:workspaceId/decks/from — made on the server from a note, project or notebook. */
+export const DeckFromSourceSchema = z.object({
+  source: DeckSourceSchema,
+  /** Defaults to the source's title. */
+  title: z.string().trim().min(1).max(120).optional(),
+  /** Defaults to the source's notebook (a notebook's own deck goes inside it). */
+  notebookId: id(ID_PREFIXES.notebook).optional(),
+  /** Paragraphs go to the presenter notes; slides keep the points. */
+  textToNotes: z.boolean().default(true),
+  /** Each block (quiz, video, app…) on its own slide. */
+  onePerSlide: z.boolean().default(true),
+});
+export type DeckFromSource = z.infer<typeof DeckFromSourceSchema>;
 
 /** PATCH /decks/:id */
 export const DeckUpdateSchema = z

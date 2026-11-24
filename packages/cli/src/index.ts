@@ -12,6 +12,7 @@ import { registerAgents } from "./commands/agents.js";
 import { registerAi } from "./commands/ai.js";
 import { registerAuth } from "./commands/auth.js";
 import { registerCanvas } from "./commands/canvas.js";
+import { registerDeck } from "./commands/deck.js";
 import { registerCollection } from "./commands/collection.js";
 import { registerFigure } from "./commands/figure.js";
 import { registerItems } from "./commands/items.js";
@@ -63,6 +64,7 @@ export function buildProgram() {
   registerAuth(program);
   registerNote(program);
   registerCanvas(program);
+  registerDeck(program);
   registerProject(program);
   registerNotebook(program);
   registerItems(program);

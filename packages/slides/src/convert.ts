@@ -226,3 +226,63 @@ function sectionSlides(section: Section, options: ConvertOptions): DeckSlide[] {
   slides[0]!.notes = notesText;
   return slides;
 }
+
+/** One slide written in markdown, before its blocks are parsed. */
+export interface SlideMarkdown {
+  markdown: string;
+  notes: string;
+}
+
+const FENCE = /^\s*(`{3,}|~{3,})/;
+
+/**
+ * Slide markdown, the format reveal.js and Remark use: slides are separated
+ * by a line of `---`, and anything after a line of `???` on a slide is its
+ * presenter notes. Fenced code (and the blocks written as fences: quizzes,
+ * mermaid…) is never split.
+ */
+export function splitSlideMarkdown(markdown: string): SlideMarkdown[] {
+  const slides: SlideMarkdown[] = [];
+  let body: string[] = [];
+  let notes: string[] | null = null;
+  let fence: string | null = null;
+  const flush = () => {
+    const md = body.join("\n").trim();
+    const n = (notes ?? []).join("\n").trim();
+    if (md || n) slides.push({ markdown: md, notes: n });
+    body = [];
+    notes = null;
+  };
+  for (const line of markdown.replace(/\r\n?/g, "\n").split("\n")) {
+    const f = line.match(FENCE)?.[1];
+    if (f && (!fence || f[0] === fence[0])) fence = fence ? null : f;
+    if (!fence && /^---\s*$/.test(line)) flush();
+    else if (!fence && notes === null && /^\?\?\?\s*$/.test(line)) notes = [];
+    else (notes ?? body).push(line);
+  }
+  flush();
+  return slides;
+}
+
+/**
+ * Slides already split (slide markdown, parsed) → a deck. Each slide's
+ * layout follows its content: a lone heading is the title (first) or a
+ * section; text with a block is text-and-block; a block alone fills the
+ * slide; anything else is text. Nothing moves to the notes.
+ */
+export function deckFromSlides(slides: { blocks: NoteBlock[]; notes: string }[]): DeckDocument {
+  return deckOf(
+    slides.map(({ blocks: raw, notes }, i) => {
+      const blocks = raw.filter((b) => !isEmptyParagraph(b));
+      const media = blocks.filter(isMediaBlock);
+      const text = blocks.filter((b) => !isMediaBlock(b));
+      const head = text[0]?.type === "heading" ? text[0] : null;
+      const rest = head ? text.slice(1) : text;
+      const short = rest.length <= 1 && rest.every((b) => b.type === "paragraph" && blockText(b).length <= LEAD_MAX_CHARS);
+      if (!media.length && head && short) return newSlide(i === 0 ? "title" : "section", { main: blocks, notes });
+      if (media.length && rest.length) return newSlide("split", { main: text, side: media, notes });
+      if (media.length) return newSlide("media", { main: [...text, ...media], notes });
+      return newSlide("content", { main: blocks, notes });
+    }),
+  );
+}

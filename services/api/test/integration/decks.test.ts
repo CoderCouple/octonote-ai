@@ -3,6 +3,7 @@
  * and published exactly like notes (a bug here leaks private slides).
  */
 import { beforeEach, describe, expect, it } from "vitest";
+import { markdownToNoteDocument } from "@octonote/content/server";
 import { deckFromNote, heading, newSlide, paragraph } from "@octonote/slides/core";
 import { createHarness, statusOf, type Harness } from "./harness";
 
@@ -141,5 +142,64 @@ describe("publishing", () => {
     expect(await statusOf(h.public.getChild(publicSlug!, "deck", outside.id))).toBe(404);
     // Published via the notebook.
     expect((await h.settings.getPublishState("deck", inside.id, alice.id)).publishedVia).toMatchObject({ kind: "notebook", id: nb.id });
+  });
+});
+
+describe("made on the server (CLI, agents)", () => {
+  it("from slide markdown: --- between slides, ??? before notes, blocks checked like a note's", async () => {
+    const markdown = [
+      "# Attention",
+      "How a transformer looks",
+      "???",
+      "Welcome.",
+      "---",
+      "## Check",
+      "Answer first.",
+      "```quiz",
+      JSON.stringify({ questions: [{ id: "q1", prompt: "2+2?", options: [{ id: "a", text: "4" }, { id: "b", text: "5" }], correct: ["a"] }] }),
+      "```",
+    ].join("\n");
+    const deck = await h.decks.create(alice.workspaceId, { title: "Talk", markdown }, alice.id);
+    expect(slidesOf(deck).map((s) => s.layout)).toEqual(["title", "split"]);
+    expect((deck.document as { slides: { notes: string }[] }).slides[0]!.notes).toBe("Welcome.");
+    const bad = markdown.replace('"correct":["a"]', '"correct":["zzz"]');
+    // Refused as an invalid block (422), the way a note written as markdown is.
+    expect(await statusOf(h.decks.create(alice.workspaceId, { title: "Bad", markdown: bad }, alice.id))).toBe(422);
+  });
+
+  it("from a note: in the note's notebook, remembering it", async () => {
+    const nb = await h.notebooks.create(alice.workspaceId, { name: "Course" }, alice.id);
+    const note = await h.pages.create(alice.workspaceId, { title: "Attention", notebookId: nb.id }, alice.id);
+    const document = await markdownToNoteDocument("Intro line.\n\n## Queries\n\n- q\n\n## Keys\n\nA long paragraph that becomes notes.");
+    await h.pages.update(note.id, { document }, alice.id);
+    const deck = await h.decks.createFromSource(alice.workspaceId, { source: { kind: "page", id: note.id, split: "heading" }, textToNotes: true, onePerSlide: true }, alice.id);
+    expect(deck).toMatchObject({ title: "Attention", notebookId: nb.id, source: { kind: "page", id: note.id } });
+    expect(slidesOf(deck).map((s) => s.layout)).toEqual(["title", "content", "content"]);
+  });
+
+  it("from a project: note slides, then its canvas, copied into the deck", async () => {
+    const { project, canvasId } = await h.projects.create(alice.workspaceId, { name: "Transformer" }, alice.id);
+    const pair = { canvasId };
+    await h.canvasDiagrams.replace(canvasId, "graph TD\n  A[Input] --> B[Attention]", undefined, alice.id);
+    const deck = await h.decks.createFromSource(alice.workspaceId, { source: { kind: "project", id: project.id, split: "heading" }, textToNotes: true, onePerSlide: true }, alice.id);
+    const doc = deck.document as { slides: { layout: string; canvas?: { canvasId: string } }[]; canvases?: Record<string, unknown> };
+    expect(doc.slides.at(-1)).toMatchObject({ layout: "canvas", canvas: { canvasId: pair.canvasId } });
+    expect(Object.keys(doc.canvases ?? {})).toEqual([pair.canvasId]);
+  });
+
+  it("from a notebook: a section per item, by name", async () => {
+    const nb = await h.notebooks.create(alice.workspaceId, { name: "Course" }, alice.id);
+    await h.pages.create(alice.workspaceId, { title: "Week 2", notebookId: nb.id }, alice.id);
+    await h.pages.create(alice.workspaceId, { title: "Week 10", notebookId: nb.id }, alice.id);
+    const deck = await h.decks.createFromSource(alice.workspaceId, { source: { kind: "notebook", id: nb.id, split: "heading" }, textToNotes: true, onePerSlide: true }, alice.id);
+    expect(deck.notebookId).toBe(nb.id);
+    const titles = (deck.document as { slides: { layout: string; main: { content?: { text: string }[] }[] }[] }).slides.map((s) => s.main[0]?.content?.[0]?.text);
+    expect(titles).toEqual(["Course", "Week 2", "Week 10"]);
+  });
+
+  it("only from something you can open", async () => {
+    const secret = await h.pages.create(alice.workspaceId, { title: "Secret" }, alice.id);
+    const attempt = h.decks.createFromSource(bob.workspaceId, { source: { kind: "page", id: secret.id, split: "heading" }, textToNotes: true, onePerSlide: true }, bob.id);
+    expect(await statusOf(attempt)).toBe(404);
   });
 });

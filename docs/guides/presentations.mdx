@@ -1,0 +1,62 @@
+---
+title: "Presentations"
+description: "Slides that hold anything a note can: quizzes, apps, videos, diagrams and canvases."
+---
+
+A presentation is a deck of slides. Each slide holds ordinary note blocks, so a quiz, a slider widget, a custom app, a Manim video, a mind map, maths or a mermaid diagram goes on a slide the same way it goes in a note, and stays live while you present.
+
+## Make one
+
+- **From scratch:** **Presentations** in the sidebar, then **New presentation**.
+- **From a note, project or notebook:** the presentation button in its header, **Make presentation**. You choose where slides break (at each heading, or at each `---` divider), whether paragraphs move to the presenter notes, and whether each block gets its own slide. The preview shows every slide before anything is made.
+  - A **note** becomes a title slide, then a slide per section: text on the left, its block on the right.
+  - A **project** adds a slide for each frame or figure on its canvas, zoomed to it.
+  - A **notebook** becomes a section per item, in the order the notebook lists them.
+
+The original never changes. The presentation is a copy that remembers where it came from.
+
+## Edit slides
+
+Click into a slide and type. The `/` menu has every note block. On the right:
+
+- **Layout:** Title, Section, Text, Text and block (text left, block right), One big block, Blank. Slides made from a canvas use the Canvas layout.
+- **On each click:** turn on any block or point to reveal it one click at a time, and pick how it comes in: Appear, Fade in, Rise, Wipe or Highlight. Arrows set the order.
+- **Transition into this slide:** None, Fade, Push, Zoom or **Morph**. Morph moves blocks that are on both slides (the same title, the same formula) from their old place to the new one.
+- **Skip when presenting:** keeps a backup slide in the deck without showing it.
+
+Under the slide, **Presenter notes** are for you alone: they show in the presenter view and never on a published presentation. At the bottom of the panel, the presentation's **Theme** (Paper, Ink, Chalkboard), **Shape** (16:9 or 4:3) and default **Transition**.
+
+Drag slides in the strip to reorder them; its menu duplicates, skips or deletes a slide.
+
+## Present
+
+**Present** starts from the first slide, **From here** from the one you're on.
+
+| Key | Does |
+| --- | --- |
+| → ↓ Space Page Down | Next click, or next slide |
+| ← ↑ Page Up | Back |
+| Home / End | First / last slide |
+| A number, then Enter | Go to that slide (hidden ones too) |
+| B or . | Black screen |
+| Esc | End |
+
+Clickers work too, and you can swipe on a touch screen. Blocks stay live: run the quiz, drag the slider, play the video in front of the room.
+
+**Presenter view** opens your own window with the slide as the room sees it, what comes next, your notes (A− / A+ to resize), a timer and a list of slides to jump to. Put it on your laptop and the presentation on the projector.
+
+## Share and publish
+
+Share a presentation with people, by link, or publish it, as you would a note. A published presentation lets anyone go through it at their own pace, one click at a time, with every block live, or present it full screen. Presentations in a published notebook are published with it.
+
+A slide that shows a canvas carries its own copy of the canvas, so publishing the presentation never makes the original canvas public.
+
+## From the CLI and agents
+
+```bash
+octonote deck from pag_…                 # make one from a note (or prj_… / ntb_…)
+octonote deck create "Talk" --file talk.md
+octonote deck show dck_…                 # an outline of every slide
+```
+
+In `talk.md`, a line of `---` starts a new slide and a line of `???` starts that slide's presenter notes. See the [CLI reference](/cli/reference/presentations).

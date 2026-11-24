@@ -7,7 +7,7 @@
 /** Short pointer for CLAUDE.md / AGENTS.md (the full guide is one command away). */
 export const PROJECT_SECTION = `## Octonote (notes & canvases)
 
-The user keeps notes, diagrams (canvases), projects and notebooks in Octonote. Use the \`octonote\` CLI to read and write them — never ask the user to copy-paste.
+The user keeps notes, diagrams (canvases), projects, notebooks and presentations in Octonote. Use the \`octonote\` CLI to read and write them — never ask the user to copy-paste.
 
 - Run \`octonote guide\` once per session before using it; \`octonote <command> --help\` for details.
 - Write notes as markdown files (mermaid, \`$math$\`, code and tables work); draw diagrams as mermaid flowcharts or class diagrams (\`--from-mermaid\`), which become real, editable canvases.
@@ -18,7 +18,8 @@ The user keeps notes, diagrams (canvases), projects and notebooks in Octonote. U
 export const AGENT_GUIDE = `# Octonote CLI — guide for agents
 
 Octonote holds the user's **notes** (markdown documents), **canvases** (diagrams),
-**projects** (one note + one canvas, side by side) and **notebooks** (folders).
+**projects** (one note + one canvas, side by side), **notebooks** (folders) and
+**presentations** (slides that hold any note block).
 The \`octonote\` CLI is how you read and write them on the user's behalf.
 
 ## Rules
@@ -27,7 +28,8 @@ The \`octonote\` CLI is how you read and write them on the user's behalf.
 - Never prompts. Content comes from --file <path>, --stdin, or "-" as the path.
 - Every result has \`id\`, \`url\` (app link) and, once published, \`publicUrl\`.
   Give the user the link at the end.
-- Ids carry their kind: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook.
+- Ids carry their kind: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook,
+  dck_ presentation.
   Notebooks can also be named by exact name (--notebook "Architecture").
 - Publish, share, invite or delete only when the user asked for it.
   \`delete\` requires --yes.
@@ -85,11 +87,29 @@ frame, code, image, icon, pen and figure, each with x, y, w, h.
     [--view split|notes|canvas] [--notebook "Name"] [--publish]
   octonote project show <id>     # JSON: ids of its note and canvas (edit them as above)
 
+## Presentations (slides)
+Make slides from something that exists (the original stays as it is):
+  octonote deck from <pag_|prj_|ntb_ id> [--split heading|divider] [--keep-text] [--group-blocks] [--publish]
+A note splits at its H1/H2 headings (or at --- dividers): text on the left, the
+section's block on the right; paragraphs move to the presenter notes unless
+--keep-text. A project adds a slide per canvas frame or figure; a notebook a
+section per item.
+Or write them as slide markdown — a line of --- between slides, a line of ???
+before that slide's presenter notes, any note block (quiz, widget, mermaid,
+maths…) on a slide:
+  octonote deck create "Talk" --file talk.md [--notebook "Name"] [--publish]
+Layouts follow the content: a lone heading is a title or section slide, text
+with a block is text-and-block, a block alone fills the slide.
+  octonote deck show <id>                 # outline: each slide's layout, title, blocks, notes
+  octonote deck pull <id> -o deck.json    # raw JSON ({ version: 1, slides }) → edit →
+  octonote deck push deck.json --id <id>  #   builds, transitions, themes live here
+Presenting is done in the app (Present, presenter view); give the user the link.
+
 ## Organise
   octonote list [--kind note|canvas|project|notebook] [--notebook "Name"]
   octonote search <words>                 # by title
   octonote notebook list | create "Name" | show "Name"   # show lists what's inside
-  octonote rename <id> "New name"         # any note, canvas, project or notebook
+  octonote rename <id> "New name"         # any note, canvas, project, notebook or presentation
   octonote move <id> --notebook "Name"    # or --out
   octonote delete <id> --yes
 

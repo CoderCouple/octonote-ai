@@ -54,6 +54,16 @@ octonote canvas pull cnv_… -o board.json   # raw canvas JSON (octodraw format)
 octonote project show prj_…`,
   },
   {
+    slug: "presentations",
+    title: "Presentations",
+    blurb:
+      "Slides that hold any note block. Write them as slide markdown, or make them from a note, project or notebook.",
+    match: (n) => n.startsWith("deck "),
+    example: `octonote deck from pag_…                      # or prj_… / ntb_…: the original stays as it is
+octonote deck create "Talk" --file talk.md     # --- between slides, ??? before a slide's notes
+octonote deck show dck_…                       # an outline of every slide`,
+  },
+  {
     slug: "notebooks",
     title: "Notebooks",
     blurb: "Folders for notes, canvases and projects. Refer to them by exact name or id.",
@@ -65,7 +75,7 @@ octonote list --notebook "Architecture"`,
     slug: "organise",
     title: "Find & organise",
     blurb:
-      "Works on any item. The id says what it is: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook.",
+      "Works on any item. The id says what it is: pag_ note, cnv_ canvas, prj_ project, ntb_ notebook, dck_ presentation.",
     match: (n) => ["list", "search", "open", "rename", "move", "delete", "recent", "activity"].includes(n),
     example: `octonote list --kind canvas
 octonote search onboarding

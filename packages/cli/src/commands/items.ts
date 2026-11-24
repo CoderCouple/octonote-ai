@@ -1,6 +1,6 @@
 /**
  * Commands that work on any kind — the id says what it is (pag_ / cnv_ /
- * prj_ / ntb_): list, search, open, move, delete, publish, share.
+ * prj_ / ntb_ / dck_): list, search, open, move, delete, publish, share.
  */
 import type { Command } from "commander";
 import { resolveNotebook, type Ctx } from "../core/context.js";
@@ -30,6 +30,7 @@ const LIST_PATH: Record<Kind, string> = {
   canvas: "canvases",
   project: "projects",
   notebook: "notebooks",
+  deck: "decks",
 };
 const KIND_ALIASES: Record<string, Kind> = {
   note: "page",
@@ -41,6 +42,11 @@ const KIND_ALIASES: Record<string, Kind> = {
   projects: "project",
   notebook: "notebook",
   notebooks: "notebook",
+  deck: "deck",
+  decks: "deck",
+  presentation: "deck",
+  presentations: "deck",
+  slides: "deck",
 };
 
 export async function listAll(
@@ -80,16 +86,17 @@ export const ROUTE: Record<Kind, string> = {
   canvas: "canvases",
   project: "projects",
   notebook: "notebooks",
+  deck: "decks",
 };
 
 export function registerItems(program: Command) {
   program
     .command("list")
     .alias("ls")
-    .description("List notes, canvases, projects and notebooks (newest first)")
+    .description("List notes, canvases, projects, notebooks and presentations (newest first)")
     .option(
       "-k, --kind <kind>",
-      "only this kind: note | canvas | project | notebook",
+      "only this kind: note | canvas | project | notebook | presentation",
     )
     .option(
       "-n, --notebook <notebook>",
@@ -103,7 +110,7 @@ export function registerItems(program: Command) {
         if (opts.kind && !only)
           throw usage(
             `Unknown kind "${opts.kind}".`,
-            "Use note, canvas, project or notebook.",
+            "Use note, canvas, project, notebook or presentation.",
           );
         if (opts.notebook) {
           const nb = await resolveNotebook(ctx, opts.notebook);
@@ -111,6 +118,7 @@ export function registerItems(program: Command) {
             notes: Row[];
             canvases: Row[];
             projects: Row[];
+            decks?: Row[];
           }>(`/notebooks/${nb.id}`);
           const items = [
             ...c.notes.map((r) => ({
@@ -125,13 +133,17 @@ export function registerItems(program: Command) {
               ...item(ctx, "project", r),
               published: Boolean(r.publishedAt),
             })),
+            ...(c.decks ?? []).map((r) => ({
+              ...item(ctx, "deck", r),
+              published: Boolean(r.publishedAt),
+            })),
           ].filter((i) => !only || i.kind === KIND_NAME[only]);
           return emit(items, listTable);
         }
         emit(
           await listAll(
             ctx,
-            only ? [only] : ["page", "canvas", "project", "notebook"],
+            only ? [only] : ["page", "canvas", "project", "notebook", "deck"],
           ),
           listTable,
         );
@@ -140,7 +152,7 @@ export function registerItems(program: Command) {
 
   program
     .command("search")
-    .description("Find notes, canvases, projects and notebooks by title")
+    .description("Find notes, canvases, projects, notebooks and presentations by title")
     .argument("<query...>", "words to look for in titles")
     .action(
       action(async (ctx, words: string[]) => {
@@ -154,6 +166,7 @@ export function registerItems(program: Command) {
           "canvas",
           "project",
           "notebook",
+          "deck",
         ]);
         emit(
           all.filter((i) =>
@@ -182,7 +195,7 @@ export function registerItems(program: Command) {
   program
     .command("move")
     .description(
-      "Move a note, canvas or project into a notebook (or out with --out)",
+      "Move a note, canvas, project or presentation into a notebook (or out with --out)",
     )
     .argument("<id>", "note, canvas or project id")
     .option("-n, --notebook <notebook>", "target notebook (id or exact name)")
@@ -212,14 +225,14 @@ export function registerItems(program: Command) {
 
   program
     .command("rename")
-    .description("Rename a note, canvas, project or notebook")
+    .description("Rename a note, canvas, project, notebook or presentation")
     .argument("<id>", "any Octonote id")
     .argument("<name>", "new name")
     .action(
       action(async (ctx, ref: string, name: string) => {
         const { kind, id } = parseRef(ref);
-        // Notes and canvases have a title; projects and notebooks a name.
-        const field = kind === "page" || kind === "canvas" ? "title" : "name";
+        // Notes, canvases and presentations have a title; projects and notebooks a name.
+        const field = kind === "page" || kind === "canvas" || kind === "deck" ? "title" : "name";
         const row = await ctx.api.patch<Row>(`/${ROUTE[kind]}/${id}`, {
           [field]: name.slice(0, 120),
         });
@@ -231,7 +244,7 @@ export function registerItems(program: Command) {
     .command("delete")
     .alias("rm")
     .description(
-      "Delete a note, canvas, project or notebook (a notebook's contents move to the top level)",
+      "Delete a note, canvas, project, notebook or presentation (a notebook's contents move to the top level)",
     )
     .argument("<id>", "any Octonote id")
     .option(

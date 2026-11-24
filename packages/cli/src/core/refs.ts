@@ -1,16 +1,18 @@
 /**
  * Octonote ids carry their kind (pag_ note, cnv_ canvas, prj_ project,
- * ntb_ notebook), so most commands accept any id and know what it is.
+ * ntb_ notebook, dck_ presentation), so most commands accept any id and
+ * know what it is.
  */
 import { usage } from "./errors.js";
 
-export type Kind = "page" | "canvas" | "project" | "notebook";
+export type Kind = "page" | "canvas" | "project" | "notebook" | "deck";
 
 export const KIND_BY_PREFIX: Record<string, Kind> = {
   pag: "page",
   cnv: "canvas",
   prj: "project",
   ntb: "notebook",
+  dck: "deck",
 };
 
 /** What people call each kind. */
@@ -19,6 +21,7 @@ export const KIND_NAME: Record<Kind, string> = {
   canvas: "canvas",
   project: "project",
   notebook: "notebook",
+  deck: "presentation",
 };
 
 const APP_PATH: Record<Kind, string> = {
@@ -26,22 +29,23 @@ const APP_PATH: Record<Kind, string> = {
   canvas: "c",
   project: "p",
   notebook: "nb",
+  deck: "d",
 };
 
 const ID_RE =
-  /^(pag|cnv|prj|ntb)_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  /^(pag|cnv|prj|ntb|dck)_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Accepts a bare id or an app / share URL that contains one. */
 export function parseRef(
   input: string,
   expect?: Kind,
 ): { kind: Kind; id: string } {
-  const match = input.match(/(pag|cnv|prj|ntb)_[0-9a-f-]{36}/);
+  const match = input.match(/(pag|cnv|prj|ntb|dck)_[0-9a-f-]{36}/);
   const id = match?.[0];
   if (!id || !ID_RE.test(id)) {
     throw usage(
       `"${input}" isn't an Octonote id.`,
-      "Ids look like pag_… (note), cnv_… (canvas), prj_… (project) or ntb_… (notebook). `octonote list` shows them.",
+      "Ids look like pag_… (note), cnv_… (canvas), prj_… (project), ntb_… (notebook) or dck_… (presentation). `octonote list` shows them.",
     );
   }
   const kind = KIND_BY_PREFIX[id.slice(0, 3)]!;

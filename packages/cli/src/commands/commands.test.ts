@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,8 @@ const PAG = `pag_${uuid(4)}`;
 const CNV = `cnv_${uuid(5)}`;
 const STU = `stu_${uuid(6)}`;
 const VID = `vid_${uuid(7)}`;
+const DCK = `dck_${uuid(8)}`;
+const NTB = `ntb_${uuid(9)}`;
 
 type Call = { method: string; path: string; body: unknown; timeout: boolean };
 type Route = (call: Call) => unknown;
@@ -199,7 +201,7 @@ describe("sharing and activity", () => {
   });
 
   it("activity names items and says which changes were yours", async () => {
-    for (const kind of ["pages", "canvases", "projects", "notebooks"])
+    for (const kind of ["pages", "canvases", "projects", "notebooks", "decks"])
       routes[`GET /workspaces/${WS}/${kind}`] = () => (kind === "pages" ? [{ id: PAG, title: "Plan", updatedAt: "" }] : []);
     routes[`GET /workspaces/${WS}/change-events`] = () => [
       { id: "evt_1", userId: "usr_me", entityType: "page", entityId: PAG, action: "page.update", createdAt: "2026-11-20T10:00:00Z" },
@@ -207,5 +209,69 @@ describe("sharing and activity", () => {
     const result = await run("activity", "--item", PAG, "--limit", "5");
     expect(sent("GET", `/workspaces/${WS}/change-events`)!.path).toBe(`/workspaces/${WS}/change-events?limit=5&entityId=${PAG}`);
     expect(result).toEqual([{ id: "evt_1", action: "page.update", itemKind: "note", itemId: PAG, title: "Plan", by: "you", at: "2026-11-20T10:00:00Z" }]);
+  });
+});
+
+describe("presentations", () => {
+  const deckRow = (slides: unknown[]) => ({ id: DCK, title: "Talk", notebookId: null, updatedAt: "", document: { version: 1, slides } });
+  const slide = (layout: string, title: string, extra: Record<string, unknown> = {}) => ({
+    id: `s_${title}`,
+    layout,
+    main: [{ id: "h", type: "heading", props: { level: 2 }, content: [{ type: "text", text: title }] }],
+    side: [],
+    notes: "",
+    ...extra,
+  });
+
+  it("deck from a note sends the options and returns the link", async () => {
+    routes[`POST /workspaces/${WS}/decks/from`] = () => deckRow([slide("title", "Talk"), slide("content", "Idea")]);
+    const result = await run("deck", "from", PAG, "--split", "divider", "--keep-text");
+    expect(sent("POST", `/workspaces/${WS}/decks/from`)!.body).toEqual({
+      source: { kind: "page", id: PAG, split: "divider" },
+      textToNotes: false,
+      onePerSlide: true,
+    });
+    expect(result).toMatchObject({ kind: "presentation", id: DCK, url: `https://app.test/d/${DCK}`, slides: 2 });
+  });
+
+  it("deck from refuses a canvas and an unknown split", async () => {
+    let result = await run("deck", "from", CNV);
+    expect(result.error.message).toMatch(/note, project or notebook/);
+    out = "";
+    result = await run("deck", "from", PAG, "--split", "paragraph");
+    expect(result.error.code).toBe("USAGE");
+    expect(calls.some((c) => c.path.includes("/decks"))).toBe(false);
+  });
+
+  it("deck create sends slide markdown", async () => {
+    const file = join(dir, "talk.md");
+    writeFileSync(file, "# Talk\n???\nHi\n---\n## Idea");
+    routes[`POST /workspaces/${WS}/decks`] = () => deckRow([slide("title", "Talk"), slide("content", "Idea")]);
+    await run("deck", "create", "Talk", "--file", file);
+    expect(sent("POST", `/workspaces/${WS}/decks`)!.body).toEqual({ title: "Talk", markdown: "# Talk\n???\nHi\n---\n## Idea" });
+  });
+
+  it("deck show prints an outline agents can read", async () => {
+    routes[`GET /decks/${DCK}`] = () =>
+      deckRow([
+        slide("split", "Check", { side: [{ id: "q", type: "interactive", props: { kind: "quiz" } }], builds: [{ blockId: "q", effect: "fade" }], notes: "Ask first" }),
+        slide("canvas", "Diagram", { canvas: { canvasId: CNV, itemId: null }, hidden: true }),
+      ]);
+    const result = await run("deck", "show", DCK);
+    expect(result.slides).toEqual([
+      { n: 1, layout: "split", title: "Check", blocks: ["quiz"], clicks: 1, notes: "Ask first" },
+      { n: 2, layout: "canvas", title: "Diagram", blocks: [], canvas: CNV, hidden: true, notes: "" },
+    ]);
+  });
+
+  it("presentations are listed inside notebooks and renamed by title", async () => {
+    routes["GET /workspaces/" + WS + "/notebooks"] = () => [{ id: NTB, name: "Course", updatedAt: "" }];
+    routes[`GET /notebooks/${NTB}`] = () => ({ notebook: { id: NTB, name: "Course" }, notes: [], canvases: [], projects: [], decks: [{ id: DCK, title: "Week 1", updatedAt: "" }] });
+    const list = await run("list", "--notebook", NTB, "--kind", "presentation");
+    expect(list.map((i: { kind: string; id: string }) => [i.kind, i.id])).toEqual([["presentation", DCK]]);
+    out = "";
+    routes[`PATCH /decks/${DCK}`] = (c) => ({ id: DCK, title: (c.body as { title: string }).title, updatedAt: "" });
+    await run("rename", DCK, "Week one");
+    expect(sent("PATCH", `/decks/${DCK}`)!.body).toEqual({ title: "Week one" });
   });
 });

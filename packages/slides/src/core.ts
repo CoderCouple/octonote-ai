@@ -40,7 +40,8 @@ export type {
   SplitMode,
 } from "./model.js";
 // Notes, projects and notebooks → decks.
-export { deckFromNote, deckFromNotebook, deckFromProject, DEFAULT_CONVERT, isMediaBlock } from "./convert.js";
-export type { CanvasSlideRef, CanvasSource, ConvertOptions, NotebookEntry, NotebookSource, NoteSource, ProjectSource } from "./convert.js";
+export { deckFromNote, deckFromNotebook, deckFromProject, deckFromSlides, DEFAULT_CONVERT, isMediaBlock, splitSlideMarkdown } from "./convert.js";
+export { canvasSlideRefs } from "./canvas-slides.js";
+export type { CanvasSlideRef, CanvasSource, ConvertOptions, NotebookEntry, NotebookSource, NoteSource, ProjectSource, SlideMarkdown } from "./convert.js";
 // Editing: pure deck operations.
 export { addSlide, buildableBlocks, duplicateSlide, moveBuild, moveSlide, removeSlide, setBuild, updateSlide } from "./ops.js";

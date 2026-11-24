@@ -53,6 +53,7 @@
               "guides/notes",
               "guides/canvases",
               "guides/projects",
+              "guides/presentations",
               "guides/notebooks",
               "guides/home-and-search"
             ]
@@ -112,6 +113,7 @@
               "cli/reference/notes",
               "cli/reference/canvases",
               "cli/reference/projects",
+              "cli/reference/presentations",
               "cli/reference/notebooks",
               "cli/reference/organise",
               "cli/reference/sharing",

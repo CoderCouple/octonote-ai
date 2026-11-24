@@ -6,7 +6,7 @@ import type { AuthenticatedRequest } from "../../../auth/supabase-auth.guard";
 import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
 import { ZodValidationPipe } from "../../../common/zod-validation.pipe";
 import { DecksService } from "../../../service/decks.service";
-import { DeckCreateSchema, DeckUpdateSchema, type DeckCreate, type DeckUpdate } from "../request/deck.request";
+import { DeckCreateSchema, DeckFromSourceSchema, DeckUpdateSchema, type DeckCreate, type DeckFromSource, type DeckUpdate } from "../request/deck.request";
 import { MoveToNotebookSchema, type MoveToNotebook } from "../request/notebook.request";
 import { deckSummaryToDto, deckToDto, type DeckDto, type DeckSummaryDto } from "../response/deck.response";
 
@@ -32,6 +32,17 @@ export class DecksController {
     @Req() req: AuthenticatedRequest,
   ): Promise<DeckDto> {
     return deckToDto(await this.decks.create(workspaceId, body, req.user.id), "owner");
+  }
+
+  /** Made from a note, project or notebook on the server (CLI, agents), as "Make presentation" does in the app. */
+  @Post("workspaces/:workspaceId/decks/from")
+  @UseGuards(SupabaseAuthGuard)
+  async createFromSource(
+    @Param("workspaceId", IdParam) workspaceId: string,
+    @Body(new ZodValidationPipe(DeckFromSourceSchema)) body: DeckFromSource,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<DeckDto> {
+    return deckToDto(await this.decks.createFromSource(workspaceId, body, req.user.id), "owner");
   }
 
   /** Optional auth: "anyone with the link" works for signed-out visitors. */

@@ -326,7 +326,7 @@ export async function createHarness() {
       planLimits,
       decksRepo,
     ),
-    decks: new DecksService(decksRepo, permissions, placement, workspaces, changeEvents),
+    decks: new DecksService(decksRepo, permissions, placement, workspaces, changeEvents, pagesRepo, canvasesRepo, projectsRepo, notebooksRepo, new ComposeAiService()),
     shares: new SharesService(
       sharingRepo,
       permissions,

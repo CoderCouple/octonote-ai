@@ -46,7 +46,7 @@ const email = (s: Share) => (s.user?.email ?? s.pendingEmail ?? "").toLowerCase(
 
 /** Titles for ids, from one listing of the workspace. */
 async function titles(ctx: Ctx) {
-  const all = await listAll(ctx, ["page", "canvas", "project", "notebook"]);
+  const all = await listAll(ctx, ["page", "canvas", "project", "notebook", "deck"]);
   return new Map(all.map((i) => [i.id, i.title]));
 }
 

@@ -27,6 +27,8 @@ interface Contents {
   notes: Entry[];
   canvases: Entry[];
   projects: Entry[];
+  /** Presentations; older APIs don't send it. */
+  decks?: Entry[];
 }
 
 export function registerNotebook(program: Command) {
@@ -86,7 +88,7 @@ export function registerNotebook(program: Command) {
         const { id } = await resolveNotebook(ctx, ref);
         const c = await ctx.api.get<Contents>(`/notebooks/${id}`);
         // Everything in a published notebook is public, whatever its own state.
-        const inside = (kind: "page" | "canvas" | "project", rows: Entry[]) =>
+        const inside = (kind: "page" | "canvas" | "project" | "deck", rows: Entry[]) =>
           rows.map((r): Item & { published: boolean } => ({
             ...item(ctx, kind, r),
             published: Boolean(r.publishedAt ?? c.notebook.publishedAt),
@@ -98,6 +100,7 @@ export function registerNotebook(program: Command) {
               ...inside("page", c.notes),
               ...inside("canvas", c.canvases),
               ...inside("project", c.projects),
+              ...inside("deck", c.decks ?? []),
             ],
           },
           (d) => `${renderNotebook(d.title, d.items)}\n\n${dimUrl(d.url)}`,
