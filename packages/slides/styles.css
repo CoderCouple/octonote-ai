@@ -1,0 +1,532 @@
+/*
+ * @octonote/slides. A slide is laid out at a fixed size (960 × 540, or
+ * 720 × 540 for 4:3) and scaled to fit, so sizes below are in slide pixels.
+ * Themes set the --osl-* tokens; blocks inside take the slide's colours and
+ * font size through `color` and `font-size` (the host maps its block styles).
+ */
+
+.osl-theme-paper {
+  --osl-bg: #ffffff;
+  --osl-fg: #191919;
+  --osl-muted: #6b6a66;
+  --osl-accent: #2f6feb;
+  --osl-surface: #f6f6f4;
+  --osl-line: #e6e5e1;
+  --osl-scheme: light;
+}
+.osl-theme-ink {
+  --osl-bg: #0d0e10;
+  --osl-fg: #f2f2f0;
+  --osl-muted: #9a9a97;
+  --osl-accent: #7aa7ff;
+  --osl-surface: #17181b;
+  --osl-line: #2a2b2f;
+  --osl-scheme: dark;
+}
+.osl-theme-chalk {
+  --osl-bg: #1f2d27;
+  --osl-fg: #eef2ea;
+  --osl-muted: #a9b8ad;
+  --osl-accent: #f2c661;
+  --osl-surface: #26372f;
+  --osl-line: #3a4c43;
+  --osl-scheme: dark;
+}
+
+:root {
+  --osl-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --osl-transition-ms: 520ms;
+}
+
+/* ---- stage ---- */
+.osl-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+.osl-stage-contain {
+  height: 100%;
+}
+.osl-stage-box {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+.osl-stage-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+/* ---- slide ---- */
+.osl-slide {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 36px;
+  padding: 48px 64px;
+  overflow: hidden;
+  background: var(--osl-bg);
+  color: var(--osl-fg);
+  color-scheme: var(--osl-scheme);
+  font-size: 19px;
+  line-height: 1.4;
+  --osl-h1: 3em;
+  --osl-h2: 1.9em;
+  --osl-h3: 1.3em;
+}
+.osl-region {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* The region's content, shrunk to fit when it's too big (see SlideView). */
+.osl-fit {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.osl-empty {
+  display: grid;
+  place-items: center;
+  color: var(--osl-muted);
+}
+
+.osl-layout-title .osl-main,
+.osl-layout-section .osl-main {
+  justify-content: safe center;
+}
+.osl-layout-title {
+  padding-inline: 80px;
+}
+.osl-layout-title {
+  --osl-h1: 3.4em;
+  --osl-h2: 2.2em;
+}
+.osl-layout-section {
+  --osl-h1: 3.2em;
+  background: var(--osl-surface);
+}
+.osl-layout-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+}
+.osl-layout-split .osl-side {
+  justify-content: safe center;
+}
+/* A media slide: the title, then the block fills what's left. */
+.osl-layout-media .osl-main {
+  height: 100%;
+}
+.osl-layout-media .osl-main > .osl-fit {
+  flex: 1;
+  min-height: 0;
+}
+.osl-layout-blank {
+  padding: 32px;
+}
+/* A canvas slide: the canvas fills the slide; the title floats top-left. */
+.osl-layout-canvas {
+  padding: 0;
+}
+.osl-canvas {
+  position: absolute;
+  inset: 0;
+}
+.osl-layout-canvas .osl-main {
+  position: absolute;
+  left: 24px;
+  top: 20px;
+  max-width: 60%;
+  padding: 9px 14px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--osl-bg) 88%, transparent);
+  font-size: 15px;
+  pointer-events: none;
+  --osl-h2: 1.4em;
+}
+.osl-layout-canvas .osl-main:empty {
+  display: none;
+}
+
+/* ---- builds ---- */
+@keyframes osl-build-appear {
+  from { opacity: 1; }
+}
+@keyframes osl-build-fade {
+  from { opacity: 0; }
+}
+@keyframes osl-build-rise {
+  from { opacity: 0; transform: translateY(24px); }
+}
+@keyframes osl-build-wipe {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes osl-build-highlight {
+  0% { background-color: transparent; }
+  30% { background-color: color-mix(in srgb, var(--osl-accent) 28%, transparent); }
+  100% { background-color: color-mix(in srgb, var(--osl-accent) 14%, transparent); }
+}
+
+/* ---- slide transitions (view transitions; only while the presenter changes slide) ---- */
+.osl-presenter[data-osl-transitioning] .osl-transition-root {
+  view-transition-name: osl-slide;
+}
+.osl-transition-root {
+  position: absolute;
+  inset: 0;
+}
+html[data-osl-transition]::view-transition-old(root),
+html[data-osl-transition]::view-transition-new(root) {
+  animation: none;
+}
+html[data-osl-transition]::view-transition-group(*) {
+  animation-duration: var(--osl-transition-ms);
+  animation-timing-function: var(--osl-ease);
+}
+html[data-osl-transition="fade"]::view-transition-old(osl-slide) {
+  animation: var(--osl-transition-ms) var(--osl-ease) both osl-out-fade;
+}
+html[data-osl-transition="fade"]::view-transition-new(osl-slide) {
+  animation: var(--osl-transition-ms) var(--osl-ease) both osl-in-fade;
+}
+html[data-osl-transition="push"][data-osl-direction="forward"]::view-transition-old(osl-slide) {
+  animation: var(--osl-transition-ms) var(--osl-ease) both osl-out-left;
+}
+html[data-osl-transition="push"][data-osl-direction="forward"]::view-transition-new(osl-slide) {
+  animation: var(--osl-transition-ms) var(--osl-ease) both osl-in-right;
+}
+html[data-osl-transition="push"][data-osl-direction="back"]::view-transition-old(osl-slide) {
+  animation: var(--osl-transition-ms) var(--osl-ease) both osl-out-right;
+}
+html[data-osl-transition="push"][data-osl-direction="back"]::view-transition-new(osl-slide) {
+  animation: var(--osl-transition-ms) var(--osl-ease) both osl-in-left;
+}
+html[data-osl-transition="zoom"]::view-transition-old(osl-slide) {
+  animation: var(--osl-transition-ms) var(--osl-ease) both osl-out-zoom;
+}
+html[data-osl-transition="zoom"]::view-transition-new(osl-slide) {
+  animation: var(--osl-transition-ms) var(--osl-ease) both osl-in-zoom;
+}
+@keyframes osl-out-fade { to { opacity: 0; } }
+@keyframes osl-in-fade { from { opacity: 0; } }
+@keyframes osl-out-left { to { transform: translateX(-100%); } }
+@keyframes osl-in-right { from { transform: translateX(100%); } }
+@keyframes osl-out-right { to { transform: translateX(100%); } }
+@keyframes osl-in-left { from { transform: translateX(-100%); } }
+@keyframes osl-out-zoom { to { opacity: 0; transform: scale(1.08); } }
+@keyframes osl-in-zoom { from { opacity: 0; transform: scale(0.92); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .osl-slide [style*="animation"],
+  .osl-slide * {
+    animation-duration: 1ms !important;
+  }
+}
+
+/* ---- presenter (full screen) ---- */
+.osl-chrome {
+  --osl-ui-bg: #111214;
+  --osl-ui-fg: #f2f2f0;
+  --osl-ui-muted: #8e8e8c;
+  --osl-ui-line: #2a2b2f;
+  --osl-ui-raised: #1b1c1f;
+  --osl-ui-accent: #7aa7ff;
+  font-family: Inter, ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+}
+.osl-presenter {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  color: var(--osl-ui-fg);
+  touch-action: pan-y;
+}
+.osl-presenter-stage {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
+.osl-presenter.osl-idle {
+  cursor: none;
+}
+.osl-black {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: #000;
+  cursor: none;
+}
+.osl-overlay {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 16px;
+  z-index: 2;
+}
+.osl-bar {
+  position: absolute;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--osl-ui-bg) 86%, transparent);
+  border: 1px solid var(--osl-ui-line);
+  backdrop-filter: blur(8px);
+  transition: opacity 200ms ease;
+}
+.osl-idle .osl-bar {
+  opacity: 0;
+  pointer-events: none;
+}
+.osl-bar button,
+.osl-pv button {
+  font: 500 13px/1 inherit;
+  font-family: inherit;
+  color: var(--osl-ui-fg);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.osl-bar button:hover,
+.osl-pv button:hover {
+  background: var(--osl-ui-raised);
+}
+.osl-bar button:focus-visible,
+.osl-pv button:focus-visible {
+  outline: 2px solid var(--osl-ui-accent);
+  outline-offset: 1px;
+}
+.osl-count {
+  font: 500 13px/1 inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--osl-ui-muted);
+  min-width: 56px;
+  text-align: center;
+}
+.osl-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--osl-ui-line);
+  margin: 0 4px;
+}
+
+/* ---- presenter view (its own window) ---- */
+body.osl-presenter-window {
+  margin: 0;
+  background: #0a0a0b;
+}
+.osl-pv {
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 18px 18px;
+  background: var(--osl-ui-bg);
+  color: var(--osl-ui-fg);
+  font-size: 14px;
+}
+.osl-pv-top,
+.osl-pv-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.osl-pv-spacer {
+  flex: 1;
+}
+.osl-pv-chip {
+  border: 1px solid var(--osl-ui-line);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  color: var(--osl-ui-muted);
+  font-variant-numeric: tabular-nums;
+}
+.osl-pv-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr);
+  gap: 16px;
+}
+.osl-pv-main,
+.osl-pv-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+/* The current slide takes most of the height and leaves the notes room. */
+.osl-pv-current {
+  height: min(62vh, 56vw);
+  min-height: 180px;
+}
+.osl-pv-current .osl-stage-box {
+  border-radius: 8px;
+}
+.osl-pv-panel {
+  border: 1px solid var(--osl-ui-line);
+  border-radius: 10px;
+  padding: 11px 12px;
+}
+.osl-pv-panel .osl-stage-box {
+  border-radius: 6px;
+}
+.osl-pv-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--osl-ui-muted);
+}
+.osl-pv-label > span:last-child:not(.osl-pv-actions) {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.osl-pv-actions {
+  display: flex;
+  gap: 2px;
+}
+.osl-pv-actions button {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.osl-pv-notes {
+  flex: 1;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+}
+.osl-pv-notes-body {
+  flex: 1;
+  overflow: auto;
+  line-height: 1.55;
+}
+.osl-pv-notes-text {
+  white-space: pre-wrap;
+}
+.osl-pv-empty {
+  margin: 0;
+  color: var(--osl-ui-muted);
+  font-size: 13px;
+}
+.osl-pv-timer {
+  font: 500 30px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.osl-pv-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow: auto;
+}
+.osl-pv-list button {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  text-align: left;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-weight: 400;
+}
+.osl-pv-list button[aria-current] {
+  background: var(--osl-ui-raised);
+  border-color: var(--osl-ui-line);
+}
+.osl-pv-num {
+  color: var(--osl-ui-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 20px;
+}
+.osl-pv .osl-primary {
+  background: var(--osl-ui-fg);
+  color: var(--osl-ui-bg);
+}
+.osl-pv .osl-primary:hover {
+  background: var(--osl-ui-fg);
+  opacity: 0.9;
+}
+@media (max-width: 760px) {
+  .osl-pv-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- slide outline (thumbnails) ---- */
+.osl-outline {
+  position: absolute;
+  inset: 0;
+  padding: 9% 10%;
+  display: flex;
+  flex-direction: column;
+  gap: 6%;
+  overflow: hidden;
+  container-type: inline-size;
+}
+.osl-outline-title {
+  font-weight: 700;
+  font-size: 9cqw;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.osl-outline.osl-layout-title,
+.osl-outline.osl-layout-section {
+  justify-content: center;
+}
+.osl-outline.osl-layout-title .osl-outline-title,
+.osl-outline.osl-layout-section .osl-outline-title {
+  font-size: 11cqw;
+}
+.osl-outline-text {
+  font-size: 6cqw;
+  opacity: 0.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.osl-outline-chips {
+  margin-top: auto;
+  display: flex;
+  gap: 3cqw;
+  flex-wrap: wrap;
+}
+.osl-outline-chips span {
+  font-size: 6cqw;
+  font-weight: 600;
+  padding: 1cqw 3.5cqw;
+  border-radius: 99px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}

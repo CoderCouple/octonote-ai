@@ -21,6 +21,7 @@ const ROUTE_LABELS: Record<string, string> = {
   notes: "Notes",
   canvases: "Canvases",
   projects: "Projects",
+  decks: "Presentations",
   notebooks: "Notebooks",
   studio: "Studio",
   collections: "Collections",

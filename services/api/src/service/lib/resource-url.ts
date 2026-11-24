@@ -5,6 +5,7 @@ const PATH_PREFIX: Record<ResourceKind, string> = {
   canvas: "c",
   project: "p",
   notebook: "nb",
+  deck: "d",
 };
 
 export function appUrl(): string {

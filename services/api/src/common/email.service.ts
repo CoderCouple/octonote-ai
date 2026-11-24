@@ -12,6 +12,7 @@ const KIND_LABEL: Record<ResourceKind, string> = {
   canvas: "canvas",
   project: "project",
   notebook: "notebook",
+  deck: "presentation",
 };
 
 export interface FeedbackEmailInput {

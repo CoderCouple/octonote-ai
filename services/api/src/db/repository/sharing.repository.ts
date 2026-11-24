@@ -1,12 +1,13 @@
 /**
  * Cross-table access to the shareable resources (pages, canvases, projects,
- * notebooks) by kind, plus the resource_shares table. Keeps the sharing
+ * notebooks, decks) by kind, plus the resource_shares table. Keeps the sharing
  * services free of per-kind switch statements.
  */
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { Database, DRIZZLE } from "../database.module";
 import { canvases } from "../schemas/canvases";
+import { decks } from "../schemas/decks";
 import { notebooks } from "../schemas/notebooks";
 import { pages } from "../schemas/pages";
 import { projects } from "../schemas/projects";
@@ -78,6 +79,16 @@ export class SharingRepository extends BaseRepository<typeof resourceShares> {
         const [r] = await this.db.select().from(notebooks).where(eq(notebooks.id, id)).limit(1);
         return r ? { kind, ...common(r), title: r.name, parent: null } : null;
       }
+      case "deck": {
+        const [r] = await this.db
+          .select()
+          .from(decks)
+          .where(and(eq(decks.id, id), isNull(decks.deletedAt)))
+          .limit(1);
+        return r
+          ? { kind, ...common(r), title: r.title, parent: r.notebookId ? { kind: "notebook", id: r.notebookId } : null }
+          : null;
+      }
     }
   }
 
@@ -88,6 +99,7 @@ export class SharingRepository extends BaseRepository<typeof resourceShares> {
       ["canvas", canvases],
       ["project", projects],
       ["notebook", notebooks],
+      ["deck", decks],
     ] as const) {
       const [r] = await this.db
         .select({ id: table.id })
@@ -113,6 +125,9 @@ export class SharingRepository extends BaseRepository<typeof resourceShares> {
         return;
       case "notebook":
         await this.db.update(notebooks).set(set).where(eq(notebooks.id, id));
+        return;
+      case "deck":
+        await this.db.update(decks).set(set).where(eq(decks.id, id));
         return;
     }
   }

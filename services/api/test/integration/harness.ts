@@ -19,6 +19,8 @@ import { PlanLimitsService } from "../../src/common/plan-limits.service";
 import { BillingService } from "../../src/service/billing.service";
 import type { Database } from "../../src/db/database.module";
 import { CanvasesRepository } from "../../src/db/repository/canvases.repository";
+import { DecksRepository } from "../../src/db/repository/decks.repository";
+import { DecksService } from "../../src/service/decks.service";
 import { NotebooksRepository } from "../../src/db/repository/notebooks.repository";
 import { PagesRepository } from "../../src/db/repository/pages.repository";
 import { ProjectsRepository } from "../../src/db/repository/projects.repository";
@@ -264,6 +266,7 @@ export async function createHarness() {
   const canvasesRepo = new CanvasesRepository(db);
   const projectsRepo = new ProjectsRepository(db);
   const notebooksRepo = new NotebooksRepository(db);
+  const decksRepo = new DecksRepository(db);
   const sharingRepo = new SharingRepository(db);
   const workspacesRepo = new WorkspacesRepository(db);
   const membersRepo = new WorkspaceMembersRepository(db);
@@ -321,7 +324,9 @@ export async function createHarness() {
       workspaces,
       changeEvents,
       planLimits,
+      decksRepo,
     ),
+    decks: new DecksService(decksRepo, permissions, placement, workspaces, changeEvents),
     shares: new SharesService(
       sharingRepo,
       permissions,
@@ -337,6 +342,7 @@ export async function createHarness() {
       projectsRepo,
       notebooksRepo,
       new UsersRepository(db),
+      decksRepo,
     ),
     me: new MeService(db, productAnalytics),
     get votes() {

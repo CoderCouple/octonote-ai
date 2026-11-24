@@ -1,5 +1,5 @@
 /** Mirrors the API's PublicService response shapes (content plus a byline: author name/avatar, never emails or ids). */
-export type PublicKind = "page" | "canvas" | "project" | "notebook";
+export type PublicKind = "page" | "canvas" | "project" | "notebook" | "deck";
 
 export interface PublicNote {
   kind: "page";
@@ -39,6 +39,15 @@ export interface PublicNotebook {
 }
 
 /** A notebook item, with what its grid card / list row shows. */
+export interface PublicDeck {
+  kind: "deck";
+  id: string;
+  title: string;
+  /** A @octonote/slides deck, without presenter notes. */
+  document: unknown;
+  updatedAt: string;
+}
+
 export interface PublicNotebookItem {
   kind: PublicKind;
   id: string;
@@ -50,10 +59,12 @@ export interface PublicNotebookItem {
   excerpt: string | null;
   /** Reading time; null for canvases. */
   minutes: number | null;
+  /** How many slides a presentation has. */
+  slideCount?: number;
 }
 
 export type PublicResource =
-  PublicNote | PublicCanvas | PublicProject | PublicNotebook;
+  PublicNote | PublicCanvas | PublicProject | PublicNotebook | PublicDeck;
 
 export interface PublicByline {
   /** Display name and avatar only — never an email or id. */

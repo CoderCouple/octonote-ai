@@ -12,7 +12,7 @@ export interface Notebook extends SharingState {
   /** Live per-person grants; list endpoints only. */
   sharedCount?: number;
   /** Live items inside, by kind; list endpoints only. */
-  counts?: { notes: number; canvases: number; projects: number };
+  counts?: { notes: number; canvases: number; projects: number; decks: number };
 }
 
 export function toNotebook(
@@ -21,6 +21,7 @@ export function toNotebook(
     noteCount?: number;
     canvasCount?: number;
     projectCount?: number;
+    deckCount?: number;
   },
 ): Notebook {
   return {
@@ -39,6 +40,7 @@ export function toNotebook(
             notes: Number(row.noteCount),
             canvases: Number(row.canvasCount ?? 0),
             projects: Number(row.projectCount ?? 0),
+            decks: Number(row.deckCount ?? 0),
           },
         }
       : {}),

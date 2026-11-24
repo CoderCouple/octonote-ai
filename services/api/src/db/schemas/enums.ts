@@ -2,7 +2,7 @@ import { pgEnum } from "drizzle-orm/pg-core";
 
 export const workspaceRole = pgEnum("workspace_role", ["OWNER", "ADMIN", "MEMBER"]);
 
-export const resourceKind = pgEnum("resource_kind", ["page", "canvas", "project", "notebook"]);
+export const resourceKind = pgEnum("resource_kind", ["page", "canvas", "project", "notebook", "deck"]);
 
 export const shareRole = pgEnum("share_role", ["viewer", "editor"]);
 

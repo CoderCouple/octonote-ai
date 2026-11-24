@@ -43,6 +43,7 @@ export const ID_PREFIXES = {
   clip: "clp",
   extensionConnectCode: "xcc",
   studioItem: "stu",
+  deck: "dck",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

@@ -36,7 +36,7 @@ export interface Actor {
 }
 
 export interface ItemRef {
-  kind: "note" | "canvas" | "project" | "notebook";
+  kind: "note" | "canvas" | "project" | "notebook" | "presentation";
   id: string;
   title: string;
   url: string;
@@ -44,8 +44,8 @@ export interface ItemRef {
   updatedAt?: string;
 }
 
-const KIND_BY_PREFIX: Record<string, ResourceKind> = { pag: "page", cnv: "canvas", prj: "project", ntb: "notebook" };
-const KIND_NAME: Record<ResourceKind, ItemRef["kind"]> = { page: "note", canvas: "canvas", project: "project", notebook: "notebook" };
+const KIND_BY_PREFIX: Record<string, ResourceKind> = { pag: "page", cnv: "canvas", prj: "project", ntb: "notebook", dck: "deck" };
+const KIND_NAME: Record<ResourceKind, ItemRef["kind"]> = { page: "note", canvas: "canvas", project: "project", notebook: "notebook", deck: "presentation" };
 const VIEWS = { notes: "notes", canvas: "canvas", split: "split" } as const;
 
 /** An interactive block in the card: a video, a custom app in its sandbox, or a tile that opens it in Octonote. */

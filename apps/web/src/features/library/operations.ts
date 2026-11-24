@@ -21,6 +21,7 @@ import {
   createProjectClientApi,
   moveProjectClientApi,
 } from "@/features/projects";
+import { createDeckClientApi, deleteDeckClientApi, moveDeckClientApi } from "@/features/decks";
 import { RESOURCE_PATH, type ResourceKind } from "@/features/sharing";
 
 /** Creates an "Untitled …" resource and returns the path to open it at. */
@@ -58,6 +59,13 @@ export async function createResource(
       });
       return RESOURCE_PATH.notebook(nb.id);
     }
+    case "deck": {
+      const d = await createDeckClientApi(workspaceId, {
+        title: "Untitled presentation",
+        ...placement,
+      });
+      return RESOURCE_PATH.deck(d.id);
+    }
   }
 }
 
@@ -78,6 +86,9 @@ export async function deleteResource(
     case "notebook":
       await deleteNotebookClientApi(id);
       return;
+    case "deck":
+      await deleteDeckClientApi(id);
+      return;
   }
 }
 
@@ -88,5 +99,6 @@ export async function moveResource(
 ): Promise<void> {
   if (kind === "page") await moveNoteClientApi(id, notebookId);
   else if (kind === "canvas") await moveCanvasClientApi(id, notebookId);
+  else if (kind === "deck") await moveDeckClientApi(id, notebookId);
   else await moveProjectClientApi(id, notebookId);
 }

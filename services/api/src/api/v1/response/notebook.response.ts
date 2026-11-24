@@ -1,3 +1,4 @@
+import type { DeckSummaryDto } from "./deck.response";
 import type { Role } from "../../../common/permissions.service";
 import type { Notebook } from "../../../model/notebook.model";
 import type { CanvasSummaryDto } from "./canvas.response";
@@ -15,7 +16,7 @@ export interface NotebookDto extends SharingDto {
   updatedAt: string;
   sharedCount?: number;
   /** Live items inside, by kind (list endpoint only). */
-  counts?: { notes: number; canvases: number; projects: number };
+  counts?: { notes: number; canvases: number; projects: number; decks: number };
 }
 
 export interface NotebookContentsDto {
@@ -23,6 +24,7 @@ export interface NotebookContentsDto {
   notes: PageSummaryDto[];
   canvases: CanvasSummaryDto[];
   projects: ProjectDto[];
+  decks: DeckSummaryDto[];
 }
 
 export function notebookToDto(notebook: Notebook, myRole?: Role): NotebookDto {

@@ -4,6 +4,7 @@ import {
   FileText,
   FolderKanban,
   LayoutGrid,
+  Presentation,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -315,6 +316,7 @@ const KIND_ICON: Record<ResourceKind, typeof FileText> = {
   canvas: LayoutGrid,
   project: FolderKanban,
   notebook: BookOpen,
+  deck: Presentation,
 };
 
 function RecentCard({

@@ -23,8 +23,9 @@ import {
   LayoutGrid,
   Link2,
   List,
-  MoreHorizontal,
   Lock,
+  MoreHorizontal,
+  Presentation,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -101,7 +102,7 @@ export interface LibraryRow {
 }
 
 type AccessFilter = "all" | "private" | "shared" | "public";
-type KindFilter = "all" | "page" | "canvas" | "project";
+type KindFilter = "all" | "page" | "canvas" | "project" | "deck";
 type Filter = AccessFilter | KindFilter;
 
 const ACCESS_TABS: [AccessFilter, string][] = [
@@ -115,6 +116,7 @@ const KIND_TABS: [KindFilter, string][] = [
   ["page", "Notes"],
   ["canvas", "Canvases"],
   ["project", "Projects"],
+  ["deck", "Presentations"],
 ];
 export type SortKey = "updated-desc" | "updated-asc" | "name-asc" | "name-desc";
 
@@ -134,6 +136,7 @@ const KIND_ICON: Record<ResourceKind, typeof FileText> = {
   canvas: LayoutGrid,
   project: FolderKanban,
   notebook: BookOpen,
+  deck: Presentation,
 };
 
 const KIND_NAME: Record<ResourceKind, string> = {
@@ -141,6 +144,7 @@ const KIND_NAME: Record<ResourceKind, string> = {
   canvas: "Canvas",
   project: "Project",
   notebook: "Notebook",
+  deck: "Presentation",
 };
 
 const ACCESS: Record<Access, { label: string; icon: typeof Lock }> = {
@@ -152,7 +156,7 @@ const ACCESS: Record<Access, { label: string; icon: typeof Lock }> = {
 
 function matches(row: LibraryRow, filter: Filter) {
   if (filter === "all") return true;
-  if (filter === "page" || filter === "canvas" || filter === "project")
+  if (filter === "page" || filter === "canvas" || filter === "project" || filter === "deck")
     return row.kind === filter;
   if (filter === "public") return row.access === "public";
   if (filter === "shared")

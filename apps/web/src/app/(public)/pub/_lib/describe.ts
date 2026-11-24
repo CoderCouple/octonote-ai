@@ -13,6 +13,7 @@ function descriptionOf(view: PublicView): string {
       .slice(0, 160);
   if (r.kind === "project")
     return r.description ?? `A note and canvas, side by side, on ${SITE_NAME}`;
+  if (r.kind === "deck") return `A presentation published on ${SITE_NAME}`;
   if (r.kind === "notebook")
     return `A notebook with ${r.items.length} item${r.items.length === 1 ? "" : "s"}, published on ${SITE_NAME}`;
   return `A canvas published on ${SITE_NAME}`;

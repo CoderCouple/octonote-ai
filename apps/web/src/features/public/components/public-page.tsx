@@ -21,6 +21,7 @@ import {
   type NotebookContext,
 } from "./notebook-nav";
 import { PublishedCanvas } from "./published-canvas";
+import { PublishedDeck } from "./published-deck";
 import { PublishedNotebook } from "./published-notebook";
 import { PublishedProject } from "./published-project";
 import { ReaderBar } from "./reader-bar";
@@ -72,6 +73,16 @@ export function PublicPage({
       return (
         <PublishedProject
           project={resource}
+          slug={root.slug}
+          byline={view.byline}
+          notebook={notebook}
+          back={back}
+        />
+      );
+    case "deck":
+      return (
+        <PublishedDeck
+          deck={resource}
           slug={root.slug}
           byline={view.byline}
           notebook={notebook}

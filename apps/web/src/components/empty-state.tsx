@@ -4,7 +4,7 @@
  */
 import type { ReactNode } from "react";
 
-export type EmptyKind = "page" | "canvas" | "project" | "notebook" | "shared";
+export type EmptyKind = "page" | "canvas" | "project" | "notebook" | "deck" | "shared";
 
 /**
  * What goes inside an empty library table: the picture, the message's first
@@ -184,6 +184,18 @@ export function EmptyIllustration({
             strokeDasharray="3 3"
             fill={CARD}
           />
+        </>
+      ) : kind === "deck" ? (
+        <>
+          {/* A slide on a screen: title, two points and a block, with the next slide behind. */}
+          <rect x={48} y={22} width={96} height={60} rx={7} fill={CARD} stroke={S} strokeWidth={1.5} strokeDasharray="3 3" />
+          <rect x={34} y={30} width={100} height={62} rx={7} fill={CARD} stroke={S} strokeWidth={1.5} />
+          <rect x={44} y={40} width={40} height={5} rx={2.5} fill={S} />
+          <rect x={44} y={52} width={30} height={3.5} rx={1.75} fill={SUBTLE} />
+          <rect x={44} y={60} width={26} height={3.5} rx={1.75} fill={SUBTLE} />
+          <rect x={92} y={48} width={32} height={30} rx={5} stroke={S} strokeWidth={1.5} fill={CARD} />
+          <path d="M104 58v10l8-5z" fill={S} />
+          <path d="M84 92v12m-12 0h24" stroke={S} strokeWidth={1.5} />
         </>
       ) : kind === "project" ? (
         <>

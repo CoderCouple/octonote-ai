@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
+import { MakePresentationButton } from "@/features/decks";
 import { FocusHeader } from "@/components/focus-header";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { CommentAuthor } from "@octonote/octodraw";
@@ -119,6 +120,9 @@ export function ProjectSplitView({
           </ToggleGroup>
         }
       >
+        {editable ? (
+          <MakePresentationButton kind="project" id={project.id} title={name} workspaceId={project.workspaceId} notebookId={project.notebookId} />
+        ) : null}
         <PublishedViaBadge kind="project" id={project.id} />
         <ShareDialog
           kind="project"

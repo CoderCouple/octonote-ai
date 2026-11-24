@@ -25,7 +25,7 @@ export interface NotesReadOnlyImplProps {
 }
 
 /** Readers never see editor hints like "Heading" or "Type '/' for commands" on empty blocks. */
-const readerDictionary = {
+export const readerDictionary = {
   ...en,
   placeholders: Object.fromEntries(
     Object.keys(en.placeholders).map((k) => [k, undefined]),

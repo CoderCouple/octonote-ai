@@ -8,6 +8,7 @@ import { ChangeEventsService } from "../common/change-events.service";
 import { NotFound } from "../common/error/error-factory";
 import { PermissionsService, type ResolvedAccess } from "../common/permissions.service";
 import { CanvasesRepository, type CanvasSummaryRow } from "../db/repository/canvases.repository";
+import { DecksRepository, type DeckSummaryRow } from "../db/repository/decks.repository";
 import { NotebooksRepository } from "../db/repository/notebooks.repository";
 import { PagesRepository, type PageSummaryRow } from "../db/repository/pages.repository";
 import { ProjectsRepository } from "../db/repository/projects.repository";
@@ -24,6 +25,7 @@ export interface NotebookContents {
   notes: PageSummaryRow[];
   canvases: CanvasSummaryRow[];
   projects: Project[];
+  decks: DeckSummaryRow[];
 }
 
 @Injectable()
@@ -37,6 +39,7 @@ export class NotebooksService {
     private readonly workspacesService: WorkspacesService,
     private readonly changeEvents: ChangeEventsService,
     private readonly planLimits: PlanLimitsService,
+    private readonly decksRepo: DecksRepository,
   ) {}
 
   async listForWorkspace(workspaceId: string, actorUserId: string): Promise<Notebook[]> {
@@ -53,10 +56,11 @@ export class NotebooksService {
     );
     const row = await this.notebooksRepo.findById(notebookId);
     if (!row) throw NotFound("Notebook not found.");
-    const [notes, canvases, projects] = await Promise.all([
+    const [notes, canvases, projects, decks] = await Promise.all([
       this.pagesRepo.listByNotebook(notebookId),
       this.canvasesRepo.listByNotebook(notebookId),
       this.projectsRepo.listByNotebook(notebookId),
+      this.decksRepo.listByNotebook(notebookId),
     ]);
     return {
       notebook: toNotebook(row),
@@ -64,6 +68,7 @@ export class NotebooksService {
       notes,
       canvases,
       projects: projects.map(toProject),
+      decks,
     };
   }
 

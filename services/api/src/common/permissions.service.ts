@@ -1,8 +1,9 @@
 /**
  * Google Docs / Drive-style access resolution. Every read and write of a
- * note, canvas, project or notebook goes through here.
+ * note, canvas, project, notebook or presentation goes through here.
  *
- * Walks the containment chain (note/canvas → project → notebook) and takes
+ * Walks the containment chain (note/canvas → project → notebook; a
+ * presentation → notebook) and takes
  * the highest role granted by any of:
  *   - workspace membership: OWNER/ADMIN → owner, MEMBER → editor
  *   - having created any resource in the chain → owner
@@ -17,6 +18,7 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { Database, DRIZZLE } from "../db/database.module";
 import {
   canvases,
+  decks,
   notebooks,
   pages,
   projects,
@@ -25,7 +27,7 @@ import {
   workspaceMembers,
 } from "../db/schema";
 
-export type ResourceKind = "page" | "canvas" | "project" | "notebook";
+export type ResourceKind = "page" | "canvas" | "project" | "notebook" | "deck";
 export type Role = "viewer" | "editor" | "owner";
 export type ShareRole = "viewer" | "editor";
 
@@ -237,6 +239,19 @@ export class PermissionsService {
           .limit(1);
         if (!row) return null;
         return { kind: "notebook", ...pickCommon(row), parent: null };
+      }
+      case "deck": {
+        const [row] = await this.db
+          .select()
+          .from(decks)
+          .where(and(eq(decks.id, locator.id), isNull(decks.deletedAt)))
+          .limit(1);
+        if (!row) return null;
+        return {
+          kind: "deck",
+          ...pickCommon(row),
+          parent: row.notebookId ? { kind: "notebook", id: row.notebookId } : null,
+        };
       }
     }
   }

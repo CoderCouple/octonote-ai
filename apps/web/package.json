@@ -32,6 +32,7 @@
     "@octonote/motion": "workspace:*",
     "@octonote/octodraw": "workspace:*",
     "@octonote/shared": "workspace:*",
+    "@octonote/slides": "workspace:*",
     "@octonote/widgets": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.17",
     "@radix-ui/react-label": "^2.1.10",

@@ -19,6 +19,7 @@ const KIND_LABEL = {
   canvas: "Canvas",
   project: "Project",
   notebook: "Notebook",
+  deck: "Presentation",
 } as const;
 
 // Inter, the site's font (Satori reads woff, not woff2), loaded once per server.
@@ -87,6 +88,9 @@ export async function ogCard(view: PublicView | null) {
     pictures = [await inline(r.canvas?.thumbnailUrl)].filter(
       Boolean,
     ) as string[];
+  } else if (r.kind === "deck") {
+    const count = Array.isArray((r.document as { slides?: unknown[] } | null)?.slides) ? (r.document as { slides: unknown[] }).slides.length : 0;
+    detail = `${count} ${count === 1 ? "slide" : "slides"}`;
   } else {
     detail = `${r.items.length} ${r.items.length === 1 ? "item" : "items"}`;
     const withPictures = r.items

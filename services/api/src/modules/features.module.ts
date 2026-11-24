@@ -27,6 +27,7 @@ import { ComposeAiService } from "../service/compose-ai.service";
 import { FiguresService } from "../service/figures.service";
 import { VotesService } from "../service/votes.service";
 import { CanvasesController } from "../api/v1/controller/canvases.controller";
+import { DecksController } from "../api/v1/controller/decks.controller";
 import { CliTokensController } from "../api/v1/controller/cli-tokens.controller";
 import { OAuthController } from "../api/v1/controller/oauth.controller";
 import { McpController } from "../api/v1/controller/mcp.controller";
@@ -66,6 +67,7 @@ import { PublicController } from "../api/v1/controller/public.controller";
 import { SharingController } from "../api/v1/controller/sharing.controller";
 import { WorkspacesController } from "../api/v1/controller/workspaces.controller";
 import { CanvasesService } from "../service/canvases.service";
+import { DecksService } from "../service/decks.service";
 import { ChangeEventsReaderService } from "../service/change-events-reader.service";
 import { NotebooksService } from "../service/notebooks.service";
 import { PagesService } from "../service/pages.service";
@@ -93,6 +95,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     ProjectsController,
     PagesController,
     CanvasesController,
+    DecksController,
     SharingController,
     PublicController,
     ChangeEventsController,
@@ -128,6 +131,7 @@ import { SharingSettingsService } from "../service/sharing-settings.service";
     ExtensionItemsService,
     VideosService,
     CanvasesService,
+    DecksService,
     SharesService,
     SharingSettingsService,
     PublicService,

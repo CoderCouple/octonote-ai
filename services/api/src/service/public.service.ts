@@ -11,6 +11,7 @@ import { Injectable } from "@nestjs/common";
 import { firstImageUrl, previewFromMarkdown, readingMinutes } from "@octonote/shared";
 import { NotFound } from "../common/error/error-factory";
 import { CanvasesRepository } from "../db/repository/canvases.repository";
+import { DecksRepository } from "../db/repository/decks.repository";
 import { NotebooksRepository } from "../db/repository/notebooks.repository";
 import { PagesRepository } from "../db/repository/pages.repository";
 import { ProjectsRepository } from "../db/repository/projects.repository";
@@ -49,6 +50,15 @@ export interface PublicProject {
   updatedAt: string;
 }
 
+export interface PublicDeck {
+  kind: "deck";
+  id: string;
+  title: string;
+  /** A @octonote/slides deck. */
+  document: unknown;
+  updatedAt: string;
+}
+
 export interface PublicNotebook {
   kind: "notebook";
   id: string;
@@ -69,9 +79,11 @@ export interface PublicNotebookItem {
   excerpt: string | null;
   /** Reading time of the note; null for canvases. */
   minutes: number | null;
+  /** How many slides a presentation has; absent for other kinds. */
+  slideCount?: number;
 }
 
-export type PublicResource = PublicNote | PublicCanvas | PublicProject | PublicNotebook;
+export type PublicResource = PublicNote | PublicCanvas | PublicProject | PublicNotebook | PublicDeck;
 
 export interface PublicByline {
   /** Who made the item: display name and avatar only. */
@@ -96,6 +108,7 @@ export class PublicService {
     private readonly projectsRepo: ProjectsRepository,
     private readonly notebooksRepo: NotebooksRepository,
     private readonly usersRepo: UsersRepository,
+    private readonly decksRepo: DecksRepository,
   ) {}
 
   async getBySlug(slug: string): Promise<PublicView> {
@@ -141,6 +154,7 @@ export class PublicService {
       canvas: this.canvasesRepo,
       project: this.projectsRepo,
       notebook: this.notebooksRepo,
+      deck: this.decksRepo,
     }[kind] as { findById: (id: string) => Promise<{ createdByUserId: string } | null> };
     const row = await repo.findById(id);
     const user = row ? await this.usersRepo.findById(row.createdByUserId) : null;
@@ -194,6 +208,8 @@ export class PublicService {
         return this.renderProject(id);
       case "notebook":
         return this.renderNotebook(id);
+      case "deck":
+        return this.renderDeck(id);
     }
   }
 
@@ -243,13 +259,20 @@ export class PublicService {
     };
   }
 
+  private async renderDeck(id: string): Promise<PublicDeck> {
+    const row = await this.decksRepo.findActiveById(id);
+    if (!row) throw NotFound("Not found.");
+    return { kind: "deck", id: row.id, title: row.title, document: withoutNotes(row.document), updatedAt: row.updatedAt.toISOString() };
+  }
+
   private async renderNotebook(id: string): Promise<PublicNotebook> {
     const row = await this.notebooksRepo.findById(id);
     if (!row) throw NotFound("Not found.");
-    const [notes, canvases, projects] = await Promise.all([
+    const [notes, canvases, projects, decks] = await Promise.all([
       this.pagesRepo.listByNotebook(id),
       this.canvasesRepo.listByNotebook(id),
       this.projectsRepo.listByNotebook(id),
+      this.decksRepo.listByNotebook(id),
     ]);
     // A project's card reads its own note (excerpt, reading time).
     const noteByProject = await this.pagesRepo.findActiveByProjects(projects.map((p) => p.id));
@@ -294,10 +317,27 @@ export class PublicService {
               : { excerpt: p.description, minutes: null }),
           };
         }),
+        ...decks.map((d) => ({
+          kind: "deck" as const,
+          id: d.id,
+          title: d.title,
+          updatedAt: d.updatedAt.toISOString(),
+          thumbnailUrl: null,
+          excerpt: null,
+          minutes: null,
+          slideCount: d.slideCount,
+        })),
       ],
       updatedAt: row.updatedAt.toISOString(),
     };
   }
+}
+
+/** Presenter notes are the speaker's own: a published deck never carries them. */
+function withoutNotes(document: unknown): unknown {
+  if (!document || typeof document !== "object" || !Array.isArray((document as { slides?: unknown }).slides)) return document;
+  const deck = document as { slides: Record<string, unknown>[] };
+  return { ...deck, slides: deck.slides.map((s) => (s && typeof s === "object" ? { ...s, notes: "" } : s)) };
 }
 
 function rootRef(root: ShareableRow, slug: string) {

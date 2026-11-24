@@ -1,15 +1,16 @@
 "use client";
 
 import {
-  ShieldCheck,
   BookOpen,
   FileText,
   FolderKanban,
   Home,
   LayoutGrid,
-  Settings,
-  Users,
   Library,
+  Presentation,
+  Settings,
+  ShieldCheck,
+  Users,
   WandSparkles,
 } from "lucide-react";
 import * as React from "react";
@@ -48,6 +49,7 @@ export function AppSidebar({
     { title: "Notes", url: "/workspace/notes", icon: FileText },
     { title: "Canvases", url: "/workspace/canvases", icon: LayoutGrid },
     { title: "Projects", url: "/workspace/projects", icon: FolderKanban },
+    { title: "Presentations", url: "/workspace/decks", icon: Presentation },
     { title: "Notebooks", url: "/workspace/notebooks", icon: BookOpen },
     { title: "Studio", url: "/workspace/studio", icon: WandSparkles },
     { title: "Collections", url: "/workspace/collections", icon: Library },

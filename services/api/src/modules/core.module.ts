@@ -9,6 +9,7 @@ import { POSTHOG_CONFIG, postHogConfigFromEnv, ProductAnalytics } from "../commo
 import { BILLING_ENFORCED, PlanLimitsService } from "../common/plan-limits.service";
 import { DatabaseModule } from "../db/database.module";
 import { CanvasesRepository } from "../db/repository/canvases.repository";
+import { DecksRepository } from "../db/repository/decks.repository";
 import { CliTokensRepository } from "../db/repository/cli-tokens.repository";
 import { OAuthRepository } from "../db/repository/oauth.repository";
 import { ChangeEventsRepository } from "../db/repository/change-events.repository";
@@ -29,6 +30,7 @@ import { WorkspacesService } from "../service/workspaces.service";
 
 const providers = [
   CanvasesRepository,
+  DecksRepository,
   ChangeEventsRepository,
   CliTokensRepository,
   OAuthRepository,

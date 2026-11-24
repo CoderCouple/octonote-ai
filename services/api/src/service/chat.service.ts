@@ -386,11 +386,8 @@ export class ChatService {
     const items = q
       ? await this.tools.search(userId, q, 12, ws)
       : (await this.tools.list(userId, { workspaceId: ws })).slice(0, 12);
-    const out: Mention[] = items.map((i) => ({
-      kind: i.kind,
-      id: i.id,
-      title: i.title,
-    }));
+    // Presentations can't be @-mentioned in chat yet.
+    const out: Mention[] = items.flatMap((i) => (i.kind === "presentation" ? [] : [{ kind: i.kind, id: i.id, title: i.title }]));
     const figures = await this.figures
       .listForWorkspace(ws, userId)
       .catch(() => []);

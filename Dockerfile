@@ -1,8 +1,8 @@
 # NestJS API image for Railway. Installs from the pnpm workspace root and
 # builds only what the API runs (the web app deploys to Vercel): @octonote/shared,
 # @octonote/content, the AI libraries (@octonote/compose with widgets,
-# infographic, interactive and motion it validates against; @octonote/manim for videos)
-# and @octonote/api.
+# infographic, interactive and motion it validates against; @octonote/manim for videos),
+# @octonote/slides (checks presentations) and @octonote/api.
 
 # Official Node image via AWS ECR Public: same image as Docker Hub, without its pull rate limits.
 FROM public.ecr.aws/docker/library/node:22-slim AS base
@@ -22,6 +22,7 @@ COPY packages/infographic/package.json packages/infographic/
 COPY packages/interactive/package.json packages/interactive/
 COPY packages/motion/package.json packages/motion/
 COPY packages/manim/package.json packages/manim/
+COPY packages/slides/package.json packages/slides/
 # Workspace dependency of api/content; only its package.json is needed to install (nothing imports it at runtime).
 COPY packages/octodraw/package.json packages/octodraw/
 RUN NODE_ENV=development pnpm install --frozen-lockfile --filter @octonote/api...
@@ -38,10 +39,11 @@ COPY packages/infographic packages/infographic
 COPY packages/interactive packages/interactive
 COPY packages/motion packages/motion
 COPY packages/manim packages/manim
+COPY packages/slides packages/slides
 COPY services/api services/api
 RUN pnpm --filter @octonote/shared build && pnpm --filter @octonote/content build \
  && pnpm --filter @octonote/widgets build && pnpm --filter @octonote/infographic build && pnpm --filter @octonote/interactive build && pnpm --filter @octonote/motion build \
- && pnpm --filter @octonote/compose build && pnpm --filter @octonote/manim build \
+ && pnpm --filter @octonote/compose build && pnpm --filter @octonote/manim build && pnpm --filter @octonote/slides build \
  && pnpm --filter @octonote/api build
 
 FROM base AS runtime
@@ -71,6 +73,8 @@ COPY --from=build /app/packages/motion/dist packages/motion/dist
 COPY --from=build /app/packages/motion/examples packages/motion/examples
 COPY --from=build /app/packages/manim/package.json packages/manim/
 COPY --from=build /app/packages/manim/dist packages/manim/dist
+COPY --from=build /app/packages/slides/package.json packages/slides/
+COPY --from=build /app/packages/slides/dist packages/slides/dist
 COPY --from=build /app/services/api/package.json services/api/
 COPY --from=build /app/services/api/dist services/api/dist
 COPY --from=build /app/services/api/drizzle services/api/drizzle
@@ -80,6 +84,6 @@ RUN printf 'public-hoist-pattern[]=react\npublic-hoist-pattern[]=react-dom\npubl
  && pnpm install --frozen-lockfile --prod --filter @octonote/api...
 # The API loads the AI libraries lazily, on the first interactive block. Load them now
 # so a package missing from this image fails the build, not a user's save.
-RUN cd services/api && node --input-type=module -e "await import('@octonote/compose'); await import('@octonote/content/server'); console.log('AI libraries load')"
+RUN cd services/api && node --input-type=module -e "await import('@octonote/compose'); await import('@octonote/content/server'); await import('@octonote/slides/core'); console.log('AI libraries load')"
 EXPOSE 4000
 CMD ["pnpm", "--filter", "@octonote/api", "start"]

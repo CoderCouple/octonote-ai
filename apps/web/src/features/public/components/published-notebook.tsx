@@ -15,6 +15,7 @@ import {
   LayoutGrid,
   Link2,
   List,
+  Presentation,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -30,25 +31,28 @@ import { ReaderBar } from "./reader-bar";
 import { VoteButtons, VotesProvider } from "./votes";
 
 type View = "grid" | "list";
-type KindFilter = "all" | "page" | "canvas" | "project";
+type KindFilter = "all" | "page" | "canvas" | "project" | "deck";
 
 const KIND_NAME: Record<PublicKind, string> = {
   page: "Note",
   canvas: "Canvas",
   project: "Project",
   notebook: "Notebook",
+  deck: "Presentation",
 };
 const KIND_ICON: Record<PublicKind, typeof FileText> = {
   page: FileText,
   canvas: LayoutGrid,
   project: FolderKanban,
   notebook: BookOpen,
+  deck: Presentation,
 };
 const FILTERS: [KindFilter, string][] = [
   ["all", "All"],
   ["page", "Notes"],
   ["canvas", "Canvases"],
   ["project", "Projects"],
+  ["deck", "Presentations"],
 ];
 const VIEW_KEY = "octonote:pub-notebook-view";
 
@@ -101,6 +105,7 @@ export function PublishedNotebook({
       page: 0,
       canvas: 0,
       project: 0,
+      deck: 0,
     };
     for (const i of items) if (i.kind in c) c[i.kind as KindFilter] += 1;
     return c;
@@ -228,6 +233,7 @@ function metaLine(item: PublicNotebookItem) {
     month: "short",
     day: "numeric",
   });
+  if (item.slideCount !== undefined) return `${item.slideCount} ${item.slideCount === 1 ? "slide" : "slides"} · ${date}`;
   return item.minutes ? `${item.minutes} min read · ${date}` : date;
 }
 

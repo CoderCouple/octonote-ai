@@ -38,6 +38,7 @@ function contentsLabel(c: {
   notes: number;
   canvases: number;
   projects: number;
+  decks?: number;
 }) {
   const part = (n: number, one: string, many: string) =>
     n ? `${n} ${n === 1 ? one : many}` : null;
@@ -46,6 +47,7 @@ function contentsLabel(c: {
       part(c.notes, "note", "notes"),
       part(c.canvases, "canvas", "canvases"),
       part(c.projects, "project", "projects"),
+      part(c.decks ?? 0, "presentation", "presentations"),
     ]
       .filter(Boolean)
       .join(" · ") || "Empty"

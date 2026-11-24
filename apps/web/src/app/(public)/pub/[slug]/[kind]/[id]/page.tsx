@@ -13,7 +13,7 @@ import {
 import { JsonLd } from "@/components/json-ld";
 import { articleJsonLd, describe } from "../../../_lib/describe";
 
-const KINDS = new Set<PublicKind>(["page", "canvas", "project", "notebook"]);
+const KINDS = new Set<PublicKind>(["page", "canvas", "project", "notebook", "deck"]);
 type Params = { params: Promise<{ slug: string; kind: string; id: string }> };
 
 async function pathOf({ params }: Params) {

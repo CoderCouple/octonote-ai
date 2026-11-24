@@ -27,3 +27,4 @@ export * from "./ai-keys";
 export * from "./collections";
 export * from "./studio";
 export * from "./extension-connect";
+export * from "./decks";

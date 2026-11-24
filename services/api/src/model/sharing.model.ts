@@ -1,6 +1,6 @@
 import type { resourceShares } from "../db/schemas/sharing";
 
-export type ResourceKind = "page" | "canvas" | "project" | "notebook";
+export type ResourceKind = "page" | "canvas" | "project" | "notebook" | "deck";
 export type ShareRole = "viewer" | "editor";
 export type LinkAccess = "restricted" | "anyone_with_link";
 export type ShareStatus = "active" | "pending" | "revoked";

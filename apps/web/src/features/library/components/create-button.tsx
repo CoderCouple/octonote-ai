@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   Loader2,
   Plus,
+  Presentation,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -28,6 +29,7 @@ const LABEL: Record<ResourceKind, string> = {
   canvas: "New canvas",
   project: "New project",
   notebook: "New notebook",
+  deck: "New presentation",
 };
 
 const KIND_ICON: Record<ResourceKind, typeof FileText> = {
@@ -35,6 +37,7 @@ const KIND_ICON: Record<ResourceKind, typeof FileText> = {
   canvas: LayoutGrid,
   project: FolderKanban,
   notebook: BookOpen,
+  deck: Presentation,
 };
 
 const MENU_LABEL: Record<ResourceKind, string> = {
@@ -42,6 +45,7 @@ const MENU_LABEL: Record<ResourceKind, string> = {
   canvas: "Canvas",
   project: "Project",
   notebook: "Notebook",
+  deck: "Presentation",
 };
 
 /** One click: create an "Untitled" resource and open it; rename happens inline there. */

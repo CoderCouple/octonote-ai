@@ -19,6 +19,7 @@ import {
   ShareDialog,
   type AccessRole,
 } from "@/features/sharing";
+import { MakePresentationButton } from "@/features/decks";
 import { updateNoteClientApi } from "../api/notes-client-api";
 import { TypographyPicker } from "../typography/typography-picker";
 import { useNoteTypography } from "../typography/use-note-typography";
@@ -110,6 +111,9 @@ export function NotesPane({
             {raw ? "Back to the editor" : "View as markdown"}
           </TooltipContent>
         </Tooltip>
+        {showShare && editable ? (
+          <MakePresentationButton kind="page" id={note.id} title={title} workspaceId={note.workspaceId} notebookId={note.notebookId} />
+        ) : null}
         {showShare ? (
           <ShareDialog
             kind="page"

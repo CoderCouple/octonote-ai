@@ -1,6 +1,6 @@
 /**
  * "General access" (restricted / anyone with the link) and "Publish to web"
- * for notes, canvases, projects and notebooks. Owner-only ("manage").
+ * for notes, canvases, projects, notebooks and presentations. Owner-only ("manage").
  *
  * Published state is inherited at read time: a resource is public if it or
  * any ancestor is published. getPublishState reports which ancestor so the
@@ -116,7 +116,7 @@ export class SharingSettingsService {
     return null;
   }
 
-  /** Slugs are unique across all four tables (one /pub/<slug> namespace). */
+  /** Slugs are unique across every shareable table (one /pub/<slug> namespace). */
   private async allocateSlug(title: string): Promise<string> {
     const base = slugifyTitle(title);
     for (let i = 0; i < SLUG_ATTEMPTS; i++) {

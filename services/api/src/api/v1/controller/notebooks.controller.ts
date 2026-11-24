@@ -1,3 +1,4 @@
+import { deckSummaryToDto } from "../response/deck.response";
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import type { OptionalAuthRequest } from "../../../auth/optional-supabase-auth.guard";
@@ -45,7 +46,7 @@ export class NotebooksController {
     return notebookToDto(await this.notebooks.create(workspaceId, body, req.user.id), "owner");
   }
 
-  /** Notebook + its notes, canvases and projects. Optional auth for link sharing. */
+  /** Notebook + its notes, canvases, projects and presentations. Optional auth for link sharing. */
   @Get("notebooks/:id")
   @UseGuards(OptionalSupabaseAuthGuard)
   async getContents(
@@ -66,6 +67,7 @@ export class NotebooksController {
         updatedAt: cv.updatedAt.toISOString(),
       })),
       projects: c.projects.map((p) => projectToDto(p)),
+      decks: c.decks.map(deckSummaryToDto),
     };
   }
 

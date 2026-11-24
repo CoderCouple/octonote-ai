@@ -13,6 +13,7 @@ export const RESOURCE_PATH: Record<ResourceKind, (id: string) => string> = {
   canvas: (id) => `/c/${id}`,
   project: (id) => `/p/${id}`,
   notebook: (id) => `/nb/${id}`,
+  deck: (id) => `/d/${id}`,
 };
 
 export const KIND_LABEL: Record<ResourceKind, string> = {
@@ -20,6 +21,7 @@ export const KIND_LABEL: Record<ResourceKind, string> = {
   canvas: "canvas",
   project: "project",
   notebook: "notebook",
+  deck: "presentation",
 };
 
 const RANK: Record<AccessRole, number> = { viewer: 1, editor: 2, owner: 3 };

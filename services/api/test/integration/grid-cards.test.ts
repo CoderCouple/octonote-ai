@@ -39,12 +39,15 @@ describe("list endpoints for grid cards", () => {
     const gone = await h.pages.create(ws, { title: "Two", notebookId: nb.id }, alice.id);
     await h.canvases.create(ws, { title: "Board", notebookId: nb.id }, alice.id);
     await h.projects.create(ws, { name: "Proj", notebookId: nb.id }, alice.id);
+    await h.decks.create(ws, { title: "Talk", notebookId: nb.id }, alice.id);
+    const goneDeck = await h.decks.create(ws, { title: "Old talk", notebookId: nb.id }, alice.id);
     // Outside the notebook: not counted. Nor is a project's own note/canvas.
     await h.pages.create(ws, { title: "Loose" }, alice.id);
     await h.pages.softDelete(gone.id, alice.id);
+    await h.decks.softDelete(goneDeck.id, alice.id);
 
     const [row] = await h.notebooks.listForWorkspace(ws, alice.id);
-    expect(row!.counts).toEqual({ notes: 1, canvases: 1, projects: 1 });
+    expect(row!.counts).toEqual({ notes: 1, canvases: 1, projects: 1, decks: 1 });
   });
 });
 

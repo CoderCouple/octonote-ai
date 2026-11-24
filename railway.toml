@@ -20,6 +20,8 @@ watchPatterns = [
   "packages/interactive/**",
   "packages/motion/**",
   "packages/manim/**",
+  # Presentations are checked with the slides model.
+  "packages/slides/**",
   "Dockerfile",
   "railway.toml",
   "pnpm-lock.yaml",

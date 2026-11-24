@@ -46,7 +46,7 @@ import { TableOfContentsRail } from "./table-of-contents-rail";
 
 const SAVE_DEBOUNCE_MS = 1200;
 
-type OctoEditor = BlockNoteEditor<
+export type OctoEditor = BlockNoteEditor<
   typeof octoBlockNoteSchema.blockSchema,
   typeof octoBlockNoteSchema.inlineContentSchema,
   typeof octoBlockNoteSchema.styleSchema
@@ -71,7 +71,27 @@ export interface NotesEditorApi {
   insertMarkdownAtStart: (markdown: string) => void;
 }
 
-function figureSlashItem(onOpen: () => void): DefaultReactSuggestionItem {
+/**
+ * Keeps each group's items together, groups in order of first appearance.
+ * The menu keys group headings by name, so a group that appears twice
+ * (BlockNote's own "Advanced" item, then ours further down) shows an empty
+ * heading and confuses React.
+ */
+export function groupedSlashItems<T extends { group?: string }>(items: T[]): T[] {
+  const order: string[] = [];
+  const byGroup = new Map<string, T[]>();
+  for (const item of items) {
+    const g = item.group ?? "";
+    if (!byGroup.has(g)) {
+      byGroup.set(g, []);
+      order.push(g);
+    }
+    byGroup.get(g)!.push(item);
+  }
+  return order.flatMap((g) => byGroup.get(g)!);
+}
+
+export function figureSlashItem(onOpen: () => void): DefaultReactSuggestionItem {
   return {
     title: "Figure",
     subtext: "Embed a figure from a canvas as an image",
@@ -94,7 +114,7 @@ function canvasSlashItem(onOpen: () => void): DefaultReactSuggestionItem {
 }
 
 /** `/equation`, `/inline equation` and `/mermaid`. */
-function mathAndDiagramSlashItems(
+export function mathAndDiagramSlashItems(
   editor: OctoEditor,
 ): DefaultReactSuggestionItem[] {
   const placeBlock = (block: { type: "mathBlock" | "mermaid" }) => {
@@ -158,7 +178,7 @@ const INTERACTIVE_ITEMS: { kind: string; subtext: string; aliases: string[]; ico
 ];
 
 /** `/widget`, `/flashcards`, `/quiz`… insert a starter to edit; `/build with ai` writes a section. */
-function interactiveSlashItems(editor: OctoEditor, openAi: () => void, openVideo: () => void): DefaultReactSuggestionItem[] {
+export function interactiveSlashItems(editor: OctoEditor, openAi: () => void, openVideo: () => void): DefaultReactSuggestionItem[] {
   const place = (kind: string) => {
     const block = { type: "interactive" as const, props: { kind, spec: starterSpec(kind) } };
     const current = editor.getTextCursorPosition().block;
@@ -438,13 +458,13 @@ export function NotesEditor({
                   triggerCharacter="/"
                   getItems={async (query) =>
                     filterSuggestionItems(
-                      [
+                      groupedSlashItems([
                         ...getDefaultReactSlashMenuItems(editor),
                         canvasSlashItem(() => setPickerOpen(true)),
                         figureSlashItem(() => setFigurePickerOpen(true)),
                         ...mathAndDiagramSlashItems(editor),
                         ...interactiveSlashItems(editor, () => setAiOpen(true), () => setVideoOpen(true)),
-                      ],
+                      ]),
                       query,
                     )
                   }

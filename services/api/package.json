@@ -27,6 +27,7 @@
     "@octonote/manim": "workspace:*",
     "@octonote/octodraw": "workspace:*",
     "@octonote/shared": "workspace:*",
+    "@octonote/slides": "workspace:*",
     "@supabase/supabase-js": "^2.47.10",
     "drizzle-orm": "^0.38.4",
     "fastify": "4.28.1",

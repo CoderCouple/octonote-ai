@@ -5,6 +5,7 @@ import { canvases } from "../schemas/canvases";
 import { notebooks } from "../schemas/notebooks";
 import { pages } from "../schemas/pages";
 import { projects } from "../schemas/projects";
+import { decks } from "../schemas/decks";
 import { BaseRepository } from "./base.repository";
 import { liveShareCount } from "./share-count";
 
@@ -24,6 +25,7 @@ export class NotebooksRepository extends BaseRepository<typeof notebooks> {
         noteCount: sql<number>`(select count(*)::int from ${pages} where ${pages.notebookId} = "notebooks"."id" and ${pages.deletedAt} is null)`,
         canvasCount: sql<number>`(select count(*)::int from ${canvases} where ${canvases.notebookId} = "notebooks"."id" and ${canvases.deletedAt} is null)`,
         projectCount: sql<number>`(select count(*)::int from ${projects} where ${projects.notebookId} = "notebooks"."id" and ${projects.archivedAt} is null)`,
+        deckCount: sql<number>`(select count(*)::int from ${decks} where ${decks.notebookId} = "notebooks"."id" and ${decks.deletedAt} is null)`,
       })
       .from(notebooks)
       .where(eq(notebooks.workspaceId, workspaceId))

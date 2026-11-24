@@ -6,6 +6,7 @@ import {
   FolderKanban,
   LayoutGrid,
   MoreHorizontal,
+  Presentation,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,6 +45,7 @@ const ICON: Record<ResourceKind, typeof FileText> = {
   canvas: LayoutGrid,
   project: FolderKanban,
   notebook: BookOpen,
+  deck: Presentation,
 };
 
 export const DELETE_COPY: Record<ResourceKind, string> = {
@@ -54,6 +56,7 @@ export const DELETE_COPY: Record<ResourceKind, string> = {
     "The project, its note and its canvas will be deleted for everyone they're shared with.",
   notebook:
     "Only the notebook is deleted. Everything inside moves back to the top level.",
+  deck: "The presentation will be deleted for everyone it's shared with. The notes it was made from stay as they are.",
 };
 
 interface ResourceListProps {

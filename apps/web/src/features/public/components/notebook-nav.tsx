@@ -18,6 +18,7 @@ import {
   FileText,
   FolderKanban,
   LayoutGrid,
+  Presentation,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -41,6 +42,7 @@ const GROUPS: { kind: PublicKind; label: string; icon: typeof FileText }[] = [
   { kind: "page", label: "Notes", icon: FileText },
   { kind: "canvas", label: "Canvases", icon: LayoutGrid },
   { kind: "project", label: "Projects", icon: FolderKanban },
+  { kind: "deck", label: "Presentations", icon: Presentation },
 ];
 
 const hrefOf = (nb: NotebookContext, item: { kind: PublicKind; id: string }) =>

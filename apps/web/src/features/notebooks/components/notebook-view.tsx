@@ -4,6 +4,7 @@ import { BookOpen } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
+import { MakePresentationButton } from "@/features/decks";
 import { FocusHeader } from "@/components/focus-header";
 import {
   accessOf,
@@ -91,6 +92,20 @@ export function NotebookView({
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     })),
+    ...(contents.decks ?? []).map((d) => ({
+      kind: "deck" as const,
+      id: d.id,
+      title: d.title,
+      subtitle: `${d.slideCount} ${d.slideCount === 1 ? "slide" : "slides"}`,
+      thumbnailUrl: null,
+      notebookId: d.notebookId,
+      access: accessOf(d, notebook),
+      publishedVia: via(d),
+      sharedCount: d.sharedCount,
+      owner: d.creator?.name ?? null,
+      createdAt: d.createdAt,
+      updatedAt: d.updatedAt,
+    })),
   ];
   const lastUpdated = rows.reduce(
     (max, r) => (r.updatedAt > max ? r.updatedAt : max),
@@ -114,6 +129,9 @@ export function NotebookView({
           )
         }
       >
+        {editable ? (
+          <MakePresentationButton kind="notebook" id={notebook.id} title={name} workspaceId={notebook.workspaceId} />
+        ) : null}
         <PublishedViaBadge kind="notebook" id={notebook.id} />
         <ShareDialog
           kind="notebook"
@@ -134,11 +152,11 @@ export function NotebookView({
           hideNotebookColumn
           rowActions={editable}
           emptyKind="notebook"
-          emptyMessage="This notebook is empty. Add notes, canvases and projects — they're shared and published along with the notebook."
+          emptyMessage="This notebook is empty. Add notes, canvases, projects and presentations — they're shared and published along with the notebook."
           createAction={
             editable ? (
               <CreateMenu
-                kinds={["page", "canvas", "project"]}
+                kinds={["page", "canvas", "project", "deck"]}
                 workspaceId={ws}
                 notebookId={notebook.id}
               />

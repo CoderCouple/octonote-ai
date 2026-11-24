@@ -216,7 +216,7 @@ describe("mcp server", () => {
     expect(embeds[0]).toMatchObject({ kind: "custom", title: "Three steps", description: "Watch the formula split." });
     expect(embeds[1]).toEqual({ kind: "block", type: "Mind map", title: "Mind map" });
 
-    const run = (await client.callTool({ name: "note_embed", arguments: { noteId, blockId: embeds[0]!.blockId } })) as {
+    const run = (await client.callTool({ name: "note_embed", arguments: { noteId, blockId: embeds[0]!.blockId } })) as unknown as {
       structuredContent: { srcdoc: string; nonce: string };
     };
     expect(run.structuredContent.srcdoc).toContain("Content-Security-Policy");

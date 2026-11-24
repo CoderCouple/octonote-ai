@@ -10,6 +10,7 @@ import {
   FileText,
   FolderKanban,
   LayoutGrid,
+  Presentation,
   Search,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,12 +31,14 @@ const ICON: Record<ResourceKind, typeof FileText> = {
   canvas: LayoutGrid,
   project: FolderKanban,
   notebook: BookOpen,
+  deck: Presentation,
 };
 const KIND: Record<ResourceKind, string> = {
   page: "Note",
   canvas: "Canvas",
   project: "Project",
   notebook: "Notebook",
+  deck: "Presentation",
 };
 const MAX_RESULTS = 8;
 

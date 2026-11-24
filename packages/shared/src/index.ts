@@ -23,6 +23,7 @@ export const NotebookIdSchema = prefixedId(ID_PREFIXES.notebook);
 export const ProjectIdSchema = prefixedId(ID_PREFIXES.project);
 export const ResourceShareIdSchema = prefixedId(ID_PREFIXES.resourceShare);
 export const PageIdSchema = prefixedId(ID_PREFIXES.page);
+export const DeckIdSchema = prefixedId(ID_PREFIXES.deck);
 export const CanvasIdSchema = prefixedId(ID_PREFIXES.canvas);
 export const CanvasSnapshotIdSchema = prefixedId(ID_PREFIXES.canvasSnapshot);
 export const ChangeEventIdSchema = prefixedId(ID_PREFIXES.changeEvent);
@@ -109,7 +110,7 @@ export const CanvasSettingsSchema = z
 // Sharing + publishing (Google Docs model)
 // =============================================================================
 
-export const ResourceKindSchema = z.enum(["page", "canvas", "project", "notebook"]);
+export const ResourceKindSchema = z.enum(["page", "canvas", "project", "notebook", "deck"]);
 /** Grantable to a person or via "anyone with the link". */
 export const ShareRoleSchema = z.enum(["viewer", "editor"]);
 /** Effective role of the caller; owner = workspace OWNER/ADMIN or creator in the chain. */
@@ -205,7 +206,7 @@ export const NotebookSchema = z.object({
   /** Live per-person grants; list endpoints only. */
   sharedCount: z.number().optional(),
   /** Live items inside, by kind (list endpoint only). */
-  counts: z.object({ notes: z.number(), canvases: z.number(), projects: z.number() }).optional(),
+  counts: z.object({ notes: z.number(), canvases: z.number(), projects: z.number(), decks: z.number().optional() }).optional(),
 });
 
 // =============================================================================
@@ -460,6 +461,7 @@ export * from "./library";
 export * from "./support";
 export * from "./feedback";
 export * from "./studio";
+export * from "./decks";
 export * from "./support-access";
 export * from "./billing";
 

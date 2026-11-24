@@ -1,0 +1,110 @@
+/*
+ * Note blocks on slides. @octonote/slides lays a slide out at 1920 × 1080 and
+ * scales it; this maps BlockNote's note styles onto the slide's theme and
+ * type scale (--osl-* tokens), so a slide reads like a slide, not a note.
+ */
+.osl-slide .bn-container,
+.osl-slide .bn-container .bn-default-styles {
+  font-size: inherit;
+  font-family: var(--font-family-sans);
+  line-height: inherit;
+}
+.osl-slide .bn-root.bn-container[data-color-scheme] {
+  --bn-colors-editor-background: transparent;
+  --bn-colors-editor-text: var(--osl-fg);
+  --bn-colors-border: var(--osl-line);
+  --bn-colors-side-menu: var(--osl-muted);
+}
+.osl-slide .bn-editor {
+  padding-inline: 0;
+  background: transparent;
+  color: var(--osl-fg);
+}
+.osl-slide .bn-block-outer + .bn-block-outer {
+  margin-top: 0.45em;
+}
+.osl-slide [data-content-type="heading"] {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.osl-slide [data-content-type="heading"][data-level="1"] {
+  --level: var(--osl-h1);
+}
+.osl-slide [data-content-type="heading"][data-level="2"] {
+  --level: var(--osl-h2);
+}
+.osl-slide [data-content-type="heading"][data-level="3"] {
+  --level: var(--osl-h3);
+}
+/* The slide's title gets room under it. */
+.osl-slide .osl-main > .osl-fit > .bn-container:first-child .bn-block-group > .bn-block-outer:first-child:has([data-content-type="heading"]) {
+  margin-bottom: 0.5em;
+}
+.osl-layout-title .bn-block-content[data-content-type="paragraph"],
+.osl-layout-section .bn-block-content[data-content-type="paragraph"] {
+  color: var(--osl-muted);
+  font-size: 1.25em;
+}
+.osl-slide .bn-inline-content a {
+  color: var(--osl-accent);
+}
+/* Media slides: the block fills what's left under the title. */
+/* Wide formulas scroll inside their block rather than being cut off. */
+.osl-slide .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.osl-layout-media .osl-main .bn-container,
+.osl-layout-media .osl-main .bn-editor,
+.osl-layout-media .osl-main .bn-block-group {
+  height: 100%;
+}
+.osl-layout-media .osl-main .bn-block-group {
+  display: flex;
+  flex-direction: column;
+}
+.osl-layout-media .osl-main .bn-block-group > .bn-block-outer:last-child {
+  flex: 1;
+  min-height: 0;
+}
+
+/* A picture of an app or video in the presenter view. */
+.oxd-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: 6em;
+  border-radius: 0.6em;
+  border: 2px dashed var(--osl-line);
+  color: var(--osl-muted);
+  font-weight: 600;
+}
+.oxd-missing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--osl-muted);
+}
+
+/* The editor: editable regions show where content goes. */
+.oxd-edit .osl-region {
+  outline: 2px dashed transparent;
+  outline-offset: 16px;
+  border-radius: 8px;
+  transition: outline-color 150ms;
+}
+.oxd-edit .osl-region:hover,
+.oxd-edit .osl-region:focus-within {
+  outline-color: color-mix(in srgb, var(--osl-accent) 35%, transparent);
+}
+.oxd-edit .osl-slide {
+  overflow: visible;
+}
+/* The slide stands off the editor's background. */
+.oxd-edit .osl-stage-box {
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--border), 0 12px 32px -16px rgb(0 0 0 / 0.25);
+}

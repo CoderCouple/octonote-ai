@@ -6,7 +6,7 @@ export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 export const alt = "A page published on Octonote AI";
 
-const KINDS = new Set<PublicKind>(["page", "canvas", "project", "notebook"]);
+const KINDS = new Set<PublicKind>(["page", "canvas", "project", "notebook", "deck"]);
 
 export default async function Image({
   params,
