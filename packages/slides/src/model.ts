@@ -36,7 +36,7 @@ export type SlideTransition = (typeof SLIDE_TRANSITIONS)[number];
 export const BUILD_EFFECTS = ["appear", "fade", "rise", "wipe", "highlight"] as const;
 export type BuildEffect = (typeof BUILD_EFFECTS)[number];
 
-export const DECK_THEMES = ["paper", "ink", "chalk"] as const;
+export const DECK_THEMES = ["paper", "ink", "chalk", "ocean", "sunset", "contrast"] as const;
 export type DeckTheme = (typeof DECK_THEMES)[number];
 
 export const DECK_ASPECTS = ["16:9", "4:3"] as const;

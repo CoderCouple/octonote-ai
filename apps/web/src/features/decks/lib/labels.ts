@@ -30,4 +30,7 @@ export const THEME_LABEL: Record<DeckTheme, string> = {
   paper: "Paper",
   ink: "Ink",
   chalk: "Chalkboard",
+  ocean: "Ocean",
+  sunset: "Sunset",
+  contrast: "High contrast",
 };

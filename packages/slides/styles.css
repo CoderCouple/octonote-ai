@@ -33,6 +33,35 @@
   --osl-scheme: dark;
 }
 
+.osl-theme-ocean {
+  --osl-bg: #0b2233;
+  --osl-fg: #e8f3f8;
+  --osl-muted: #9cc0d1;
+  --osl-accent: #5ad1c9;
+  --osl-surface: #0f2d42;
+  --osl-line: #1f4258;
+  --osl-scheme: dark;
+}
+.osl-theme-sunset {
+  --osl-bg: #fff6ee;
+  --osl-fg: #2b1d16;
+  --osl-muted: #8a6a58;
+  --osl-accent: #d9541e;
+  --osl-surface: #fde8d7;
+  --osl-line: #f1d5bf;
+  --osl-scheme: light;
+}
+/* For big rooms, bright projectors and readers who need strong contrast. */
+.osl-theme-contrast {
+  --osl-bg: #000000;
+  --osl-fg: #ffffff;
+  --osl-muted: #e6e6e6;
+  --osl-accent: #ffd400;
+  --osl-surface: #111111;
+  --osl-line: #ffffff;
+  --osl-scheme: dark;
+}
+
 :root {
   --osl-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --osl-transition-ms: 520ms;
@@ -92,6 +121,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  transform-origin: 0 0;
 }
 .osl-empty {
   display: grid;

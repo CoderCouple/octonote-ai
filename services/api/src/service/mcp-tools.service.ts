@@ -23,6 +23,7 @@ import { PagesService } from "./pages.service";
 import { ProjectsService } from "./projects.service";
 import { SharesService } from "./shares.service";
 import { SharingSettingsService } from "./sharing-settings.service";
+import { DecksService } from "./decks.service";
 import { VideosService } from "./videos.service";
 
 type Compose = typeof import("@octonote/compose");
@@ -139,7 +140,14 @@ export class McpToolsService {
     private readonly shares: SharesService,
     private readonly figures: FiguresService,
     @Optional() private readonly videos?: VideosService,
+    @Optional() private readonly decksService?: DecksService,
   ) {}
+
+  /** Presentations; absent only in tests that don't wire them. */
+  private get decks(): DecksService {
+    if (!this.decksService) throw BadRequest("Presentations aren't available here.");
+    return this.decksService;
+  }
 
   /**
    * A note's HTML for the card, with each interactive block (video, custom
@@ -238,22 +246,25 @@ export class McpToolsService {
         ...c.notes.map((n) => ref("page", n.id, n.title, { notebookId: n.notebookId, updatedAt: n.updatedAt.toISOString() })),
         ...c.canvases.map((n) => ref("canvas", n.id, n.title, { notebookId: n.notebookId, updatedAt: n.updatedAt.toISOString() })),
         ...c.projects.map((p) => ref("project", p.id, p.name, { notebookId: p.notebookId, updatedAt: p.updatedAt.toISOString() })),
+        ...c.decks.map((d) => ref("deck", d.id, d.title, { notebookId: d.notebookId, updatedAt: d.updatedAt.toISOString() })),
       ];
       return opts.kind ? items.filter((i) => i.kind === opts.kind) : items;
     }
     const ws = await this.workspaceId(userId, opts.workspaceId);
     const want = (k: ItemRef["kind"]) => !opts.kind || opts.kind === k;
-    const [notes, canvases, projects, notebooks] = await Promise.all([
+    const [notes, canvases, projects, notebooks, decks] = await Promise.all([
       want("note") ? this.pages.listStandalone(ws, userId) : [],
       want("canvas") ? this.canvases.listStandalone(ws, userId) : [],
       want("project") ? this.projects.listForWorkspace(ws, userId) : [],
       want("notebook") ? this.notebooks.listForWorkspace(ws, userId) : [],
+      want("presentation") && this.decksService ? this.decksService.list(ws, userId) : [],
     ]);
     return [
       ...notes.map((n) => ref("page", n.id, n.title, { notebookId: n.notebookId, updatedAt: n.updatedAt.toISOString() })),
       ...canvases.map((n) => ref("canvas", n.id, n.title, { notebookId: n.notebookId, updatedAt: n.updatedAt.toISOString() })),
       ...projects.map((p) => ref("project", p.id, p.name, { notebookId: p.notebookId, updatedAt: p.updatedAt.toISOString() })),
       ...notebooks.map((n) => ref("notebook", n.id, n.name, { updatedAt: n.updatedAt.toISOString() })),
+      ...decks.map((d) => ref("deck", d.id, d.title, { notebookId: d.notebookId, updatedAt: d.updatedAt.toISOString() })),
     ].sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
   }
 
@@ -306,11 +317,16 @@ export class McpToolsService {
         ].join("\n"),
       };
     }
+    if (kind === "deck") {
+      const { deck } = await this.decks.getOne(id, userId);
+      return { ...ref("deck", id, deck.title), text: deckText(deck.title, deck.document) };
+    }
     const c = await this.notebooks.getContents(id, userId);
     const lines = [
       ...c.notes.map((n) => `- note ${n.id}: ${n.title}`),
       ...c.canvases.map((n) => `- canvas ${n.id}: ${n.title}`),
       ...c.projects.map((p) => `- project ${p.id}: ${p.name}`),
+      ...c.decks.map((d) => `- presentation ${d.id}: ${d.title}`),
     ];
     return {
       ...ref("notebook", id, c.notebook.name),
@@ -404,6 +420,11 @@ export class McpToolsService {
         outline: canvas ? await this.outline(canvas, userId) : null,
       };
     }
+    if (kind === "deck") {
+      // The card shows a presentation as its outline; presenting happens in Octonote.
+      const { deck } = await this.decks.getOne(id, userId);
+      return { ...ref(kind, id, deck.title), publicUrl, html: deckHtml(deck.document), embeds: [] };
+    }
     return { ...ref(kind, id, (await this.notebooks.getContents(id, userId)).notebook.name), publicUrl, items: await this.list(userId, { notebook: id }) };
   }
 
@@ -466,6 +487,42 @@ export class McpToolsService {
     return { ...ref("project", project.id, project.name), noteId, canvasId };
   }
 
+  /**
+   * A presentation: from slide markdown (--- between slides, ??? before a
+   * slide's notes), or made from a note, project or notebook (the original
+   * stays as it is; design "ai" lets a model plan it).
+   */
+  async createDeck(
+    userId: string,
+    input: { title?: string; markdown?: string; from?: string; split?: "heading" | "divider"; design?: "rules" | "ai"; notebook?: string; workspaceId?: string },
+  ) {
+    const ws = await this.workspaceId(userId, input.workspaceId);
+    const notebookId = input.notebook ? await this.resolveNotebook(userId, input.notebook, input.workspaceId) : undefined;
+    if (input.from) {
+      const kind = kindOf(input.from);
+      if (kind !== "page" && kind !== "project" && kind !== "notebook") throw BadRequest("A presentation is made from a note, project or notebook.");
+      const deck = await this.decks.createFromSource(
+        ws,
+        {
+          source: { kind, id: input.from, split: input.split ?? "heading" },
+          textToNotes: true,
+          onePerSlide: true,
+          design: input.design ?? "rules",
+          ...(input.title ? { title: input.title.slice(0, 120) } : {}),
+          ...(notebookId ? { notebookId } : {}),
+        },
+        userId,
+      );
+      return { ...ref("deck", deck.id, deck.title), slides: slideCount(deck.document) };
+    }
+    const deck = await this.decks.create(
+      ws,
+      { title: input.title?.slice(0, 120) || "Untitled presentation", ...(notebookId ? { notebookId } : {}), ...(input.markdown ? { markdown: input.markdown } : {}) },
+      userId,
+    );
+    return { ...ref("deck", deck.id, deck.title), slides: slideCount(deck.document) };
+  }
+
   async createNotebook(userId: string, input: { name: string }) {
     const nb = await this.notebooks.create(await this.workspaceId(userId), { name: input.name.slice(0, 120) }, userId);
     return ref("notebook", nb.id, nb.name);
@@ -477,6 +534,7 @@ export class McpToolsService {
     if (kind === "page") return ref(kind, input.id, (await this.pages.update(input.id, { title: name }, userId)).title);
     if (kind === "canvas") return ref(kind, input.id, (await this.canvases.update(input.id, { title: name }, userId)).title);
     if (kind === "project") return ref(kind, input.id, (await this.projects.update(input.id, { name }, userId)).name);
+    if (kind === "deck") return ref(kind, input.id, (await this.decks.update(input.id, { title: name }, userId)).title);
     return ref(kind, input.id, (await this.notebooks.update(input.id, { name }, userId)).name);
   }
 
@@ -491,6 +549,10 @@ export class McpToolsService {
     if (kind === "canvas") {
       const c = await this.canvases.moveToNotebook(input.id, notebookId, userId);
       return ref(kind, c.id, c.title, { notebookId: c.notebookId });
+    }
+    if (kind === "deck") {
+      const d = await this.decks.moveToNotebook(input.id, notebookId, userId);
+      return ref(kind, d.id, d.title, { notebookId: d.notebookId });
     }
     const p = await this.projects.moveToNotebook(input.id, notebookId, userId);
     return ref(kind, p.id, p.name, { notebookId: p.notebookId });
@@ -530,6 +592,7 @@ export class McpToolsService {
     if (kind === "page") await this.pages.softDelete(input.id, userId);
     else if (kind === "canvas") await this.canvases.softDelete(input.id, userId);
     else if (kind === "project") await this.projects.archive(input.id, userId);
+    else if (kind === "deck") await this.decks.softDelete(input.id, userId);
     else await this.notebooks.delete(input.id, userId);
     return {
       id: input.id,
@@ -537,4 +600,34 @@ export class McpToolsService {
       ...(kind === "notebook" ? { note: "The notebook's items moved to the top level; nothing inside was deleted." } : {}),
     };
   }
+}
+
+type OutlineSlide = { layout?: string; main?: { type?: string; content?: { text?: string }[] }[]; side?: unknown[]; notes?: string; hidden?: boolean };
+
+const slidesOf = (document: unknown): OutlineSlide[] =>
+  Array.isArray((document as { slides?: unknown } | null)?.slides) ? (document as { slides: OutlineSlide[] }).slides : [];
+
+const slideCount = (document: unknown) => slidesOf(document).length;
+
+const slideHeading = (s: OutlineSlide) => {
+  const h = (s.main ?? []).find((b) => b.type === "heading");
+  return (h?.content ?? []).map((c) => c.text ?? "").join("").trim();
+};
+
+/** A presentation as text an assistant can read: each slide's title, layout and notes. */
+function deckText(title: string, document: unknown): string {
+  const slides = slidesOf(document);
+  const lines = slides.map((s, i) => `${i + 1}. ${slideHeading(s) || "(no title)"} [${s.layout ?? "content"}${s.hidden ? ", hidden" : ""}]${s.notes ? `\n   notes: ${s.notes.replace(/\s+/g, " ").slice(0, 300)}` : ""}`);
+  return `Presentation "${title}", ${slides.length} slide(s):\n${lines.join("\n") || "(empty)"}\nPresent it from its link in Octonote.`;
+}
+
+const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+/** The card's view of a presentation: its slides as a numbered outline. */
+function deckHtml(document: unknown): string {
+  const items = slidesOf(document)
+    .filter((s) => !s.hidden)
+    .map((s) => `<li>${escapeHtml(slideHeading(s) || "Untitled slide")}</li>`)
+    .join("");
+  return `<ol>${items}</ol>`;
 }

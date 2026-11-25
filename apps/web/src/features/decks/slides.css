@@ -100,9 +100,6 @@
 .oxd-edit .osl-region:focus-within {
   outline-color: color-mix(in srgb, var(--osl-accent) 35%, transparent);
 }
-.oxd-edit .osl-slide {
-  overflow: visible;
-}
 /* The slide stands off the editor's background. */
 .oxd-edit .osl-stage-box {
   border-radius: 6px;

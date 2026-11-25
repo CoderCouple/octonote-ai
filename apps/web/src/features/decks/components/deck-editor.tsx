@@ -19,13 +19,15 @@ import {
   type NoteBlock,
   type SlideLayout,
 } from "@octonote/slides";
-import { Play, Presentation } from "lucide-react";
+import { Code2, FileDown, MoreHorizontal, NotebookText, Play, Presentation } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EditableTitle } from "@/components/editable-title";
 import { FocusHeader } from "@/components/focus-header";
 import { SaveIndicator, type SaveState } from "@/components/save-indicator";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { clientApi } from "@/lib/api/client-fetch";
 import { Textarea } from "@/components/ui/textarea";
 import { appCanvasResolver } from "@/features/notes/blocks/app-canvas-resolver";
 import { CanvasReferenceContext } from "@/features/notes/blocks/canvas-reference-context";
@@ -123,6 +125,25 @@ export function DeckEditor({ deck: initial, myRole, leading }: DeckEditorProps) 
     }
   }
 
+  /** The iframe snippet for a published deck; says how to publish when it isn't. */
+  async function copyEmbed() {
+    try {
+      const state = await clientApi.get<{ published: boolean; publicUrl: string | null; publishedVia: { kind: string; id: string } | null }>(`/deck/${initial.id}/publish`);
+      // publicUrl is the deck's own page, or its notebook's when it's published through the notebook.
+      const slug = state.publicUrl ? new URL(state.publicUrl).pathname.split("/")[2] : null;
+      if (!state.published || !slug) {
+        toast.message("Publish the presentation first (Share → Publish to web), then copy the embed code.");
+        return;
+      }
+      const path = state.publishedVia ? `/embed/${slug}/${initial.id}` : `/embed/${slug}`;
+      const code = `<iframe src="${window.location.origin}${path}" width="960" height="600" style="border:0;max-width:100%" allow="fullscreen" title="${title.replace(/"/g, "&quot;")}"></iframe>`;
+      await navigator.clipboard.writeText(code);
+      toast.success("Embed code copied. Paste it into any page.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't copy the embed code.");
+    }
+  }
+
   function present(fromSelected: boolean) {
     const visible = visibleDeckSlides(deck);
     if (!visible.length) {
@@ -171,6 +192,29 @@ export function DeckEditor({ deck: initial, myRole, leading }: DeckEditorProps) 
           >
             <SaveIndicator state={saveState} />
             <PublishedViaBadge kind="deck" id={initial.id} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="size-8 p-0" aria-label="More">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <a href={`/print/d/${initial.id}`} target="_blank" rel="noopener">
+                    <FileDown className="size-4" /> Save as PDF
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={`/print/d/${initial.id}?notes=1`} target="_blank" rel="noopener">
+                    <NotebookText className="size-4" /> PDF with presenter notes
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => void copyEmbed()}>
+                  <Code2 className="size-4" /> Copy embed code
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <ShareDialog kind="deck" id={initial.id} title={title} myRole={myRole} initialLinkAccess={initial.linkAccess} initialLinkRole={initial.linkRole} />
             <Button size="sm" className="gap-1.5" onClick={() => present(false)} title="Present from the start">
               <Play className="size-3.5" /> Present
@@ -210,7 +254,8 @@ export function DeckEditor({ deck: initial, myRole, leading }: DeckEditorProps) 
               <div className="flex min-h-0 flex-1 items-center justify-center p-6">
                 <div className="h-full w-full">
                   <SlideStage aspect={deck.aspect} fit="contain" className={editable ? "oxd-edit" : ""}>
-                    <SlideView deck={deck} slide={slide} fit={!editable} {...(editable ? editRenderers : readRenderers)} />
+                    {/* Shrunk to fit like the audience sees it, so nothing hangs off the slide while editing. */}
+                    <SlideView deck={deck} slide={slide} {...(editable ? editRenderers : readRenderers)} />
                   </SlideStage>
                 </div>
               </div>

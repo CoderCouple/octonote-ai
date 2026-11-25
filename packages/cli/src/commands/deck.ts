@@ -126,6 +126,7 @@ export function registerDeck(program: Command) {
     .option("--split <at>", "a new slide at each heading (H1/H2) or each divider (---)", "heading")
     .option("--keep-text", "keep paragraphs on the slides (default: they go to the presenter notes)")
     .option("--group-blocks", "keep a section's blocks on one slide (default: each block gets its own)")
+    .option("--ai", "let AI design it: short points, the presenter notes, the blocks kept (uses the AI allowance; takes about half a minute)")
     .option("-t, --title <title>", "title (default: the source's)")
     .option("-n, --notebook <notebook>", "put it in a notebook (default: the source's)")
     .option("--publish", "publish it to the web and print the public URL")
@@ -134,20 +135,22 @@ export function registerDeck(program: Command) {
         async (
           ctx,
           ref: string,
-          opts: { split: string; keepText?: boolean; groupBlocks?: boolean; title?: string; notebook?: string; publish?: boolean },
+          opts: { split: string; keepText?: boolean; groupBlocks?: boolean; ai?: boolean; title?: string; notebook?: string; publish?: boolean },
         ) => {
           const { kind, id } = parseRef(ref);
           if (kind !== "page" && kind !== "project" && kind !== "notebook") throw usage(`A presentation is made from a note, project or notebook, not a ${kind === "deck" ? "presentation" : kind}.`);
           if (!SPLIT.has(opts.split)) throw usage(`Unknown --split "${opts.split}".`, "Use heading or divider.");
           const notebookId = opts.notebook ? (await resolveNotebook(ctx, opts.notebook)).id : undefined;
           const ws = await ctx.workspaceId();
+          // An AI design takes a while: allow it the time a model needs.
           const row = await ctx.api.post<Deck>(`/workspaces/${ws}/decks/from`, {
             source: { kind, id, split: opts.split },
             textToNotes: !opts.keepText,
             onePerSlide: !opts.groupBlocks,
+            ...(opts.ai ? { design: "ai" } : {}),
             ...(opts.title ? { title: opts.title } : {}),
             ...(notebookId ? { notebookId } : {}),
-          });
+          }, opts.ai ? { timeoutMs: 180_000 } : undefined);
           const out = { ...item(ctx, "deck", row), slides: deckOutline(row.document).slides.length };
           if (opts.publish) out.publicUrl = (await setPublished(ctx, "deck", row.id, true)).publicUrl;
           emit(out, (d) => `${describeItem(d)}\n  ${d.slides} slides`);

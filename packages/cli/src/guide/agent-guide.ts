@@ -90,6 +90,7 @@ frame, code, image, icon, pen and figure, each with x, y, w, h.
 ## Presentations (slides)
 Make slides from something that exists (the original stays as it is):
   octonote deck from <pag_|prj_|ntb_ id> [--split heading|divider] [--keep-text] [--group-blocks] [--publish]
+  octonote deck from <id> --ai            # AI plans the slides (uses the AI allowance; only when asked)
 A note splits at its H1/H2 headings (or at --- dividers): text on the left, the
 section's block on the right; paragraphs move to the presenter notes unless
 --keep-text. A project adds a slide per canvas frame or figure; a notebook a

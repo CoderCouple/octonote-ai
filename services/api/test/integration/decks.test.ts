@@ -203,3 +203,31 @@ describe("made on the server (CLI, agents)", () => {
     expect(await statusOf(attempt)).toBe(404);
   });
 });
+
+describe("Let AI design it", () => {
+  it("builds the model's plan with the note's own blocks, as the source's copy", async () => {
+    const note = await h.pages.create(alice.workspaceId, { title: "Attention" }, alice.id);
+    const quiz = '```quiz\n{"questions":[{"id":"q1","prompt":"2+2?","options":[{"id":"a","text":"4"},{"id":"b","text":"5"}],"correct":["a"]}]}\n```';
+    await h.pages.update(note.id, { document: await markdownToNoteDocument(`## Scaling\n\nDot products grow with dimension.\n\n${quiz}`) }, alice.id);
+    // The model is replaced: it sees the brief and answers with a plan.
+    const ai = (h.decks as unknown as { interactive: { assertReady: () => Promise<void>; designSlides: (...a: unknown[]) => Promise<unknown> } }).interactive;
+    let brief = "";
+    ai.assertReady = async () => {};
+    ai.designSlides = async (_user, b) => {
+      brief = (b as { text: string }).text;
+      return {
+        slides: [
+          { layout: "title", title: "Attention", points: ["Why we scale"] },
+          { layout: "split", title: "Check", points: ["Answer first"], refs: ["B1"], notes: "Give them a minute." },
+        ],
+      };
+    };
+    const deck = await h.decks.createFromSource(alice.workspaceId, { source: { kind: "page", id: note.id, split: "heading" }, textToNotes: true, onePerSlide: true, design: "ai" }, alice.id);
+    expect(brief).toContain("[B1: quiz]");
+    const slides = (deck.document as { slides: { layout: string; side: { type: string }[]; notes: string }[] }).slides;
+    expect(slides.map((s) => s.layout)).toEqual(["title", "split"]);
+    expect(slides[1]!.side[0]!.type).toBe("interactive");
+    expect(slides[1]!.notes).toBe("Give them a minute.");
+    expect(deck.source).toEqual({ kind: "page", id: note.id, split: "heading" });
+  });
+});

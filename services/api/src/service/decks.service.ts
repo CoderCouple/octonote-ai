@@ -157,6 +157,18 @@ export class DecksService {
     if (access.workspaceId !== workspaceId) throw BadRequest("The source belongs to a different workspace.");
     const slides = await loadSlides();
     const options = { split: source.split, textToNotes: input.textToNotes, onePerSlide: input.onePerSlide };
+    // "Let AI design it": refuse early (before loading anything) when AI isn't available to this person.
+    if (input.design === "ai") {
+      if (!this.interactive) throw BadRequest("AI design isn't available here.");
+      await this.interactive.assertReady(actorUserId);
+    }
+    type Item = import("@octonote/slides/core").DesignItem;
+    const designItems: Item[] = [];
+    const asNote = (n: { title: string; blocks: Record<string, unknown>[] }): Item => ({ kind: "note", title: n.title, blocks: n.blocks });
+    const ofProject = (p: Awaited<ReturnType<DecksService["project"]>>): Item[] => [
+      ...(p.note ? [asNote({ ...p.note, title: p.title })] : []),
+      ...(p.canvas ? [{ kind: "canvas" as const, title: p.canvas.title, canvas: p.canvas }] : []),
+    ];
     let title: string;
     let notebookId: string | null;
     let document: unknown;
@@ -165,11 +177,13 @@ export class DecksService {
       title = note.title;
       notebookId = note.notebookId;
       document = slides.deckFromNote(note, options);
+      designItems.push(asNote(note));
     } else if (source.kind === "project") {
       const project = await this.project(source.id);
       title = project.title;
       notebookId = project.notebookId;
       document = slides.deckFromProject(project, options);
+      designItems.push(...ofProject(project));
     } else {
       const notebook = await this.notebooksRepo.findById(source.id);
       if (!notebook) throw NotFound("Notebook not found.");
@@ -194,6 +208,16 @@ export class DecksService {
       title = notebook.name;
       notebookId = notebook.id;
       document = slides.deckFromNotebook({ title: notebook.name, items }, options);
+      for (const it of items) {
+        if (it.kind === "page") designItems.push(asNote(it));
+        else if (it.kind === "canvas") designItems.push({ kind: "canvas", title: it.title, canvas: it });
+        else designItems.push(...ofProject(it));
+      }
+    }
+    if (input.design === "ai") {
+      const brief = slides.designBrief(input.title ?? title, designItems);
+      const plan = await this.interactive!.designSlides(actorUserId, brief, slides.DESIGN_SCHEMA as unknown as Record<string, unknown>, slides.DESIGN_SYSTEM);
+      document = slides.deckFromDesign(plan, brief);
     }
     return this.create(
       workspaceId,

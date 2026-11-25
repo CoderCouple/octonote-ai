@@ -44,6 +44,12 @@ export const DeckFromSourceSchema = z.object({
   textToNotes: z.boolean().default(true),
   /** Each block (quiz, video, app…) on its own slide. */
   onePerSlide: z.boolean().default(true),
+  /**
+   * rules: split at headings or dividers (instant, free). ai: a model plans
+   * the slides, shortens text to points and writes the presenter notes (uses
+   * the AI allowance; split and the two options above don't apply).
+   */
+  design: z.enum(["rules", "ai"]).default("rules"),
 });
 export type DeckFromSource = z.infer<typeof DeckFromSourceSchema>;
 

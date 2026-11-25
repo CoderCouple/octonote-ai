@@ -38,6 +38,8 @@ beforeEach(async () => {
     h.settings,
     h.shares,
     h.figures,
+    undefined,
+    h.decks,
   );
   const controller = new McpController(h.oauth, tools, h.activity, h.noteComments, new ComposeAiService(), {} as never);
   app = Fastify();
@@ -111,7 +113,7 @@ describe("mcp server", () => {
     const client = await connect(await tokenFor(alice.id));
     const { tools } = await client.listTools();
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
-    for (const name of ["search", "fetch", "list_items", "create_note", "update_note", "create_canvas", "redraw_canvas", "create_project", "create_notebook", "rename", "move", "publish", "share", "set_link_access", "delete"]) {
+    for (const name of ["search", "fetch", "list_items", "create_note", "update_note", "create_canvas", "redraw_canvas", "create_project", "create_notebook", "create_deck", "rename", "move", "publish", "share", "set_link_access", "delete"]) {
       expect(byName[name], name).toBeTruthy();
     }
     // Every tool states all three hints and a title (directory reviews check them).
@@ -149,6 +151,29 @@ describe("mcp server", () => {
     expect(found.results.map((r: { id: string }) => r.id)).toContain(note.id);
     const inNb = (await call(client, "list_items", { notebook: nb.id })).json;
     expect(inNb.map((i: { id: string }) => i.id)).toEqual([note.id]);
+    await client.close();
+  });
+
+  it("makes presentations, and renames, moves, lists, reads and deletes them", async () => {
+    const client = await connect(await tokenFor(alice.id));
+    const nb = (await call(client, "create_notebook", { name: "Talks" })).json;
+    const note = (await call(client, "create_note", { title: "Caching", markdown: "Intro.\n\n## Why\n\n- speed\n\n## How\n\n- Redis" })).json;
+    const fromNote = (await call(client, "create_deck", { from: note.id })).json;
+    expect(fromNote).toMatchObject({ kind: "presentation", title: "Caching", slides: 3 });
+    expect(fromNote.url).toContain(`/d/${fromNote.id}`);
+
+    const written = (await call(client, "create_deck", { title: "Talk", markdown: "# Talk\n???\nHello\n---\n## Point\n- one", notebook: "Talks" })).json;
+    expect(written.slides).toBe(2);
+    expect((await call(client, "fetch", { id: written.id })).json.text).toContain("notes: Hello");
+
+    expect((await call(client, "rename", { id: written.id, name: "Talk v2" })).json.title).toBe("Talk v2");
+    expect((await call(client, "move", { id: fromNote.id, notebook: nb.id })).json.notebookId).toBe(nb.id);
+    const inNb = (await call(client, "list_items", { notebook: nb.id, kind: "presentation" })).json;
+    expect(inNb.map((i: { id: string }) => i.id).sort()).toEqual([fromNote.id, written.id].sort());
+    expect((await call(client, "list_items", { kind: "presentation" })).json).toHaveLength(2);
+
+    expect((await call(client, "delete", { id: written.id })).json.deleted).toBe(true);
+    expect((await call(client, "fetch", { id: written.id })).isError).toBe(true);
     await client.close();
   });
 

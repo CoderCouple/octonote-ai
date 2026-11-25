@@ -234,6 +234,14 @@ describe("presentations", () => {
     expect(result).toMatchObject({ kind: "presentation", id: DCK, url: `https://app.test/d/${DCK}`, slides: 2 });
   });
 
+  it("deck from --ai asks the server to design it, with time to think", async () => {
+    routes[`POST /workspaces/${WS}/decks/from`] = () => deckRow([slide("title", "Talk")]);
+    await run("deck", "from", PAG, "--ai");
+    const call = sent("POST", `/workspaces/${WS}/decks/from`)!;
+    expect(call.body).toMatchObject({ source: { kind: "page", id: PAG, split: "heading" }, design: "ai" });
+    expect(call.timeout).toBe(true);
+  });
+
   it("deck from refuses a canvas and an unknown split", async () => {
     let result = await run("deck", "from", CNV);
     expect(result.error.message).toMatch(/note, project or notebook/);

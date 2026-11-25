@@ -173,6 +173,27 @@ export class ComposeAiService {
     return { spec, title };
   }
 
+  /**
+   * "Let AI design it": plans a presentation's slides from a brief (the
+   * source's text and numbered refs to its blocks). Returns the plan only;
+   * the deck is built from it by @octonote/slides, reusing the source's
+   * blocks as they are.
+   */
+  async designSlides(userId: string, brief: { title: string; text: string }, schema: Record<string, unknown>, system: string): Promise<unknown> {
+    await this.useAiCall(userId);
+    const model = await this.model(userId);
+    try {
+      return await model.callTool({
+        system,
+        messages: [{ role: "user", content: `Design the slides for this source.\n\n<source title=${JSON.stringify(brief.title)}>\n${brief.text}\n</source>` }],
+        tool: { name: "design_slides", description: "Return the presentation's slides, in order.", inputSchema: schema },
+        maxTokens: 16000,
+      });
+    } catch (error) {
+      throw new AppError(ErrorCode.SERVER_ERROR, `The AI couldn't design these slides: ${(error as Error).message}`, HttpStatus.BAD_GATEWAY);
+    }
+  }
+
   /** Changes one interactive block as asked ("make it harder", "add two cards"). */
   async editBlock(userId: string, input: { kind: string; spec: Record<string, unknown>; instruction: string }): Promise<{ kind: string; spec: Record<string, unknown> }> {
     await this.useAiCall(userId);

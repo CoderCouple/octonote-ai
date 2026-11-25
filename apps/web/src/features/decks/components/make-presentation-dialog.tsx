@@ -2,7 +2,7 @@
 
 import "@octonote/slides/styles.css";
 import { deckFromNote, deckFromNotebook, deckFromProject, SlideOutline, type ConvertOptions, type DeckDocument, type SplitMode } from "@octonote/slides";
-import { Loader2, Presentation } from "lucide-react";
+import { Loader2, Presentation, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { createDeckClientApi } from "../api/decks-client-api";
+import { createDeckClientApi, createDeckFromSourceClientApi } from "../api/decks-client-api";
 import { loadDeckSource, type DeckSourceRef, type LoadedSource } from "../lib/load-source";
 
 /** What the API accepts; checked here too so a huge source fails with a clear message, not a 413. */
@@ -44,6 +44,8 @@ export function MakePresentationDialog({ open, onOpenChange, source, workspaceId
   const [loaded, setLoaded] = useState<LoadedSource | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [split, setSplit] = useState<SplitMode>("heading");
+  /** "ai": the server plans the slides with a model; no preview, uses the AI allowance. */
+  const [design, setDesign] = useState<"rules" | "ai">("rules");
   const [textToNotes, setTextToNotes] = useState(true);
   const [onePerSlide, setOnePerSlide] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -63,7 +65,24 @@ export function MakePresentationDialog({ open, onOpenChange, source, workspaceId
 
   const deck = useMemo(() => (loaded ? convert(loaded, { split, textToNotes, onePerSlide }) : null), [loaded, split, textToNotes, onePerSlide]);
 
+  async function designWithAi() {
+    setCreating(true);
+    try {
+      const made = await createDeckFromSourceClientApi(workspaceId, {
+        source: { kind: source.kind, id: source.id, split },
+        design: "ai",
+        ...(notebookId ? { notebookId } : {}),
+      });
+      onOpenChange(false);
+      router.push(`/d/${made.id}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "The AI couldn't design these slides.");
+      setCreating(false);
+    }
+  }
+
   async function create() {
+    if (design === "ai") return designWithAi();
     if (!deck) return;
     if (new Blob([JSON.stringify(deck)]).size > MAX_BYTES) {
       toast.error("This is too much for one presentation (over 8 MB). Try a single note, or split the notebook.");
@@ -100,7 +119,7 @@ export function MakePresentationDialog({ open, onOpenChange, source, workspaceId
           <div className="flex flex-col gap-4 text-sm">
             <fieldset className="flex flex-col gap-2">
               <legend className="text-muted-foreground mb-2 text-2xs font-semibold tracking-wider uppercase">New slide at each</legend>
-              <RadioGroup value={split} onValueChange={(v) => setSplit(v as SplitMode)}>
+              <RadioGroup value={design === "ai" ? "ai" : split} onValueChange={(v) => (v === "ai" ? setDesign("ai") : (setDesign("rules"), setSplit(v as SplitMode)))}>
                 <div className="flex items-start gap-2">
                   <RadioGroupItem id="split-heading" value="heading" className="mt-0.5" />
                   <Label htmlFor="split-heading" className="flex flex-col items-start gap-0.5 font-normal">
@@ -115,29 +134,47 @@ export function MakePresentationDialog({ open, onOpenChange, source, workspaceId
                     <span className="text-muted-foreground text-xs">You decide exactly where slides break.</span>
                   </Label>
                 </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem id="split-ai" value="ai" className="mt-0.5" />
+                  <Label htmlFor="split-ai" className="flex flex-col items-start gap-0.5 font-normal">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="size-3.5" /> Let AI design it
+                    </span>
+                    <span className="text-muted-foreground text-xs">Short points on the slides, your words in the notes, your blocks kept. Uses AI allowance.</span>
+                  </Label>
+                </div>
               </RadioGroup>
             </fieldset>
-            <div className="flex items-start justify-between gap-3">
+            <div className={`flex items-start justify-between gap-3 ${design === "ai" ? "opacity-50" : ""}`}>
               <Label htmlFor="text-to-notes" className="flex flex-col items-start gap-0.5 font-normal">
                 Paragraphs to presenter notes
                 <span className="text-muted-foreground text-xs">Slides keep the points; you keep the script.</span>
               </Label>
-              <Switch id="text-to-notes" checked={textToNotes} onCheckedChange={setTextToNotes} />
+              <Switch id="text-to-notes" checked={textToNotes} onCheckedChange={setTextToNotes} disabled={design === "ai"} />
             </div>
-            <div className="flex items-start justify-between gap-3">
+            <div className={`flex items-start justify-between gap-3 ${design === "ai" ? "opacity-50" : ""}`}>
               <Label htmlFor="one-per-slide" className="flex flex-col items-start gap-0.5 font-normal">
                 Each block on its own slide
                 <span className="text-muted-foreground text-xs">A quiz, app or video gets the room it needs.</span>
               </Label>
-              <Switch id="one-per-slide" checked={onePerSlide} onCheckedChange={setOnePerSlide} />
+              <Switch id="one-per-slide" checked={onePerSlide} onCheckedChange={setOnePerSlide} disabled={design === "ai"} />
             </div>
           </div>
           <div className="flex min-h-0 flex-col gap-2">
             <span className="text-muted-foreground text-2xs font-semibold tracking-wider uppercase" aria-live="polite">
-              {deck ? `What you'll get · ${deck.slides.length} ${deck.slides.length === 1 ? "slide" : "slides"}` : "What you'll get"}
+              {design === "ai" ? "What the AI will do" : deck ? `What you'll get · ${deck.slides.length} ${deck.slides.length === 1 ? "slide" : "slides"}` : "What you'll get"}
             </span>
             <div className="bg-muted/40 max-h-[52vh] min-h-48 overflow-y-auto rounded-lg border p-3">
-              {loadError ? (
+              {design === "ai" ? (
+                <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 py-10 text-center text-sm">
+                  {creating ? <Loader2 className="size-5 animate-spin" /> : <Sparkles className="size-5" />}
+                  <p className="max-w-sm">
+                    {creating
+                      ? "Designing your slides… this takes about half a minute."
+                      : "The AI plans the slides: a title, sections, a few short points each, your quizzes, apps and videos on their own slides, and what to say in the presenter notes."}
+                  </p>
+                </div>
+              ) : loadError ? (
                 <p className="text-destructive text-sm">{loadError}</p>
               ) : !deck ? (
                 <p className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -165,9 +202,9 @@ export function MakePresentationDialog({ open, onOpenChange, source, workspaceId
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={creating}>
             Cancel
           </Button>
-          <Button onClick={create} disabled={!deck || creating} className="gap-1.5">
-            {creating ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            {deck ? `Make ${deck.slides.length} ${deck.slides.length === 1 ? "slide" : "slides"}` : "Make presentation"}
+          <Button onClick={create} disabled={(design === "rules" && !deck) || creating} className="gap-1.5">
+            {creating ? <Loader2 className="size-3.5 animate-spin" /> : design === "ai" ? <Sparkles className="size-3.5" /> : null}
+            {design === "ai" ? "Design with AI" : deck ? `Make ${deck.slides.length} ${deck.slides.length === 1 ? "slide" : "slides"}` : "Make presentation"}
           </Button>
         </DialogFooter>
       </DialogContent>

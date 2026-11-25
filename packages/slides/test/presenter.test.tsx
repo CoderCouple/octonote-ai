@@ -164,7 +164,7 @@ describe("builds and outlines", () => {
     // No step (editing): everything shows.
     expect(buildCss(":r1:", deck.slides[1]!, undefined, "data-id")).toBe("");
     // A host whose renderer marks nested elements alike names the one to use.
-    const outer = buildCss(":r1:", deck.slides[1]!, 0, "data-id", new Map([[p1.id, "osl-m-0"]]), (m) => `.outer${m}`);
+    const outer = buildCss(":r1:", deck.slides[1]!, 0, "data-id", new Map([[p1.id, "osl-m-0"]]), (m: string) => `.outer${m}`);
     expect(outer).toContain(`[data-osl-instance=":r1:"] .outer[data-id="${p1.id}"]{view-transition-name:osl-m-0}`);
   });
 

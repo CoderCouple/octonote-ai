@@ -242,7 +242,7 @@ export class McpController {
         title: "List items",
         description: "List the user's items, newest first; optionally one kind, or the contents of one notebook.",
         inputSchema: {
-          kind: z.enum(["note", "canvas", "project", "notebook"]).optional(),
+          kind: z.enum(["note", "canvas", "project", "notebook", "presentation"]).optional(),
           notebook: z.string().optional().describe("Only items in this notebook (id or exact name)"),
         },
         annotations: READ,
@@ -368,20 +368,38 @@ export class McpController {
         )(),
     );
     tool(
+      "create_deck",
+      {
+        title: "Make a presentation",
+        description:
+          "Create a presentation (slides). Either from a note, project or notebook (`from`: its id; the original stays as it is), or from slide markdown: a line of --- between slides, a line of ??? before a slide's presenter notes, and any note block (```quiz, ```widget, ```mermaid, $$maths$$…) on a slide. design \"ai\" (with `from`) lets AI plan the slides and write the notes; it uses the person's AI allowance, so only when they ask for it. Presenting happens in Octonote: give the user the link.",
+        inputSchema: {
+          title: z.string().optional().describe("Defaults to the source's title"),
+          from: z.string().optional().describe("A note (pag_…), project (prj_…) or notebook (ntb_…) to make it from"),
+          markdown: z.string().optional().describe("Slide markdown, when not using `from`"),
+          split: z.enum(["heading", "divider"]).optional().describe("With `from`: a new slide at each H1/H2 heading (default) or each --- divider"),
+          design: z.enum(["rules", "ai"]).optional().describe("With `from`: ai lets AI design it"),
+          notebook,
+        },
+        annotations: WRITE,
+      },
+      async (args) => run(() => t.createDeck(actor.id, args))(),
+    );
+    tool(
       "create_notebook",
       { title: "Create a notebook", description: "Create a notebook (a folder).", inputSchema: { name: z.string() }, annotations: WRITE },
       async (args) => run(() => t.createNotebook(actor.id, args))(),
     );
     tool(
       "rename",
-      { title: "Rename", description: "Rename a note, canvas, project or notebook.", inputSchema: { id, name: z.string() }, annotations: WRITE },
+      { title: "Rename", description: "Rename a note, canvas, project, notebook or presentation.", inputSchema: { id, name: z.string() }, annotations: WRITE },
       async (args) => run(() => t.rename(actor.id, args))(),
     );
     tool(
       "move",
       {
         title: "Move",
-        description: "Move a note, canvas or project into a notebook, or out of it (notebook: null).",
+        description: "Move a note, canvas, project or presentation into a notebook, or out of it (notebook: null).",
         inputSchema: { id, notebook: z.string().nullable().describe("Notebook id or exact name; null takes it out") },
         annotations: WRITE,
       },

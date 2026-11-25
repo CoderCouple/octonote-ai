@@ -1,4 +1,5 @@
 import { clientApi } from "@/lib/api/client-fetch";
+import type { DeckFromSource } from "@octonote/shared";
 import type { Deck, DeckCreate, DeckSummary, DeckUpdate } from "../types";
 
 export function listDecksClientApi(workspaceId: string) {
@@ -23,4 +24,9 @@ export function moveDeckClientApi(deckId: string, notebookId: string | null) {
 
 export function deleteDeckClientApi(deckId: string) {
   return clientApi.delete<Deck>(`/decks/${deckId}`);
+}
+
+/** Made on the server from a note, project or notebook (the "Let AI design it" path). */
+export function createDeckFromSourceClientApi(workspaceId: string, body: Partial<DeckFromSource> & Pick<DeckFromSource, "source">) {
+  return clientApi.post<Deck>(`/workspaces/${workspaceId}/decks/from`, body);
 }

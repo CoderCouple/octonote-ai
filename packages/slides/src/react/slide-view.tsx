@@ -40,50 +40,6 @@ export interface SlideViewProps extends SlideRenderers {
   fit?: boolean;
 }
 
-/**
- * A slide region that scales its content down (never up) to fit. Uses CSS
- * `zoom`, which shrinks layout too, so text re-wraps at the smaller size and
- * clicks still land where they look.
- */
-function Region({ className, fit, children }: { className: string; fit: boolean; children: ReactNode }) {
-  const outer = useRef<HTMLDivElement>(null);
-  const inner = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const box = outer.current;
-    const content = inner.current;
-    if (!box || !content) return;
-    if (!fit) {
-      content.style.zoom = "";
-      return;
-    }
-    // The region's own window: it may be the presenter view's.
-    const win = box.ownerDocument.defaultView ?? window;
-    let frame = 0;
-    const measure = () => {
-      win.cancelAnimationFrame(frame);
-      frame = win.requestAnimationFrame(() => {
-        content.style.zoom = "";
-        const scale = Math.min(1, box.clientHeight / Math.max(1, content.scrollHeight), box.clientWidth / Math.max(1, content.scrollWidth));
-        // Small overflows (a pixel of rounding) aren't worth shrinking for.
-        if (scale < 0.98) content.style.zoom = String(Math.max(0.3, scale));
-      });
-    };
-    measure();
-    const stop = observeSize([box, content], measure);
-    return () => {
-      win.cancelAnimationFrame(frame);
-      stop();
-    };
-  }, [fit]);
-  return (
-    <div ref={outer} className={className}>
-      <div ref={inner} className="osl-fit">
-        {children}
-      </div>
-    </div>
-  );
-}
-
 const quote = (value: string) => `"${value.replace(/["\\]/g, "\\$&")}"`;
 
 /**
@@ -111,6 +67,101 @@ export function buildCss(
   });
   for (const [blockId, name] of morphNames ?? []) rules.push(`${block(blockId)}{view-transition-name:${name}}`);
   return rules.join("\n");
+}
+
+/**
+ * A slide region that scales its content down (never up) to fit. Uses a
+ * transform, not CSS zoom: editors' menus and carets (BlockNote's floating
+ * UI) position correctly under transforms. The content is laid out wider by
+ * the same factor first, so text still wraps across the region's full width.
+ */
+function Region({ className, fit, children }: { className: string; fit: boolean; children: ReactNode }) {
+  const outer = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const box = outer.current;
+    const content = inner.current;
+    if (!box || !content) return;
+    const reset = () => {
+      content.style.transform = "";
+      content.style.width = "";
+      content.style.height = "";
+    };
+    if (!fit) {
+      reset();
+      return;
+    }
+    // The region's own window: it may be the presenter view's.
+    const win = box.ownerDocument.defaultView ?? window;
+    /** How tall and wide the blocks really are (a stretched wrapper's own size says nothing). */
+    const extent = () => {
+      let height = content.scrollHeight;
+      let width = content.scrollWidth;
+      for (const child of content.children) {
+        height = Math.max(height, (child as HTMLElement).offsetTop - content.offsetTop + child.scrollHeight);
+        width = Math.max(width, child.scrollWidth);
+      }
+      return { height, width };
+    };
+    let frame = 0;
+    let fitting = false;
+    const measure = () => {
+      if (fitting) return;
+      win.cancelAnimationFrame(frame);
+      frame = win.requestAnimationFrame(() => {
+        fitting = true;
+        reset();
+        const W = box.clientWidth;
+        const H = box.clientHeight;
+        let { height, width } = extent();
+        let scale = Math.min(1, H / Math.max(1, height), W / Math.max(1, width));
+        // Laid out wider, text re-wraps and the height changes: settle in a few steps.
+        for (let i = 0; i < 4 && scale < 0.98; i++) {
+          content.style.width = `${W / scale}px`;
+          content.style.height = `${H / scale}px`;
+          ({ height, width } = extent());
+          const next = Math.min(1, H / Math.max(1, height), (W / scale) / Math.max(1, width) * scale);
+          if (Math.abs(next - scale) < 0.01) {
+            scale = Math.min(scale, next);
+            break;
+          }
+          scale = Math.min(scale, next);
+        }
+        if (scale < 0.98) {
+          scale = Math.max(0.3, scale);
+          content.style.width = `${W / scale}px`;
+          content.style.height = `${H / scale}px`;
+          content.style.transform = `scale(${scale})`;
+        } else reset();
+        // Let the observers see this layout before measuring again.
+        win.requestAnimationFrame(() => (fitting = false));
+      });
+    };
+    // Watch the blocks themselves too: a region that stretches to fill the slide
+    // keeps its own size when a block inside it loads or grows (a mind map, an app).
+    let stop = () => {};
+    const watch = () => {
+      stop();
+      stop = observeSize([box, content, ...content.children], measure);
+      measure();
+    };
+    watch();
+    const Mutations = (win as typeof globalThis).MutationObserver;
+    const added = Mutations ? new Mutations(watch) : null;
+    added?.observe(content, { childList: true });
+    return () => {
+      win.cancelAnimationFrame(frame);
+      added?.disconnect();
+      stop();
+    };
+  }, [fit]);
+  return (
+    <div ref={outer} className={className}>
+      <div ref={inner} className="osl-fit">
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export function SlideView({ deck, slide, step, mode = "live", renderBlocks, renderCanvas, blockIdAttribute = "data-id", blockSelector, morphNames, fit = true }: SlideViewProps) {

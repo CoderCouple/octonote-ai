@@ -45,3 +45,6 @@ export { canvasSlideRefs } from "./canvas-slides.js";
 export type { CanvasSlideRef, CanvasSource, ConvertOptions, NotebookEntry, NotebookSource, NoteSource, ProjectSource, SlideMarkdown } from "./convert.js";
 // Editing: pure deck operations.
 export { addSlide, buildableBlocks, duplicateSlide, moveBuild, moveSlide, removeSlide, setBuild, updateSlide } from "./ops.js";
+// "Let AI design it": the brief a model reads, the plan it answers with, and the deck built from it.
+export { deckFromDesign, DESIGN_LIMITS, DESIGN_SCHEMA, DESIGN_SYSTEM, designBrief } from "./design.js";
+export type { DesignBrief, DesignItem, SlideDesign } from "./design.js";

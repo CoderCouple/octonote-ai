@@ -8,23 +8,11 @@
  */
 import "@octonote/slides/styles.css";
 import "@/features/decks/slides.css";
-import {
-  clampPosition,
-  enterPresentationFullscreen,
-  nextPosition,
-  Presenter,
-  previousPosition,
-  SlideOutline,
-  SlideStage,
-  SlideView,
-  toDeckDocument,
-  visibleDeckSlides,
-  type DeckPosition,
-} from "@octonote/slides";
-import { ChevronLeft, ChevronRight, Link2, Play } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { clampPosition, SlideOutline, toDeckDocument, visibleDeckSlides, type DeckPosition } from "@octonote/slides";
+import { FileDown, Link2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useSlideRenderers } from "@/features/decks/lib/renderers";
+import { DeckPlayer } from "@/features/decks/components/deck-player";
 import { CanvasReferenceContext } from "@/features/notes/blocks/canvas-reference-context";
 import { cn } from "@/lib/utils";
 import { publicCanvasResolver } from "../lib/public-canvas-resolver";
@@ -48,32 +36,13 @@ export function PublishedDeck({
 }) {
   const deck = useMemo(() => toDeckDocument(published.document), [published.document]);
   const slides = useMemo(() => visibleDeckSlides(deck), [deck]);
-  const renderers = useSlideRenderers(deck);
   const resolver = useMemo(() => publicCanvasResolver(slug), [slug]);
   const [at, setAt] = useState<DeckPosition>({ slide: 0, step: 0 });
-  const [presenting, setPresenting] = useState(false);
   const title = published.title || "Untitled presentation";
   const author = byline.author?.name ?? null;
   const date = new Date(byline.publishedAt ?? published.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  const slide = slides[at.slide];
-  const next = () => setAt((p) => nextPosition(slides, p));
-  const prev = () => setAt((p) => previousPosition(slides, p));
-
-  // ← → step through, unless the reader is typing into a block on the slide.
-  useEffect(() => {
-    if (presenting) return;
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as Element | null;
-      if (e.metaKey || e.ctrlKey || e.altKey || t?.closest("input, textarea, select, [contenteditable='true'], [role='slider']")) return;
-      if (e.key === "ArrowRight" || e.key === "PageDown") next();
-      else if (e.key === "ArrowLeft" || e.key === "PageUp") prev();
-      else return;
-      e.preventDefault();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presenting, slides]);
+  // Inside a published notebook the deck has its own path; on its own it's the root.
+  const printHref = notebook ? `/print/pub/${slug}/${published.id}` : `/print/pub/${slug}`;
 
   const meta = (
     <>
@@ -118,38 +87,16 @@ export function PublishedDeck({
             <p className="text-muted-foreground text-sm">{meta}</p>
           </header>
 
-          {slide ? (
-            <section aria-label={`Slide ${at.slide + 1} of ${slides.length}`} aria-roledescription="slide">
-              <SlideStage aspect={deck.aspect} className="overflow-hidden rounded-xl border shadow-sm">
-                <SlideView deck={deck} slide={slide} step={at.step} {...renderers} />
-              </SlideStage>
-            </section>
-          ) : (
-            <p className="text-muted-foreground py-24 text-center text-sm">This presentation has no slides yet.</p>
-          )}
-
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <button type="button" onClick={prev} aria-label="Back" className="hover:bg-accent grid size-10 place-items-center rounded-full border">
-              <ChevronLeft className="size-4" />
-            </button>
-            <span className="text-muted-foreground min-w-20 text-center text-sm tabular-nums" aria-live="polite">
-              {slides.length ? `${at.slide + 1} / ${slides.length}` : "0 / 0"}
-            </span>
-            <button type="button" onClick={next} aria-label="Next" className="hover:bg-accent grid size-10 place-items-center rounded-full border">
-              <ChevronRight className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                enterPresentationFullscreen();
-                setPresenting(true);
-              }}
-              disabled={!slides.length}
-              className="bg-primary text-primary-foreground ml-2 flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-medium disabled:opacity-50"
-            >
-              <Play className="size-3.5" /> Present
-            </button>
-          </div>
+          <DeckPlayer
+            deck={deck}
+            position={at}
+            onPositionChange={setAt}
+            actions={
+              <a href={printHref} target="_blank" rel="noopener" className="hover:bg-accent flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm">
+                <FileDown className="size-3.5" /> PDF
+              </a>
+            }
+          />
 
           <ol className="flex gap-2 overflow-x-auto pb-2" aria-label="All slides">
             {slides.map((s, i) => (
@@ -170,8 +117,6 @@ export function PublishedDeck({
             ))}
           </ol>
         </div>
-
-        {presenting ? <Presenter deck={deck} start={{ slide: at.slide, step: 0 }} onExit={() => setPresenting(false)} {...renderers} /> : null}
       </CanvasReferenceContext.Provider>
     </VotesProvider>
   );

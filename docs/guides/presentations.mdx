@@ -12,6 +12,7 @@ A presentation is a deck of slides. Each slide holds ordinary note blocks, so a 
   - A **note** becomes a title slide, then a slide per section: text on the left, its block on the right.
   - A **project** adds a slide for each frame or figure on its canvas, zoomed to it.
   - A **notebook** becomes a section per item, in the order the notebook lists them.
+- **Let AI design it:** the third choice in Make presentation. The AI plans the talk: a title, sections, a few short points on each slide, your quizzes, apps and videos on slides of their own, and what to say in the presenter notes, all from what you wrote. Your blocks are used exactly as they are, and any it doesn't place still get a slide. It uses your AI allowance and takes about half a minute.
 
 The original never changes. The presentation is a copy that remembers where it came from.
 
@@ -51,10 +52,18 @@ Share a presentation with people, by link, or publish it, as you would a note. A
 
 A slide that shows a canvas carries its own copy of the canvas, so publishing the presentation never makes the original canvas public.
 
+## PDF and embedding
+
+From the **⋯** menu in the editor:
+
+- **Save as PDF** opens every slide, fully built, one per page; your browser's print dialog saves it as a PDF. **PDF with presenter notes** puts your notes under each slide, for your own copy. Readers of a published presentation get a **PDF** button too (without your notes).
+- **Copy embed code** copies an `<iframe>` for a published presentation: put it on your course site or blog and readers click through it there, blocks and all. Add `?slide=3` to the link to open on a slide.
+
 ## From the CLI and agents
 
 ```bash
 octonote deck from pag_…                 # make one from a note (or prj_… / ntb_…)
+octonote deck from pag_… --ai            # let AI design it
 octonote deck create "Talk" --file talk.md
 octonote deck show dck_…                 # an outline of every slide
 ```
