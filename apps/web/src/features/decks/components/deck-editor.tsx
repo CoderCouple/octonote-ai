@@ -161,7 +161,10 @@ export function DeckEditor({ deck: initial, myRole, leading }: DeckEditorProps) 
     (fn: (s: DeckSlide) => DeckSlide, merge?: string) => history.change((d) => updateSlide(d, d.slides[Math.min(index, d.slides.length - 1)]!.id, fn), merge ? { merge } : {}),
     [history, index],
   );
-  const insert = (element: SlideElement) => {
+  const insert = (inserted: SlideElement) => {
+    // A spot already taken (the last insert) gets the next one just off it, as PowerPoint does.
+    let element = inserted;
+    while (slide.elements.some((e) => e.x === element.x && e.y === element.y)) element = { ...element, x: element.x + 24, y: element.y + 24 };
     changeSlide((s) => addElements(s, [element]));
     setSelection([element.id]);
     // A new text box is ready to type into.
@@ -399,6 +402,7 @@ export function DeckEditor({ deck: initial, myRole, leading }: DeckEditorProps) 
           deckId={initial.id}
           workspaceId={initial.workspaceId}
           blocks={el.blocks}
+          autoFocus
           onChange={(blocks: NoteBlock[]) =>
             changeSlide((s) => pruneAnimations(updateElements(s, [el.id], (e) => ({ ...e, blocks }) as SlideElement)), `text:${el.id}`)
           }

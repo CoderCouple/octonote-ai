@@ -336,11 +336,11 @@ function AnimatePanel({ slide, picked, act }: { slide: DeckSlide; picked: SlideE
       <Section title={one ? `Add an effect to “${describeElement(one)}”` : "Add an effect"}>
         {one ? (
           <>
-            <div className="grid grid-cols-3 gap-1">
+            <div className="flex flex-col gap-1">
               {ANIMATION_TYPES.map((type) => (
                 <Select key={type} value="" onValueChange={(effect) => act.addAnimation(type, effect)}>
-                  <SelectTrigger size="sm" className="text-xs" aria-label={`Add ${ANIMATION_TYPE_LABEL[type].toLowerCase()} effect`}>
-                    <SelectValue placeholder={ANIMATION_TYPE_LABEL[type]} />
+                  <SelectTrigger size="sm" className="w-full text-xs" aria-label={`Add ${ANIMATION_TYPE_LABEL[type].toLowerCase()} effect`}>
+                    <SelectValue placeholder={`+ ${ANIMATION_TYPE_LABEL[type]}`} />
                   </SelectTrigger>
                   <SelectContent>
                     {ANIMATION_EFFECTS[type].map((effect) => (

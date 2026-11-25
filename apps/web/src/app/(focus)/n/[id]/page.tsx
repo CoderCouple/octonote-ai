@@ -15,7 +15,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
     <NotesPane
       note={note}
       myRole={note.myRole ?? "viewer"}
-      leading={<BackLink href={back} signedIn={res.signedIn} />}
+      leading={<BackLink key="back" href={back} signedIn={res.signedIn} />}
     />
   );
 }

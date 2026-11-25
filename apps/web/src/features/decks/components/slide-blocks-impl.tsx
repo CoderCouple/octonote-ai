@@ -7,7 +7,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/shadcn/style.css";
 import type { NoteBlock, SlideMode } from "@octonote/slides";
 import { AppWindow, Clapperboard, Image as ImageIcon } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { INTERACTIVE_LABELS } from "@/features/notes/blocks/interactive-block";
 import { ComposeAiDialog } from "@/features/notes/blocks/compose-ai-dialog";
 import { FigurePickerDialog } from "@/features/notes/blocks/figure-picker-dialog";
@@ -74,13 +74,15 @@ export interface EditableSlideBlocksProps {
   blocks: NoteBlock[];
   onChange: (blocks: NoteBlock[]) => void;
   placeholder?: string;
+  /** Put the cursor in it when it opens (a double-click, a new text box). */
+  autoFocus?: boolean;
 }
 
 /**
  * A slide region in the editor: the note editor's blocks and `/` menu
  * (quiz, custom app, video, maths, mermaid, figures), sized for a slide.
  */
-export function EditableSlideBlocks({ deckId, workspaceId, blocks, onChange }: EditableSlideBlocksProps) {
+export function EditableSlideBlocks({ deckId, workspaceId, blocks, onChange, autoFocus = false }: EditableSlideBlocksProps) {
   const editor = useCreateBlockNote({
     schema: octoBlockNoteSchema,
     initialContent: blocks.length ? (blocks as never) : undefined,
@@ -91,6 +93,17 @@ export function EditableSlideBlocks({ deckId, workspaceId, blocks, onChange }: E
   const [videoOpen, setVideoOpen] = useState(false);
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
+  // Opened for editing: the cursor goes in, at the end, so typing goes straight into the box.
+  useEffect(() => {
+    if (!autoFocus) return;
+    const frame = requestAnimationFrame(() => {
+      const last = editor.document.at(-1);
+      if (last) editor.setTextCursorPosition(last, "end");
+      editor.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const place = (block: never) => {
     const current = editor.getTextCursorPosition().block;
