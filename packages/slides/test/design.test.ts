@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { blockText, deckFromDesign, deckProblems, designBrief, heading, paragraph, slideTitle, type NoteBlock } from "../src/index.js";
+import { blockText, designBrief, heading, paragraph, type NoteBlock } from "../src/index.js";
+import { planFromDesign } from "../src/design.js";
+import { legacyDeckProblems as deckProblems, type LegacySlide } from "../src/legacy.js";
+
+/** A planned (fixed-layout) slide's title: its first heading. */
+const slideTitle = (s: LegacySlide) => {
+  const h = [...s.main, ...s.side].find((b) => b.type === "heading");
+  return (h ? blockText(h) : "").trim();
+};
 
 const quiz: NoteBlock = { id: "quiz", type: "interactive", props: { kind: "quiz", spec: JSON.stringify({ title: "Scaling check", questions: [] }) }, children: [] };
 const video: NoteBlock = { id: "vid", type: "manimVideo", props: { videoId: "vid_1" }, children: [] };
@@ -31,7 +39,7 @@ describe("AI design", () => {
         { layout: "title", title: "Part 2" },
       ],
     };
-    const deck = deckFromDesign(plan, brief());
+    const deck = planFromDesign(plan, brief());
     expect(deck.slides.map((s) => [s.layout, slideTitle(s)])).toEqual([
       ["title", "Attention"],
       ["split", "Check yourself"],
@@ -50,13 +58,13 @@ describe("AI design", () => {
   });
 
   it("never trusts the plan: junk gives a title slide plus every block", () => {
-    const deck = deckFromDesign({ slides: "nope" }, brief());
+    const deck = planFromDesign({ slides: "nope" }, brief());
     expect(deck.slides.map((s) => s.layout)).toEqual(["title", "media", "media", "canvas"]);
     expect(deckProblems(deck)).toEqual([]);
   });
 
   it("caps points and text", () => {
-    const deck = deckFromDesign({ slides: [{ layout: "content", title: "x".repeat(500), points: Array(20).fill("p") }] }, designBrief("T", []));
+    const deck = planFromDesign({ slides: [{ layout: "content", title: "x".repeat(500), points: Array(20).fill("p") }] }, designBrief("T", []));
     expect(slideTitle(deck.slides[0]!).length).toBe(90);
     expect(deck.slides[0]!.main.length).toBe(7);
   });

@@ -19,24 +19,42 @@ interface Deck {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Block = Record<string, any>;
+interface Element {
+  kind: string;
+  role?: string;
+  blocks?: Block[];
+  shape?: string;
+  canvasId?: string;
+}
 interface Slide {
-  layout: string;
-  main: Block[];
-  side: Block[];
+  elements?: Element[];
+  animations?: { trigger?: string }[];
   notes: string;
   hidden?: boolean;
-  builds?: unknown[];
   transition?: string;
-  canvas?: { canvasId: string; itemId: string | null };
 }
 
-const text = (b: Block): string =>
-  Array.isArray(b.content) ? b.content.map((c: Block) => c?.text ?? (Array.isArray(c?.content) ? c.content.map((x: Block) => x?.text ?? "").join("") : "")).join("") : "";
+const text = (b: Block | undefined): string =>
+  b && Array.isArray(b.content) ? b.content.map((c: Block) => c?.text ?? (Array.isArray(c?.content) ? c.content.map((x: Block) => x?.text ?? "").join("") : "")).join("") : "";
 
-/** What a block is, in a word: its interactive kind, or its type. */
-const kindOf = (b: Block): string => (b.type === "interactive" ? String(b.props?.kind ?? "block") : b.type === "manimVideo" ? "video" : String(b.type));
+/** What an object is, in a word: a block's interactive kind, or its own kind. */
+function kindOf(e: Element): string {
+  if (e.kind === "text") return "text";
+  if (e.kind === "block") {
+    const b = e.blocks?.[0];
+    return b?.type === "interactive" ? String(b.props?.kind ?? "block") : b?.type === "manimVideo" ? "video" : String(b?.type ?? "block");
+  }
+  return e.kind === "shape" ? `shape:${e.shape ?? "rect"}` : e.kind;
+}
 
-/** A deck as an outline agents can read: each slide's layout, title, blocks and notes. */
+/** A slide's title: its title box, else the first text box with a heading. */
+function titleOf(s: Slide): string {
+  const texts = (s.elements ?? []).filter((e) => e.kind === "text");
+  const box = texts.find((t) => t.role === "title") ?? texts.find((t) => (t.blocks ?? []).some((b) => b.type === "heading"));
+  return text(box?.blocks?.find((b) => b.type === "heading") ?? box?.blocks?.find((b) => text(b).trim())).trim();
+}
+
+/** A deck as an outline agents can read: each slide's title, objects, clicks and notes. */
 export function deckOutline(document: unknown) {
   const slides: Slide[] = Array.isArray((document as { slides?: unknown } | null)?.slides) ? (document as { slides: Slide[] }).slides : [];
   const d = (document ?? {}) as { theme?: string; aspect?: string; transition?: string };
@@ -45,15 +63,14 @@ export function deckOutline(document: unknown) {
     aspect: d.aspect ?? "16:9",
     transition: d.transition ?? "fade",
     slides: slides.map((s, i) => {
-      const blocks = [...(s.main ?? []), ...(s.side ?? [])];
-      const head = blocks.find((b) => b.type === "heading");
+      const clicks = (s.animations ?? []).filter((a) => a.trigger === "click").length;
+      const canvas = (s.elements ?? []).find((e) => e.kind === "canvas")?.canvasId;
       return {
         n: i + 1,
-        layout: s.layout,
-        title: head ? text(head) : "",
-        blocks: blocks.filter((b) => b !== head).map(kindOf),
-        ...(s.canvas ? { canvas: s.canvas.canvasId } : {}),
-        ...(s.builds?.length ? { clicks: s.builds.length } : {}),
+        title: titleOf(s),
+        objects: (s.elements ?? []).map(kindOf),
+        ...(canvas ? { canvas } : {}),
+        ...(clicks ? { clicks } : {}),
         ...(s.transition ? { transition: s.transition } : {}),
         ...(s.hidden ? { hidden: true } : {}),
         notes: s.notes ?? "",
@@ -65,7 +82,7 @@ export function deckOutline(document: unknown) {
 function renderOutline(title: string, outline: ReturnType<typeof deckOutline>): string {
   const lines = [`${title || "Untitled presentation"} — ${outline.slides.length} slides`];
   for (const s of outline.slides) {
-    const extra = [s.layout, ...(s.blocks.length ? [s.blocks.join(", ")] : []), ...(s.clicks ? [`${s.clicks} clicks`] : []), ...(s.hidden ? ["hidden"] : [])];
+    const extra = [...(s.objects.length ? [s.objects.join(", ")] : ["empty"]), ...(s.clicks ? [`${s.clicks} clicks`] : []), ...(s.hidden ? ["hidden"] : [])];
     lines.push(`${String(s.n).padStart(3)}. ${s.title || "(no title)"}  · ${extra.join(" · ")}`);
     if (s.notes) lines.push(`     notes: ${s.notes.split("\n")[0]!.slice(0, 90)}`);
   }
@@ -80,8 +97,9 @@ function parseDeckJson(raw: string): unknown {
   } catch {
     throw usage("That file isn't JSON.", "`deck push` takes presentation JSON from `deck pull`; to write slides as markdown use `deck create --file`.");
   }
-  if (!doc || typeof doc !== "object" || (doc as { version?: unknown }).version !== 1 || !Array.isArray((doc as { slides?: unknown }).slides)) {
-    throw usage("That JSON isn't an Octonote presentation (it needs `version: 1` and a `slides` list).", "Start from `deck pull <id>`.");
+  const version = (doc as { version?: unknown } | null)?.version;
+  if (!doc || typeof doc !== "object" || (version !== 1 && version !== 2) || !Array.isArray((doc as { slides?: unknown }).slides)) {
+    throw usage("That JSON isn't an Octonote presentation (it needs a `version` and a `slides` list).", "Start from `deck pull <id>`.");
   }
   return doc;
 }
@@ -161,7 +179,7 @@ export function registerDeck(program: Command) {
   deck
     .command("show")
     .alias("read")
-    .description("Print a presentation as an outline: each slide's layout, title, blocks and notes")
+    .description("Print a presentation as an outline: each slide's title, objects, clicks and notes")
     .argument("<deck>", "presentation id (dck_…) or URL")
     .action(
       action(async (ctx, ref: string) => {
@@ -174,7 +192,7 @@ export function registerDeck(program: Command) {
 
   deck
     .command("pull")
-    .description("Save a presentation as JSON ({ version: 1, slides }) to edit and push back")
+    .description("Save a presentation as JSON ({ version: 2, slides: [{ elements, animations, notes }] }) to edit and push back")
     .argument("<deck>", "presentation id (dck_…) or URL")
     .option("-o, --out <path>", "file to write (default: <id>.json)")
     .action(

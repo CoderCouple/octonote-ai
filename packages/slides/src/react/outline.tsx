@@ -1,47 +1,51 @@
-import { isMediaBlock } from "../convert.js";
-import { blockText, slideTitle, type DeckSlide, type NoteBlock } from "../model.js";
+import { blockText, type NoteBlock } from "../blocks.js";
+import { SLIDE_SIZE, type DeckAspect, type DeckSlide, type SlideElement } from "../model.js";
+import { paint } from "./slide-view.js";
 
-/** What a block is, in a word, for slide thumbnails. */
-const KIND_LABEL: Record<string, string> = {
-  interactive: "block",
-  manimVideo: "video",
-  video: "video",
-  mermaid: "diagram",
-  figure: "figure",
-  canvasReference: "canvas",
-  image: "image",
-  table: "table",
-  audio: "audio",
-  file: "file",
-};
+/** What a block is, in a word, for thumbnails. */
+function chip(block: NoteBlock | undefined): string {
+  if (!block) return "block";
+  if (block.type === "interactive") return block.props?.kind === "custom" ? "app" : String(block.props?.kind ?? "block");
+  return ({ manimVideo: "video", video: "video", mermaid: "diagram", figure: "figure", image: "image", table: "table" } as Record<string, string>)[block.type] ?? block.type;
+}
 
-function chip(block: NoteBlock): string {
-  if (block.type === "interactive" && typeof block.props?.kind === "string") return block.props.kind === "custom" ? "app" : block.props.kind;
-  return KIND_LABEL[block.type] ?? block.type;
+function Sketch({ el }: { el: SlideElement }) {
+  if (el.kind === "text") {
+    const first = el.blocks.find((b) => blockText(b).trim());
+    const big = first?.type === "heading";
+    return <span className={big ? "osl-sk-title" : "osl-sk-text"}>{first ? blockText(first) : ""}</span>;
+  }
+  if (el.kind === "shape") return <span className="osl-sk-shape" style={{ background: paint(el.style?.fill) ?? "var(--osl-accent)", borderRadius: el.shape === "ellipse" ? "50%" : undefined }} />;
+  if (el.kind === "image") return <span className="osl-sk-chip">image</span>;
+  if (el.kind === "canvas") return <span className="osl-sk-chip">canvas</span>;
+  return <span className="osl-sk-chip">{chip(el.blocks[0])}</span>;
 }
 
 /**
- * A light, static picture of a slide for the slide strip: its title, a line
- * of text, and a chip per block. Drawing every slide live would run every
- * app and video at once.
+ * A light, static picture of a slide for the slide strip: each object as a
+ * box where it sits, a title or a line of text, or a chip naming the block.
+ * Drawing every slide live would run every app and video at once.
  */
-export function SlideOutline({ slide }: { slide: DeckSlide }) {
-  const blocks = [...slide.main, ...slide.side];
-  const title = slideTitle(slide);
-  const firstText = blocks.find((b) => b.type !== "heading" && !isMediaBlock(b) && blockText(b).trim());
-  const chips = [...new Set(blocks.filter(isMediaBlock).map(chip))];
-  if (slide.layout === "canvas") chips.unshift("canvas");
+export function SlideOutline({ slide, aspect = "16:9" }: { slide: DeckSlide; aspect?: DeckAspect }) {
+  const { w, h } = SLIDE_SIZE[aspect];
   return (
-    <div className={`osl-outline osl-layout-${slide.layout}`} aria-hidden="true">
-      <div className="osl-outline-title">{title || (slide.layout === "title" ? "Title" : "")}</div>
-      {firstText ? <div className="osl-outline-text">{blockText(firstText)}</div> : null}
-      {chips.length ? (
-        <div className="osl-outline-chips">
-          {chips.slice(0, 3).map((c) => (
-            <span key={c}>{c}</span>
-          ))}
+    <div className="osl-outline" aria-hidden="true" style={slide.background ? { background: paint(slide.background) } : undefined}>
+      {slide.elements.map((el) => (
+        <div
+          key={el.id}
+          className={`osl-sk osl-sk-${el.kind}`}
+          style={{
+            left: `${(el.x / w) * 100}%`,
+            top: `${(el.y / h) * 100}%`,
+            width: `${(el.w / w) * 100}%`,
+            height: `${(el.h / h) * 100}%`,
+            ...(el.rotate ? { transform: `rotate(${el.rotate}deg)` } : {}),
+            justifyContent: el.style?.vAlign === "middle" ? "center" : el.style?.vAlign === "bottom" ? "flex-end" : "flex-start",
+          }}
+        >
+          <Sketch el={el} />
         </div>
-      ) : null}
+      ))}
     </div>
   );
 }

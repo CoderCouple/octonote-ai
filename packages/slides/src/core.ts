@@ -1,50 +1,120 @@
-/** The deck model and converters, without React: for the API, the CLI and tests. */
-// The deck model: slides, layouts, builds, transitions, validation and navigation.
+/** The deck model and its tools, without React: for the API, the CLI and tests. */
+
+// Note blocks as slides read them.
+export { allBlockIds, blockText, bullet, heading, isMediaBlock, paragraph } from "./blocks.js";
+export type { NoteBlock } from "./blocks.js";
+
+// The model: free-form slides of objects, with an animation timeline.
 export {
-  allBlockIds,
-  blockText,
-  BUILD_EFFECTS,
-  clampPosition,
+  ANIMATION_EFFECTS,
+  ANIMATION_TRIGGERS,
+  ANIMATION_TYPES,
+  animationId,
+  blockElement,
   DECK_ASPECTS,
   DECK_LIMITS,
   DECK_THEMES,
   DECK_VERSION,
-  deckProblems,
+  ELEMENT_KINDS,
+  elementId,
   emptyDeck,
-  heading,
   newSlide,
-  nextPosition,
-  paragraph,
-  previousPosition,
-  SLIDE_LAYOUTS,
+  SHAPES,
+  SLIDE_SIZE,
   SLIDE_TRANSITIONS,
+  slideBlocks,
   slideId,
-  slideSteps,
   slideTitle,
-  toDeckDocument,
+  textElement,
   visibleDeckSlides,
 } from "./model.js";
 export type {
-  BuildEffect,
+  AnimationTrigger,
+  AnimationType,
+  BlockElement,
+  CanvasElement,
   DeckAspect,
   DeckDocument,
-  DeckPosition,
   DeckSlide,
   DeckSource,
   DeckTheme,
-  NoteBlock,
-  SlideBuild,
-  SlideCanvas,
-  SlideLayout,
+  ElementKind,
+  ElementStyle,
+  ImageElement,
+  ShapeElement,
+  ShapeName,
+  SlideAnimation,
+  SlideElement,
   SlideTransition,
   SplitMode,
+  TextElement,
 } from "./model.js";
-// Notes, projects and notebooks → decks.
-export { deckFromNote, deckFromNotebook, deckFromProject, deckFromSlides, DEFAULT_CONVERT, isMediaBlock, splitSlideMarkdown } from "./convert.js";
-export { canvasSlideRefs } from "./canvas-slides.js";
+
+// Loading and checking stored decks (version 1 is upgraded).
+export { deckProblems, toDeckDocument } from "./deck.js";
+export { upgradeDeck, upgradeSlide } from "./upgrade.js";
+
+// Presenting: the click timeline and moving through it.
+export { slideSteps, slideTimeline, stepDuration, timelineCss } from "./timeline.js";
+export type { TimedAnimation, TimelineCssOptions, TimelineStep } from "./timeline.js";
+export { clampPosition, nextPosition, previousPosition } from "./navigation.js";
+export type { DeckPosition } from "./navigation.js";
+
+// Box geometry for the editor: handles, rotation, snapping.
+export {
+  boundsOf,
+  boxesIntersect,
+  boxFromPoints,
+  centerOf,
+  HANDLES,
+  normalizeAngle,
+  resizeBox,
+  resizeCursor,
+  resizeRotatedBox,
+  rotatedBounds,
+  rotatedCorners,
+  rotatePoint,
+  snapBox,
+} from "./geometry.js";
+export type { Box, Handle, Point, SnapResult } from "./geometry.js";
+
+// Editing: pure deck, slide, object and animation operations.
+export {
+  addAnimation,
+  addElements,
+  addSlide,
+  alignElements,
+  animateParagraphs,
+  copyForClipboard,
+  DEFAULT_DURATION,
+  distributeElements,
+  duplicateElements,
+  duplicateSlide,
+  groupElements,
+  moveAnimation,
+  moveElements,
+  moveSlide,
+  pasteFromClipboard,
+  pruneAnimations,
+  removeAnimation,
+  removeElements,
+  removeSlide,
+  reorderElements,
+  SLIDE_TEMPLATES,
+  slideFromTemplate,
+  ungroupElements,
+  updateAnimation,
+  updateElements,
+  updateSlide,
+  withGroups,
+} from "./ops.js";
+export type { AlignEdge, LayerMove, SlideTemplate } from "./ops.js";
+
+// Notes, projects, notebooks and slide markdown → decks.
+export { deckFromNote, deckFromNotebook, deckFromProject, deckFromSlides, DEFAULT_CONVERT, splitSlideMarkdown } from "./convert.js";
 export type { CanvasSlideRef, CanvasSource, ConvertOptions, NotebookEntry, NotebookSource, NoteSource, ProjectSource, SlideMarkdown } from "./convert.js";
-// Editing: pure deck operations.
-export { addSlide, buildableBlocks, duplicateSlide, moveBuild, moveSlide, removeSlide, setBuild, updateSlide } from "./ops.js";
+export { canvasSlideRefs } from "./canvas-slides.js";
+
 // "Let AI design it": the brief a model reads, the plan it answers with, and the deck built from it.
 export { deckFromDesign, DESIGN_LIMITS, DESIGN_SCHEMA, DESIGN_SYSTEM, designBrief } from "./design.js";
 export type { DesignBrief, DesignItem, SlideDesign } from "./design.js";

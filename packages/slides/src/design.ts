@@ -7,8 +7,11 @@
  * are (never rewritten by the model), refs it invents are ignored, and any
  * block it leaves out still gets a slide: nothing the author made is lost.
  */
-import { blockText, DECK_VERSION, heading, newSlide, paragraph, type DeckDocument, type DeckSlide, type NoteBlock } from "./model.js";
-import { isMediaBlock, type CanvasSource } from "./convert.js";
+import { blockText, heading, isMediaBlock, paragraph, type NoteBlock } from "./blocks.js";
+import type { CanvasSource } from "./convert.js";
+import { LEGACY_VERSION, newLegacySlide as newSlide, type LegacyDeck, type LegacySlide as DeckSlide } from "./legacy.js";
+import type { DeckDocument } from "./model.js";
+import { upgradeDeck } from "./upgrade.js";
 
 /** What the model may use: notes with their blocks, and canvases with their parts. */
 export type DesignItem = { kind: "note"; title: string; blocks: NoteBlock[] } | { kind: "canvas"; title: string; canvas: CanvasSource };
@@ -156,7 +159,7 @@ const clip = (s: unknown, n: number) => (typeof s === "string" ? s.trim().slice(
  * refs and extra fields are ignored, and layouts are corrected to what the
  * slide actually holds.
  */
-export function deckFromDesign(plan: unknown, brief: DesignBrief): DeckDocument {
+export function planFromDesign(plan: unknown, brief: DesignBrief): LegacyDeck {
   const raw = Array.isArray((plan as { slides?: unknown } | null)?.slides) ? (plan as { slides: unknown[] }).slides.slice(0, DESIGN_LIMITS.slides) : [];
   const used = new Set<string>();
   const slides: DeckSlide[] = [];
@@ -200,7 +203,7 @@ export function deckFromDesign(plan: unknown, brief: DesignBrief): DeckDocument 
   }
   const copies = Object.fromEntries(brief.canvases.filter((c) => shownCanvases.has(c.canvasId)).map((c) => [c.canvasId, c.document]));
   return {
-    version: DECK_VERSION,
+    version: LEGACY_VERSION,
     theme: "paper",
     aspect: "16:9",
     transition: "fade",
@@ -208,3 +211,6 @@ export function deckFromDesign(plan: unknown, brief: DesignBrief): DeckDocument 
     ...(Object.keys(copies).length ? { canvases: copies } : {}),
   };
 }
+
+/** The model's plan → a deck of placed objects. */
+export const deckFromDesign = (plan: unknown, brief: DesignBrief): DeckDocument => upgradeDeck(planFromDesign(plan, brief));

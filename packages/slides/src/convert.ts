@@ -10,18 +10,10 @@
  * the points (lists, formulas, code), the way a speaker would cut a script
  * down to slides.
  */
-import {
-  blockText,
-  DECK_LIMITS,
-  DECK_VERSION,
-  heading,
-  newSlide,
-  paragraph,
-  type DeckDocument,
-  type DeckSlide,
-  type NoteBlock,
-  type SplitMode,
-} from "./model.js";
+import { blockText, heading, isMediaBlock, paragraph, type NoteBlock } from "./blocks.js";
+import { LEGACY_VERSION, newLegacySlide as newSlide, type LegacyDeck, type LegacySlide as DeckSlide } from "./legacy.js";
+import { DECK_LIMITS, type DeckDocument, type SplitMode } from "./model.js";
+import { upgradeDeck } from "./upgrade.js";
 
 export interface ConvertOptions {
   /** Where one slide ends and the next begins. */
@@ -34,8 +26,6 @@ export interface ConvertOptions {
 
 export const DEFAULT_CONVERT: ConvertOptions = { split: "heading", textToNotes: true, onePerSlide: true };
 
-/** Blocks that are the point of a slide on their own: they go on the right, or fill the slide. */
-const MEDIA_TYPES = new Set(["interactive", "manimVideo", "mermaid", "figure", "canvasReference", "image", "video", "audio", "file", "table"]);
 
 /** The text blocks a slide keeps when paragraphs move to the notes. */
 const POINT_TYPES = new Set(["bulletListItem", "numberedListItem", "checkListItem", "toggleListItem", "quote", "mathBlock", "codeBlock", "heading"]);
@@ -45,7 +35,7 @@ const LEAD_MAX_CHARS = 240;
 /** More text blocks than this continue on a second slide. */
 const TEXT_PER_SLIDE = 7;
 
-export const isMediaBlock = (b: NoteBlock) => MEDIA_TYPES.has(b.type);
+export { isMediaBlock };
 
 const isEmptyParagraph = (b: NoteBlock) => b.type === "paragraph" && !blockText(b).trim();
 
@@ -85,16 +75,16 @@ export interface NotebookSource {
   items: NotebookEntry[];
 }
 
-export function deckFromNote(note: NoteSource, options: ConvertOptions = DEFAULT_CONVERT): DeckDocument {
+export function planFromNote(note: NoteSource, options: ConvertOptions = DEFAULT_CONVERT): LegacyDeck {
   return deckOf(noteSlides(note, options, true));
 }
 
-export function deckFromProject(project: ProjectSource, options: ConvertOptions = DEFAULT_CONVERT): DeckDocument {
+export function planFromProject(project: ProjectSource, options: ConvertOptions = DEFAULT_CONVERT): LegacyDeck {
   return deckOf(projectSlides(project, options, true), project.canvas ? [project.canvas] : []);
 }
 
 /** A title slide for the notebook, then each item as its own section in notebook order. */
-export function deckFromNotebook(notebook: NotebookSource, options: ConvertOptions = DEFAULT_CONVERT): DeckDocument {
+export function planFromNotebook(notebook: NotebookSource, options: ConvertOptions = DEFAULT_CONVERT): LegacyDeck {
   const slides = [titleSlide(notebook.title, null)];
   for (const item of notebook.items) {
     slides.push(newSlide("section", { main: [heading(item.title || "Untitled", 1)] }));
@@ -106,12 +96,17 @@ export function deckFromNotebook(notebook: NotebookSource, options: ConvertOptio
   return deckOf(slides, canvases);
 }
 
-function deckOf(slides: DeckSlide[], canvases: CanvasSource[] = []): DeckDocument {
+/** Slides are planned in the fixed-layout form these rules were written for (the plan* functions), then placed as objects. */
+function deckOf(slides: DeckSlide[], canvases: CanvasSource[] = []): LegacyDeck {
   const kept = slides.slice(0, DECK_LIMITS.slides);
   const used = new Set(kept.flatMap((s) => (s.canvas ? [s.canvas.canvasId] : [])));
   const copies = Object.fromEntries(canvases.filter((c) => used.has(c.canvasId)).map((c) => [c.canvasId, c.document]));
+  return legacyDeck(kept, copies);
+}
+
+function legacyDeck(kept: DeckSlide[], copies: Record<string, unknown>): LegacyDeck {
   return {
-    version: DECK_VERSION,
+    version: LEGACY_VERSION,
     theme: "paper",
     aspect: "16:9",
     transition: "fade",
@@ -270,7 +265,7 @@ export function splitSlideMarkdown(markdown: string): SlideMarkdown[] {
  * section; text with a block is text-and-block; a block alone fills the
  * slide; anything else is text. Nothing moves to the notes.
  */
-export function deckFromSlides(slides: { blocks: NoteBlock[]; notes: string }[]): DeckDocument {
+export function planFromSlides(slides: { blocks: NoteBlock[]; notes: string }[]): LegacyDeck {
   return deckOf(
     slides.map(({ blocks: raw, notes }, i) => {
       const blocks = raw.filter((b) => !isEmptyParagraph(b));
@@ -286,3 +281,15 @@ export function deckFromSlides(slides: { blocks: NoteBlock[]; notes: string }[])
     }),
   );
 }
+
+/** A note → a deck: a title slide, then a slide per section. */
+export const deckFromNote = (note: NoteSource, options: ConvertOptions = DEFAULT_CONVERT): DeckDocument => upgradeDeck(planFromNote(note, options));
+
+/** A project → its note's slides, then a slide per canvas frame or figure. */
+export const deckFromProject = (project: ProjectSource, options: ConvertOptions = DEFAULT_CONVERT): DeckDocument => upgradeDeck(planFromProject(project, options));
+
+/** A notebook → a title slide, then each item as its own section. */
+export const deckFromNotebook = (notebook: NotebookSource, options: ConvertOptions = DEFAULT_CONVERT): DeckDocument => upgradeDeck(planFromNotebook(notebook, options));
+
+/** Slide markdown, parsed → a deck. */
+export const deckFromSlides = (slides: { blocks: NoteBlock[]; notes: string }[]): DeckDocument => upgradeDeck(planFromSlides(slides));

@@ -48,8 +48,8 @@ These work with every command.
 | [<code>project show</code>](/cli/reference/projects#project-show) | Print a project: its note, then its canvas (JSON: the ids of both) |
 | [<code>deck create</code>](/cli/reference/presentations#deck-create) | Create a presentation from slide markdown (--- between slides, ??? before a slide's notes), or empty |
 | [<code>deck from</code>](/cli/reference/presentations#deck-from) | Make a presentation from a note, project or notebook (the original stays as it is) |
-| [<code>deck show</code>](/cli/reference/presentations#deck-show) | Print a presentation as an outline: each slide's layout, title, blocks and notes |
-| [<code>deck pull</code>](/cli/reference/presentations#deck-pull) | Save a presentation as JSON (&#123; version: 1, slides &#125;) to edit and push back |
+| [<code>deck show</code>](/cli/reference/presentations#deck-show) | Print a presentation as an outline: each slide's title, objects, clicks and notes |
+| [<code>deck pull</code>](/cli/reference/presentations#deck-pull) | Save a presentation as JSON (&#123; version: 2, slides: [&#123; elements, animations, notes &#125;] &#125;) to edit and push back |
 | [<code>deck push</code>](/cli/reference/presentations#deck-push) | Replace a presentation with JSON from `deck pull` (checked before it's saved) |
 | [<code>notebook list</code>](/cli/reference/notebooks#notebook-list) | List notebooks with what's inside |
 | [<code>notebook create</code>](/cli/reference/notebooks#notebook-create) | Create a notebook |

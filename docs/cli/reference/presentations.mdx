@@ -48,7 +48,7 @@ octonote deck from <source> [options]
 
 ## deck show
 
-Print a presentation as an outline: each slide's layout, title, blocks and notes. Alias: <code>read</code>.
+Print a presentation as an outline: each slide's title, objects, clicks and notes. Alias: <code>read</code>.
 
 ```bash
 octonote deck show <deck>
@@ -60,7 +60,7 @@ octonote deck show <deck>
 
 ## deck pull
 
-Save a presentation as JSON (&#123; version: 1, slides &#125;) to edit and push back
+Save a presentation as JSON (&#123; version: 2, slides: [&#123; elements, animations, notes &#125;] &#125;) to edit and push back
 
 ```bash
 octonote deck pull <deck> [options]

@@ -164,7 +164,10 @@ describe("mcp server", () => {
 
     const written = (await call(client, "create_deck", { title: "Talk", markdown: "# Talk\n???\nHello\n---\n## Point\n- one", notebook: "Talks" })).json;
     expect(written.slides).toBe(2);
-    expect((await call(client, "fetch", { id: written.id })).json.text).toContain("notes: Hello");
+    const text = (await call(client, "fetch", { id: written.id })).json.text;
+    expect(text).toContain("1. Talk [");
+    expect(text).toContain("notes: Hello");
+    expect(text).toContain("2. Point [");
 
     expect((await call(client, "rename", { id: written.id, name: "Talk v2" })).json.title).toBe("Talk v2");
     expect((await call(client, "move", { id: fromNote.id, notebook: nb.id })).json.notebookId).toBe(nb.id);

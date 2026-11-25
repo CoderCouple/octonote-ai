@@ -1,4 +1,5 @@
-import { allBlockIds, type DeckSlide, type SlideTransition } from "../model.js";
+import type { DeckSlide, SlideElement } from "../model.js";
+import type { SlideTransition } from "../model.js";
 
 type ViewTransitionDocument = Document & {
   startViewTransition?: (update: () => void) => { finished: Promise<void> };
@@ -7,16 +8,28 @@ type ViewTransitionDocument = Document & {
 export const prefersReducedMotion = () =>
   typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+/** What makes two objects "the same" across slides: their id (a duplicated slide keeps it), else a text box's first block. */
+const firstBlock = (e: SlideElement) => ("blocks" in e && typeof e.blocks[0]?.id === "string" ? e.blocks[0].id : null);
+
 /**
- * Blocks on both slides of a `morph`, each with a view-transition name, so
+ * Objects on both slides of a `morph`, each with a view-transition name, so
  * the browser moves them from their old place and size to the new one
- * (Keynote's Magic Move, reveal.js's auto-animate).
+ * (Keynote's Magic Move, reveal.js's auto-animate). Keyed by the new slide's
+ * object id.
  */
-export function morphPairs(from: DeckSlide, to: DeckSlide): Map<string, string> {
-  const before = new Set(allBlockIds([...from.main, ...from.side]));
+export function morphPairs(from: DeckSlide, to: DeckSlide): { names: Map<string, string>; previous: Map<string, string> } {
   const names = new Map<string, string>();
-  for (const id of allBlockIds([...to.main, ...to.side])) if (before.has(id)) names.set(id, `osl-m-${names.size}`);
-  return names;
+  const previous = new Map<string, string>();
+  const byId = new Map(from.elements.map((e) => [e.id, e]));
+  const byBlock = new Map(from.elements.flatMap((e) => (firstBlock(e) ? [[firstBlock(e)!, e] as const] : [])));
+  for (const e of to.elements) {
+    const match = byId.get(e.id) ?? (firstBlock(e) ? byBlock.get(firstBlock(e)!) : undefined);
+    if (!match) continue;
+    const name = `osl-m-${names.size}`;
+    names.set(e.id, name);
+    previous.set(match.id, name);
+  }
+  return { names, previous };
 }
 
 /**

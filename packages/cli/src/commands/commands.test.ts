@@ -214,17 +214,16 @@ describe("sharing and activity", () => {
 
 describe("presentations", () => {
   const deckRow = (slides: unknown[]) => ({ id: DCK, title: "Talk", notebookId: null, updatedAt: "", document: { version: 1, slides } });
-  const slide = (layout: string, title: string, extra: Record<string, unknown> = {}) => ({
+  const slide = (title: string, extra: Record<string, unknown> = {}) => ({
     id: `s_${title}`,
-    layout,
-    main: [{ id: "h", type: "heading", props: { level: 2 }, content: [{ type: "text", text: title }] }],
-    side: [],
+    elements: [{ id: "t", kind: "text", role: "title", x: 0, y: 0, w: 800, h: 80, blocks: [{ id: "h", type: "heading", props: { level: 2 }, content: [{ type: "text", text: title }] }] }],
+    animations: [],
     notes: "",
     ...extra,
   });
 
   it("deck from a note sends the options and returns the link", async () => {
-    routes[`POST /workspaces/${WS}/decks/from`] = () => deckRow([slide("title", "Talk"), slide("content", "Idea")]);
+    routes[`POST /workspaces/${WS}/decks/from`] = () => deckRow([slide("Talk"), slide("Idea")]);
     const result = await run("deck", "from", PAG, "--split", "divider", "--keep-text");
     expect(sent("POST", `/workspaces/${WS}/decks/from`)!.body).toEqual({
       source: { kind: "page", id: PAG, split: "divider" },
@@ -235,7 +234,7 @@ describe("presentations", () => {
   });
 
   it("deck from --ai asks the server to design it, with time to think", async () => {
-    routes[`POST /workspaces/${WS}/decks/from`] = () => deckRow([slide("title", "Talk")]);
+    routes[`POST /workspaces/${WS}/decks/from`] = () => deckRow([slide("Talk")]);
     await run("deck", "from", PAG, "--ai");
     const call = sent("POST", `/workspaces/${WS}/decks/from`)!;
     expect(call.body).toMatchObject({ source: { kind: "page", id: PAG, split: "heading" }, design: "ai" });
@@ -254,21 +253,22 @@ describe("presentations", () => {
   it("deck create sends slide markdown", async () => {
     const file = join(dir, "talk.md");
     writeFileSync(file, "# Talk\n???\nHi\n---\n## Idea");
-    routes[`POST /workspaces/${WS}/decks`] = () => deckRow([slide("title", "Talk"), slide("content", "Idea")]);
+    routes[`POST /workspaces/${WS}/decks`] = () => deckRow([slide("Talk"), slide("Idea")]);
     await run("deck", "create", "Talk", "--file", file);
     expect(sent("POST", `/workspaces/${WS}/decks`)!.body).toEqual({ title: "Talk", markdown: "# Talk\n???\nHi\n---\n## Idea" });
   });
 
   it("deck show prints an outline agents can read", async () => {
+    const quiz = { id: "q", kind: "block", x: 500, y: 0, w: 400, h: 300, blocks: [{ id: "b", type: "interactive", props: { kind: "quiz" } }] };
     routes[`GET /decks/${DCK}`] = () =>
       deckRow([
-        slide("split", "Check", { side: [{ id: "q", type: "interactive", props: { kind: "quiz" } }], builds: [{ blockId: "q", effect: "fade" }], notes: "Ask first" }),
-        slide("canvas", "Diagram", { canvas: { canvasId: CNV, itemId: null }, hidden: true }),
+        slide("Check", { elements: [slide("Check").elements[0], quiz], animations: [{ trigger: "click" }, { trigger: "with" }], notes: "Ask first" }),
+        slide("Diagram", { elements: [{ id: "c", kind: "canvas", canvasId: CNV, itemId: null, x: 0, y: 0, w: 960, h: 540 }, slide("Diagram").elements[0]], hidden: true }),
       ]);
     const result = await run("deck", "show", DCK);
     expect(result.slides).toEqual([
-      { n: 1, layout: "split", title: "Check", blocks: ["quiz"], clicks: 1, notes: "Ask first" },
-      { n: 2, layout: "canvas", title: "Diagram", blocks: [], canvas: CNV, hidden: true, notes: "" },
+      { n: 1, title: "Check", objects: ["text", "quiz"], clicks: 1, notes: "Ask first" },
+      { n: 2, title: "Diagram", objects: ["canvas", "text"], canvas: CNV, hidden: true, notes: "" },
     ]);
   });
 

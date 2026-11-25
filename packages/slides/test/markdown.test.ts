@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { blockText, canvasSlideRefs, deckFromSlides, deckProblems, heading, paragraph, slideTitle, splitSlideMarkdown, type NoteBlock } from "../src/index.js";
+import { blockText, canvasSlideRefs, heading, paragraph, splitSlideMarkdown, type NoteBlock } from "../src/index.js";
+import { planFromSlides } from "../src/convert.js";
+import { legacyDeckProblems as deckProblems, type LegacySlide } from "../src/legacy.js";
+
+/** A planned (fixed-layout) slide's title: its first heading. */
+const slideTitle = (s: LegacySlide) => {
+  const h = [...s.main, ...s.side].find((b) => b.type === "heading");
+  return (h ? blockText(h) : "").trim();
+};
 
 describe("slide markdown", () => {
   it("splits at --- and takes notes after ???, never inside code fences", () => {
@@ -30,7 +38,7 @@ describe("slide markdown", () => {
   it("picks each slide's layout from what it holds", () => {
     const quiz: NoteBlock = { id: "q", type: "interactive", props: { kind: "quiz" }, children: [] };
     const bullet = { ...paragraph("a point"), type: "bulletListItem" };
-    const deck = deckFromSlides([
+    const deck = planFromSlides([
       { blocks: [heading("Attention", 1), paragraph("subtitle")], notes: "hi" },
       { blocks: [heading("Part 1", 1)], notes: "" },
       { blocks: [heading("Check", 2), paragraph("Answer first."), quiz], notes: "" },

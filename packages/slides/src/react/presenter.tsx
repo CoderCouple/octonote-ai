@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
-import {
-  clampPosition,
-  nextPosition,
-  previousPosition,
-  visibleDeckSlides,
-  type DeckDocument,
-  type DeckPosition,
-  type DeckSlide,
-} from "../model.js";
+import { visibleDeckSlides, type DeckDocument, type DeckSlide } from "../model.js";
+import { clampPosition, nextPosition, previousPosition, type DeckPosition } from "../navigation.js";
 import { PresenterView } from "./presenter-view.js";
 import { SlideView, type SlideRenderers } from "./slide-view.js";
 import { SlideStage } from "./stage.js";
@@ -78,6 +71,8 @@ export function Presenter({ deck, start, onExit, onPositionChange, overlay, rend
   const slides = useMemo(() => visibleDeckSlides(deck), [deck]);
   const [position, setPosition] = useState<DeckPosition>(() => clampPosition(slides, start ?? { slide: 0, step: 0 }));
   const [morph, setMorph] = useState<Map<string, string> | undefined>();
+  /** Animations play going forward; going back (or jumping) shows the result at once, as PowerPoint does. */
+  const [forward, setForward] = useState(true);
   const [black, setBlack] = useState(false);
   const [chrome, setChrome] = useState(true);
   const [presenterWin, setPresenterWin] = useState<Window | null>(null);
@@ -112,16 +107,30 @@ export function Presenter({ deck, start, onExit, onPositionChange, overlay, rend
       const to = clampPosition(slides, target);
       if (to.slide === from.slide && to.step === from.step) return;
       setBlack(false);
-      // Builds animate by themselves; only a change of slide runs a transition.
+      // One click forward plays; anything else (back, a jump) lands on the result.
+      const stepForward = (to.slide === from.slide && to.step === from.step + 1) || (to.slide === from.slide + 1 && to.step === 0);
+      setForward(stepForward);
+      // Animations play by themselves; only a change of slide runs a transition.
       if (to.slide === from.slide || busy.current) {
         setPosition(to);
         return;
       }
       const next = slides[to.slide]!;
       const kind = next.transition ?? deck.transition;
-      if (kind === "morph") flushSync(() => setMorph(morphPairs(slides[from.slide]!, next)));
+      // Morph: the old slide's matching objects get names first, then the new slide's.
+      const pairs = kind === "morph" ? morphPairs(slides[from.slide]!, next) : null;
+      if (pairs) flushSync(() => setMorph(pairs.previous));
       busy.current = true;
-      void runSlideTransition(kind, () => flushSync(() => setPosition(to)), root.current, to.slide > from.slide ? 1 : -1).finally(() => {
+      void runSlideTransition(
+        kind,
+        () =>
+          flushSync(() => {
+            if (pairs) setMorph(pairs.names);
+            setPosition(to);
+          }),
+        root.current,
+        to.slide > from.slide ? 1 : -1,
+      ).finally(() => {
         busy.current = false;
         setMorph(undefined);
       });
@@ -264,7 +273,7 @@ export function Presenter({ deck, start, onExit, onPositionChange, overlay, rend
       <SlideStage aspect={deck.aspect} fit="contain" className="osl-presenter-stage">
         {slide ? (
           <div className="osl-transition-root">
-            <SlideView deck={deck} slide={slide} step={position.step} morphNames={morph} {...renderers} />
+            <SlideView deck={deck} slide={slide} step={position.step} animate={forward} morphNames={morph} {...renderers} />
           </div>
         ) : (
           <div className="osl-slide osl-empty">This deck has no slides to show.</div>

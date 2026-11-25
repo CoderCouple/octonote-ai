@@ -1,19 +1,19 @@
 "use client";
 
-import { SLIDE_LAYOUTS, SlideOutline, type DeckDocument, type SlideLayout } from "@octonote/slides";
+import { SLIDE_TEMPLATES, SlideOutline, type DeckDocument, type SlideTemplate } from "@octonote/slides";
 import { Copy, EyeOff, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { LAYOUT_LABEL } from "../lib/labels";
+import { TEMPLATE_LABEL } from "../lib/labels";
 
 export interface SlideStripProps {
   deck: DeckDocument;
   selected: number;
   editable: boolean;
   onSelect: (index: number) => void;
-  onAdd: (layout: SlideLayout) => void;
+  onAdd: (template: SlideTemplate) => void;
   onDuplicate: (index: number) => void;
   onRemove: (index: number) => void;
   onToggleHidden: (index: number) => void;
@@ -73,13 +73,13 @@ export function SlideStrip({ deck, selected, editable, onSelect, onAdd, onDuplic
               aria-label={`Slide ${i + 1}${slide.hidden ? " (hidden)" : ""}`}
               onClick={() => onSelect(i)}
               className={cn(
-                `osl-theme-${deck.theme} relative aspect-video w-full overflow-hidden rounded-md border text-left`,
+                `osl-theme-${deck.theme} relative w-full ${deck.aspect === "4:3" ? "aspect-[4/3]" : "aspect-video"} overflow-hidden rounded-md border text-left`,
                 "bg-[var(--osl-bg)] text-[var(--osl-fg)] focus-visible:ring-ring outline-none focus-visible:ring-2",
                 i === selected && "ring-primary ring-2 ring-offset-1",
                 slide.hidden && "opacity-45",
               )}
             >
-              <SlideOutline slide={slide} />
+              <SlideOutline slide={slide} aspect={deck.aspect} />
               {slide.hidden ? <EyeOff className="text-muted-foreground absolute right-1 bottom-1 size-3" /> : null}
             </button>
             {editable ? (
@@ -114,9 +114,9 @@ export function SlideStrip({ deck, selected, editable, onSelect, onAdd, onDuplic
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {SLIDE_LAYOUTS.filter((l) => l !== "canvas").map((layout) => (
-              <DropdownMenuItem key={layout} onSelect={() => onAdd(layout)}>
-                {LAYOUT_LABEL[layout]}
+            {SLIDE_TEMPLATES.map((template) => (
+              <DropdownMenuItem key={template} onSelect={() => onAdd(template)}>
+                {TEMPLATE_LABEL[template]}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

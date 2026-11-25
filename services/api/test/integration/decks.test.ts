@@ -4,7 +4,7 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { markdownToNoteDocument } from "@octonote/content/server";
-import { deckFromNote, heading, newSlide, paragraph } from "@octonote/slides/core";
+import { deckFromNote, heading, newSlide, paragraph, slideTitle, textElement, type DeckDocument } from "@octonote/slides/core";
 import { createHarness, statusOf, type Harness } from "./harness";
 
 let h: Harness;
@@ -18,13 +18,17 @@ beforeEach(async () => {
 });
 
 const view = (userId: string | null, id: string) => statusOf(h.permissions.require(userId, { kind: "deck", id }, "view"));
-const slidesOf = (deck: { document: unknown }) => (deck.document as { slides: { layout: string }[] }).slides;
+const docOf = (deck: { document: unknown }) => deck.document as DeckDocument;
+const titlesOf = (deck: { document: unknown }) => docOf(deck).slides.map((s) => slideTitle(s));
+const kindsOf = (deck: { document: unknown }, i: number) => docOf(deck).slides[i]!.elements.map((e) => e.kind);
+const box = { x: 64, y: 48, w: 800, h: 120 };
 
 describe("making a presentation", () => {
   it("starts empty with a title slide, and lists with its slide count", async () => {
     const deck = await h.decks.create(alice.workspaceId, { title: "Attention" }, alice.id);
     expect(deck.id).toMatch(/^dck_/);
-    expect(slidesOf(deck).map((s) => s.layout)).toEqual(["title"]);
+    expect(titlesOf(deck)).toEqual(["Attention"]);
+    expect(docOf(deck).slides[0]!.elements[0]).toMatchObject({ kind: "text", role: "title" });
     const list = await h.decks.list(alice.workspaceId, alice.id);
     expect(list.map((d) => [d.title, d.slideCount])).toEqual([["Attention", 1]]);
   });
@@ -39,16 +43,17 @@ describe("making a presentation", () => {
       alice.id,
     );
     expect(deck.source).toEqual({ kind: "page", id: note.id, split: "heading" });
-    expect(deck.document).toMatchObject({ version: 1, theme: "paper", slides: [{ layout: "title" }, { layout: "content" }] });
+    expect(deck.document).toMatchObject({ version: 2, theme: "paper" });
+    expect(titlesOf(deck)).toEqual(["Attention", "Queries"]);
     expect(deck.document).not.toHaveProperty("junk");
   });
 
   it("refuses a malformed deck with the reason, and an oversized one", async () => {
     const s = newSlide();
-    const bad = h.decks.create(alice.workspaceId, { title: "X", document: { version: 1, slides: [s, s] } }, alice.id);
+    const bad = h.decks.create(alice.workspaceId, { title: "X", document: { version: 2, slides: [s, s] } }, alice.id);
     await expect(bad).rejects.toThrow(`repeats the id ${s.id}`);
     expect(await statusOf(bad)).toBe(400);
-    const huge = { version: 1, slides: [newSlide("content", { notes: "x".repeat(9 * 1024 * 1024) })] };
+    const huge = { version: 2, slides: [newSlide({ notes: "x".repeat(9 * 1024 * 1024) })] };
     await expect(h.decks.create(alice.workspaceId, { title: "X", document: huge }, alice.id)).rejects.toThrow(/too large/);
   });
 
@@ -62,7 +67,7 @@ describe("making a presentation", () => {
 describe("editing", () => {
   it("saves title and slides; refuses an empty patch and a bad deck", async () => {
     const deck = await h.decks.create(alice.workspaceId, { title: "Draft" }, alice.id);
-    const document = { version: 1, theme: "ink", aspect: "4:3", transition: "morph", slides: [newSlide("section", { main: [heading("Part 1", 1)] })] };
+    const document = { version: 2, theme: "ink", aspect: "4:3", transition: "morph", slides: [newSlide({ elements: [textElement([heading("Part 1", 1)], box)] })] };
     const saved = await h.decks.update(deck.id, { title: "Final", document }, alice.id);
     expect(saved.title).toBe("Final");
     expect(saved.document).toMatchObject({ theme: "ink", aspect: "4:3", transition: "morph" });
@@ -117,13 +122,13 @@ describe("access", () => {
 
 describe("publishing", () => {
   it("a published deck is readable by its slug, without the presenter's notes", async () => {
-    const document = { version: 1, slides: [newSlide("title", { main: [heading("Hi", 1)], notes: "My private script" })] };
+    const document = { version: 2, slides: [newSlide({ elements: [textElement([heading("Hi", 1)], box)], notes: "My private script" })] };
     const deck = await h.decks.create(alice.workspaceId, { title: "Attention from scratch", document }, alice.id);
     const state = await h.settings.setPublished("deck", deck.id, true, alice.id);
     expect(state.publicUrl).toMatch(/\/pub\/attention-from-scratch/);
     const view = await h.public.getBySlug(state.publicSlug!);
     expect(view.root).toMatchObject({ kind: "deck", id: deck.id, title: "Attention from scratch" });
-    expect(view.resource).toMatchObject({ kind: "deck", title: "Attention from scratch", document: { version: 1, slides: [{ notes: "" }] } });
+    expect(view.resource).toMatchObject({ kind: "deck", title: "Attention from scratch", document: { version: 2, slides: [{ notes: "" }] } });
     expect(JSON.stringify(view)).not.toContain("My private script");
     await h.settings.setPublished("deck", deck.id, false, alice.id);
     expect(await statusOf(h.public.getBySlug(state.publicSlug!))).toBe(404);
@@ -160,8 +165,10 @@ describe("made on the server (CLI, agents)", () => {
       "```",
     ].join("\n");
     const deck = await h.decks.create(alice.workspaceId, { title: "Talk", markdown }, alice.id);
-    expect(slidesOf(deck).map((s) => s.layout)).toEqual(["title", "split"]);
-    expect((deck.document as { slides: { notes: string }[] }).slides[0]!.notes).toBe("Welcome.");
+    expect(titlesOf(deck)).toEqual(["Attention", "Check"]);
+    // The second slide: its text, and the quiz as an object of its own.
+    expect(kindsOf(deck, 1)).toEqual(["text", "block"]);
+    expect(docOf(deck).slides[0]!.notes).toBe("Welcome.");
     const bad = markdown.replace('"correct":["a"]', '"correct":["zzz"]');
     // Refused as an invalid block (422), the way a note written as markdown is.
     expect(await statusOf(h.decks.create(alice.workspaceId, { title: "Bad", markdown: bad }, alice.id))).toBe(422);
@@ -174,7 +181,7 @@ describe("made on the server (CLI, agents)", () => {
     await h.pages.update(note.id, { document }, alice.id);
     const deck = await h.decks.createFromSource(alice.workspaceId, { source: { kind: "page", id: note.id, split: "heading" }, textToNotes: true, onePerSlide: true }, alice.id);
     expect(deck).toMatchObject({ title: "Attention", notebookId: nb.id, source: { kind: "page", id: note.id } });
-    expect(slidesOf(deck).map((s) => s.layout)).toEqual(["title", "content", "content"]);
+    expect(titlesOf(deck)).toEqual(["Attention", "Queries", "Keys"]);
   });
 
   it("from a project: note slides, then its canvas, copied into the deck", async () => {
@@ -182,8 +189,8 @@ describe("made on the server (CLI, agents)", () => {
     const pair = { canvasId };
     await h.canvasDiagrams.replace(canvasId, "graph TD\n  A[Input] --> B[Attention]", undefined, alice.id);
     const deck = await h.decks.createFromSource(alice.workspaceId, { source: { kind: "project", id: project.id, split: "heading" }, textToNotes: true, onePerSlide: true }, alice.id);
-    const doc = deck.document as { slides: { layout: string; canvas?: { canvasId: string } }[]; canvases?: Record<string, unknown> };
-    expect(doc.slides.at(-1)).toMatchObject({ layout: "canvas", canvas: { canvasId: pair.canvasId } });
+    const doc = docOf(deck);
+    expect(doc.slides.at(-1)!.elements[0]).toMatchObject({ kind: "canvas", canvasId: pair.canvasId });
     expect(Object.keys(doc.canvases ?? {})).toEqual([pair.canvasId]);
   });
 
@@ -193,8 +200,7 @@ describe("made on the server (CLI, agents)", () => {
     await h.pages.create(alice.workspaceId, { title: "Week 10", notebookId: nb.id }, alice.id);
     const deck = await h.decks.createFromSource(alice.workspaceId, { source: { kind: "notebook", id: nb.id, split: "heading" }, textToNotes: true, onePerSlide: true }, alice.id);
     expect(deck.notebookId).toBe(nb.id);
-    const titles = (deck.document as { slides: { layout: string; main: { content?: { text: string }[] }[] }[] }).slides.map((s) => s.main[0]?.content?.[0]?.text);
-    expect(titles).toEqual(["Course", "Week 2", "Week 10"]);
+    expect(titlesOf(deck)).toEqual(["Course", "Week 2", "Week 10"]);
   });
 
   it("only from something you can open", async () => {
@@ -224,10 +230,22 @@ describe("Let AI design it", () => {
     };
     const deck = await h.decks.createFromSource(alice.workspaceId, { source: { kind: "page", id: note.id, split: "heading" }, textToNotes: true, onePerSlide: true, design: "ai" }, alice.id);
     expect(brief).toContain("[B1: quiz]");
-    const slides = (deck.document as { slides: { layout: string; side: { type: string }[]; notes: string }[] }).slides;
-    expect(slides.map((s) => s.layout)).toEqual(["title", "split"]);
-    expect(slides[1]!.side[0]!.type).toBe("interactive");
-    expect(slides[1]!.notes).toBe("Give them a minute.");
+    expect(titlesOf(deck)).toEqual(["Attention", "Check"]);
+    const check = docOf(deck).slides[1]!;
+    const quizBox = check.elements.find((e) => e.kind === "block");
+    expect(quizBox && "blocks" in quizBox ? quizBox.blocks[0]!.type : null).toBe("interactive");
+    expect(check.notes).toBe("Give them a minute.");
     expect(deck.source).toEqual({ kind: "page", id: note.id, split: "heading" });
+  });
+});
+
+describe("decks saved in the first format", () => {
+  it("are read in the current format", async () => {
+    const v1 = { version: 1, theme: "paper", aspect: "16:9", transition: "fade", slides: [{ id: "s1", layout: "title", main: [heading("Old talk", 1)], side: [], notes: "hi" }] };
+    const deck = await h.decks.create(alice.workspaceId, { title: "Old", document: v1 }, alice.id);
+    const read = (await h.decks.getOne(deck.id, alice.id)).deck;
+    expect(docOf(read).version).toBe(2);
+    expect(titlesOf(read)).toEqual(["Old talk"]);
+    expect(docOf(read).slides[0]!.notes).toBe("hi");
   });
 });

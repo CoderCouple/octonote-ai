@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  buildCss,
+  blockElement,
+  bullet,
   formatElapsed,
   heading,
   newSlide,
@@ -9,6 +10,7 @@ import {
   Presenter,
   PresenterView,
   SlideOutline,
+  textElement,
   type DeckDocument,
   type NoteBlock,
 } from "../src/index.js";
@@ -35,61 +37,56 @@ const renderBlocks = (blocks: NoteBlock[]) =>
     </div>
   ));
 
-const p1 = paragraph("First point");
-const p2 = paragraph("Second point");
+const box = { x: 64, y: 48, w: 800, h: 100 };
+const title = (t: string, level: 1 | 2 = 2) => textElement([heading(t, level)], box, { role: "title" });
+const p1 = textElement([paragraph("First point")], { ...box, y: 200 });
+const p2 = textElement([paragraph("Second point")], { ...box, y: 300 });
 const deck: DeckDocument = {
-  version: 1,
+  version: 2,
   theme: "paper",
   aspect: "16:9",
   transition: "none",
   slides: [
-    newSlide("title", { main: [heading("Attention", 1)], notes: "Welcome everyone." }),
-    newSlide("content", {
-      main: [heading("Why scale", 2), p1, p2],
-      builds: [
-        { blockId: p1.id, effect: "fade" },
-        { blockId: p2.id, effect: "rise" },
+    newSlide({ elements: [title("Attention", 1)], notes: "Welcome everyone." }),
+    newSlide({
+      elements: [title("Why scale"), p1, p2],
+      animations: [
+        { id: "a1", elementId: p1.id, type: "in", effect: "fade", trigger: "click", duration: 500, delay: 0 },
+        { id: "a2", elementId: p2.id, type: "in", effect: "rise", trigger: "click", duration: 500, delay: 0 },
       ],
     }),
-    newSlide("content", { main: [heading("Hidden", 2)], hidden: true }),
-    newSlide("section", { main: [heading("The end", 1)] }),
+    newSlide({ elements: [title("Hidden")], hidden: true }),
+    newSlide({ elements: [title("The end", 1)] }),
   ],
 };
 
 const key = (k: string) => fireEvent.keyDown(window, { key: k });
 const slideTitleShown = () => document.querySelector(".osl-presenter [data-type=heading]")?.textContent;
 const styleText = () => document.querySelector(".osl-presenter .osl-slide style")?.textContent ?? "";
+const el = (id: string) => `[data-osl-el="${id}"]`;
 
 describe("Presenter", () => {
-  it("steps through builds, skips hidden slides, and reports each move", () => {
+  it("plays each click, skips hidden slides, and reports each move", () => {
     const moves: string[] = [];
-    render(
-      <Presenter
-        deck={deck}
-        fullscreen={false}
-        renderBlocks={renderBlocks}
-        onExit={() => {}}
-        onPositionChange={(p) => moves.push(`${p.slide}.${p.step}`)}
-      />,
-    );
+    render(<Presenter deck={deck} fullscreen={false} renderBlocks={renderBlocks} onExit={() => {}} onPositionChange={(p) => moves.push(`${p.slide}.${p.step}`)} />);
     expect(slideTitleShown()).toBe("Attention");
     key("ArrowRight");
     expect(slideTitleShown()).toBe("Why scale");
-    // Both builds hidden before their clicks.
-    expect(styleText()).toContain(`[data-id="${p1.id}"]{visibility:hidden`);
-    expect(styleText()).toContain(`[data-id="${p2.id}"]{visibility:hidden`);
+    expect(styleText()).toContain(`${el(p1.id)}{visibility:hidden}`);
+    expect(styleText()).toContain(`${el(p2.id)}{visibility:hidden}`);
     key("PageDown");
-    expect(styleText()).toContain(`[data-id="${p1.id}"]{animation:osl-build-fade`);
-    expect(styleText()).toContain(`[data-id="${p2.id}"]{visibility:hidden`);
+    expect(styleText()).toContain(`${el(p1.id)}{animation:osl-fx-fade`);
+    expect(styleText()).toContain(`${el(p2.id)}{visibility:hidden}`);
     key(" ");
-    expect(styleText()).toContain(`[data-id="${p2.id}"]{animation:osl-build-rise`);
+    expect(styleText()).toContain(`${el(p2.id)}{animation:osl-fx-rise`);
     key("ArrowRight");
     expect(slideTitleShown()).toBe("The end");
     expect(screen.getByText("3 / 3")).toBeTruthy();
-    // Back lands on the previous slide fully built.
+    // Back lands on the previous slide fully played, without replaying it.
     key("ArrowLeft");
     expect(slideTitleShown()).toBe("Why scale");
     expect(styleText()).not.toContain("visibility:hidden");
+    expect(styleText()).not.toContain("animation:");
     expect(moves).toEqual(["0.0", "1.0", "1.1", "1.2", "2.0", "1.2"]);
   });
 
@@ -108,16 +105,8 @@ describe("Presenter", () => {
   });
 
   it("leaves keys alone while someone types into a block", () => {
-    render(
-      <Presenter
-        deck={deck}
-        fullscreen={false}
-        renderBlocks={(blocks) => [...renderBlocks(blocks), <input key="field" aria-label="answer" />]}
-        onExit={() => {}}
-      />,
-    );
-    const field = screen.getAllByLabelText("answer")[0]!;
-    fireEvent.keyDown(field, { key: "ArrowRight" });
+    render(<Presenter deck={deck} fullscreen={false} renderBlocks={(blocks) => [...renderBlocks(blocks), <input key="field" aria-label="answer" />]} onExit={() => {}} />);
+    fireEvent.keyDown(screen.getAllByLabelText("answer")[0]!, { key: "ArrowRight" });
     expect(slideTitleShown()).toBe("Attention");
   });
 
@@ -129,6 +118,16 @@ describe("Presenter", () => {
       fireEvent.pointerUp(root, { pointerType: "touch", clientX: 120, clientY: 110 });
     });
     expect(slideTitleShown()).toBe("Why scale");
+  });
+
+  it("draws objects where they sit, with shapes and blocks", () => {
+    const quiz = blockElement({ id: "q", type: "interactive", props: { kind: "quiz" }, children: [] }, { x: 500, y: 100, w: 400, h: 300 }, { rotate: 10 });
+    const one: DeckDocument = { ...deck, slides: [newSlide({ elements: [quiz, { id: "s", kind: "shape", shape: "ellipse", x: 0, y: 0, w: 50, h: 50, style: { fill: "accent" } }] })] };
+    render(<Presenter deck={one} fullscreen={false} renderBlocks={renderBlocks} onExit={() => {}} />);
+    const q = document.querySelector<HTMLElement>(el(quiz.id))!;
+    expect([q.style.left, q.style.top, q.style.width, q.style.transform]).toEqual(["500px", "100px", "400px", "rotate(10deg)"]);
+    expect(q.querySelector("[data-id=q]")).toBeTruthy();
+    expect(document.querySelector(`${el("s")} path`)?.getAttribute("fill")).toBe("var(--osl-accent)");
   });
 });
 
@@ -154,26 +153,18 @@ describe("PresenterView", () => {
   });
 });
 
-describe("builds and outlines", () => {
-  it("scopes build CSS to one drawing of the slide", () => {
-    const css = buildCss(":r1:", deck.slides[1]!, 1, "data-id");
-    expect(css.split("\n")).toEqual([
-      `[data-osl-instance=":r1:"] [data-id="${p1.id}"]{animation:osl-build-fade var(--osl-build-ms,450ms) var(--osl-ease) both}`,
-      `[data-osl-instance=":r1:"] [data-id="${p2.id}"]{visibility:hidden;opacity:0}`,
-    ]);
-    // No step (editing): everything shows.
-    expect(buildCss(":r1:", deck.slides[1]!, undefined, "data-id")).toBe("");
-    // A host whose renderer marks nested elements alike names the one to use.
-    const outer = buildCss(":r1:", deck.slides[1]!, 0, "data-id", new Map([[p1.id, "osl-m-0"]]), (m: string) => `.outer${m}`);
-    expect(outer).toContain(`[data-osl-instance=":r1:"] .outer[data-id="${p1.id}"]{view-transition-name:osl-m-0}`);
-  });
-
-  it("outlines a slide by its title, a line of text and its blocks", () => {
-    const slide = newSlide("split", {
-      main: [heading("Three views", 2), paragraph("Query, key, value")],
-      side: [{ id: "q", type: "interactive", props: { kind: "quiz" } }, { id: "a", type: "interactive", props: { kind: "custom" } }],
+describe("thumbnails", () => {
+  it("sketch each object where it sits: titles, text, block chips", () => {
+    const slide = newSlide({
+      elements: [
+        textElement([heading("Three views", 2)], { x: 0, y: 0, w: 480, h: 54 }),
+        textElement([bullet("Query, key, value")], { x: 0, y: 60, w: 480, h: 100 }),
+        blockElement({ id: "a", type: "interactive", props: { kind: "custom" } }, { x: 480, y: 0, w: 480, h: 540 }),
+      ],
     });
     const { container } = render(<SlideOutline slide={slide} />);
-    expect(container.textContent).toBe("Three viewsQuery, key, valuequizapp");
+    expect(container.textContent).toBe("Three viewsQuery, key, valueapp");
+    const sketch = container.querySelectorAll<HTMLElement>(".osl-sk")[2]!;
+    expect([sketch.style.left, sketch.style.width]).toEqual(["50%", "50%"]);
   });
 });

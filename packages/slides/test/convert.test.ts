@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
-  blockText,
-  deckFromNote,
-  deckFromNotebook,
-  deckFromProject,
-  deckProblems,
-  heading,
-  paragraph,
-  slideTitle,
-  type DeckSlide,
-  type NoteBlock,
-} from "../src/index.js";
+  blockText, heading, paragraph, type NoteBlock } from "../src/index.js";
+import { planFromNote, planFromNotebook, planFromProject } from "../src/convert.js";
+import { legacyDeckProblems as deckProblems, type LegacySlide } from "../src/legacy.js";
+
+/** A planned (fixed-layout) slide's title: its first heading. */
+const slideTitle = (s: LegacySlide) => {
+  const h = [...s.main, ...s.side].find((b) => b.type === "heading");
+  return (h ? blockText(h) : "").trim();
+};
 
 const bullet = (text: string): NoteBlock => ({ ...paragraph(text), type: "bulletListItem" });
 const quiz = (): NoteBlock => ({ id: crypto.randomUUID(), type: "interactive", props: { kind: "quiz", spec: "{}" }, children: [] });
@@ -19,7 +17,7 @@ const divider = (): NoteBlock => ({ id: crypto.randomUUID(), type: "divider", pr
 const long = "Dot products grow with the dimension of the vectors, so before the softmax their spread is about the square root of d_k. ".repeat(3);
 
 /** What a test reads from a slide: its layout, title, the block types on it and whether it has notes. */
-const shape = (s: DeckSlide) => ({
+const shape = (s: LegacySlide) => ({
   layout: s.layout,
   title: slideTitle(s),
   main: s.main.map((b) => b.type),
@@ -48,7 +46,7 @@ describe("note → deck", () => {
   };
 
   it("splits at headings: text left, the block right, paragraphs to notes", () => {
-    const deck = deckFromNote(note);
+    const deck = planFromNote(note);
     expect(deck.slides.map(shape)).toEqual([
       { layout: "title", title: "Scaled dot-product attention", main: ["heading", "paragraph"], side: [], notes: false },
       { layout: "split", title: "Three views of the same input", main: ["heading", "bulletListItem", "bulletListItem"], side: ["interactive"], notes: true },
@@ -65,19 +63,19 @@ describe("note → deck", () => {
   });
 
   it("keeps everything on the slide when asked, with a section's blocks together", () => {
-    const deck = deckFromNote(note, { split: "heading", textToNotes: false, onePerSlide: false });
+    const deck = planFromNote(note, { split: "heading", textToNotes: false, onePerSlide: false });
     expect(deck.slides.map(shape)[2]).toEqual({ layout: "split", title: "Why divide by √d_k", main: ["heading", "paragraph", "heading"], side: ["manimVideo", "manimVideo"], notes: false });
   });
 
   it("a text-only slide keeps its short lead paragraph", () => {
-    const deck = deckFromNote({ title: "T", blocks: [heading("Idea", 2), paragraph("One line."), paragraph(long)] });
+    const deck = planFromNote({ title: "T", blocks: [heading("Idea", 2), paragraph("One line."), paragraph(long)] });
     expect(deck.slides[1]).toMatchObject({ layout: "content" });
     expect(deck.slides[1]!.main.map(blockText)).toEqual(["Idea", "One line."]);
     expect(deck.slides[1]!.notes).toBe(long.trim());
   });
 
   it("splits at dividers when asked, taking a section's first heading as its title", () => {
-    const deck = deckFromNote(
+    const deck = planFromNote(
       { title: "T", blocks: [heading("One", 2), bullet("a"), divider(), heading("Two", 3), bullet("b"), heading("Still two", 2), bullet("c")] },
       { split: "divider", textToNotes: true, onePerSlide: true },
     );
@@ -86,7 +84,7 @@ describe("note → deck", () => {
   });
 
   it("continues long lists on another slide", () => {
-    const deck = deckFromNote({ title: "T", blocks: [heading("Many", 2), ...Array.from({ length: 10 }, (_, i) => bullet(`b${i}`))] });
+    const deck = planFromNote({ title: "T", blocks: [heading("Many", 2), ...Array.from({ length: 10 }, (_, i) => bullet(`b${i}`))] });
     expect(deck.slides.slice(1).map((s) => s.main.length)).toEqual([8, 4]);
     expect(deck.slides.slice(1).map((s) => slideTitle(s))).toEqual(["Many", "Many"]);
   });
@@ -97,7 +95,7 @@ describe("project and notebook → deck", () => {
   const canvas = { title: "Diagram", canvasId: "cnv_1", slides: [{ itemId: "frame-1", title: "Encoder" }, { itemId: "fig-2", title: "Decoder" }], document: canvasDoc };
 
   it("a project's note slides, then one canvas slide per frame or figure", () => {
-    const deck = deckFromProject({ title: "Transformer", note: { title: "ignored", blocks: [heading("Idea", 2), bullet("x")] }, canvas });
+    const deck = planFromProject({ title: "Transformer", note: { title: "ignored", blocks: [heading("Idea", 2), bullet("x")] }, canvas });
     expect(deck.slides.map((s) => [s.layout, slideTitle(s), s.canvas?.itemId ?? null])).toEqual([
       ["title", "Transformer", null],
       ["content", "Idea", null],
@@ -110,7 +108,7 @@ describe("project and notebook → deck", () => {
   });
 
   it("a canvas with no frames or figures is one slide of the whole canvas", () => {
-    const deck = deckFromProject({ title: "P", note: null, canvas: { ...canvas, slides: [] } });
+    const deck = planFromProject({ title: "P", note: null, canvas: { ...canvas, slides: [] } });
     expect(deck.slides.map((s) => [s.layout, s.canvas ?? null])).toEqual([
       ["title", null],
       ["canvas", { canvasId: "cnv_1", itemId: null }],
@@ -118,7 +116,7 @@ describe("project and notebook → deck", () => {
   });
 
   it("a notebook is a title slide, then a section per item in order", () => {
-    const deck = deckFromNotebook({
+    const deck = planFromNotebook({
       title: "Transformers",
       items: [
         { kind: "page", title: "Attention", blocks: [paragraph("intro"), heading("QKV", 2), bullet("q")] },

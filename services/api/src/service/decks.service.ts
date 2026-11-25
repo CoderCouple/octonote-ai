@@ -55,7 +55,9 @@ export class DecksService {
     const access = await this.permissions.require(actorUserId, { kind: "deck", id }, "view");
     const row = await this.decksRepo.findActiveById(id);
     if (!row) throw NotFound("Presentation not found.");
-    return { deck: toDeck(row), access };
+    // Decks saved in the first format are read in the current one (they're stored that way on their next save).
+    const deck = toDeck(row);
+    return { deck: { ...deck, document: (await loadSlides()).toDeckDocument(deck.document) }, access };
   }
 
   async create(workspaceId: string, input: DeckCreate, actorUserId: string): Promise<Deck> {

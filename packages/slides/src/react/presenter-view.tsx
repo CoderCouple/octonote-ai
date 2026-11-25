@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { slideSteps, slideTitle, type DeckDocument, type DeckPosition, type DeckSlide } from "../model.js";
+import { slideTitle, type DeckDocument, type DeckSlide } from "../model.js";
+import type { DeckPosition } from "../navigation.js";
+import { slideSteps } from "../timeline.js";
 import { SlideView, type SlideRenderers } from "./slide-view.js";
 import { SlideStage } from "./stage.js";
 
@@ -98,7 +100,7 @@ export function PresenterView({ deck, slides, position, startedAt, onNext, onPre
           <div className="osl-pv-current">
             {slide ? (
               <SlideStage aspect={deck.aspect} fit="contain">
-                <SlideView deck={deck} slide={slide} step={position.step} mode="preview" {...renderers} />
+                <SlideView deck={deck} slide={slide} step={position.step} animate={false} mode="preview" {...renderers} />
               </SlideStage>
             ) : null}
           </div>
@@ -131,7 +133,7 @@ export function PresenterView({ deck, slides, position, startedAt, onNext, onPre
               </p>
             ) : next ? (
               <SlideStage aspect={deck.aspect}>
-                <SlideView deck={deck} slide={next} step={0} mode="preview" {...renderers} />
+                <SlideView deck={deck} slide={next} step={0} animate={false} mode="preview" {...renderers} />
               </SlideStage>
             ) : (
               <p className="osl-pv-empty">This is the last slide.</p>

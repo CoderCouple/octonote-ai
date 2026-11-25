@@ -37,36 +37,8 @@
 .osl-slide [data-content-type="heading"][data-level="3"] {
   --level: var(--osl-h3);
 }
-/* The slide's title gets room under it. */
-.osl-slide .osl-main > .osl-fit > .bn-container:first-child .bn-block-group > .bn-block-outer:first-child:has([data-content-type="heading"]) {
-  margin-bottom: 0.5em;
-}
-.osl-layout-title .bn-block-content[data-content-type="paragraph"],
-.osl-layout-section .bn-block-content[data-content-type="paragraph"] {
-  color: var(--osl-muted);
-  font-size: 1.25em;
-}
 .osl-slide .bn-inline-content a {
   color: var(--osl-accent);
-}
-/* Media slides: the block fills what's left under the title. */
-/* Wide formulas scroll inside their block rather than being cut off. */
-.osl-slide .katex-display {
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-.osl-layout-media .osl-main .bn-container,
-.osl-layout-media .osl-main .bn-editor,
-.osl-layout-media .osl-main .bn-block-group {
-  height: 100%;
-}
-.osl-layout-media .osl-main .bn-block-group {
-  display: flex;
-  flex-direction: column;
-}
-.osl-layout-media .osl-main .bn-block-group > .bn-block-outer:last-child {
-  flex: 1;
-  min-height: 0;
 }
 
 /* A picture of an app or video in the presenter view. */
@@ -89,19 +61,102 @@
   color: var(--osl-muted);
 }
 
-/* The editor: editable regions show where content goes. */
-.oxd-edit .osl-region {
-  outline: 2px dashed transparent;
-  outline-offset: 16px;
-  border-radius: 8px;
-  transition: outline-color 150ms;
+/* A title box's subtitle reads quieter, as on a title slide. */
+.osl-el-title .bn-block-content[data-content-type="paragraph"] {
+  color: var(--osl-muted);
+  font-size: 1.25em;
 }
-.oxd-edit .osl-region:hover,
-.oxd-edit .osl-region:focus-within {
-  outline-color: color-mix(in srgb, var(--osl-accent) 35%, transparent);
+/* A block fills its object: a diagram, app or video takes the box's height. */
+.osl-el-block .bn-container,
+.osl-el-block .bn-editor,
+.osl-el-block .bn-block-group {
+  height: 100%;
 }
-/* The slide stands off the editor's background. */
-.oxd-edit .osl-stage-box {
+
+/* ---- the editor: selection, handles, guides (slide units; sizes set inline per zoom) ---- */
+.oxd-stage {
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+.oxd-stage .osl-stage-box {
   border-radius: 6px;
   box-shadow: 0 0 0 1px var(--border), 0 12px 32px -16px rgb(0 0 0 / 0.25);
+}
+.oxd-inert {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.oxd-live {
+  position: absolute;
+  inset: 0;
+  user-select: text;
+  outline: 2px solid color-mix(in srgb, var(--osl-accent) 60%, transparent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.oxd-stage .osl-el {
+  cursor: move;
+}
+.oxd-stage .osl-el:hover:not(:has(.oxd-live)) {
+  outline: 1px dashed color-mix(in srgb, var(--osl-accent) 45%, transparent);
+}
+.oxd-dragging .osl-el {
+  cursor: grabbing;
+}
+.oxd-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+.oxd-sel {
+  position: absolute;
+  box-sizing: border-box;
+  border: solid #2f6feb;
+  transform-origin: 50% 50%;
+}
+.oxd-sel-locked {
+  border-color: #9b9a97;
+  border-style: dashed;
+}
+.oxd-sel-group {
+  border-style: dashed;
+}
+.oxd-handle,
+.oxd-rotate {
+  position: absolute;
+  box-sizing: border-box;
+  background: #fff;
+  border: solid #2f6feb;
+  pointer-events: auto;
+}
+.oxd-handle {
+  border-radius: 2px;
+  transform: translate(-50%, -50%);
+}
+.oxd-handle-nw { left: 0; top: 0; }
+.oxd-handle-n { left: 50%; top: 0; }
+.oxd-handle-ne { left: 100%; top: 0; }
+.oxd-handle-e { left: 100%; top: 50%; }
+.oxd-handle-se { left: 100%; top: 100%; }
+.oxd-handle-s { left: 50%; top: 100%; }
+.oxd-handle-sw { left: 0; top: 100%; }
+.oxd-handle-w { left: 0; top: 50%; }
+.oxd-rotate {
+  left: 50%;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  cursor: grab;
+}
+.oxd-guide {
+  position: absolute;
+  background: #e5484d;
+}
+.oxd-marquee {
+  position: absolute;
+  box-sizing: border-box;
+  border: solid #2f6feb;
+  background: color-mix(in srgb, #2f6feb 8%, transparent);
 }

@@ -91,15 +91,10 @@
   transform-origin: 0 0;
 }
 
-/* ---- slide ---- */
+/* ---- slide: objects placed on a fixed stage ---- */
 .osl-slide {
   position: absolute;
   inset: 0;
-  box-sizing: border-box;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
-  gap: 36px;
-  padding: 48px 64px;
   overflow: hidden;
   background: var(--osl-bg);
   color: var(--osl-fg);
@@ -110,100 +105,83 @@
   --osl-h2: 1.9em;
   --osl-h3: 1.3em;
 }
-.osl-region {
-  min-width: 0;
-  min-height: 0;
+.osl-empty {
+  display: grid;
+  place-items: center;
+  color: var(--osl-muted);
+}
+.osl-el {
+  position: absolute;
+  box-sizing: border-box;
+  transform-origin: 50% 50%;
+}
+.osl-el-body {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
-/* The region's content, shrunk to fit when it's too big (see SlideView). */
+/* The object's content, shrunk to fit when it's too big (see FitBox). */
 .osl-fit {
   display: flex;
   flex-direction: column;
   min-width: 0;
   transform-origin: 0 0;
 }
-.osl-empty {
-  display: grid;
-  place-items: center;
-  color: var(--osl-muted);
-}
-
-.osl-layout-title .osl-main,
-.osl-layout-section .osl-main {
-  justify-content: safe center;
-}
-.osl-layout-title {
-  padding-inline: 80px;
-}
-.osl-layout-title {
-  --osl-h1: 3.4em;
-  --osl-h2: 2.2em;
-}
-.osl-layout-section {
-  --osl-h1: 3.2em;
-  background: var(--osl-surface);
-}
-.osl-layout-split {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-}
-.osl-layout-split .osl-side {
-  justify-content: safe center;
-}
-/* A media slide: the title, then the block fills what's left. */
-.osl-layout-media .osl-main {
-  height: 100%;
-}
-.osl-layout-media .osl-main > .osl-fit {
+.osl-el-block .osl-fit {
   flex: 1;
-  min-height: 0;
 }
-.osl-layout-blank {
-  padding: 32px;
+.osl-el-title {
+  --osl-h1: 3.2em;
 }
-/* A canvas slide: the canvas fills the slide; the title floats top-left. */
-.osl-layout-canvas {
-  padding: 0;
+.osl-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.osl-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 .osl-canvas {
   position: absolute;
   inset: 0;
-}
-.osl-layout-canvas .osl-main {
-  position: absolute;
-  left: 24px;
-  top: 20px;
-  max-width: 60%;
-  padding: 9px 14px;
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--osl-bg) 88%, transparent);
-  font-size: 15px;
-  pointer-events: none;
-  --osl-h2: 1.4em;
-}
-.osl-layout-canvas .osl-main:empty {
-  display: none;
+  overflow: hidden;
 }
 
-/* ---- builds ---- */
-@keyframes osl-build-appear {
-  from { opacity: 1; }
-}
-@keyframes osl-build-fade {
-  from { opacity: 0; }
-}
-@keyframes osl-build-rise {
-  from { opacity: 0; transform: translateY(24px); }
-}
-@keyframes osl-build-wipe {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
-}
-@keyframes osl-build-highlight {
+/* ---- animations: entrance, emphasis, exit (timeline.ts plays them) ---- */
+@keyframes osl-fx-appear { from { opacity: 0; } 99% { opacity: 0; } to { opacity: 1; } }
+@keyframes osl-fx-fade { from { opacity: 0; } }
+@keyframes osl-fx-rise { from { opacity: 0; transform: translateY(24px); } }
+@keyframes osl-fx-drop { from { opacity: 0; transform: translateY(-24px); } }
+@keyframes osl-fx-fly-left { from { opacity: 0; transform: translateX(-60px); } }
+@keyframes osl-fx-fly-right { from { opacity: 0; transform: translateX(60px); } }
+@keyframes osl-fx-zoom { from { opacity: 0; transform: scale(0.6); } }
+@keyframes osl-fx-pop { 0% { opacity: 0; transform: scale(0.5); } 70% { opacity: 1; transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes osl-fx-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes osl-fx-blur { from { opacity: 0; filter: blur(12px); } }
+@keyframes osl-fx-pulse { 50% { transform: scale(1.08); } }
+@keyframes osl-fx-grow { to { transform: scale(1.15); } }
+@keyframes osl-fx-shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+@keyframes osl-fx-spin { to { transform: rotate(360deg); } }
+@keyframes osl-fx-flash { 25%, 75% { opacity: 0.2; } 50% { opacity: 1; } }
+@keyframes osl-fx-highlight {
   0% { background-color: transparent; }
   30% { background-color: color-mix(in srgb, var(--osl-accent) 28%, transparent); }
   100% { background-color: color-mix(in srgb, var(--osl-accent) 14%, transparent); }
 }
+@keyframes osl-fx-disappear { from { opacity: 1; } 99% { opacity: 1; } to { opacity: 0; } }
+@keyframes osl-fx-fade-out { to { opacity: 0; } }
+@keyframes osl-fx-sink { to { opacity: 0; transform: translateY(24px); } }
+@keyframes osl-fx-fly-out-left { to { opacity: 0; transform: translateX(-60px); } }
+@keyframes osl-fx-fly-out-right { to { opacity: 0; transform: translateX(60px); } }
+@keyframes osl-fx-zoom-out { to { opacity: 0; transform: scale(0.6); } }
 
 /* ---- slide transitions (view transitions; only while the presenter changes slide) ---- */
 .osl-presenter[data-osl-transitioning] .osl-transition-root {
@@ -511,52 +489,52 @@ body.osl-presenter-window {
   }
 }
 
-/* ---- slide outline (thumbnails) ---- */
+/* ---- slide outline (thumbnails): each object sketched where it sits ---- */
 .osl-outline {
   position: absolute;
   inset: 0;
-  padding: 9% 10%;
-  display: flex;
-  flex-direction: column;
-  gap: 6%;
   overflow: hidden;
   container-type: inline-size;
 }
-.osl-outline-title {
+.osl-sk {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+.osl-sk-title {
   font-weight: 700;
-  font-size: 9cqw;
-  line-height: 1.15;
+  font-size: 6cqw;
+  line-height: 1.1;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.osl-outline.osl-layout-title,
-.osl-outline.osl-layout-section {
-  justify-content: center;
-}
-.osl-outline.osl-layout-title .osl-outline-title,
-.osl-outline.osl-layout-section .osl-outline-title {
-  font-size: 11cqw;
-}
-.osl-outline-text {
-  font-size: 6cqw;
+.osl-sk-text {
+  font-size: 4cqw;
   opacity: 0.6;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.osl-outline-chips {
-  margin-top: auto;
-  display: flex;
-  gap: 3cqw;
-  flex-wrap: wrap;
+.osl-sk-shape {
+  flex: 1;
+  border-radius: 2px;
 }
-.osl-outline-chips span {
-  font-size: 6cqw;
+.osl-sk-chip {
+  margin: auto;
+  font-size: 5cqw;
   font-weight: 600;
-  padding: 1cqw 3.5cqw;
+  padding: 1cqw 3cqw;
   border-radius: 99px;
   background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.osl-sk-block,
+.osl-sk-image,
+.osl-sk-canvas {
+  border-radius: 2px;
+  background: color-mix(in srgb, currentColor 5%, transparent);
 }

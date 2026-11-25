@@ -602,22 +602,27 @@ export class McpToolsService {
   }
 }
 
-type OutlineSlide = { layout?: string; main?: { type?: string; content?: { text?: string }[] }[]; side?: unknown[]; notes?: string; hidden?: boolean };
+type OutlineBlock = { type?: string; content?: { text?: string }[] };
+type OutlineSlide = { elements?: { kind?: string; role?: string; blocks?: OutlineBlock[] }[]; notes?: string; hidden?: boolean };
 
 const slidesOf = (document: unknown): OutlineSlide[] =>
   Array.isArray((document as { slides?: unknown } | null)?.slides) ? (document as { slides: OutlineSlide[] }).slides : [];
 
 const slideCount = (document: unknown) => slidesOf(document).length;
 
+const textOf = (b: OutlineBlock | undefined) => (b?.content ?? []).map((c) => c.text ?? "").join("").trim();
+
+/** A slide's title: its title box, else the first text box with a heading (as @octonote/slides' slideTitle). */
 const slideHeading = (s: OutlineSlide) => {
-  const h = (s.main ?? []).find((b) => b.type === "heading");
-  return (h?.content ?? []).map((c) => c.text ?? "").join("").trim();
+  const texts = (s.elements ?? []).filter((e) => e.kind === "text");
+  const box = texts.find((t) => t.role === "title") ?? texts.find((t) => (t.blocks ?? []).some((b) => b.type === "heading"));
+  return textOf(box?.blocks?.find((b) => b.type === "heading") ?? box?.blocks?.find((b) => textOf(b)));
 };
 
-/** A presentation as text an assistant can read: each slide's title, layout and notes. */
+/** A presentation as text an assistant can read: each slide's title, how many objects it has, and its notes. */
 function deckText(title: string, document: unknown): string {
   const slides = slidesOf(document);
-  const lines = slides.map((s, i) => `${i + 1}. ${slideHeading(s) || "(no title)"} [${s.layout ?? "content"}${s.hidden ? ", hidden" : ""}]${s.notes ? `\n   notes: ${s.notes.replace(/\s+/g, " ").slice(0, 300)}` : ""}`);
+  const lines = slides.map((s, i) => `${i + 1}. ${slideHeading(s) || "(no title)"} [${(s.elements ?? []).length} object(s)${s.hidden ? ", hidden" : ""}]${s.notes ? `\n   notes: ${s.notes.replace(/\s+/g, " ").slice(0, 300)}` : ""}`);
   return `Presentation "${title}", ${slides.length} slide(s):\n${lines.join("\n") || "(empty)"}\nPresent it from its link in Octonote.`;
 }
 

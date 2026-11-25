@@ -111,9 +111,10 @@ maths…) on a slide:
   octonote deck create "Talk" --file talk.md [--notebook "Name"] [--publish]
 Layouts follow the content: a lone heading is a title or section slide, text
 with a block is text-and-block, a block alone fills the slide.
-  octonote deck show <id>                 # outline: each slide's layout, title, blocks, notes
-  octonote deck pull <id> -o deck.json    # raw JSON ({ version: 1, slides }) → edit →
-  octonote deck push deck.json --id <id>  #   builds, transitions, themes live here
+  octonote deck show <id>                 # outline: each slide's title, objects, clicks, notes
+  octonote deck pull <id> -o deck.json    # raw JSON → edit → push back. Version 2: each slide has
+  octonote deck push deck.json --id <id>  #   elements (text|block|image|shape|canvas at x,y,w,h on
+                                          #   960×540) and animations (in|emphasis|out; click|with|after)
 Presenting is done in the app (Present, presenter view); give the user the link.
 
 ## Organise
